@@ -81,4 +81,12 @@ run.bat              REM runs nhnext.nex on CSpect
   flags) — it works but is slow and needs overflow auditing when porting.
 - **Memory**: the Next has 1–2 MB in 8 KB banks; large code and data will need
   manual banking in later phases.
+
+## References
+
+- ZX Spectrum Next — Tilemap mode: <https://www.specnext.com/tilemap-mode/>
+- ZX Spectrum Next — Sprites: <https://www.specnext.com/sprites/>
+- NetHack: <https://www.nethack.org/>
+- z88dk: <https://github.com/z88dk/z88dk>
+- CSpect emulator: <https://mdf200.itch.io/cspect>
 ```

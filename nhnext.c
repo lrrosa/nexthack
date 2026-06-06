@@ -80,7 +80,9 @@ static void tm_init_palette(void)
 {
     uint8_t o;
 
-    ZXN_WRITE_REG(0x43, 0x60);   /* select tilemap palette (first), autoinc on */
+    /* reg 0x43: bits 5-4 = layer (11 = tilemap), bit 6 = first/second palette.
+     * Tilemap first palette = 0b0011_0000 = 0x30 (autoinc on, bit 7 = 0). */
+    ZXN_WRITE_REG(0x43, 0x30);   /* select tilemap palette (first), autoinc on */
     for (o = 0; o < 16; o++) {
         ZXN_WRITE_REG(0x40, (uint8_t)(o << 4));   /* palette index = o*16   */
         ZXN_WRITE_REG(0x41, 0x00);                /* o*16+0 : paper = black */
@@ -91,6 +93,7 @@ static void tm_init_palette(void)
 static void tm_init(void)
 {
     ZXN_WRITE_REG(0x68, 0x80);   /* disable ULA layer: only tilemap is shown   */
+    ZXN_WRITE_REG(0x4A, 0x00);   /* fallback colour = black (border area)      */
     ZXN_WRITE_REG(0x6F, 0x00);   /* tile definitions base -> 0x4000            */
     ZXN_WRITE_REG(0x6E, 0x20);   /* tilemap base          -> 0x6000            */
     ZXN_WRITE_REG(0x4C, 0x0F);   /* tilemap transparency index (glyphs use 0/1)*/
