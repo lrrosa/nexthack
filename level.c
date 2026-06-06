@@ -226,3 +226,73 @@ void level_reset_persistence(void)
     for (i = 0; i <= MAXLVL; i++)
         gold_taken[i] = 0;
 }
+
+/* ---- field of view --------------------------------------------------------
+ * Only "seen" (ever-explored) is stored; current visibility is derived each
+ * turn from the hero's room (whole room lights up) plus a radius of 1 (for
+ * corridors). Exploration memory is per-current-level only (reset on entry). */
+
+static uint8_t seen[MAPH][MAPW];
+static int     hero_room = -1;
+static int     fov_hx, fov_hy;
+
+static int in_room(uint8_t r, int x, int y)
+{
+    return x >= r_x[r] && x < r_x[r] + r_w[r] &&
+           y >= r_y[r] && y < r_y[r] + r_h[r];
+}
+
+void fov_reset(void)
+{
+    uint8_t x, y;
+    for (y = 0; y < MAPH; y++)
+        for (x = 0; x < MAPW; x++)
+            seen[y][x] = 0;
+    hero_room = -1;
+}
+
+void fov_update(int hx, int hy)
+{
+    int dx, dy;
+    uint8_t r;
+
+    fov_hx = hx; fov_hy = hy;
+
+    hero_room = -1;
+    for (r = 0; r < rcount; r++)
+        if (in_room(r, hx, hy)) { hero_room = r; break; }
+
+    /* radius 1 around the hero (covers corridors and doorways) */
+    for (dy = -1; dy <= 1; dy++) {
+        for (dx = -1; dx <= 1; dx++) {
+            int xx = hx + dx, yy = hy + dy;
+            if (xx >= 0 && yy >= 0 && xx < MAPW && yy < MAPH)
+                seen[yy][xx] = 1;
+        }
+    }
+
+    /* if standing in a room, the whole room is lit */
+    if (hero_room >= 0) {
+        uint8_t rr = (uint8_t)hero_room, xx, yy;
+        for (yy = r_y[rr]; yy < r_y[rr] + r_h[rr]; yy++)
+            for (xx = r_x[rr]; xx < r_x[rr] + r_w[rr]; xx++)
+                seen[yy][xx] = 1;
+    }
+}
+
+int fov_seen(int x, int y)
+{
+    if (x < 0 || y < 0 || x >= MAPW || y >= MAPH)
+        return 0;
+    return seen[y][x];
+}
+
+int fov_visible(int x, int y)
+{
+    int dx = x - fov_hx, dy = y - fov_hy;
+    if (dx >= -1 && dx <= 1 && dy >= -1 && dy <= 1)
+        return 1;
+    if (hero_room >= 0 && in_room((uint8_t)hero_room, x, y))
+        return 1;
+    return 0;
+}

@@ -33,9 +33,13 @@ and pull in the real NetHack modules bottom-up.
 - [x] **Phase 5** — Monster AI: monsters chase the hero each turn (greedy
       pathing) and attack when adjacent; turn-based combat (you strike on your
       turn, they strike back on theirs).
-- [ ] **Phase 6** — Inventory and items (`invent.c`, `objnam.c`, `pickup.c`).
-- [ ] **Phase 7** — Field of view / lighting.
+- [x] **Phase 6** — Field of view (fog of war): the hero's room lights up,
+      corridors reveal around the hero, explored terrain is remembered, and
+      monsters only show while in view.
+- [ ] **Phase 7** — Inventory and items (`invent.c`, `objnam.c`, `pickup.c`).
 - [ ] **Phase 8** — Save/restore via the NextZXOS/esxDOS file API.
+- [ ] Later — dimmed memory of explored terrain; per-level FOV memory;
+      A* monster pathfinding; more monster/item types; sound (AY/beeper).
 
 ## Project structure
 

@@ -37,4 +37,14 @@ int  level_take_gold(uint8_t x, uint8_t y);
 /* forget all remembered gold pickups (new game) */
 void level_reset_persistence(void);
 
+/* ---- field of view (fog of war) ----
+ * fov_reset:   forget all explored cells (entering a level)
+ * fov_update:  recompute visibility from the hero position, mark seen cells
+ * fov_seen:    has this cell ever been explored? (remembered terrain)
+ * fov_visible: is this cell within the hero's current view right now?       */
+void fov_reset(void);
+void fov_update(int hx, int hy);
+int  fov_seen(int x, int y);
+int  fov_visible(int x, int y);
+
 #endif /* LEVEL_H */

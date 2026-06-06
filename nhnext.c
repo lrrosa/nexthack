@@ -43,6 +43,7 @@ static void build_level(void)
     spawn_level_monsters();
     apply_gold_persistence();
     apply_monster_persistence();
+    fov_reset();                /* a freshly entered level starts unexplored */
 }
 
 /* ============================================================
@@ -54,16 +55,22 @@ static void draw_map(void)
     uint8_t x, y, t;
     int mi;
 
-    /* Single pass: every cell is written once with its final tile
-     * (hero > monster > terrain) to avoid a one-frame flicker. */
+    /* Single pass: every cell is written once with its final tile.
+     * Fog of war: unexplored cells are black; remembered terrain/items show;
+     * monsters only show while currently in view. */
     for (y = 0; y < MAPH; y++) {
         for (x = 0; x < MAPW; x++) {
-            if (x == (uint8_t)hero_x && y == (uint8_t)hero_y)
+            if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) {
                 t = T_HERO;
-            else if ((mi = monster_at(x, y)) >= 0)
-                t = (uint8_t)(m_type[mi] == 'd' ? T_DOG : T_RAT);
-            else
-                t = tile_for(lvl[y][x]);
+            } else if (!fov_seen(x, y)) {
+                t = T_ROCK;                       /* never seen -> dark */
+            } else {
+                mi = monster_at(x, y);
+                if (mi >= 0 && fov_visible(x, y))
+                    t = (uint8_t)(m_type[mi] == 'd' ? T_DOG : T_RAT);
+                else
+                    t = tile_for(lvl[y][x]);      /* remembered terrain */
+            }
             puttile((uint8_t)(OX + x), (uint8_t)(OY + y), t);
         }
     }
@@ -190,6 +197,7 @@ static void new_game(void)
     rng_seed();                  /* a brand new world */
     build_level();
     hero_x = up_x; hero_y = up_y;
+    fov_update(hero_x, hero_y);
 }
 
 /* ============================================================
@@ -226,6 +234,7 @@ void main(void)
     title_screen();
     build_level();
     hero_x = up_x; hero_y = up_y;
+    fov_update(hero_x, hero_y);
 
     tm_cls();
     draw_help();
@@ -266,6 +275,7 @@ void main(void)
         if (acted && !dead)
             monsters_turn();        /* monsters chase and attack */
 
+        fov_update(hero_x, hero_y); /* recompute what the hero can see */
         draw_status();
         draw_map();
 
