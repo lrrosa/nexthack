@@ -1,0 +1,18 @@
+# z88dk / appmake build artifacts
+*.nex
+*.map
+*_CODE.bin
+
+# appmake generated loaders (.bat) — keep our own scripts
+*.bat
+!build.bat
+!run.bat
+
+# raw extensionless binaries produced by zcc
+/hello
+/nhnext
+
+# editor/OS noise
+*.swp
+.DS_Store
+Thumbs.db
