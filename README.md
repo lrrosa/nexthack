@@ -23,7 +23,10 @@ and pull in the real NetHack modules bottom-up.
 - [x] **Phase 2** — Procedural level generation: random rooms on a grid of
       sectors, corridors with doors, up/down stairs (`>` descends to a new
       level), scattered gold/food/monsters. WASD + arrow-key movement.
-- [ ] **Phase 3** — Monsters and combat (`mon.c`, `uhitm.c`, `mhitu.c`).
+- [x] **Phase 3** — Graphics & interaction: colourful 8x8 pixel-art tiles for
+      the whole map; gold pickup; bump-to-attack combat with monster/player HP,
+      retaliation and death/restart; hold-a-key continuous movement.
+- [ ] **Phase 3b** — Monster movement / chase AI.
 - [ ] **Phase 4** — Inventory and items (`invent.c`, `objnam.c`, `pickup.c`).
 - [ ] **Phase 5** — Save/restore via the NextZXOS/esxDOS file API.
 
@@ -61,11 +64,13 @@ run.bat              REM runs nhnext.nex on CSpect
 
 | Key                       | Action          |
 |---------------------------|-----------------|
-| `W` `A` `S` `D` / arrows  | move ▲ ◄ ▼ ►    |
+| `W` `A` `S` `D` / arrows  | move ▲ ◄ ▼ ► (hold to keep moving) |
 | `Q` `E` `Z` `C`           | move diagonally |
 | `H` `J` `K` `L` / `Y` `U` `B` `N` | vi-keys (also work) |
-| `>` / `<`                 | descend / ascend stairs |
+| `Enter`                   | use the stairs you stand on (`>` down / `<` up) |
 | `.` or space              | wait (passes the turn) |
+
+Walk into a monster to attack it; walk over gold to pick it up.
 
 ## Map legend
 

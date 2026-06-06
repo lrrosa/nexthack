@@ -42,10 +42,97 @@
 #define TILEMAP_BASE  0x6000u
 #define ROM_FONT      0x3C00u
 
+/* Text ink colours, indexed by colour offset 1..15 (offset 0 is reserved
+ * for the graphic-tile master palette below). */
 static const uint8_t inkcol[16] = {
     0x00, 0x02, 0x80, 0x82, 0x10, 0x12, 0x90, 0x92,  /* dim    */
     0x00, 0x03, 0xE0, 0xE3, 0x1C, 0x1F, 0xFC, 0xFF   /* bright */
 };
+
+/* ============================================================
+ * GRAPHIC TILES (8x8 pixel art) - replace the ASCII map glyphs.
+ * Each map cell is one of these tiles, drawn with palette offset 0
+ * so its pixels index the 16-colour master palette directly.
+ * Text keeps using the ROM font tiles (offsets 1..15).
+ * ============================================================ */
+
+/* 16-colour master palette (RRRGGGBB), used by the graphic tiles. */
+static const uint8_t master[16] = {
+    0x00, 0x49, 0x92, 0xDB, 0xFF,   /* 0 black 1 dkgrey 2 grey 3 ltgrey 4 white */
+    0x44, 0x88, 0xD5,               /* 5 dkbrown 6 brown 7 tan                  */
+    0xE0, 0x1C, 0x08, 0x03,         /* 8 red 9 green 10 dkgreen 11 blue         */
+    0x1F, 0xFC, 0xF0, 0xF9          /* 12 cyan 13 yellow 14 orange 15 skin      */
+};
+
+/* tile numbers for graphic tiles (start past the 128 font tiles) */
+#define T_ROCK   128
+#define T_FLOOR  129
+#define T_WALL   130
+#define T_CORR   131
+#define T_DOOR   132
+#define T_SUP    133
+#define T_SDOWN  134
+#define T_HERO   135
+#define T_DOG    136
+#define T_RAT    137
+#define T_GOLD   138
+#define T_FOOD   139
+
+/* Each tile: 64 pixels (8 rows x 8 cols), values are master-palette indices. */
+static const uint8_t gfx[12][64] = {
+  { /* T_ROCK */
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
+  { /* T_FLOOR */
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,1,0,0,0,0,
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
+  { /* T_WALL (brick) */
+    3,3,3,3,3,3,3,1, 3,2,2,2,2,2,2,1, 3,2,2,2,2,2,2,1, 1,1,1,1,1,1,1,1,
+    3,3,3,1,3,3,3,3, 2,2,2,1,2,2,2,2, 2,2,2,1,2,2,2,2, 1,1,1,1,1,1,1,1 },
+  { /* T_CORR (speckled) */
+    0,0,0,0,0,0,0,0, 0,0,1,0,0,0,0,0, 0,0,0,0,0,1,0,0, 0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,0,0, 0,0,0,0,1,0,0,0, 0,0,0,0,0,0,0,0, 0,0,1,0,0,0,0,0 },
+  { /* T_DOOR */
+    2,2,2,2,2,2,2,2, 2,6,6,6,6,6,6,2, 2,6,7,6,6,7,6,2, 2,6,6,6,6,6,6,2,
+    2,6,6,6,13,6,6,2, 2,6,7,6,6,7,6,2, 2,6,6,6,6,6,6,2, 2,2,2,2,2,2,2,2 },
+  { /* T_SUP (stairs up) */
+    0,0,0,0,0,0,3,3, 0,0,0,0,0,3,3,2, 0,0,0,0,3,3,2,0, 0,0,0,3,3,2,0,0,
+    0,0,3,3,2,0,0,0, 0,3,3,2,0,0,0,0, 3,3,2,0,0,0,0,0, 3,3,3,3,3,3,3,3 },
+  { /* T_SDOWN (stairs down) */
+    3,3,3,3,3,3,3,3, 0,0,0,0,0,2,3,3, 0,0,0,0,2,3,3,0, 0,0,0,2,3,3,0,0,
+    0,0,2,3,3,0,0,0, 0,2,3,3,0,0,0,0, 2,3,3,0,0,0,0,0, 3,3,0,0,0,0,0,0 },
+  { /* T_HERO */
+    0,0,0,15,15,0,0,0, 0,0,0,15,15,0,0,0, 0,0,15,15,15,15,0,0, 0,0,0,11,11,0,0,0,
+    0,11,11,11,11,11,11,0, 0,0,11,11,11,11,0,0, 0,0,11,0,0,11,0,0, 0,0,11,0,0,11,0,0 },
+  { /* T_DOG */
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,6,6, 0,6,6,6,6,6,6,0, 6,6,6,6,6,6,6,0,
+    6,6,6,6,6,6,0,0, 0,6,0,6,0,6,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
+  { /* T_RAT */
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,8, 0,2,2,2,2,2,8,0,
+    2,2,2,2,2,2,2,0, 0,2,0,2,0,2,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
+  { /* T_GOLD */
+    0,0,0,0,0,0,0,0, 0,0,13,13,13,0,0,0, 0,13,14,14,14,13,0,0, 0,13,14,13,14,13,0,0,
+    0,13,14,14,14,13,0,0, 0,0,13,13,13,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
+  { /* T_FOOD (drumstick) */
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,4,0, 0,0,0,0,0,4,4,0, 0,0,0,0,6,6,0,0,
+    0,0,0,6,6,0,0,0, 0,0,8,8,6,0,0,0, 0,8,8,8,0,0,0,0, 0,0,8,0,0,0,0,0 }
+};
+
+/* pack 64 palette indices into a 4bpp 8x8 tile (32 bytes) at tile slot */
+static void pack_tile(uint8_t tilenum, const uint8_t *px)
+{
+    uint8_t *dst = (uint8_t *)(TILEDEF_BASE + (uint16_t)tilenum * 32);
+    uint8_t i;
+    for (i = 0; i < 32; i++)
+        dst[i] = (uint8_t)(((px[i * 2] & 0x0F) << 4) | (px[i * 2 + 1] & 0x0F));
+}
+
+static void load_gfx_tiles(void)
+{
+    uint8_t i;
+    for (i = 0; i < 12; i++)
+        pack_tile((uint8_t)(T_ROCK + i), gfx[i]);
+}
 
 static void tm_init_font(void)
 {
@@ -69,12 +156,19 @@ static void tm_init_font(void)
 
 static void tm_init_palette(void)
 {
-    uint8_t o;
+    uint8_t i, o;
 
     /* reg 0x43: bits 5-4 = layer (11 = tilemap), bit 6 = first/second.
      * Tilemap first palette = 0b0011_0000 = 0x30 (autoinc on). */
     ZXN_WRITE_REG(0x43, 0x30);
-    for (o = 0; o < 16; o++) {
+
+    /* indices 0..15: master palette for the graphic tiles (offset 0) */
+    ZXN_WRITE_REG(0x40, 0x00);
+    for (i = 0; i < 16; i++)
+        ZXN_WRITE_REG(0x41, master[i]);
+
+    /* offsets 1..15: black paper + ink colour, for coloured text */
+    for (o = 1; o < 16; o++) {
         ZXN_WRITE_REG(0x40, (uint8_t)(o << 4));   /* index o*16        */
         ZXN_WRITE_REG(0x41, 0x00);                /* o*16+0 : black    */
         ZXN_WRITE_REG(0x41, inkcol[o]);           /* o*16+1 : ink      */
@@ -92,6 +186,7 @@ static void tm_init(void)
     ZXN_WRITE_REG(0x6C, 0x00);   /* default attribute                       */
 
     tm_init_font();
+    load_gfx_tiles();
     tm_init_palette();
 
     ZXN_WRITE_REG(0x6B, 0xC0);   /* enable: bit7 on, bit6 80x32, attrs kept */
@@ -106,6 +201,32 @@ static void putcell(uint8_t x, uint8_t y, uint8_t ch, uint8_t coff)
     uint8_t *p = (uint8_t *)(TILEMAP_BASE + (((uint16_t)y * TM_W + x) << 1));
     p[0] = ch;
     p[1] = (uint8_t)(coff << 4);
+}
+
+/* draw a graphic tile (palette offset 0 -> master palette) */
+static void puttile(uint8_t x, uint8_t y, uint8_t tile)
+{
+    uint8_t *p = (uint8_t *)(TILEMAP_BASE + (((uint16_t)y * TM_W + x) << 1));
+    p[0] = tile;
+    p[1] = 0;
+}
+
+static uint8_t tile_for(char c)
+{
+    switch (c) {
+    case '.': return T_FLOOR;
+    case '#': return T_CORR;
+    case '-':
+    case '|': return T_WALL;
+    case '+': return T_DOOR;
+    case '<': return T_SUP;
+    case '>': return T_SDOWN;
+    case '$': return T_GOLD;
+    case '%': return T_FOOD;
+    case 'd': return T_DOG;
+    case 'r': return T_RAT;
+    default:  return T_ROCK;
+    }
 }
 
 static uint8_t print_str(uint8_t x, uint8_t y, const char *s, uint8_t coff)
@@ -149,13 +270,14 @@ static void tm_cls(void)
  * INPUT
  * ============================================================ */
 
+/* Returns the key currently held (does NOT wait for release), so holding a
+ * movement key keeps moving. The main loop throttles the repeat rate. */
 static int getkey(void)
 {
     int k;
     do {
         k = in_inkey();
     } while (k == 0);
-    in_wait_nokey();
     return k;
 }
 
@@ -303,6 +425,46 @@ static int hero_x, hero_y;
 static uint16_t dlvl = 1;
 static uint16_t turns = 0;
 
+/* player */
+static uint8_t  php = 12, pmaxhp = 12;
+static uint16_t gold = 0;
+static uint8_t  dead = 0;
+
+/* monsters (kept in arrays, not in the terrain buffer, so they can move
+ * and carry HP independently of what is drawn) */
+#define MAXMON 8
+static uint8_t m_x[MAXMON], m_y[MAXMON], m_hp[MAXMON], m_alive[MAXMON];
+static char    m_type[MAXMON];
+static uint8_t mcount;
+
+static int monster_at(int x, int y)
+{
+    uint8_t i;
+    for (i = 0; i < mcount; i++)
+        if (m_alive[i] && m_x[i] == x && m_y[i] == y)
+            return i;
+    return -1;
+}
+
+static const char *mon_name(char t)
+{
+    return (t == 'd') ? "dog" : "rat";
+}
+
+static void spawn_monster(char type, uint8_t hp)
+{
+    uint8_t i, x, y;
+    if (mcount >= MAXMON) return;
+    i = rn2(rcount);
+    rand_floor(i, &x, &y);
+    if (lvl[y][x] != '.') return;                 /* floor only */
+    if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) return;
+    if (monster_at(x, y) >= 0) return;
+    m_x[mcount] = x; m_y[mcount] = y;
+    m_hp[mcount] = hp; m_type[mcount] = type; m_alive[mcount] = 1;
+    mcount++;
+}
+
 static void gen_level(void)
 {
     uint8_t i, j, k;
@@ -312,6 +474,7 @@ static void gen_level(void)
 
     lvl_clear();
     rcount = 0;
+    mcount = 0;
 
     for (j = 0; j < SECT_ROWS; j++) {
         for (i = 0; i < SECT_COLS; i++) {
@@ -343,49 +506,42 @@ static void gen_level(void)
         lvl[y][x] = '>';
     }
 
-    /* a little loot and life */
+    /* loot */
     place_thing('$');
     place_thing('$');
     place_thing('%');
-    place_thing('d');
-    place_thing('r');
+
+    /* monsters (more of them the deeper you go) */
+    spawn_monster('r', 3);
+    spawn_monster('r', 3);
+    spawn_monster('d', 6);
+    if (dlvl >= 3) spawn_monster('r', 3);
+    if (dlvl >= 5) spawn_monster('d', 6);
 }
 
 /* ============================================================
  * RENDER
  * ============================================================ */
 
-static uint8_t colour_for(char c)
-{
-    switch (c) {
-    case '@': return C_YELLOW | C_BRIGHT;
-    case '-':
-    case '|': return C_WHITE | C_BRIGHT;
-    case '+': return C_YELLOW;
-    case '#':
-    case '.': return C_WHITE;
-    case '$': return C_YELLOW | C_BRIGHT;
-    case '%': return C_RED | C_BRIGHT;
-    case 'd': return C_WHITE | C_BRIGHT;
-    case 'r': return C_RED;
-    case '<':
-    case '>': return C_WHITE | C_BRIGHT;
-    default:  return C_BLACK;        /* rock: invisible */
-    }
-}
-
 static void draw_map(void)
 {
-    uint8_t x, y;
+    uint8_t x, y, t;
+    int mi;
+
+    /* Single pass: every cell is written exactly once with its final
+     * tile (hero > monster > terrain). Drawing terrain first and then
+     * overwriting with monsters caused a one-frame flicker. */
     for (y = 0; y < MAPH; y++) {
         for (x = 0; x < MAPW; x++) {
-            char c = lvl[y][x];
-            putcell((uint8_t)(OX + x), (uint8_t)(OY + y),
-                    (uint8_t)c, colour_for(c));
+            if (x == (uint8_t)hero_x && y == (uint8_t)hero_y)
+                t = T_HERO;
+            else if ((mi = monster_at(x, y)) >= 0)
+                t = (uint8_t)(m_type[mi] == 'd' ? T_DOG : T_RAT);
+            else
+                t = tile_for(lvl[y][x]);
+            puttile((uint8_t)(OX + x), (uint8_t)(OY + y), t);
         }
     }
-    putcell((uint8_t)(OX + hero_x), (uint8_t)(OY + hero_y),
-            '@', colour_for('@'));
 }
 
 static void msg(const char *s)
@@ -394,10 +550,30 @@ static void msg(const char *s)
     print_str(0, 0, s, C_WHITE | C_BRIGHT);
 }
 
+/* message built from prefix + a name + suffix, e.g. "You kill the rat!" */
+static void msg2(const char *a, const char *b, const char *c)
+{
+    uint8_t x;
+    clear_line(0, C_WHITE);
+    x = print_str(0, 0, a, C_WHITE | C_BRIGHT);
+    x = print_str(x, 0, b, C_WHITE | C_BRIGHT);
+    print_str(x, 0, c, C_WHITE | C_BRIGHT);
+}
+
+/* message with an embedded number, e.g. "You pick up 7 gold pieces." */
+static void msg_num(const char *a, uint16_t n, const char *c)
+{
+    uint8_t x;
+    clear_line(0, C_WHITE);
+    x = print_str(0, 0, a, C_WHITE | C_BRIGHT);
+    x = put_uint(x, 0, n, C_WHITE | C_BRIGHT);
+    print_str(x, 0, c, C_WHITE | C_BRIGHT);
+}
+
 static void draw_help(void)
 {
     print_str(0, 25,
-        "Move: WASD or arrows   Diagonals: Q E Z C   > down  < up   . wait",
+        "Move: WASD or arrows    Diagonals: Q E Z C    Enter: use stairs    . wait",
         C_CYAN | C_BRIGHT);
 }
 
@@ -411,8 +587,14 @@ static void draw_status(void)
     clear_line(23, C_GREEN);
     x = print_str(0, 23, "Dlvl:", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, dlvl, C_GREEN | C_BRIGHT);
-    x = print_str(x, 23, "  $:0  HP:12(12)  Pw:2(2)  AC:10  Xp:1/0  T:",
-                  C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, "   ", C_GREEN | C_BRIGHT);
+    puttile(x, 23, T_GOLD); x++;          /* gold coin icon (ROM '$' glyph is blank) */
+    x = put_uint(x, 23, gold, C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, "  HP:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, php, C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, "(", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, pmaxhp, C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, ")  Pw:2(2)  AC:10  Xp:1/0  T:", C_GREEN | C_BRIGHT);
     put_uint(x, 23, turns, C_GREEN | C_BRIGHT);
 }
 
@@ -430,11 +612,35 @@ static void describe(char dest, int moved)
     switch (dest) {
     case '>': msg("There is a staircase down here."); break;
     case '<': msg("There is a staircase up here.");   break;
-    case '$': msg("You see some gold here.");         break;
     case '%': msg("There is a slice of food here.");  break;
-    case 'd': msg("You see a little dog here.");      break;
-    case 'r': msg("You see a giant rat here.");       break;
     default:  msg("");                                break;
+    }
+}
+
+/* hero attacks monster mi; if it survives, it bites back */
+static void attack_monster(uint8_t mi)
+{
+    uint8_t dmg = (uint8_t)(rn2(4) + 1);    /* 1..4 */
+    const char *name = mon_name(m_type[mi]);
+
+    turns++;
+    if (m_hp[mi] <= dmg) {
+        m_alive[mi] = 0;
+        msg2("You kill the ", name, "!");
+        return;
+    }
+    m_hp[mi] = (uint8_t)(m_hp[mi] - dmg);
+
+    {   /* retaliation */
+        uint8_t bite = (uint8_t)(rn2(3) + 1);   /* 1..3 */
+        if (php <= bite) {
+            php = 0;
+            dead = 1;
+            msg2("The ", name, " kills you!");
+        } else {
+            php = (uint8_t)(php - bite);
+            msg2("The ", name, " bites you!");
+        }
     }
 }
 
@@ -443,14 +649,27 @@ static void try_move(int dx, int dy)
     int nx = hero_x + dx;
     int ny = hero_y + dy;
     char dest = terrain(nx, ny);
+    int mi;
 
-    if (walkable(dest)) {
-        hero_x = nx;
-        hero_y = ny;
-        turns++;
-        describe(dest, 1);
-    } else {
+    if (!walkable(dest)) {
         describe(dest, 0);
+        return;
+    }
+    mi = monster_at(nx, ny);
+    if (mi >= 0) {
+        attack_monster((uint8_t)mi);
+        return;
+    }
+    hero_x = nx;
+    hero_y = ny;
+    turns++;
+    if (dest == '$') {
+        uint16_t amt = (uint16_t)(rn2(20) + 1);
+        gold = (uint16_t)(gold + amt);
+        lvl[ny][nx] = '.';
+        msg_num("You pick up ", amt, " gold pieces.");
+    } else {
+        describe(dest, 1);
     }
 }
 
@@ -480,6 +699,16 @@ static void go_up(void)
     } else {
         msg("You can't go up here.");
     }
+}
+
+static void new_game(void)
+{
+    php = pmaxhp;
+    gold = 0;
+    dlvl = 1;
+    turns = 0;
+    dead = 0;
+    gen_level();
 }
 
 void main(void)
@@ -513,15 +742,33 @@ void main(void)
         case 'e': case 'u': try_move(+1, -1); break;
         case 'z': case 'b': try_move(-1, +1); break;
         case 'c': case 'n': try_move(+1, +1); break;
-        /* stairs */
-        case '>': go_down(); break;
-        case '<': go_up();   break;
+        /* Enter: use whichever stair you stand on (debounced below) */
+        case 13:
+            if (terrain(hero_x, hero_y) == '>')      go_down();
+            else if (terrain(hero_x, hero_y) == '<') go_up();
+            else msg("There are no stairs here.");
+            in_wait_nokey();          /* don't repeat-trigger stairs */
+            break;
         /* wait */
         case '.':
         case ' ': turns++; msg("You wait."); break;
         default:  break;
         }
+
         draw_status();
         draw_map();
+
+        if (dead) {
+            msg("You die...   Press Enter to start over.");
+            in_wait_nokey();
+            do { k = getkey(); } while (k != 13);
+            new_game();
+            draw_status();
+            draw_map();
+            msg("You feel much better.  A new adventure begins!");
+            in_wait_nokey();
+        }
+
+        in_pause(70);   /* throttle continuous (held-key) movement */
     }
 }
