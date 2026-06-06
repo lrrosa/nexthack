@@ -20,7 +20,9 @@ and pull in the real NetHack modules bottom-up.
       monsters/items/stairs.
 - [x] **Phase 1b — 80-column display** ([nhnext.c](nhnext.c)): rendered on the
       Next's hardware **tilemap** (80×32), matching NetHack's native map width.
-- [ ] **Phase 2** — Procedural level generation (porting `mklev.c`/`mkroom.c`).
+- [x] **Phase 2** — Procedural level generation: random rooms on a grid of
+      sectors, corridors with doors, up/down stairs (`>` descends to a new
+      level), scattered gold/food/monsters. WASD + arrow-key movement.
 - [ ] **Phase 3** — Monsters and combat (`mon.c`, `uhitm.c`, `mhitu.c`).
 - [ ] **Phase 4** — Inventory and items (`invent.c`, `objnam.c`, `pickup.c`).
 - [ ] **Phase 5** — Save/restore via the NextZXOS/esxDOS file API.
@@ -57,13 +59,13 @@ run.bat              REM runs nhnext.nex on CSpect
 
 ## Controls
 
-| Key              | Action          |
-|------------------|-----------------|
-| `h` `j` `k` `l`  | move ◄ ▼ ▲ ►    |
-| `y` `u` `b` `n`  | move diagonally |
-| cursor keys      | move (alternative) |
-| `.` or `s`       | wait/search (passes the turn) |
-| `q`              | quit            |
+| Key                       | Action          |
+|---------------------------|-----------------|
+| `W` `A` `S` `D` / arrows  | move ▲ ◄ ▼ ►    |
+| `Q` `E` `Z` `C`           | move diagonally |
+| `H` `J` `K` `L` / `Y` `U` `B` `N` | vi-keys (also work) |
+| `>` / `<`                 | descend / ascend stairs |
+| `.` or space              | wait (passes the turn) |
 
 ## Map legend
 
@@ -84,6 +86,8 @@ run.bat              REM runs nhnext.nex on CSpect
 
 ## References
 
+- **ZX Spectrum Next dev wiki (primary reference):** <https://wiki.specnext.dev/Main_Page>
+  - Memory map (default config has 512 KB RAM): <https://wiki.specnext.dev/Memory_map>
 - ZX Spectrum Next — Tilemap mode: <https://www.specnext.com/tilemap-mode/>
 - ZX Spectrum Next — Sprites: <https://www.specnext.com/sprites/>
 - NetHack: <https://www.nethack.org/>
