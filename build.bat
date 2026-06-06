@@ -1,24 +1,25 @@
 @ECHO OFF
 REM === NetHack-Next build ===
-REM Sets up the z88dk environment and compiles <file>.c -> <file>.nex
-REM Usage:  build.bat            (builds hello.c)
-REM         build.bat my.c       (builds my.c -> my.nex)
+REM   build.bat            builds the full game (all modules) -> nhnext.nex
+REM   build.bat foo.c      builds a single source file        -> foo.nex
 
 SET Z88DK_DIR=%~dp0..\z88dk
 SET ZCCCFG=%Z88DK_DIR%\lib\config\
 SET PATH=%Z88DK_DIR%\bin;%PATH%
 
-IF "%~1"=="" (SET SRC=hello.c) ELSE (SET SRC=%~1)
-SET OUT=%~n1
-IF "%OUT%"=="" SET OUT=hello
+SET FLAGS=+zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -m
 
-ECHO Building %SRC% -^> %OUT%.nex ...
-zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -m %SRC% -o %OUT% -create-app
+IF NOT "%~1"=="" GOTO single
 
-IF EXIST %OUT%.nex (
-    ECHO.
-    ECHO OK: %OUT%.nex built.
-) ELSE (
-    ECHO.
-    ECHO BUILD FAILED.
-)
+SET SRCS=nhnext.c platform.c rng.c level.c monster.c
+ECHO Building NetHack Next (nhnext.nex) ...
+zcc %FLAGS% %SRCS% -o nhnext -create-app
+IF EXIST nhnext.nex (ECHO. & ECHO OK: nhnext.nex built.) ELSE (ECHO. & ECHO BUILD FAILED.)
+GOTO end
+
+:single
+ECHO Building %~1 -^> %~n1.nex ...
+zcc %FLAGS% %~1 -o %~n1 -create-app
+IF EXIST %~n1.nex (ECHO. & ECHO OK: %~n1.nex built.) ELSE (ECHO. & ECHO BUILD FAILED.)
+
+:end

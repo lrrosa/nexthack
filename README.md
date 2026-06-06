@@ -37,6 +37,20 @@ and pull in the real NetHack modules bottom-up.
 - [ ] **Phase 7** — Field of view / lighting.
 - [ ] **Phase 8** — Save/restore via the NextZXOS/esxDOS file API.
 
+## Project structure
+
+The code is split into modules with clear responsibilities (the platform
+layer is kept separate from game logic):
+
+| File | Responsibility |
+|------|----------------|
+| `platform.c` / `.h` | ZX Next hardware: tilemap, font, graphic tiles, palette, text/messages, keyboard |
+| `rng.c` / `.h` | random number generator |
+| `level.c` / `.h` | terrain buffer, procedural generation, level persistence |
+| `monster.c` / `.h` | monsters: spawning, chase AI, combat |
+| `nhnext.c` | game state, main loop, map/status rendering, title screen |
+| `game.h` | shared player/run state used across modules |
+
 ## Build
 
 Prerequisite: the `..\z88dk` folder (already in the project).
