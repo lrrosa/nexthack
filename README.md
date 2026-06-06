@@ -30,9 +30,12 @@ and pull in the real NetHack modules bottom-up.
       from a per-depth seed (same depth = same map), with collected gold and
       killed monsters remembered. Title screen seeds the world from the player's
       reaction time for good variety.
-- [ ] **Phase 5** — Monster movement / chase AI.
+- [x] **Phase 5** — Monster AI: monsters chase the hero each turn (greedy
+      pathing) and attack when adjacent; turn-based combat (you strike on your
+      turn, they strike back on theirs).
 - [ ] **Phase 6** — Inventory and items (`invent.c`, `objnam.c`, `pickup.c`).
-- [ ] **Phase 7** — Save/restore via the NextZXOS/esxDOS file API.
+- [ ] **Phase 7** — Field of view / lighting.
+- [ ] **Phase 8** — Save/restore via the NextZXOS/esxDOS file API.
 
 ## Build
 

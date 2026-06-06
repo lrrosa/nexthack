@@ -435,6 +435,7 @@ static uint16_t turns = 0;
 static uint8_t  php = 12, pmaxhp = 12;
 static uint16_t gold = 0;
 static uint8_t  dead = 0;
+static uint8_t  acted = 0;       /* did the player's action consume a turn? */
 
 /* monsters (kept in arrays, not in the terrain buffer, so they can move
  * and carry HP independently of what is drawn) */
@@ -678,7 +679,7 @@ static void describe(char dest, int moved)
     }
 }
 
-/* hero attacks monster mi; if it survives, it bites back */
+/* hero attacks monster mi (the monster strikes back on its own turn) */
 static void attack_monster(uint8_t mi)
 {
     uint8_t dmg = (uint8_t)(rn2(4) + 1);    /* 1..4 */
@@ -690,20 +691,64 @@ static void attack_monster(uint8_t mi)
         if (dlvl <= MAXLVL)
             mon_dead[dlvl] |= (uint8_t)(1u << mi);   /* remember the kill */
         msg2("You kill the ", name, "!");
+    } else {
+        m_hp[mi] = (uint8_t)(m_hp[mi] - dmg);
+        msg2("You hit the ", name, ".");
+    }
+}
+
+/* ---- monster turn: chase the hero, attack when adjacent ---- */
+
+static int iabs(int v) { return v < 0 ? -v : v; }
+
+static void monster_hits_player(uint8_t i)
+{
+    uint8_t bite = (uint8_t)(rn2(3) + 1);   /* 1..3 */
+    const char *name = mon_name(m_type[i]);
+    if (php <= bite) {
+        php = 0; dead = 1;
+        msg2("The ", name, " kills you!");
+    } else {
+        php = (uint8_t)(php - bite);
+        msg2("The ", name, " bites you!");
+    }
+}
+
+static int try_mon_move(uint8_t i, int dx, int dy)
+{
+    int nx = (int)m_x[i] + dx;
+    int ny = (int)m_y[i] + dy;
+    if (!walkable(terrain(nx, ny))) return 0;
+    if (nx == hero_x && ny == hero_y) return 0;   /* hero handled by attack */
+    if (monster_at(nx, ny) >= 0) return 0;        /* another monster        */
+    m_x[i] = (uint8_t)nx; m_y[i] = (uint8_t)ny;
+    return 1;
+}
+
+static void mon_step(uint8_t i)
+{
+    int ddx = hero_x - (int)m_x[i];
+    int ddy = hero_y - (int)m_y[i];
+    int dx = (ddx > 0) ? 1 : (ddx < 0) ? -1 : 0;
+    int dy = (ddy > 0) ? 1 : (ddy < 0) ? -1 : 0;
+
+    if (iabs(ddx) <= 1 && iabs(ddy) <= 1) {   /* adjacent -> attack */
+        monster_hits_player(i);
         return;
     }
-    m_hp[mi] = (uint8_t)(m_hp[mi] - dmg);
+    /* greedy chase: diagonal first, then slide along walls */
+    if (try_mon_move(i, dx, dy)) return;
+    if (dx && try_mon_move(i, dx, 0)) return;
+    if (dy && try_mon_move(i, 0, dy)) return;
+}
 
-    {   /* retaliation */
-        uint8_t bite = (uint8_t)(rn2(3) + 1);   /* 1..3 */
-        if (php <= bite) {
-            php = 0;
-            dead = 1;
-            msg2("The ", name, " kills you!");
-        } else {
-            php = (uint8_t)(php - bite);
-            msg2("The ", name, " bites you!");
-        }
+static void monsters_turn(void)
+{
+    uint8_t i;
+    for (i = 0; i < mcount; i++) {
+        if (!m_alive[i]) continue;
+        mon_step(i);
+        if (dead) return;
     }
 }
 
@@ -720,12 +765,14 @@ static void try_move(int dx, int dy)
     }
     mi = monster_at(nx, ny);
     if (mi >= 0) {
+        acted = 1;
         attack_monster((uint8_t)mi);
         return;
     }
     hero_x = nx;
     hero_y = ny;
     turns++;
+    acted = 1;
     if (dest == '$') {
         int gi = gold_at((uint8_t)nx, (uint8_t)ny);
         uint16_t amt = (uint16_t)(rn2(20) + 1);
@@ -826,6 +873,7 @@ void main(void)
         if (k >= 'A' && k <= 'Z')
             k += 32;                 /* normalise letters */
 
+        acted = 0;
         switch (k) {
         /* orthogonal: WASD, vi hjkl, cursor keys (8/9/10/11) */
         case 'w': case 'k': case 11: try_move( 0, -1); break;
@@ -846,9 +894,12 @@ void main(void)
             break;
         /* wait */
         case '.':
-        case ' ': turns++; msg("You wait."); break;
+        case ' ': turns++; acted = 1; msg("You wait."); break;
         default:  break;
         }
+
+        if (acted && !dead)
+            monsters_turn();        /* monsters chase and attack */
 
         draw_status();
         draw_map();
