@@ -26,9 +26,13 @@ and pull in the real NetHack modules bottom-up.
 - [x] **Phase 3** — Graphics & interaction: colourful 8x8 pixel-art tiles for
       the whole map; gold pickup; bump-to-attack combat with monster/player HP,
       retaliation and death/restart; hold-a-key continuous movement.
-- [ ] **Phase 3b** — Monster movement / chase AI.
-- [ ] **Phase 4** — Inventory and items (`invent.c`, `objnam.c`, `pickup.c`).
-- [ ] **Phase 5** — Save/restore via the NextZXOS/esxDOS file API.
+- [x] **Phase 4** — Level persistence: each Dlvl is regenerated deterministically
+      from a per-depth seed (same depth = same map), with collected gold and
+      killed monsters remembered. Title screen seeds the world from the player's
+      reaction time for good variety.
+- [ ] **Phase 5** — Monster movement / chase AI.
+- [ ] **Phase 6** — Inventory and items (`invent.c`, `objnam.c`, `pickup.c`).
+- [ ] **Phase 7** — Save/restore via the NextZXOS/esxDOS file API.
 
 ## Build
 

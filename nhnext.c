@@ -77,9 +77,10 @@ static const uint8_t master[16] = {
 #define T_RAT    137
 #define T_GOLD   138
 #define T_FOOD   139
+#define T_DOLLAR 140
 
 /* Each tile: 64 pixels (8 rows x 8 cols), values are master-palette indices. */
-static const uint8_t gfx[12][64] = {
+static const uint8_t gfx[13][64] = {
   { /* T_ROCK */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
@@ -115,7 +116,10 @@ static const uint8_t gfx[12][64] = {
     0,13,14,14,14,13,0,0, 0,0,13,13,13,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
   { /* T_FOOD (drumstick) */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,4,0, 0,0,0,0,0,4,4,0, 0,0,0,0,6,6,0,0,
-    0,0,0,6,6,0,0,0, 0,0,8,8,6,0,0,0, 0,8,8,8,0,0,0,0, 0,0,8,0,0,0,0,0 }
+    0,0,0,6,6,0,0,0, 0,0,8,8,6,0,0,0, 0,8,8,8,0,0,0,0, 0,0,8,0,0,0,0,0 },
+  { /* T_DOLLAR (green '$', matches the status text colour) */
+    0,0,0,9,0,0,0,0, 0,9,9,9,9,9,0,0, 0,9,0,9,0,0,0,0, 0,9,9,9,9,9,0,0,
+    0,0,0,9,0,9,0,0, 0,9,9,9,9,9,0,0, 0,0,0,9,0,0,0,0, 0,0,0,0,0,0,0,0 }
 };
 
 /* pack 64 palette indices into a 4bpp 8x8 tile (32 bytes) at tile slot */
@@ -130,7 +134,7 @@ static void pack_tile(uint8_t tilenum, const uint8_t *px)
 static void load_gfx_tiles(void)
 {
     uint8_t i;
-    for (i = 0; i < 12; i++)
+    for (i = 0; i < 13; i++)
         pack_tile((uint8_t)(T_ROCK + i), gfx[i]);
 }
 
@@ -286,13 +290,15 @@ static int getkey(void)
  * ============================================================ */
 
 static uint16_t rng = 1;
+static uint16_t world_seed = 1;     /* fixed per game; levels derive from it */
 
 static void rng_seed(void)
 {
     uint16_t s = (uint16_t)ZXN_READ_REG(0x1F);       /* raster line low  */
     s = (uint16_t)((s << 8) ^ (uint16_t)ZXN_READ_REG(0x1E));
     s ^= *(volatile uint16_t *)0x5C78u;              /* FRAMES sysvar    */
-    rng = s ? s : 0xACE1u;
+    world_seed = s ? s : 0xACE1u;
+    rng = world_seed;
 }
 
 static uint16_t rng_next(void)
@@ -437,6 +443,11 @@ static uint8_t m_x[MAXMON], m_y[MAXMON], m_hp[MAXMON], m_alive[MAXMON];
 static char    m_type[MAXMON];
 static uint8_t mcount;
 
+/* per-level positions (set during generation, used for placement/persistence) */
+static uint8_t up_x, up_y, dn_x, dn_y;   /* this level's stair positions */
+static uint8_t gcount;
+static uint8_t g_x[8], g_y[8];           /* gold pile positions          */
+
 static int monster_at(int x, int y)
 {
     uint8_t i;
@@ -458,11 +469,45 @@ static void spawn_monster(char type, uint8_t hp)
     i = rn2(rcount);
     rand_floor(i, &x, &y);
     if (lvl[y][x] != '.') return;                 /* floor only */
-    if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) return;
+    if (x == up_x && y == up_y) return;           /* keep the start clear */
     if (monster_at(x, y) >= 0) return;
     m_x[mcount] = x; m_y[mcount] = y;
     m_hp[mcount] = hp; m_type[mcount] = type; m_alive[mcount] = 1;
     mcount++;
+}
+
+/* ---- level persistence --------------------------------------------------
+ * Layout is regenerated deterministically from a per-depth seed, so the
+ * same Dlvl is always the same map. Player-visible mutations (gold taken,
+ * monsters killed) are remembered in tiny per-level bitmasks and re-applied
+ * after regeneration. (No banking needed; ~50 bytes total.)              */
+#define MAXLVL 24
+static uint8_t  gold_taken[MAXLVL + 1];   /* bit i: gold pile i collected */
+static uint8_t  mon_dead[MAXLVL + 1];     /* bit i: monster i killed      */
+
+static uint16_t level_seed(uint16_t d)
+{
+    return (uint16_t)(world_seed + (uint16_t)(d * 0x9E37u));
+}
+
+static int gold_at(uint8_t x, uint8_t y)
+{
+    uint8_t i;
+    for (i = 0; i < gcount; i++)
+        if (g_x[i] == x && g_y[i] == y)
+            return i;
+    return -1;
+}
+
+static void place_gold(void)
+{
+    uint8_t i, x, y;
+    if (gcount >= 8) return;
+    i = rn2(rcount);
+    rand_floor(i, &x, &y);
+    if (lvl[y][x] != '.') return;
+    lvl[y][x] = '$';
+    g_x[gcount] = x; g_y[gcount] = y; gcount++;
 }
 
 static void gen_level(void)
@@ -472,9 +517,12 @@ static void gen_level(void)
     uint8_t sech = (uint8_t)((PY1 - PY0 + 1) / SECT_ROWS);
     uint8_t cx0, cy0, cx1, cy1;
 
+    rng = level_seed(dlvl);     /* deterministic layout for this depth */
+
     lvl_clear();
     rcount = 0;
     mcount = 0;
+    gcount = 0;
 
     for (j = 0; j < SECT_ROWS; j++) {
         for (i = 0; i < SECT_COLS; i++) {
@@ -496,19 +544,20 @@ static void gen_level(void)
         dig_corridor(cx0, cy0, cx1, cy1);
     }
 
-    /* stairs: up in first room (hero starts here), down in last room */
+    /* stairs: up in the first room, down in the last room */
     {
         uint8_t x, y;
         rand_floor(0, &x, &y);
         lvl[y][x] = '<';
-        hero_x = x; hero_y = y;
+        up_x = x; up_y = y;
         rand_floor((uint8_t)(rcount - 1), &x, &y);
         lvl[y][x] = '>';
+        dn_x = x; dn_y = y;
     }
 
     /* loot */
-    place_thing('$');
-    place_thing('$');
+    place_gold();
+    place_gold();
     place_thing('%');
 
     /* monsters (more of them the deeper you go) */
@@ -517,6 +566,17 @@ static void gen_level(void)
     spawn_monster('d', 6);
     if (dlvl >= 3) spawn_monster('r', 3);
     if (dlvl >= 5) spawn_monster('d', 6);
+
+    /* re-apply remembered mutations for this depth */
+    if (dlvl <= MAXLVL) {
+        uint8_t b;
+        for (b = 0; b < gcount; b++)
+            if (gold_taken[dlvl] & (uint8_t)(1u << b))
+                lvl[g_y[b]][g_x[b]] = '.';
+        for (b = 0; b < mcount; b++)
+            if (mon_dead[dlvl] & (uint8_t)(1u << b))
+                m_alive[b] = 0;
+    }
 }
 
 /* ============================================================
@@ -587,8 +647,9 @@ static void draw_status(void)
     clear_line(23, C_GREEN);
     x = print_str(0, 23, "Dlvl:", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, dlvl, C_GREEN | C_BRIGHT);
-    x = print_str(x, 23, "   ", C_GREEN | C_BRIGHT);
-    puttile(x, 23, T_GOLD); x++;          /* gold coin icon (ROM '$' glyph is blank) */
+    x = print_str(x, 23, "  ", C_GREEN | C_BRIGHT);
+    puttile(x, 23, T_DOLLAR); x++;        /* green '$' tile (ROM '$' glyph is blank) */
+    x = print_str(x, 23, ":", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, gold, C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "  HP:", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, php, C_GREEN | C_BRIGHT);
@@ -626,6 +687,8 @@ static void attack_monster(uint8_t mi)
     turns++;
     if (m_hp[mi] <= dmg) {
         m_alive[mi] = 0;
+        if (dlvl <= MAXLVL)
+            mon_dead[dlvl] |= (uint8_t)(1u << mi);   /* remember the kill */
         msg2("You kill the ", name, "!");
         return;
     }
@@ -664,9 +727,12 @@ static void try_move(int dx, int dy)
     hero_y = ny;
     turns++;
     if (dest == '$') {
+        int gi = gold_at((uint8_t)nx, (uint8_t)ny);
         uint16_t amt = (uint16_t)(rn2(20) + 1);
         gold = (uint16_t)(gold + amt);
         lvl[ny][nx] = '.';
+        if (gi >= 0 && dlvl <= MAXLVL)
+            gold_taken[dlvl] |= (uint8_t)(1u << gi);   /* remember the pickup */
         msg_num("You pick up ", amt, " gold pieces.");
     } else {
         describe(dest, 1);
@@ -679,6 +745,7 @@ static void go_down(void)
         dlvl++;
         turns++;
         gen_level();
+        hero_x = up_x; hero_y = up_y;     /* arrive on the new up-stairs */
         msg("You descend the stairs.");
     } else {
         msg("You can't go down here.");
@@ -692,6 +759,7 @@ static void go_up(void)
             dlvl--;
             turns++;
             gen_level();
+            hero_x = dn_x; hero_y = dn_y; /* arrive on the new down-stairs */
             msg("You climb up the stairs.");
         } else {
             msg("You can't go up from here.");
@@ -703,12 +771,37 @@ static void go_up(void)
 
 static void new_game(void)
 {
+    uint8_t i;
+
     php = pmaxhp;
     gold = 0;
     dlvl = 1;
     turns = 0;
     dead = 0;
+    for (i = 0; i <= MAXLVL; i++) { gold_taken[i] = 0; mon_dead[i] = 0; }
+    rng_seed();                  /* a brand new world */
     gen_level();
+    hero_x = up_x; hero_y = up_y;
+}
+
+/* Title screen. The seed comes from how long the player takes to press a
+ * key, which gives far more variety than reading the machine state at the
+ * same instant every cold boot. */
+static void title_screen(void)
+{
+    uint16_t s = 1;
+
+    tm_cls();
+    print_str(34,  8, "NetHack Next", C_YELLOW | C_BRIGHT);
+    print_str(22, 10, "A roguelike for the ZX Spectrum Next", C_CYAN | C_BRIGHT);
+    print_str(27, 14, "Press any key to begin...", C_WHITE | C_BRIGHT);
+
+    while (in_inkey() == 0)
+        s += 0x9E37u;
+    s ^= (uint16_t)(((uint16_t)ZXN_READ_REG(0x1F) << 8) ^ ZXN_READ_REG(0x1E));
+    world_seed = s ? s : 0xACE1u;
+    rng = world_seed;
+    in_wait_nokey();
 }
 
 void main(void)
@@ -717,10 +810,12 @@ void main(void)
 
     zx_border(C_BLACK);
     tm_init();
-    tm_cls();
-    rng_seed();
-    gen_level();
 
+    title_screen();
+    gen_level();
+    hero_x = up_x; hero_y = up_y;
+
+    tm_cls();
     draw_help();
     draw_status();
     draw_map();
