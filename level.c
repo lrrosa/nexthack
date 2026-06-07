@@ -27,6 +27,11 @@ static uint8_t gcount;
 static uint8_t g_x[8], g_y[8];
 static uint8_t gold_taken[MAXLVL + 1];    /* bit i: gold pile i collected */
 
+/* floor items (weapon/armor/potion/food), tracked the same way */
+static uint8_t icount;
+static uint8_t i_x[8], i_y[8];
+static uint8_t item_taken[MAXLVL + 1];    /* bit i: item i picked up */
+
 char terrain(int x, int y)
 {
     if (x < 0 || y < 0 || x >= MAPW || y >= MAPH)
@@ -136,6 +141,21 @@ static void room_door(uint8_t r, int tx, int ty,
     }
 }
 
+/* join two rooms: a door on each one's facing wall, corridor through the rock */
+static void connect_rooms(uint8_t a, uint8_t b)
+{
+    uint8_t adx, ady, bdx, bdy;
+    int aox, aoy, box, boy;
+    int acx = r_x[a] + r_w[a] / 2, acy = r_y[a] + r_h[a] / 2;
+    int bcx = r_x[b] + r_w[b] / 2, bcy = r_y[b] + r_h[b] / 2;
+
+    room_door(a, bcx, bcy, &adx, &ady, &aox, &aoy);
+    room_door(b, acx, acy, &bdx, &bdy, &box, &boy);
+    lvl[ady][adx] = '+';
+    lvl[bdy][bdx] = '+';
+    dig_corridor((uint8_t)aox, (uint8_t)aoy, (uint8_t)box, (uint8_t)boy);
+}
+
 static void make_room(uint8_t i, uint8_t sx0, uint8_t sy0, uint8_t sx1, uint8_t sy1)
 {
     uint8_t availw = (uint8_t)(sx1 - sx0 + 1);
@@ -165,13 +185,25 @@ void rand_floor(uint8_t i, uint8_t *px, uint8_t *py)
     *py = (uint8_t)(r_y[i] + 1 + rn2((uint8_t)(r_h[i] - 2)));
 }
 
-static void place_thing(char ch)
+/* place a trackable floor item (so its pickup can be remembered) */
+static void place_item(char ch)
 {
-    uint8_t i = rn2(rcount);
-    uint8_t x, y;
+    uint8_t i, x, y;
+    if (icount >= 8) return;
+    i = rn2(rcount);
     rand_floor(i, &x, &y);
-    if (lvl[y][x] == '.')           /* don't overwrite stairs/other things */
-        lvl[y][x] = ch;
+    if (lvl[y][x] != '.') return;
+    lvl[y][x] = ch;
+    i_x[icount] = x; i_y[icount] = y; icount++;
+}
+
+static int item_at(uint8_t x, uint8_t y)
+{
+    uint8_t i;
+    for (i = 0; i < icount; i++)
+        if (i_x[i] == x && i_y[i] == y)
+            return i;
+    return -1;
 }
 
 static int gold_at(uint8_t x, uint8_t y)
@@ -196,7 +228,7 @@ static void place_gold(void)
 
 void gen_level(void)
 {
-    uint8_t i, j, k;
+    uint8_t i, j;
     uint8_t secw = (uint8_t)((PX1 - PX0 + 1) / SECT_COLS);
     uint8_t sech = (uint8_t)((PY1 - PY0 + 1) / SECT_ROWS);
 
@@ -205,6 +237,7 @@ void gen_level(void)
     lvl_clear();
     rcount = 0;
     gcount = 0;
+    icount = 0;
 
     for (j = 0; j < SECT_ROWS; j++) {
         for (i = 0; i < SECT_COLS; i++) {
@@ -217,20 +250,16 @@ void gen_level(void)
         }
     }
 
-    /* connect rooms in scan order via a door on each room's edge, digging the
-     * corridor through the rock between them (not along the walls) */
-    for (k = 0; k + 1 < rcount; k++) {
-        uint8_t adx, ady, bdx, bdy;
-        int aox, aoy, box, boy;
-        int acx = r_x[k]     + r_w[k]     / 2, acy = r_y[k]     + r_h[k]     / 2;
-        int bcx = r_x[k + 1] + r_w[k + 1] / 2, bcy = r_y[k + 1] + r_h[k + 1] / 2;
-
-        room_door((uint8_t)k,       bcx, bcy, &adx, &ady, &aox, &aoy);
-        room_door((uint8_t)(k + 1), acx, acy, &bdx, &bdy, &box, &boy);
-        lvl[ady][adx] = '+';
-        lvl[bdy][bdx] = '+';
-        dig_corridor((uint8_t)aox, (uint8_t)aoy, (uint8_t)box, (uint8_t)boy);
-    }
+    /* Connect grid-adjacent rooms so every door leads to a real neighbour and
+     * corridors stay short (no long diagonal runs across the whole map):
+     * chain each row horizontally, then link the rows with one vertical hop. */
+    for (j = 0; j < SECT_ROWS; j++)
+        for (i = 0; i + 1 < SECT_COLS; i++)
+            connect_rooms((uint8_t)(j * SECT_COLS + i),
+                          (uint8_t)(j * SECT_COLS + i + 1));
+    for (j = 0; j + 1 < SECT_ROWS; j++)
+        connect_rooms((uint8_t)(j * SECT_COLS),
+                      (uint8_t)((j + 1) * SECT_COLS));
     thin_doors();
 
     /* stairs: up in the first room, down in the last room */
@@ -248,11 +277,11 @@ void gen_level(void)
      * visit since item pickups are not persisted yet) */
     place_gold();
     place_gold();
-    place_thing('%');     /* food   */
-    place_thing(')');     /* weapon */
-    place_thing('[');     /* armor  */
-    place_thing('!');     /* potion */
-    if (dlvl >= 2) place_thing('!');
+    place_item('%');      /* food   */
+    place_item(')');      /* weapon */
+    place_item('[');      /* armor  */
+    place_item('!');      /* potion */
+    if (dlvl >= 2) place_item('!');
 }
 
 void apply_gold_persistence(void)
@@ -273,21 +302,53 @@ int level_take_gold(uint8_t x, uint8_t y)
     return gi >= 0;
 }
 
+void apply_item_persistence(void)
+{
+    uint8_t b;
+    if (dlvl > MAXLVL) return;
+    for (b = 0; b < icount; b++)
+        if (item_taken[dlvl] & (uint8_t)(1u << b))
+            lvl[i_y[b]][i_x[b]] = '.';
+}
+
+int level_take_item(uint8_t x, uint8_t y)
+{
+    int ii = item_at(x, y);
+    lvl[y][x] = '.';
+    if (ii >= 0 && dlvl <= MAXLVL)
+        item_taken[dlvl] |= (uint8_t)(1u << ii);
+    return ii >= 0;
+}
+
 void level_reset_persistence(void)
 {
     uint8_t i;
-    for (i = 0; i <= MAXLVL; i++)
+    for (i = 0; i <= MAXLVL; i++) {
         gold_taken[i] = 0;
+        item_taken[i] = 0;
+    }
 }
 
 /* ---- field of view --------------------------------------------------------
- * Only "seen" (ever-explored) is stored; current visibility is derived each
- * turn from the hero's room (whole room lights up) plus a radius of 1 (for
- * corridors). Exploration memory is per-current-level only (reset on entry). */
+ * Explored cells ("seen") are remembered per depth in a compact bitmap, so a
+ * revisited level shows up the way you left it. Current visibility is derived
+ * each turn from the hero's room (whole room lights up) plus a radius of 1. */
 
-static uint8_t seen[MAPH][MAPW];
+#define FOV_BYTES ((MAPW * MAPH + 7) / 8)        /* 210 bytes per level */
+static uint8_t seen_bits[MAXLVL + 1][FOV_BYTES];
 static int     hero_room = -1;
 static int     fov_hx, fov_hy;
+
+static uint8_t *fov_map(void)        /* bitmap for the current depth */
+{
+    return seen_bits[dlvl <= MAXLVL ? dlvl : MAXLVL];
+}
+
+static void fov_mark(int x, int y)
+{
+    uint16_t idx = (uint16_t)y * MAPW + x;
+    fov_map()[idx >> 3] |= (uint8_t)(1u << (idx & 7));
+}
 
 static int in_room(uint8_t r, int x, int y)
 {
@@ -295,12 +356,12 @@ static int in_room(uint8_t r, int x, int y)
            y >= r_y[r] && y < r_y[r] + r_h[r];
 }
 
-void fov_reset(void)
+void fov_reset(void)        /* forget every level's exploration (new game) */
 {
-    uint8_t x, y;
-    for (y = 0; y < MAPH; y++)
-        for (x = 0; x < MAPW; x++)
-            seen[y][x] = 0;
+    uint16_t i;
+    uint8_t *p = &seen_bits[0][0];
+    for (i = 0; i < (uint16_t)((MAXLVL + 1) * FOV_BYTES); i++)
+        p[i] = 0;
     hero_room = -1;
 }
 
@@ -320,7 +381,7 @@ void fov_update(int hx, int hy)
         for (dx = -1; dx <= 1; dx++) {
             int xx = hx + dx, yy = hy + dy;
             if (xx >= 0 && yy >= 0 && xx < MAPW && yy < MAPH)
-                seen[yy][xx] = 1;
+                fov_mark(xx, yy);
         }
     }
 
@@ -329,15 +390,17 @@ void fov_update(int hx, int hy)
         uint8_t rr = (uint8_t)hero_room, xx, yy;
         for (yy = r_y[rr]; yy < r_y[rr] + r_h[rr]; yy++)
             for (xx = r_x[rr]; xx < r_x[rr] + r_w[rr]; xx++)
-                seen[yy][xx] = 1;
+                fov_mark(xx, yy);
     }
 }
 
 int fov_seen(int x, int y)
 {
+    uint16_t idx;
     if (x < 0 || y < 0 || x >= MAPW || y >= MAPH)
         return 0;
-    return seen[y][x];
+    idx = (uint16_t)y * MAPW + x;
+    return (fov_map()[idx >> 3] >> (idx & 7)) & 1;
 }
 
 int fov_visible(int x, int y)

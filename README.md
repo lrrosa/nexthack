@@ -39,10 +39,13 @@ and pull in the real NetHack modules bottom-up.
 - [x] **Phase 7** — Inventory and items: weapons, armor, potions and food on
       the floor; pick up, inventory screen, wield/wear/quaff/eat. Corridors now
       leave rooms through a single edge door and run through the rock.
-- [ ] **Phase 8** — Save/restore via the NextZXOS/esxDOS file API.
-- [ ] Later — hunger & HP regeneration; dimmed memory of explored terrain;
-      per-level FOV memory; A* monster pathfinding; more monster/item types;
-      sound (AY/beeper); item pickup persistence.
+- [x] **Phase 8** — Survival & persistence: hunger and slow HP regeneration;
+      rooms joined to grid-adjacent neighbours (no spurious doors); per-level
+      fog-of-war memory; gold, monster kills and item pickups all remembered
+      across revisits.
+- [ ] **Phase 9** — Save/restore via the NextZXOS/esxDOS file API.
+- [ ] Later — dimmed memory of explored terrain; A* monster pathfinding;
+      more monster/item types; sound (AY/beeper).
 
 ## Project structure
 

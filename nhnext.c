@@ -33,6 +33,11 @@ uint8_t  acted = 0;
 uint8_t  weapon_dmg = 0;
 uint8_t  armor_def = 0;
 uint8_t  ac = 10;
+int16_t  nutrition = 900;
+
+/* hunger/regeneration bookkeeping */
+static uint8_t heal_timer = 0;
+static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 /* ============================================================
  * Level orchestration
@@ -47,7 +52,9 @@ static void build_level(void)
     spawn_level_monsters();
     apply_gold_persistence();
     apply_monster_persistence();
-    fov_reset();                /* a freshly entered level starts unexplored */
+    apply_item_persistence();
+    /* note: FOV memory is per depth and persists across visits, so it is NOT
+     * reset here - only on a new game (see new_game / main). */
 }
 
 /* ============================================================
@@ -80,6 +87,61 @@ static void draw_map(void)
     }
 }
 
+static uint8_t hunger_now(void)
+{
+    if (nutrition <= 0)  return 3;
+    if (nutrition < 50)  return 2;
+    if (nutrition < 150) return 1;
+    return 0;
+}
+
+static const char *hunger_label(void)
+{
+    if (nutrition >= 1000) return "Satiated";
+    switch (hunger_state) {
+    case 1:  return "Hungry";
+    case 2:  return "Weak";
+    case 3:  return "Fainting";
+    default: return "";
+    }
+}
+
+static uint8_t hunger_color(void)
+{
+    if (nutrition >= 1000)  return C_GREEN | C_BRIGHT;
+    if (hunger_state >= 2)  return C_RED | C_BRIGHT;
+    if (hunger_state == 1)  return C_YELLOW | C_BRIGHT;
+    return C_GREEN | C_BRIGHT;
+}
+
+/* once-per-turn upkeep: hunger ticks down, HP slowly regenerates (or you
+ * starve when out of food) */
+static void upkeep(void)
+{
+    uint8_t hs;
+
+    if (nutrition > -50)
+        nutrition--;
+
+    hs = hunger_now();
+    if (hs > hunger_state) {
+        if (hs == 1)      msg("You are beginning to feel hungry.");
+        else if (hs == 2) msg("You are getting weak from hunger.");
+        else if (hs == 3) msg("You faint from lack of food!");
+    }
+    hunger_state = hs;
+
+    if (nutrition <= 0) {                       /* starving */
+        if ((turns & 3) == 0 && php > 0) {
+            php--;
+            if (php == 0) dead = 1;
+        }
+    } else if (++heal_timer >= 12) {            /* slow regeneration */
+        heal_timer = 0;
+        if (php < pmaxhp) php++;
+    }
+}
+
 static void draw_help(void)
 {
     print_str(0, 25,
@@ -93,9 +155,14 @@ static void draw_help(void)
 static void draw_status(void)
 {
     uint8_t x;
+    const char *h;
     print_str(0, 22,
         "Player the Tourist      St:14 Dx:11 Co:14 In:10 Wi:8 Ch:10   Lawful",
         C_GREEN | C_BRIGHT);
+    /* hunger state at the tail of the first status line */
+    for (x = 67; x < 80; x++) putcell(x, 22, ' ', C_GREEN);
+    h = hunger_label();
+    if (*h) print_str(68, 22, h, hunger_color());
 
     clear_line(23, C_GREEN);
     x = print_str(0, 23, "Dlvl:", C_GREEN | C_BRIGHT);
@@ -204,9 +271,13 @@ static void new_game(void)
     dlvl = 1;
     turns = 0;
     dead = 0;
+    nutrition = 900;
+    heal_timer = 0;
+    hunger_state = 0;
     item_reset();
     level_reset_persistence();
     monster_reset_persistence();
+    fov_reset();                 /* forget exploration of the old world */
     rng_seed();                  /* a brand new world */
     build_level();
     hero_x = up_x; hero_y = up_y;
@@ -246,6 +317,7 @@ void main(void)
 
     title_screen();
     item_reset();
+    fov_reset();
     build_level();
     hero_x = up_x; hero_y = up_y;
     fov_update(hero_x, hero_y);
@@ -293,8 +365,11 @@ void main(void)
         default:  break;
         }
 
-        if (acted && !dead)
-            monsters_turn();        /* monsters chase and attack */
+        if (acted && !dead) {
+            upkeep();               /* hunger ticks, HP regenerates  */
+            if (!dead)
+                monsters_turn();    /* monsters chase and attack     */
+        }
 
         fov_update(hero_x, hero_y); /* recompute what the hero can see */
         draw_status();

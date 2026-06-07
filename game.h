@@ -15,6 +15,7 @@ extern uint8_t  php, pmaxhp;
 extern uint16_t gold;
 extern uint8_t  dead;
 extern uint8_t  acted;     /* did the player's action consume a turn? */
+extern int16_t  nutrition; /* hunger: drops each turn, food refills it    */
 
 /* equipment effects (set by item.c, used in combat and the status bar) */
 extern uint8_t  weapon_dmg;   /* extra melee damage from a wielded weapon */

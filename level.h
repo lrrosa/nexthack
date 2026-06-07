@@ -34,7 +34,11 @@ void apply_gold_persistence(void);
  * known pile was there. */
 int  level_take_gold(uint8_t x, uint8_t y);
 
-/* forget all remembered gold pickups (new game) */
+/* same for a floor item (weapon/armor/potion/food) */
+void apply_item_persistence(void);
+int  level_take_item(uint8_t x, uint8_t y);
+
+/* forget all remembered gold/item pickups (new game) */
 void level_reset_persistence(void);
 
 /* ---- field of view (fog of war) ----

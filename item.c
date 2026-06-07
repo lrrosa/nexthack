@@ -70,7 +70,7 @@ void do_pickup(void)
     char c = terrain(hero_x, hero_y);
     if (c == ')' || c == '[' || c == '!' || c == '%') {
         if (inv_add(c)) {
-            lvl[hero_y][hero_x] = '.';
+            level_take_item((uint8_t)hero_x, (uint8_t)hero_y);
             msg2("You pick up ", item_name(c), ".");
         } else {
             msg("Your pack is full.");
@@ -166,6 +166,12 @@ void do_eat(void)
         msg("You have nothing to eat.");
         return;
     }
+    if (nutrition > 1200) {
+        msg("You are too full to eat now.");
+        return;
+    }
+    nutrition += 800;
+    if (nutrition > 1500) nutrition = 1500;
     inv_remove((uint8_t)s);
     msg("You finish your meal.  Delicious!");
 }
