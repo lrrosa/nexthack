@@ -32,6 +32,9 @@
 #define T_GOLD   138
 #define T_FOOD   139
 #define T_DOLLAR 140
+#define T_WEAPON 141
+#define T_ARMOR  142
+#define T_POTION 143
 
 /* tilemap dimensions (characters) */
 #define TM_W 80

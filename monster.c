@@ -71,7 +71,7 @@ void monster_reset_persistence(void)
 
 void attack_monster(uint8_t mi)
 {
-    uint8_t dmg = (uint8_t)(rn2(4) + 1);    /* 1..4 */
+    uint8_t dmg = (uint8_t)(rn2(4) + 1 + weapon_dmg);  /* 1..4 + weapon */
     const char *name = mon_name(m_type[mi]);
 
     turns++;
@@ -94,6 +94,13 @@ static void monster_hits_player(uint8_t i)
 {
     uint8_t bite = (uint8_t)(rn2(3) + 1);   /* 1..3 */
     const char *name = mon_name(m_type[i]);
+
+    if (armor_def >= bite) {                 /* armor soaks the blow */
+        msg2("The ", name, " misses you!");
+        return;
+    }
+    bite = (uint8_t)(bite - armor_def);
+
     if (php <= bite) {
         php = 0; dead = 1;
         msg2("The ", name, " kills you!");

@@ -20,6 +20,7 @@
 #include "rng.h"
 #include "level.h"
 #include "monster.h"
+#include "item.h"
 
 /* ---- shared game/run state (declared extern in game.h) ---- */
 int      hero_x, hero_y;
@@ -29,6 +30,9 @@ uint8_t  php = 12, pmaxhp = 12;
 uint16_t gold = 0;
 uint8_t  dead = 0;
 uint8_t  acted = 0;
+uint8_t  weapon_dmg = 0;
+uint8_t  armor_def = 0;
+uint8_t  ac = 10;
 
 /* ============================================================
  * Level orchestration
@@ -79,7 +83,10 @@ static void draw_map(void)
 static void draw_help(void)
 {
     print_str(0, 25,
-        "Move: WASD or arrows    Diagonals: Q E Z C    Enter: use stairs    . wait",
+        "Move: WASD/arrows   Diag: QEZC   Enter: stairs   . wait",
+        C_CYAN | C_BRIGHT);
+    print_str(0, 26,
+        "Items: , get  i inv  f wield  r wear  p quaff  g eat",
         C_CYAN | C_BRIGHT);
 }
 
@@ -101,7 +108,9 @@ static void draw_status(void)
     x = put_uint(x, 23, php, C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "(", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, pmaxhp, C_GREEN | C_BRIGHT);
-    x = print_str(x, 23, ")  Pw:2(2)  AC:10  Xp:1/0  T:", C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, ")  Pw:2(2)  AC:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, ac, C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, "  Xp:1/0  T:", C_GREEN | C_BRIGHT);
     put_uint(x, 23, turns, C_GREEN | C_BRIGHT);
 }
 
@@ -119,7 +128,10 @@ static void describe(char dest, int moved)
     switch (dest) {
     case '>': msg("There is a staircase down here."); break;
     case '<': msg("There is a staircase up here.");   break;
-    case '%': msg("There is a slice of food here.");  break;
+    case '%': msg("There is a food ration here.  (, to pick up)");   break;
+    case ')': msg("There is a weapon here.  (, to pick up)");        break;
+    case '[': msg("There is some armor here.  (, to pick up)");      break;
+    case '!': msg("There is a potion here.  (, to pick up)");        break;
     default:  msg("");                                break;
     }
 }
@@ -192,6 +204,7 @@ static void new_game(void)
     dlvl = 1;
     turns = 0;
     dead = 0;
+    item_reset();
     level_reset_persistence();
     monster_reset_persistence();
     rng_seed();                  /* a brand new world */
@@ -232,6 +245,7 @@ void main(void)
     tm_init();
 
     title_screen();
+    item_reset();
     build_level();
     hero_x = up_x; hero_y = up_y;
     fov_update(hero_x, hero_y);
@@ -266,6 +280,13 @@ void main(void)
             else msg("There are no stairs here.");
             in_wait_nokey();          /* don't repeat-trigger stairs */
             break;
+        /* items (debounced so one press = one action) */
+        case ',': do_pickup(); turns++; acted = 1; in_wait_nokey(); break;
+        case 'f': do_wield();  turns++; acted = 1; in_wait_nokey(); break;
+        case 'r': do_wear();   turns++; acted = 1; in_wait_nokey(); break;
+        case 'p': do_quaff();  turns++; acted = 1; in_wait_nokey(); break;
+        case 'g': do_eat();    turns++; acted = 1; in_wait_nokey(); break;
+        case 'i': show_inventory(); break;   /* viewing costs no turn */
         /* wait */
         case '.':
         case ' ': turns++; acted = 1; msg("You wait."); break;

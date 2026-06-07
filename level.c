@@ -51,6 +51,9 @@ uint8_t tile_for(char c)
     case '>': return T_SDOWN;
     case '$': return T_GOLD;
     case '%': return T_FOOD;
+    case ')': return T_WEAPON;
+    case '[': return T_ARMOR;
+    case '!': return T_POTION;
     default:  return T_ROCK;
     }
 }
@@ -92,6 +95,45 @@ static void dig_corridor(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
 {
     if (rn2(2)) { dig_h(x0, x1, y0); dig_v(y0, y1, x1); }
     else        { dig_v(y0, y1, x0); dig_h(x0, x1, y1); }
+}
+
+/* A corridor running along a wall turns the whole wall into a row of doors,
+ * which looks odd. Thin those runs: a door flanked by doors/corridor on both
+ * sides (same axis) becomes plain corridor, leaving real doors at the ends. */
+static int doorish(char c) { return c == '+' || c == '#'; }
+
+static void thin_doors(void)
+{
+    uint8_t x, y;
+    for (y = 1; y < MAPH - 1; y++)
+        for (x = 1; x < MAPW - 1; x++)
+            if (lvl[y][x] == '+' &&
+                ((doorish(lvl[y][x - 1]) && doorish(lvl[y][x + 1])) ||
+                 (doorish(lvl[y - 1][x]) && doorish(lvl[y + 1][x]))))
+                lvl[y][x] = '#';
+}
+
+static int iabs(int v) { return v < 0 ? -v : v; }
+
+/* Pick a door cell on room r's wall facing (tx,ty), plus the rock cell just
+ * outside it, so corridors leave through a single door and run in the rock. */
+static void room_door(uint8_t r, int tx, int ty,
+                      uint8_t *doorx, uint8_t *doory, int *outx, int *outy)
+{
+    int cx = r_x[r] + r_w[r] / 2;
+    int cy = r_y[r] + r_h[r] / 2;
+
+    if (iabs(tx - cx) >= iabs(ty - cy)) {           /* left/right wall */
+        uint8_t row = (uint8_t)(r_y[r] + 1 + rn2((uint8_t)(r_h[r] - 2)));
+        if (tx >= cx) { *doorx = (uint8_t)(r_x[r] + r_w[r] - 1); *outx = (int)*doorx + 1; }
+        else          { *doorx = r_x[r];                        *outx = (int)*doorx - 1; }
+        *doory = row; *outy = row;
+    } else {                                        /* top/bottom wall */
+        uint8_t col = (uint8_t)(r_x[r] + 1 + rn2((uint8_t)(r_w[r] - 2)));
+        if (ty >= cy) { *doory = (uint8_t)(r_y[r] + r_h[r] - 1); *outy = (int)*doory + 1; }
+        else          { *doory = r_y[r];                        *outy = (int)*doory - 1; }
+        *doorx = col; *outx = col;
+    }
 }
 
 static void make_room(uint8_t i, uint8_t sx0, uint8_t sy0, uint8_t sx1, uint8_t sy1)
@@ -157,7 +199,6 @@ void gen_level(void)
     uint8_t i, j, k;
     uint8_t secw = (uint8_t)((PX1 - PX0 + 1) / SECT_COLS);
     uint8_t sech = (uint8_t)((PY1 - PY0 + 1) / SECT_ROWS);
-    uint8_t cx0, cy0, cx1, cy1;
 
     rng_set(level_seed(dlvl));     /* deterministic layout for this depth */
 
@@ -176,14 +217,21 @@ void gen_level(void)
         }
     }
 
-    /* connect rooms in scan order: guarantees full connectivity */
+    /* connect rooms in scan order via a door on each room's edge, digging the
+     * corridor through the rock between them (not along the walls) */
     for (k = 0; k + 1 < rcount; k++) {
-        cx0 = (uint8_t)(r_x[k] + r_w[k] / 2);
-        cy0 = (uint8_t)(r_y[k] + r_h[k] / 2);
-        cx1 = (uint8_t)(r_x[k + 1] + r_w[k + 1] / 2);
-        cy1 = (uint8_t)(r_y[k + 1] + r_h[k + 1] / 2);
-        dig_corridor(cx0, cy0, cx1, cy1);
+        uint8_t adx, ady, bdx, bdy;
+        int aox, aoy, box, boy;
+        int acx = r_x[k]     + r_w[k]     / 2, acy = r_y[k]     + r_h[k]     / 2;
+        int bcx = r_x[k + 1] + r_w[k + 1] / 2, bcy = r_y[k + 1] + r_h[k + 1] / 2;
+
+        room_door((uint8_t)k,       bcx, bcy, &adx, &ady, &aox, &aoy);
+        room_door((uint8_t)(k + 1), acx, acy, &bdx, &bdy, &box, &boy);
+        lvl[ady][adx] = '+';
+        lvl[bdy][bdx] = '+';
+        dig_corridor((uint8_t)aox, (uint8_t)aoy, (uint8_t)box, (uint8_t)boy);
     }
+    thin_doors();
 
     /* stairs: up in the first room, down in the last room */
     {
@@ -196,10 +244,15 @@ void gen_level(void)
         dn_x = x; dn_y = y;
     }
 
-    /* loot (gold piles tracked for persistence; food is decorative for now) */
+    /* loot (gold piles tracked for persistence; the rest are re-placed each
+     * visit since item pickups are not persisted yet) */
     place_gold();
     place_gold();
-    place_thing('%');
+    place_thing('%');     /* food   */
+    place_thing(')');     /* weapon */
+    place_thing('[');     /* armor  */
+    place_thing('!');     /* potion */
+    if (dlvl >= 2) place_thing('!');
 }
 
 void apply_gold_persistence(void)

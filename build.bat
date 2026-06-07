@@ -11,7 +11,7 @@ SET FLAGS=+zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -
 
 IF NOT "%~1"=="" GOTO single
 
-SET SRCS=nhnext.c platform.c rng.c level.c monster.c
+SET SRCS=nhnext.c platform.c rng.c level.c monster.c item.c
 ECHO Building NetHack Next (nhnext.nex) ...
 zcc %FLAGS% %SRCS% -o nhnext -create-app
 IF EXIST nhnext.nex (ECHO. & ECHO OK: nhnext.nex built.) ELSE (ECHO. & ECHO BUILD FAILED.)

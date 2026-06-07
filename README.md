@@ -36,10 +36,13 @@ and pull in the real NetHack modules bottom-up.
 - [x] **Phase 6** — Field of view (fog of war): the hero's room lights up,
       corridors reveal around the hero, explored terrain is remembered, and
       monsters only show while in view.
-- [ ] **Phase 7** — Inventory and items (`invent.c`, `objnam.c`, `pickup.c`).
+- [x] **Phase 7** — Inventory and items: weapons, armor, potions and food on
+      the floor; pick up, inventory screen, wield/wear/quaff/eat. Corridors now
+      leave rooms through a single edge door and run through the rock.
 - [ ] **Phase 8** — Save/restore via the NextZXOS/esxDOS file API.
-- [ ] Later — dimmed memory of explored terrain; per-level FOV memory;
-      A* monster pathfinding; more monster/item types; sound (AY/beeper).
+- [ ] Later — hunger & HP regeneration; dimmed memory of explored terrain;
+      per-level FOV memory; A* monster pathfinding; more monster/item types;
+      sound (AY/beeper); item pickup persistence.
 
 ## Project structure
 
@@ -94,13 +97,17 @@ run.bat              REM runs nhnext.nex on CSpect
 | `H` `J` `K` `L` / `Y` `U` `B` `N` | vi-keys (also work) |
 | `Enter`                   | use the stairs you stand on (`>` down / `<` up) |
 | `.` or space              | wait (passes the turn) |
+| `,`                       | pick up the item under you |
+| `i`                       | show inventory |
+| `f` / `r`                 | wield weapon / wear armor |
+| `p` / `g`                 | quaff potion / eat food |
 
 Walk into a monster to attack it; walk over gold to pick it up.
 
-## Map legend
+## Map & item legend
 
-`@` hero · `.` floor · `#` corridor · `-` `|` wall · `+` door ·
-`>` down stairs · `$` gold · `%` food · `d` dog · `r` rat
+`@` hero · `.` floor · `#` corridor · `-` `|` wall · `+` door · `<` `>` stairs ·
+`$` gold · `)` weapon · `[` armor · `!` potion · `%` food · `d` dog · `r` rat
 
 ## Technical notes
 

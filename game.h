@@ -16,4 +16,9 @@ extern uint16_t gold;
 extern uint8_t  dead;
 extern uint8_t  acted;     /* did the player's action consume a turn? */
 
+/* equipment effects (set by item.c, used in combat and the status bar) */
+extern uint8_t  weapon_dmg;   /* extra melee damage from a wielded weapon */
+extern uint8_t  armor_def;    /* damage reduction from worn armor         */
+extern uint8_t  ac;           /* displayed armour class                   */
+
 #endif /* GAME_H */
