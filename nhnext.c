@@ -66,17 +66,21 @@ static void build_level(void)
 
 static void draw_map(void)
 {
+    const uint8_t *seen = fov_bitmap();   /* current level's explored bitmap */
+    uint16_t idx = 0;
     uint8_t x, y, t;
     int mi;
 
-    /* Single pass: every cell is written once with its final tile.
-     * Fog of war: unexplored cells are black; remembered terrain/items show;
+    /* Single pass with a running tilemap pointer and inline FOV bit test
+     * (both kept out of per-cell function calls so held-key movement stays
+     * fluid). Fog of war: unexplored = dark; remembered terrain shows;
      * monsters only show while currently in view. */
     for (y = 0; y < MAPH; y++) {
-        for (x = 0; x < MAPW; x++) {
+        uint8_t *p = tm_cell_ptr(OX, (uint8_t)(OY + y));
+        for (x = 0; x < MAPW; x++, idx++) {
             if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) {
                 t = T_HERO;
-            } else if (!fov_seen(x, y)) {
+            } else if (!((seen[idx >> 3] >> (idx & 7)) & 1)) {
                 t = T_ROCK;                       /* never seen -> dark */
             } else {
                 mi = monster_at(x, y);
@@ -85,7 +89,8 @@ static void draw_map(void)
                 else
                     t = tile_for(lvl[y][x]);      /* remembered terrain */
             }
-            puttile((uint8_t)(OX + x), (uint8_t)(OY + y), t);
+            *p++ = t;      /* tile id        */
+            *p++ = 0;      /* attribute (master palette) */
         }
     }
 }
@@ -158,16 +163,17 @@ static void draw_help(void)
 static void draw_status(void)
 {
     uint8_t x;
-    const char *h;
+    const char *h = hunger_label();
+
+    /* Each status cell is written exactly once (no clear-then-fill) so the
+     * status bar does not flicker as values change. */
     print_str(0, 22,
         "Player the Tourist      St:14 Dx:11 Co:14 In:10 Wi:8 Ch:10   Lawful",
         C_GREEN | C_BRIGHT);
-    /* hunger state at the tail of the first status line */
-    for (x = 67; x < 80; x++) putcell(x, 22, ' ', C_GREEN);
-    h = hunger_label();
-    if (*h) print_str(68, 22, h, hunger_color());
+    putcell(67, 22, ' ', C_GREEN);
+    x = print_str(68, 22, h, hunger_color());      /* hunger state at the tail */
+    while (x < 80) putcell(x++, 22, ' ', C_GREEN);
 
-    clear_line(23, C_GREEN);
     x = print_str(0, 23, "Dlvl:", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, dlvl, C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "  ", C_GREEN | C_BRIGHT);
@@ -185,7 +191,8 @@ static void draw_status(void)
     x = print_str(x, 23, "/", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, xp, C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "  T:", C_GREEN | C_BRIGHT);
-    put_uint(x, 23, turns, C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, turns, C_GREEN | C_BRIGHT);
+    while (x < 80) putcell(x++, 23, ' ', C_GREEN);
 }
 
 /* ============================================================
@@ -403,6 +410,6 @@ void main(void)
             in_wait_nokey();
         }
 
-        in_pause(70);   /* throttle continuous (held-key) movement */
+        in_pause(40);   /* throttle continuous (held-key) movement */
     }
 }

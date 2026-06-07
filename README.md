@@ -51,9 +51,13 @@ and pull in the real NetHack modules bottom-up.
       picking up gold (a distinct coin sound) and items, drinking, eating,
       stairs, levelling up and dying (CPU drops to 3.5 MHz per effect so the
       cycle-timed beeper stays in tune, then restores 28 MHz).
-- [ ] **Phase 11** — Save/restore via the NextZXOS/esxDOS file API.
-- [ ] Later — dimmed memory of explored terrain; A* monster pathfinding;
-      more item types; equipment erosion.
+- [x] **Phase 11** — Pathfinding & polish: monsters path with a per-turn BFS
+      "Dijkstra map" from the hero (routing around walls, no more getting stuck);
+      corridor line-of-sight so chasers are visible (rooms revealed on entry);
+      render optimizations and flicker-free status/message lines.
+- [ ] **Phase 12** — Save/restore via the NextZXOS/esxDOS file API.
+- [ ] Later — dimmed memory of explored terrain; more item types;
+      equipment erosion.
 
 ## Project structure
 

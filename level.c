@@ -341,15 +341,23 @@ static uint8_t seen_bits[MAXLVL + 1][FOV_BYTES];
 static int     hero_room = -1;
 static int     fov_hx, fov_hy;
 
-static uint8_t *fov_map(void)        /* bitmap for the current depth */
+static uint8_t vis_now[FOV_BYTES];   /* cells visible right now (this turn) */
+
+static uint8_t *fov_map(void)        /* explored bitmap for the current depth */
 {
     return seen_bits[dlvl <= MAXLVL ? dlvl : MAXLVL];
 }
 
-static void fov_mark(int x, int y)
+/* mark a cell as visible this turn and remembered (seen) */
+static void light(int x, int y)
 {
-    uint16_t idx = (uint16_t)y * MAPW + x;
-    fov_map()[idx >> 3] |= (uint8_t)(1u << (idx & 7));
+    uint16_t idx;
+    uint8_t  bit;
+    if (x < 0 || y < 0 || x >= MAPW || y >= MAPH) return;
+    idx = (uint16_t)y * MAPW + x;
+    bit = (uint8_t)(1u << (idx & 7));
+    vis_now[idx >> 3] |= bit;
+    fov_map()[idx >> 3] |= bit;
 }
 
 static int in_room(uint8_t r, int x, int y)
@@ -367,32 +375,51 @@ void fov_reset(void)        /* forget every level's exploration (new game) */
     hero_room = -1;
 }
 
+/* eight ray directions for corridor line-of-sight */
+static const signed char RDX[8] = { 1, -1,  0,  0,  1,  1, -1, -1 };
+static const signed char RDY[8] = { 0,  0,  1, -1,  1, -1,  1, -1 };
+#define SIGHT 12
+
 void fov_update(int hx, int hy)
 {
-    int dx, dy;
-    uint8_t r;
+    int dx, dy, d;
+    uint8_t r, i, b;
 
     fov_hx = hx; fov_hy = hy;
+
+    for (b = 0; b < FOV_BYTES; b++)     /* clear current visibility */
+        vis_now[b] = 0;
 
     hero_room = -1;
     for (r = 0; r < rcount; r++)
         if (in_room(r, hx, hy)) { hero_room = r; break; }
 
-    /* radius 1 around the hero (covers corridors and doorways) */
-    for (dy = -1; dy <= 1; dy++) {
-        for (dx = -1; dx <= 1; dx++) {
-            int xx = hx + dx, yy = hy + dy;
-            if (xx >= 0 && yy >= 0 && xx < MAPW && yy < MAPH)
-                fov_mark(xx, yy);
-        }
-    }
+    /* radius 1 (the cells immediately around the hero) */
+    for (dy = -1; dy <= 1; dy++)
+        for (dx = -1; dx <= 1; dx++)
+            light(hx + dx, hy + dy);
 
     /* if standing in a room, the whole room is lit */
     if (hero_room >= 0) {
         uint8_t rr = (uint8_t)hero_room, xx, yy;
         for (yy = r_y[rr]; yy < r_y[rr] + r_h[rr]; yy++)
             for (xx = r_x[rr]; xx < r_x[rr] + r_w[rr]; xx++)
-                fov_mark(xx, yy);
+                light(xx, yy);
+    }
+
+    /* line of sight down corridors: cast rays until a wall blocks them, so
+     * monsters chasing single-file are all visible */
+    for (i = 0; i < 8; i++) {
+        for (d = 1; d <= SIGHT; d++) {
+            int nx = hx + RDX[i] * d, ny = hy + RDY[i] * d;
+            char c;
+            if (nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH) break;
+            light(nx, ny);
+            c = lvl[ny][nx];
+            /* walls, rock and doors are opaque: rays light corridors but do
+             * not peek into rooms (a room is revealed when you enter it) */
+            if (c == '|' || c == '-' || c == ' ' || c == '+') break;
+        }
     }
 }
 
@@ -405,12 +432,16 @@ int fov_seen(int x, int y)
     return (fov_map()[idx >> 3] >> (idx & 7)) & 1;
 }
 
+const uint8_t *fov_bitmap(void)
+{
+    return fov_map();
+}
+
 int fov_visible(int x, int y)
 {
-    int dx = x - fov_hx, dy = y - fov_hy;
-    if (dx >= -1 && dx <= 1 && dy >= -1 && dy <= 1)
-        return 1;
-    if (hero_room >= 0 && in_room((uint8_t)hero_room, x, y))
-        return 1;
-    return 0;
+    uint16_t idx;
+    if (x < 0 || y < 0 || x >= MAPW || y >= MAPH)
+        return 0;
+    idx = (uint16_t)y * MAPW + x;
+    return (vis_now[idx >> 3] >> (idx & 7)) & 1;
 }

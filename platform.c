@@ -191,6 +191,11 @@ void puttile(uint8_t x, uint8_t y, uint8_t tile)
     p[1] = 0;     /* palette offset 0 -> master palette */
 }
 
+uint8_t *tm_cell_ptr(uint8_t x, uint8_t y)
+{
+    return (uint8_t *)(TILEMAP_BASE + (((uint16_t)y * TM_W + x) << 1));
+}
+
 uint8_t print_str(uint8_t x, uint8_t y, const char *s, uint8_t coff)
 {
     while (*s && x < TM_W) {
@@ -230,28 +235,35 @@ void tm_cls(void)
 
 /* ---- message line (row 0) ---- */
 
+/* Messages overwrite the line left-to-right and pad the rest with spaces
+ * (no full-line clear first), so the message line does not flicker. */
+static void pad_eol(uint8_t x, uint8_t y)
+{
+    while (x < TM_W)
+        putcell(x++, y, ' ', C_WHITE);
+}
+
 void msg(const char *s)
 {
-    clear_line(0, C_WHITE);
-    print_str(0, 0, s, C_WHITE | C_BRIGHT);
+    pad_eol(print_str(0, 0, s, C_WHITE | C_BRIGHT), 0);
 }
 
 void msg2(const char *a, const char *b, const char *c)
 {
     uint8_t x;
-    clear_line(0, C_WHITE);
     x = print_str(0, 0, a, C_WHITE | C_BRIGHT);
     x = print_str(x, 0, b, C_WHITE | C_BRIGHT);
-    print_str(x, 0, c, C_WHITE | C_BRIGHT);
+    x = print_str(x, 0, c, C_WHITE | C_BRIGHT);
+    pad_eol(x, 0);
 }
 
 void msg_num(const char *a, uint16_t n, const char *c)
 {
     uint8_t x;
-    clear_line(0, C_WHITE);
     x = print_str(0, 0, a, C_WHITE | C_BRIGHT);
     x = put_uint(x, 0, n, C_WHITE | C_BRIGHT);
-    print_str(x, 0, c, C_WHITE | C_BRIGHT);
+    x = print_str(x, 0, c, C_WHITE | C_BRIGHT);
+    pad_eol(x, 0);
 }
 
 /* ---- input ---- */

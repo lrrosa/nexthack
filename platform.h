@@ -51,6 +51,7 @@ void tm_init(void);
 /* drawing */
 void    putcell(uint8_t x, uint8_t y, uint8_t ch, uint8_t coff);   /* font tile */
 void    puttile(uint8_t x, uint8_t y, uint8_t tile);               /* graphic tile */
+uint8_t *tm_cell_ptr(uint8_t x, uint8_t y);   /* address of a tilemap cell */
 uint8_t print_str(uint8_t x, uint8_t y, const char *s, uint8_t coff);
 uint8_t put_uint(uint8_t x, uint8_t y, uint16_t v, uint8_t coff);
 void    clear_line(uint8_t y, uint8_t coff);

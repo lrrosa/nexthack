@@ -172,36 +172,93 @@ static void monster_hits_player(uint8_t i)
     }
 }
 
-static int try_mon_move(uint8_t i, int dx, int dy)
+/* ---- pathfinding: a BFS distance field from the hero ("Dijkstra map").
+ * Computed once per turn; each monster then steps to the neighbouring cell
+ * with the smallest distance, which routes optimally around walls.        */
+
+#define UNREACH 255
+static uint8_t  dist[MAPH][MAPW];
+static uint16_t bfsq[MAPW * MAPH];
+
+static void compute_dist_map(void)
 {
-    int nx = (int)m_x[i] + dx;
-    int ny = (int)m_y[i] + dy;
-    if (!walkable(terrain(nx, ny))) return 0;
-    if (nx == hero_x && ny == hero_y) return 0;   /* hero handled by attack */
-    if (monster_at(nx, ny) >= 0) return 0;        /* another monster        */
-    m_x[i] = (uint8_t)nx; m_y[i] = (uint8_t)ny;
-    return 1;
+    uint16_t head = 0, tail = 0, k;
+    uint8_t *d = (uint8_t *)dist;      /* flat view, fast indexing */
+    const char *lf = (const char *)lvl;
+
+    for (k = 0; k < (uint16_t)(MAPH * MAPW); k++)
+        d[k] = UNREACH;
+
+    if (hero_x < 0 || hero_y < 0 || hero_x >= MAPW || hero_y >= MAPH)
+        return;
+
+    /* queue entries are packed as (y << 8) | x to avoid div/mod on dequeue */
+    d[(uint16_t)hero_y * MAPW + hero_x] = 0;
+    bfsq[tail++] = (uint16_t)(((uint16_t)hero_y << 8) | (uint8_t)hero_x);
+
+    while (head < tail) {
+        uint16_t p     = bfsq[head++];
+        uint8_t  cx    = (uint8_t)(p & 0xFF);
+        uint8_t  cy    = (uint8_t)(p >> 8);
+        uint16_t cbase = (uint16_t)cy * MAPW;
+        uint8_t  nd    = (uint8_t)(d[cbase + cx] + 1);
+        int dx, dy;
+        for (dy = -1; dy <= 1; dy++) {
+            int ny = (int)cy + dy;
+            uint16_t rbase;
+            if (ny < 0 || ny >= MAPH) continue;
+            rbase = (uint16_t)((int)cbase + dy * MAPW);
+            for (dx = -1; dx <= 1; dx++) {
+                int nx;
+                uint16_t np;
+                char c;
+                if (dx == 0 && dy == 0) continue;
+                nx = (int)cx + dx;
+                if (nx < 0 || nx >= MAPW) continue;
+                np = (uint16_t)(rbase + nx);
+                if (d[np] != UNREACH) continue;
+                c = lf[np];                       /* inline walkable check */
+                if (c == '|' || c == '-' || c == ' ') continue;
+                d[np] = nd;
+                bfsq[tail++] = (uint16_t)(((uint16_t)ny << 8) | (uint8_t)nx);
+            }
+        }
+    }
 }
 
+/* a monster steps to the neighbour closest to the hero (lowest distance) */
 static void mon_step(uint8_t i)
 {
     int ddx = hero_x - (int)m_x[i];
     int ddy = hero_y - (int)m_y[i];
-    int dx = (ddx > 0) ? 1 : (ddx < 0) ? -1 : 0;
-    int dy = (ddy > 0) ? 1 : (ddy < 0) ? -1 : 0;
+    uint8_t bestd;
+    int bestx = -1, besty = -1, dx, dy;
 
     if (iabs(ddx) <= 1 && iabs(ddy) <= 1) {   /* adjacent -> attack */
         monster_hits_player(i);
         return;
     }
-    if (try_mon_move(i, dx, dy)) return;
-    if (dx && try_mon_move(i, dx, 0)) return;
-    if (dy && try_mon_move(i, 0, dy)) return;
+
+    bestd = dist[m_y[i]][m_x[i]];             /* our current distance */
+    for (dy = -1; dy <= 1; dy++) {
+        for (dx = -1; dx <= 1; dx++) {
+            int nx = (int)m_x[i] + dx, ny = (int)m_y[i] + dy;
+            uint8_t nd;
+            if (dx == 0 && dy == 0) continue;
+            if (nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH) continue;
+            nd = dist[ny][nx];
+            if (nd == UNREACH || nd >= bestd) continue;
+            if (monster_at(nx, ny) >= 0) continue;   /* don't stack */
+            bestd = nd; bestx = nx; besty = ny;
+        }
+    }
+    if (bestx >= 0) { m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty; }
 }
 
 void monsters_turn(void)
 {
     uint8_t i;
+    compute_dist_map();
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i]) continue;
         mon_step(i);
