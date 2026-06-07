@@ -148,10 +148,10 @@ static void upkeep(void)
 static void draw_help(void)
 {
     print_str(0, 25,
-        "Move: WASD/arrows   Diag: QEZC   Enter: stairs   . wait",
+        "Move: cursor or vi-keys (h j k l + y u b n)    Stairs: > < Enter    Wait: s",
         C_CYAN | C_BRIGHT);
     print_str(0, 26,
-        "Items: , get  i inv  f wield  r wear  p quaff  g eat",
+        "Commands: , pick up   i inventory   w wield  W wear  q quaff  e eat",
         C_CYAN | C_BRIGHT);
 }
 
@@ -343,38 +343,41 @@ void main(void)
 
     for (;;) {
         k = getkey();
-        if (k >= 'A' && k <= 'Z')
-            k += 32;                 /* normalise letters */
 
         acted = 0;
         switch (k) {
-        /* orthogonal: WASD, vi hjkl, cursor keys (8/9/10/11) */
-        case 'w': case 'k': case 11: try_move( 0, -1); break;
-        case 's': case 'j': case 10: try_move( 0, +1); break;
-        case 'a': case 'h': case  8: try_move(-1,  0); break;
-        case 'd': case 'l': case  9: try_move(+1,  0); break;
-        /* diagonals: QEZC and vi yubn */
-        case 'q': case 'y': try_move(-1, -1); break;
-        case 'e': case 'u': try_move(+1, -1); break;
-        case 'z': case 'b': try_move(-1, +1); break;
-        case 'c': case 'n': try_move(+1, +1); break;
-        /* Enter: use whichever stair you stand on */
+        /* movement: cursor keys + NetHack vi-keys (hjkl + yubn diagonals) */
+        case 'h': case  8: try_move(-1,  0); break;   /* left       */
+        case 'l': case  9: try_move(+1,  0); break;   /* right      */
+        case 'j': case 10: try_move( 0, +1); break;   /* down       */
+        case 'k': case 11: try_move( 0, -1); break;   /* up         */
+        case 'y': try_move(-1, -1); break;            /* up-left    */
+        case 'u': try_move(+1, -1); break;            /* up-right   */
+        case 'b': try_move(-1, +1); break;            /* down-left  */
+        case 'n': try_move(+1, +1); break;            /* down-right */
+
+        /* NetHack-style commands (debounced: one press = one action) */
+        case ',': do_pickup();      turns++; acted = 1; in_wait_nokey(); break;
+        case 'w': do_wield();       turns++; acted = 1; in_wait_nokey(); break;
+        case 'W': do_wear();        turns++; acted = 1; in_wait_nokey(); break;
+        case 'q': do_quaff();       turns++; acted = 1; in_wait_nokey(); break;
+        case 'e': do_eat();         turns++; acted = 1; in_wait_nokey(); break;
+        case 'i': show_inventory(); break;          /* viewing costs no turn */
+
+        /* search / wait */
+        case 's':
+        case '.':
+        case ' ': turns++; acted = 1; msg("You wait."); break;
+
+        /* stairs: '>'/'<' or Enter for whichever you stand on */
+        case '>': go_down(); in_wait_nokey(); break;
+        case '<': go_up();   in_wait_nokey(); break;
         case 13:
             if (terrain(hero_x, hero_y) == '>')      go_down();
             else if (terrain(hero_x, hero_y) == '<') go_up();
             else msg("There are no stairs here.");
-            in_wait_nokey();          /* don't repeat-trigger stairs */
+            in_wait_nokey();
             break;
-        /* items (debounced so one press = one action) */
-        case ',': do_pickup(); turns++; acted = 1; in_wait_nokey(); break;
-        case 'f': do_wield();  turns++; acted = 1; in_wait_nokey(); break;
-        case 'r': do_wear();   turns++; acted = 1; in_wait_nokey(); break;
-        case 'p': do_quaff();  turns++; acted = 1; in_wait_nokey(); break;
-        case 'g': do_eat();    turns++; acted = 1; in_wait_nokey(); break;
-        case 'i': show_inventory(); break;   /* viewing costs no turn */
-        /* wait */
-        case '.':
-        case ' ': turns++; acted = 1; msg("You wait."); break;
         default:  break;
         }
 

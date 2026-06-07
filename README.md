@@ -105,15 +105,14 @@ run.bat              REM runs nhnext.nex on CSpect
 
 | Key                       | Action          |
 |---------------------------|-----------------|
-| `W` `A` `S` `D` / arrows  | move ▲ ◄ ▼ ► (hold to keep moving) |
-| `Q` `E` `Z` `C`           | move diagonally |
-| `H` `J` `K` `L` / `Y` `U` `B` `N` | vi-keys (also work) |
-| `Enter`                   | use the stairs you stand on (`>` down / `<` up) |
-| `.` or space              | wait (passes the turn) |
+| cursor keys / `h j k l`   | move ◄ ▼ ▲ ► (hold to keep moving) |
+| `y` `u` `b` `n`           | move diagonally |
+| `>` `<` or `Enter`        | stairs down / up |
+| `s` or `.`                | wait / search |
 | `,`                       | pick up the item under you |
 | `i`                       | show inventory |
-| `f` / `r`                 | wield weapon / wear armor |
-| `p` / `g`                 | quaff potion / eat food |
+| `w` / `W`                 | wield weapon / wear armor |
+| `q` / `e`                 | quaff potion / eat food |
 
 Walk into a monster to attack it; walk over gold to pick it up.
 
