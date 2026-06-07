@@ -437,6 +437,11 @@ const uint8_t *fov_bitmap(void)
     return fov_map();
 }
 
+const uint8_t *vis_bitmap(void)
+{
+    return vis_now;
+}
+
 int fov_visible(int x, int y)
 {
     uint16_t idx;

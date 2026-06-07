@@ -51,5 +51,6 @@ void fov_update(int hx, int hy);
 int  fov_seen(int x, int y);
 int  fov_visible(int x, int y);
 const uint8_t *fov_bitmap(void);   /* current level's explored bitmap (1 bit/cell) */
+const uint8_t *vis_bitmap(void);   /* cells visible this turn (1 bit/cell)        */
 
 #endif /* LEVEL_H */

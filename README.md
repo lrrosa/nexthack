@@ -55,9 +55,11 @@ and pull in the real NetHack modules bottom-up.
       "Dijkstra map" from the hero (routing around walls, no more getting stuck);
       corridor line-of-sight so chasers are visible (rooms revealed on entry);
       render optimizations and flicker-free status/message lines.
-- [ ] **Phase 12** — Save/restore via the NextZXOS/esxDOS file API.
-- [ ] Later — dimmed memory of explored terrain; more item types;
-      equipment erosion.
+- [x] **Phase 12** — Dimmed memory: terrain you've explored but can't currently
+      see is drawn in a darker shade (a second, halved palette), distinct from
+      what's in view.
+- [ ] **Phase 13** — Save/restore via the NextZXOS/esxDOS file API.
+- [ ] Later — more item types; equipment erosion; shops; special levels.
 
 ## Project structure
 

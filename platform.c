@@ -145,13 +145,26 @@ static void tm_init_palette(void)
      * Tilemap first palette = 0b0011_0000 = 0x30 (autoinc on). */
     ZXN_WRITE_REG(0x43, 0x30);
 
-    /* indices 0..15: master palette for the graphic tiles (offset 0) */
+    /* offset 0 (indices 0..15): master palette for graphic tiles, full bright */
     ZXN_WRITE_REG(0x40, 0x00);
     for (i = 0; i < 16; i++)
         ZXN_WRITE_REG(0x41, master[i]);
 
-    /* offsets 1..15: black paper + ink colour, for coloured text */
-    for (o = 1; o < 16; o++) {
+    /* offset 1 (indices 16..31): the master palette with every RGB channel
+     * halved, for remembered, out-of-sight terrain. Half is the darkest a grey
+     * can go and stay neutral on the Next's 3-3-2 colour (dimmer tints it). */
+    ZXN_WRITE_REG(0x40, 16);
+    for (i = 0; i < 16; i++) {
+        uint8_t c = master[i];
+        uint8_t r = (uint8_t)((c >> 5) & 7);
+        uint8_t g = (uint8_t)((c >> 2) & 7);
+        uint8_t b = (uint8_t)(c & 3);
+        ZXN_WRITE_REG(0x41,
+            (uint8_t)(((r >> 1) << 5) | ((g >> 1) << 2) | (b >> 1)));
+    }
+
+    /* offsets 2..15: black paper + ink colour, for coloured text */
+    for (o = 2; o < 16; o++) {
         ZXN_WRITE_REG(0x40, (uint8_t)(o << 4));   /* index o*16        */
         ZXN_WRITE_REG(0x41, 0x00);                /* o*16+0 : black    */
         ZXN_WRITE_REG(0x41, inkcol[o]);           /* o*16+1 : ink      */

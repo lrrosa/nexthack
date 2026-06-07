@@ -66,31 +66,35 @@ static void build_level(void)
 
 static void draw_map(void)
 {
-    const uint8_t *seen = fov_bitmap();   /* current level's explored bitmap */
+    const uint8_t *seen = fov_bitmap();   /* explored bitmap        */
+    const uint8_t *vis  = vis_bitmap();   /* visible-this-turn map  */
     uint16_t idx = 0;
-    uint8_t x, y, t;
+    uint8_t x, y, t, attr;
     int mi;
 
-    /* Single pass with a running tilemap pointer and inline FOV bit test
-     * (both kept out of per-cell function calls so held-key movement stays
-     * fluid). Fog of war: unexplored = dark; remembered terrain shows;
-     * monsters only show while currently in view. */
+    /* Single pass, running tilemap pointer, inline FOV bit tests (kept out of
+     * per-cell function calls so held-key movement stays fluid). Fog of war:
+     * unexplored = dark; in sight = full colour; remembered (seen but out of
+     * sight) = dimmed (palette offset 1); monsters only show while in sight. */
     for (y = 0; y < MAPH; y++) {
         uint8_t *p = tm_cell_ptr(OX, (uint8_t)(OY + y));
         for (x = 0; x < MAPW; x++, idx++) {
+            uint8_t byte = (uint8_t)(idx >> 3);
+            uint8_t mask = (uint8_t)(1u << (idx & 7));
+            attr = 0;
             if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) {
                 t = T_HERO;
-            } else if (!((seen[idx >> 3] >> (idx & 7)) & 1)) {
-                t = T_ROCK;                       /* never seen -> dark */
-            } else {
+            } else if (!(seen[byte] & mask)) {
+                t = T_ROCK;                       /* never seen -> dark   */
+            } else if (vis[byte] & mask) {        /* in sight -> full     */
                 mi = monster_at(x, y);
-                if (mi >= 0 && fov_visible(x, y))
-                    t = mon_tile(m_type[mi]);
-                else
-                    t = tile_for(lvl[y][x]);      /* remembered terrain */
+                t = (mi >= 0) ? mon_tile(m_type[mi]) : tile_for(lvl[y][x]);
+            } else {                              /* remembered -> dim    */
+                t = tile_for(lvl[y][x]);
+                attr = 0x10;                      /* palette offset 1     */
             }
-            *p++ = t;      /* tile id        */
-            *p++ = 0;      /* attribute (master palette) */
+            *p++ = t;
+            *p++ = attr;
         }
     }
 }
