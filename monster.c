@@ -6,6 +6,7 @@
 #include "platform.h"     /* msg/msg2, T_* tiles                              */
 #include "rng.h"          /* rn2                                              */
 #include "game.h"         /* hero/php/dead/dlvl, xp/xlvl, weapon_dmg/armor_def */
+#include "sfx.h"          /* sound effects                                    */
 
 #define MAXMON 8
 
@@ -122,6 +123,7 @@ static void gain_xp(uint8_t amt)
         pmaxhp = (uint8_t)(pmaxhp + gain);
         php = (uint8_t)(php + gain);
         msg("Welcome to a new experience level!");
+        sfx_levelup();
     }
 }
 
@@ -136,10 +138,12 @@ void attack_monster(uint8_t mi)
         if (dlvl <= MAXLVL)
             mon_dead[dlvl] |= (uint8_t)(1u << mi);   /* remember the kill */
         msg2("You kill the ", mt->name, "!");
+        sfx_kill();
         gain_xp(mt->xp);
     } else {
         m_hp[mi] = (uint8_t)(m_hp[mi] - dmg);
         msg2("You hit the ", mt->name, ".");
+        sfx_hit();
     }
 }
 
@@ -157,6 +161,7 @@ static void monster_hits_player(uint8_t i)
         return;
     }
     bite = (uint8_t)(bite - armor_def);
+    sfx_hurt();
 
     if (php <= bite) {
         php = 0; dead = 1;

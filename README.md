@@ -47,7 +47,10 @@ and pull in the real NetHack modules bottom-up.
       kobold, dog, snake, orc, zombie) with their own tiles and stats, spawned
       by depth; monster HP/damage scale with depth; XP and experience levels
       (kills raise max HP); stairs placed in random rooms.
-- [ ] **Phase 10** — Sound (AY chips / beeper).
+- [x] **Phase 10** — Sound: beeper effects for hits, kills, taking damage,
+      picking up gold (a distinct coin sound) and items, drinking, eating,
+      stairs, levelling up and dying (CPU drops to 3.5 MHz per effect so the
+      cycle-timed beeper stays in tune, then restores 28 MHz).
 - [ ] **Phase 11** — Save/restore via the NextZXOS/esxDOS file API.
 - [ ] Later — dimmed memory of explored terrain; A* monster pathfinding;
       more item types; equipment erosion.
@@ -62,7 +65,9 @@ layer is kept separate from game logic):
 | `platform.c` / `.h` | ZX Next hardware: tilemap, font, graphic tiles, palette, text/messages, keyboard |
 | `rng.c` / `.h` | random number generator |
 | `level.c` / `.h` | terrain buffer, procedural generation, level persistence |
-| `monster.c` / `.h` | monsters: spawning, chase AI, combat |
+| `monster.c` / `.h` | monsters: spawning, chase AI, combat, XP |
+| `item.c` / `.h` | inventory and items (pick up, wield/wear/quaff/eat) |
+| `sfx.c` / `.h` | beeper sound effects |
 | `nhnext.c` | game state, main loop, map/status rendering, title screen |
 | `game.h` | shared player/run state used across modules |
 

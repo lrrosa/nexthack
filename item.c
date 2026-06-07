@@ -12,6 +12,7 @@
 #include "platform.h"    /* drawing, messages, getkey                        */
 #include "level.h"       /* lvl, terrain                                     */
 #include "rng.h"         /* rn2                                              */
+#include "sfx.h"         /* sound effects                                    */
 
 #define MAXINV 16
 
@@ -72,6 +73,7 @@ void do_pickup(void)
         if (inv_add(c)) {
             level_take_item((uint8_t)hero_x, (uint8_t)hero_y);
             msg2("You pick up ", item_name(c), ".");
+            sfx_pick();
         } else {
             msg("Your pack is full.");
         }
@@ -157,6 +159,7 @@ void do_quaff(void)
     if (php > pmaxhp) php = pmaxhp;
     inv_remove((uint8_t)s);
     msg("You feel much better.");
+    sfx_quaff();
 }
 
 void do_eat(void)
@@ -174,4 +177,5 @@ void do_eat(void)
     if (nutrition > 1500) nutrition = 1500;
     inv_remove((uint8_t)s);
     msg("You finish your meal.  Delicious!");
+    sfx_eat();
 }

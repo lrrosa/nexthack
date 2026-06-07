@@ -21,6 +21,7 @@
 #include "level.h"
 #include "monster.h"
 #include "item.h"
+#include "sfx.h"
 
 /* ---- shared game/run state (declared extern in game.h) ---- */
 int      hero_x, hero_y;
@@ -235,6 +236,7 @@ static void try_move(int dx, int dy)
         gold = (uint16_t)(gold + amt);
         level_take_gold((uint8_t)nx, (uint8_t)ny);
         msg_num("You pick up ", amt, " gold pieces.");
+        sfx_gold();
     } else {
         describe(dest, 1);
     }
@@ -248,6 +250,7 @@ static void go_down(void)
         build_level();
         hero_x = up_x; hero_y = up_y;     /* arrive on the new up-stairs */
         msg("You descend the stairs.");
+        sfx_stairs();
     } else {
         msg("You can't go down here.");
     }
@@ -262,6 +265,7 @@ static void go_up(void)
             build_level();
             hero_x = dn_x; hero_y = dn_y; /* arrive on the new down-stairs */
             msg("You climb up the stairs.");
+            sfx_stairs();
         } else {
             msg("You can't go up from here.");
         }
@@ -385,6 +389,7 @@ void main(void)
         draw_map();
 
         if (dead) {
+            sfx_die();
             msg("You die...   Press Enter to start over.");
             in_wait_nokey();
             do { k = getkey(); } while (k != 13);
