@@ -35,6 +35,11 @@
 #define T_WEAPON 141
 #define T_ARMOR  142
 #define T_POTION 143
+#define T_KOBOLD 144
+#define T_ORC    145
+#define T_SNAKE  146
+#define T_BAT    147
+#define T_ZOMBIE 148
 
 /* tilemap dimensions (characters) */
 #define TM_W 80

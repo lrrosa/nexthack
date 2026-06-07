@@ -43,9 +43,14 @@ and pull in the real NetHack modules bottom-up.
       rooms joined to grid-adjacent neighbours (no spurious doors); per-level
       fog-of-war memory; gold, monster kills and item pickups all remembered
       across revisits.
-- [ ] **Phase 9** — Save/restore via the NextZXOS/esxDOS file API.
+- [x] **Phase 9** — Bestiary & progression: several monster types (rat, bat,
+      kobold, dog, snake, orc, zombie) with their own tiles and stats, spawned
+      by depth; monster HP/damage scale with depth; XP and experience levels
+      (kills raise max HP); stairs placed in random rooms.
+- [ ] **Phase 10** — Sound (AY chips / beeper).
+- [ ] **Phase 11** — Save/restore via the NextZXOS/esxDOS file API.
 - [ ] Later — dimmed memory of explored terrain; A* monster pathfinding;
-      more monster/item types; sound (AY/beeper).
+      more item types; equipment erosion.
 
 ## Project structure
 
@@ -110,7 +115,9 @@ Walk into a monster to attack it; walk over gold to pick it up.
 ## Map & item legend
 
 `@` hero · `.` floor · `#` corridor · `-` `|` wall · `+` door · `<` `>` stairs ·
-`$` gold · `)` weapon · `[` armor · `!` potion · `%` food · `d` dog · `r` rat
+`$` gold · `)` weapon · `[` armor · `!` potion · `%` food
+
+Monsters: `r` rat · `B` bat · `k` kobold · `d` dog · `S` snake · `o` orc · `Z` zombie
 
 ## Technical notes
 

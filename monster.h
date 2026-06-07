@@ -12,6 +12,7 @@ extern char    m_type[];
 
 int         monster_at(int x, int y);
 const char *mon_name(char t);
+uint8_t     mon_tile(char t);   /* graphic tile for a monster type */
 
 /* spawn the monsters for the current dlvl (deterministic) */
 void spawn_level_monsters(void);

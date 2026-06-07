@@ -262,13 +262,15 @@ void gen_level(void)
                       (uint8_t)((j + 1) * SECT_COLS));
     thin_doors();
 
-    /* stairs: up in the first room, down in the last room */
+    /* stairs in two different random rooms (so their location varies) */
     {
-        uint8_t x, y;
-        rand_floor(0, &x, &y);
+        uint8_t x, y, upr, dnr;
+        upr = rn2(rcount);
+        do { dnr = rn2(rcount); } while (dnr == upr);
+        rand_floor(upr, &x, &y);
         lvl[y][x] = '<';
         up_x = x; up_y = y;
-        rand_floor((uint8_t)(rcount - 1), &x, &y);
+        rand_floor(dnr, &x, &y);
         lvl[y][x] = '>';
         dn_x = x; dn_y = y;
     }

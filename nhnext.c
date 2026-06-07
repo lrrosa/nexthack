@@ -33,6 +33,8 @@ uint8_t  acted = 0;
 uint8_t  weapon_dmg = 0;
 uint8_t  armor_def = 0;
 uint8_t  ac = 10;
+uint16_t xp = 0;
+uint8_t  xlvl = 1;
 int16_t  nutrition = 900;
 
 /* hunger/regeneration bookkeeping */
@@ -78,7 +80,7 @@ static void draw_map(void)
             } else {
                 mi = monster_at(x, y);
                 if (mi >= 0 && fov_visible(x, y))
-                    t = (uint8_t)(m_type[mi] == 'd' ? T_DOG : T_RAT);
+                    t = mon_tile(m_type[mi]);
                 else
                     t = tile_for(lvl[y][x]);      /* remembered terrain */
             }
@@ -136,7 +138,7 @@ static void upkeep(void)
             php--;
             if (php == 0) dead = 1;
         }
-    } else if (++heal_timer >= 12) {            /* slow regeneration */
+    } else if (++heal_timer >= 20) {            /* slow regeneration */
         heal_timer = 0;
         if (php < pmaxhp) php++;
     }
@@ -177,7 +179,11 @@ static void draw_status(void)
     x = put_uint(x, 23, pmaxhp, C_GREEN | C_BRIGHT);
     x = print_str(x, 23, ")  Pw:2(2)  AC:", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, ac, C_GREEN | C_BRIGHT);
-    x = print_str(x, 23, "  Xp:1/0  T:", C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, "  Xp:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, xlvl, C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, "/", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, xp, C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, "  T:", C_GREEN | C_BRIGHT);
     put_uint(x, 23, turns, C_GREEN | C_BRIGHT);
 }
 
@@ -266,11 +272,14 @@ static void go_up(void)
 
 static void new_game(void)
 {
+    pmaxhp = 12;
     php = pmaxhp;
     gold = 0;
     dlvl = 1;
     turns = 0;
     dead = 0;
+    xp = 0;
+    xlvl = 1;
     nutrition = 900;
     heal_timer = 0;
     hunger_state = 0;
