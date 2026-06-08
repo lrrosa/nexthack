@@ -58,8 +58,11 @@ and pull in the real NetHack modules bottom-up.
 - [x] **Phase 12** — Dimmed memory: terrain you've explored but can't currently
       see is drawn in a darker shade (a second, halved palette), distinct from
       what's in view.
-- [ ] **Phase 13** — Save/restore via the NextZXOS/esxDOS file API.
-- [ ] Later — more item types; equipment erosion; shops; special levels.
+- [x] **Phase 13** — Scrolls & rings: scrolls (`?`, read with `r`) with random
+      effects (magic mapping / teleport) and a ring of protection (`=`, put on
+      with `P`, improves AC). Bounded the BFS queue to fix a RAM overflow.
+- [ ] **Phase 14** — Save/restore via the NextZXOS/esxDOS file API.
+- [ ] Later — equipment erosion; shops; special levels; a win condition.
 
 ## Project structure
 
@@ -118,14 +121,15 @@ run.bat              REM runs nhnext.nex on CSpect
 | `,`                       | pick up the item under you |
 | `i`                       | show inventory |
 | `w` / `W`                 | wield weapon / wear armor |
-| `q` / `e`                 | quaff potion / eat food |
+| `P`                       | put on a ring |
+| `q` / `e` / `r`           | quaff potion / eat food / read scroll |
 
 Walk into a monster to attack it; walk over gold to pick it up.
 
 ## Map & item legend
 
 `@` hero · `.` floor · `#` corridor · `-` `|` wall · `+` door · `<` `>` stairs ·
-`$` gold · `)` weapon · `[` armor · `!` potion · `%` food
+`$` gold · `)` weapon · `[` armor · `!` potion · `%` food · `?` scroll · `=` ring
 
 Monsters: `r` rat · `B` bat · `k` kobold · `d` dog · `S` snake · `o` orc · `Z` zombie
 

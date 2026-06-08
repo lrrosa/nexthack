@@ -160,7 +160,7 @@ static void draw_help(void)
         "Move: cursor or vi-keys (h j k l + y u b n)    Stairs: > < Enter    Wait: s",
         C_CYAN | C_BRIGHT);
     print_str(0, 26,
-        "Commands: , pick up   i inventory   w wield  W wear  q quaff  e eat",
+        "Cmd: , get  i inv  w wield  W wear  P ring  q quaff  e eat  r read",
         C_CYAN | C_BRIGHT);
 }
 
@@ -217,6 +217,8 @@ static void describe(char dest, int moved)
     case ')': msg("There is a weapon here.  (, to pick up)");        break;
     case '[': msg("There is some armor here.  (, to pick up)");      break;
     case '!': msg("There is a potion here.  (, to pick up)");        break;
+    case '?': msg("There is a scroll here.  (, to pick up)");        break;
+    case '=': msg("There is a ring here.  (, to pick up)");          break;
     default:  msg("");                                break;
     }
 }
@@ -371,8 +373,10 @@ void main(void)
         case ',': do_pickup();      turns++; acted = 1; in_wait_nokey(); break;
         case 'w': do_wield();       turns++; acted = 1; in_wait_nokey(); break;
         case 'W': do_wear();        turns++; acted = 1; in_wait_nokey(); break;
+        case 'P': do_puton();       turns++; acted = 1; in_wait_nokey(); break;
         case 'q': do_quaff();       turns++; acted = 1; in_wait_nokey(); break;
         case 'e': do_eat();         turns++; acted = 1; in_wait_nokey(); break;
+        case 'r': do_read();        turns++; acted = 1; in_wait_nokey(); break;
         case 'i': show_inventory(); break;          /* viewing costs no turn */
 
         /* search / wait */

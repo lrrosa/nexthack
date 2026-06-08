@@ -11,5 +11,7 @@ void do_wield(void);       /* wield the first weapon                        */
 void do_wear(void);        /* wear the first armor                          */
 void do_quaff(void);       /* drink the first potion                        */
 void do_eat(void);         /* eat the first food                            */
+void do_puton(void);       /* put on the first ring                         */
+void do_read(void);        /* read the first scroll                         */
 
 #endif /* ITEM_H */

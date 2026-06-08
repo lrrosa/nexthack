@@ -18,8 +18,16 @@
 
 static char    inv_type[MAXINV];
 static uint8_t inv_count;
-static uint8_t wielded_flag;     /* a weapon is wielded */
-static uint8_t worn_flag;        /* armor is worn       */
+static uint8_t wielded_flag;     /* a weapon is wielded     */
+static uint8_t worn_armor;       /* armor is worn           */
+static uint8_t worn_ring;        /* ring of protection worn */
+
+/* recompute AC and damage reduction from worn gear */
+static void recompute_def(void)
+{
+    armor_def = (uint8_t)((worn_armor ? 1 : 0) + (worn_ring ? 1 : 0));
+    ac = (uint8_t)(10 - (worn_armor ? 2 : 0) - (worn_ring ? 1 : 0));
+}
 
 static const char *item_name(char t)
 {
@@ -28,6 +36,8 @@ static const char *item_name(char t)
     case '[': return "leather armor";
     case '!': return "a potion of healing";
     case '%': return "a food ration";
+    case '?': return "a scroll";
+    case '=': return "a ring of protection";
     default:  return "something strange";
     }
 }
@@ -60,16 +70,17 @@ void item_reset(void)
 {
     inv_count = 0;
     wielded_flag = 0;
-    worn_flag = 0;
+    worn_armor = 0;
+    worn_ring = 0;
     weapon_dmg = 0;
-    armor_def = 0;
-    ac = 10;
+    recompute_def();
 }
 
 void do_pickup(void)
 {
     char c = terrain(hero_x, hero_y);
-    if (c == ')' || c == '[' || c == '!' || c == '%') {
+    if (c == ')' || c == '[' || c == '!' || c == '%' ||
+        c == '?' || c == '=') {
         if (inv_add(c)) {
             level_take_item((uint8_t)hero_x, (uint8_t)hero_y);
             msg2("You pick up ", item_name(c), ".");
@@ -85,7 +96,7 @@ void do_pickup(void)
 void show_inventory(void)
 {
     uint8_t i, y;
-    uint8_t first_weapon = 1, first_armor = 1;
+    uint8_t first_weapon = 1, first_armor = 1, first_ring = 1;
 
     for (y = 1; y <= 21; y++)        /* clear the map area */
         clear_line(y, C_BLACK);
@@ -105,9 +116,12 @@ void show_inventory(void)
             if (t == ')' && wielded_flag && first_weapon) {
                 print_str(x, (uint8_t)(4 + i), " (wielded)", C_CYAN | C_BRIGHT);
                 first_weapon = 0;
-            } else if (t == '[' && worn_flag && first_armor) {
+            } else if (t == '[' && worn_armor && first_armor) {
                 print_str(x, (uint8_t)(4 + i), " (worn)", C_CYAN | C_BRIGHT);
                 first_armor = 0;
+            } else if (t == '=' && worn_ring && first_ring) {
+                print_str(x, (uint8_t)(4 + i), " (on hand)", C_CYAN | C_BRIGHT);
+                first_ring = 0;
             }
         }
     }
@@ -135,13 +149,12 @@ void do_wear(void)
         msg("You have no armor to wear.");
         return;
     }
-    if (worn_flag) {
+    if (worn_armor) {
         msg("You are already wearing armor.");
         return;
     }
-    worn_flag = 1;
-    armor_def = 1;
-    ac = 8;
+    worn_armor = 1;
+    recompute_def();
     msg("You don your leather armor.");
 }
 
@@ -178,4 +191,40 @@ void do_eat(void)
     inv_remove((uint8_t)s);
     msg("You finish your meal.  Delicious!");
     sfx_eat();
+}
+
+void do_puton(void)
+{
+    if (find_first('=') < 0) {
+        msg("You have no ring to put on.");
+        return;
+    }
+    if (worn_ring) {
+        msg("You are already wearing a ring.");
+        return;
+    }
+    worn_ring = 1;
+    recompute_def();
+    msg("The ring tingles on your finger.  You feel protected.");
+    sfx_magic();
+}
+
+void do_read(void)
+{
+    int s = find_first('?');
+    if (s < 0) {
+        msg("You have nothing to read.");
+        return;
+    }
+    inv_remove((uint8_t)s);
+    sfx_magic();
+    if (rn2(2)) {                       /* scroll of magic mapping */
+        fov_reveal();
+        msg("A map of the level forms in your mind!");
+    } else {                            /* scroll of teleportation */
+        uint8_t tx, ty;
+        level_random_floor(&tx, &ty);
+        hero_x = tx; hero_y = ty;
+        msg("You feel a wrenching sensation.");
+    }
 }

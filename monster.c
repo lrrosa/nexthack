@@ -177,8 +177,11 @@ static void monster_hits_player(uint8_t i)
  * with the smallest distance, which routes optimally around walls.        */
 
 #define UNREACH 255
+/* BFS frontier queue. A level has far fewer walkable cells than MAPW*MAPH, so
+ * a bounded queue saves RAM; enqueues are guarded so it can never overflow. */
+#define BFSQ_SIZE 700
 static uint8_t  dist[MAPH][MAPW];
-static uint16_t bfsq[MAPW * MAPH];
+static uint16_t bfsq[BFSQ_SIZE];
 
 static void compute_dist_map(void)
 {
@@ -220,7 +223,8 @@ static void compute_dist_map(void)
                 c = lf[np];                       /* inline walkable check */
                 if (c == '|' || c == '-' || c == ' ') continue;
                 d[np] = nd;
-                bfsq[tail++] = (uint16_t)(((uint16_t)ny << 8) | (uint8_t)nx);
+                if (tail < BFSQ_SIZE)
+                    bfsq[tail++] = (uint16_t)(((uint16_t)ny << 8) | (uint8_t)nx);
             }
         }
     }

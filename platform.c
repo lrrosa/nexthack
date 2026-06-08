@@ -34,7 +34,7 @@ static const uint8_t master[16] = {
 
 /* Each tile: 64 pixels (8 rows x 8 cols), values are master-palette indices.
  * Order matches the T_* numbering starting at T_ROCK. */
-static const uint8_t gfx[21][64] = {
+static const uint8_t gfx[23][64] = {
   { /* T_ROCK */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
@@ -97,7 +97,13 @@ static const uint8_t gfx[21][64] = {
     0,2,2,2,2,2,2,0, 0,0,2,0,0,2,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
   { /* T_ZOMBIE (rotting dark-green humanoid) */
     0,0,0,10,10,0,0,0, 0,0,0,10,9,0,0,0, 0,0,10,10,10,10,0,0, 0,0,0,10,10,0,0,0,
-    0,10,10,10,10,10,0,0, 0,0,10,10,10,0,0,0, 0,0,10,0,10,0,0,0, 0,0,10,0,10,0,0,0 }
+    0,10,10,10,10,10,0,0, 0,0,10,10,10,0,0,0, 0,0,10,0,10,0,0,0, 0,0,10,0,10,0,0,0 },
+  { /* T_SCROLL (parchment with tan rolled ends) */
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 7,4,4,4,4,4,4,7, 7,4,3,3,3,3,4,7,
+    7,4,4,4,4,4,4,7, 7,4,3,3,3,3,4,7, 7,4,4,4,4,4,4,7, 0,0,0,0,0,0,0,0 },
+  { /* T_RING (gold ring with a gem) */
+    0,0,0,12,0,0,0,0, 0,0,13,13,13,0,0,0, 0,13,0,0,0,13,0,0, 0,13,0,0,0,13,0,0,
+    0,13,0,0,0,13,0,0, 0,0,13,13,13,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 }
 };
 
 /* pack 64 palette indices into a 4bpp 8x8 tile (32 bytes) at a tile slot */
@@ -112,7 +118,7 @@ static void pack_tile(uint8_t tilenum, const uint8_t *px)
 static void load_gfx_tiles(void)
 {
     uint8_t i;
-    for (i = 0; i < 21; i++)
+    for (i = 0; i < 23; i++)
         pack_tile((uint8_t)(T_ROCK + i), gfx[i]);
 }
 

@@ -26,6 +26,7 @@ void sfx_pick(void)    { play((void *)BEEPFX_PICK);    }
 void sfx_gold(void)    { play((void *)BEEPFX_SCORE);   }
 void sfx_quaff(void)   { play((void *)BEEPFX_GULP);    }
 void sfx_eat(void)     { play((void *)BEEPFX_EAT);     }
+void sfx_magic(void)   { play((void *)BEEPFX_ROBOBLIP);}
 void sfx_stairs(void)  { play((void *)BEEPFX_SWITCH_1);}
 void sfx_levelup(void) { play((void *)BEEPFX_YEAH);    }
 void sfx_die(void)     { play((void *)BEEPFX_AWW);     }

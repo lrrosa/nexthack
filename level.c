@@ -59,6 +59,8 @@ uint8_t tile_for(char c)
     case ')': return T_WEAPON;
     case '[': return T_ARMOR;
     case '!': return T_POTION;
+    case '?': return T_SCROLL;
+    case '=': return T_RING;
     default:  return T_ROCK;
     }
 }
@@ -185,6 +187,11 @@ void rand_floor(uint8_t i, uint8_t *px, uint8_t *py)
     *py = (uint8_t)(r_y[i] + 1 + rn2((uint8_t)(r_h[i] - 2)));
 }
 
+void level_random_floor(uint8_t *px, uint8_t *py)
+{
+    rand_floor(rn2(rcount), px, py);
+}
+
 /* place a trackable floor item (so its pickup can be remembered) */
 static void place_item(char ch)
 {
@@ -284,6 +291,8 @@ void gen_level(void)
     place_item('[');      /* armor  */
     place_item('!');      /* potion */
     if (dlvl >= 2) place_item('!');
+    if (rn2(2))    place_item('?');     /* scroll */
+    if (dlvl >= 3 && rn2(2)) place_item('=');   /* ring */
 }
 
 void apply_gold_persistence(void)
@@ -440,6 +449,14 @@ const uint8_t *fov_bitmap(void)
 const uint8_t *vis_bitmap(void)
 {
     return vis_now;
+}
+
+void fov_reveal(void)        /* magic mapping: remember the whole level */
+{
+    uint16_t i;
+    uint8_t *m = fov_map();
+    for (i = 0; i < FOV_BYTES; i++)
+        m[i] = 0xFF;
 }
 
 int fov_visible(int x, int y)

@@ -9,6 +9,7 @@ void sfx_pick(void);     /* pick up an item          */
 void sfx_gold(void);     /* pick up gold (coins)     */
 void sfx_quaff(void);    /* drink a potion           */
 void sfx_eat(void);      /* eat food                 */
+void sfx_magic(void);    /* read scroll / put on ring */
 void sfx_stairs(void);   /* use stairs               */
 void sfx_levelup(void);  /* gain an experience level */
 void sfx_die(void);      /* the hero dies            */

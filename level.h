@@ -22,6 +22,7 @@ extern uint8_t up_x, up_y, dn_x, dn_y;    /* this level's stairs      */
 char    terrain(int x, int y);
 int     walkable(char c);
 void    rand_floor(uint8_t room, uint8_t *px, uint8_t *py);
+void    level_random_floor(uint8_t *px, uint8_t *py);   /* a random floor cell */
 uint8_t tile_for(char c);
 
 /* Build the terrain for the current dlvl (deterministic per depth). Gold is
@@ -52,5 +53,6 @@ int  fov_seen(int x, int y);
 int  fov_visible(int x, int y);
 const uint8_t *fov_bitmap(void);   /* current level's explored bitmap (1 bit/cell) */
 const uint8_t *vis_bitmap(void);   /* cells visible this turn (1 bit/cell)        */
+void fov_reveal(void);             /* mark the whole current level as explored    */
 
 #endif /* LEVEL_H */
