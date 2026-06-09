@@ -9,7 +9,6 @@
 !run.bat
 
 # raw extensionless binaries produced by zcc
-/hello
 /nexthack
 
 # editor/OS noise
