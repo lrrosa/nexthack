@@ -7,9 +7,9 @@ A from-scratch NetHack-style roguelike for the
 ## Strategy
 
 This is a **fresh reimplementation** of NetHack's design in C, sized for the Z80N
-— not a recompile of NetHack's source. The reference source in
-`../nethack-500-src` is the NetHack **5.0 development version** (the development
-branch long known as 3.7; the latest *stable* release is 3.6.7). You cannot just
+— not a recompile of NetHack's source. The design reference is the NetHack **5.0
+development version** (the branch long known as 3.7; the latest *stable* release is
+3.6.7), consulted locally and **not included in this repository**. You cannot just
 compile the original: it is ~250k lines of C that assume 32-bit ints and
 megabytes of flat RAM (5.0 even depends on Lua), while the Z80 only sees 64 KB at
 a time. So the engine is rebuilt on a dedicated **Next platform layer** (display,
@@ -86,19 +86,30 @@ layer is kept separate from game logic):
 
 ## Build
 
-Prerequisite: the `..\z88dk` folder (already in the project).
+This repository contains **only the game source**. The toolchain and emulator are
+external tools you install yourself; the build/run scripts expect them as sibling
+folders of this one (the scripts use `..\z88dk` and `..\CSpect`):
 
-```bat
-build.bat            REM builds hello.c
-build.bat nexthack.c   REM builds nexthack.c -> nexthack.nex (+ nexthack.map)
+```
+<parent>/
+├─ nexthack/   ← this repository
+├─ z88dk/      ← the z88dk SDK        (https://github.com/z88dk/z88dk)
+└─ CSpect/     ← the CSpect emulator  (https://mdf200.itch.io/cspect)
 ```
 
-Equivalent direct invocation:
+With that layout in place:
+
+```bat
+build.bat            REM builds the whole game (all modules) -> nexthack.nex
+build.bat foo.c      REM builds a single .c file             -> foo.nex
+```
+
+Equivalent direct invocation of the full build:
 
 ```bat
 set ZCCCFG=..\z88dk\lib\config\
 set PATH=..\z88dk\bin;%PATH%
-zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -m nexthack.c -o nexthack -create-app
+zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -m nexthack.c platform.c rng.c level.c monster.c item.c sfx.c -o nexthack -create-app
 ```
 
 ## Run on CSpect
