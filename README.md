@@ -155,8 +155,9 @@ Monsters: `r` rat · `B` bat · `k` kobold · `d` dog · `S` snake · `o` orc ·
   from the tilemap palette (16 ink colours over a black paper). The ULA layer is
   disabled so only the tilemap is shown. Tile data lives in Bank 5
   (`0x4000` tiles, `0x6000` tilemap) — free because the program is at `0x8000+`.
-- **`int` is 16-bit** in SDCC; NetHack uses `long` for many things (gold, time,
-  flags) — it works but is slow and needs overflow auditing when porting.
+- **`int` is 16-bit** in SDCC, so values that can exceed ±32767 (gold, the turn
+  counter, bit flags) need care: `long` works but is slow, and 16-bit arithmetic
+  must be audited for overflow.
 - **Memory**: the Next has 1–2 MB in 8 KB banks; large code and data will need
   manual banking in later phases.
 

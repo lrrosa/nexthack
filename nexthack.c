@@ -13,8 +13,8 @@
  *   monster.c   - monsters, chase AI, combat
  *   nexthack.c  - this file: game state, loop, rendering, title
  *
- * Pragmatic-hybrid port: not a recompile of NetHack's C, but a fresh
- * engine on the same design, sized for the Z80N.
+ * A fresh engine inspired by NetHack's design, not a recompile of
+ * NetHack's C — sized for the Z80N.
  * ============================================================ */
 
 #include "game.h"
