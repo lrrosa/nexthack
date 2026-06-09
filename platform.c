@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later
+ * Copyright (C) 2026 Leonardo Roman da Rosa */
 /* platform.c - ZX Spectrum Next hardware layer.
  *
  * Renders on the hardware TILEMAP (80x32). Memory map (Bank 5, fixed at

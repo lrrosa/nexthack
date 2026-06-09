@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later
+ * Copyright (C) 2026 Leonardo Roman da Rosa */
 /* rng.c - small xorshift16 PRNG, seeded from the machine state */
 
 #include "rng.h"

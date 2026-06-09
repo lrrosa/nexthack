@@ -161,6 +161,8 @@ Monsters: `r` rat · `B` bat · `k` kobold · `d` dog · `S` snake · `o` orc ·
 
 ## License
 
+Copyright © 2026 Leonardo Roman da Rosa
+
 NextHack is free software, released under the **GNU General Public License,
 version 3 or (at your option) any later version** (SPDX identifier
 `GPL-3.0-or-later`). The full text of GPLv3 is in [LICENSE](LICENSE); for later

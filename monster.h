@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later
+ * Copyright (C) 2026 Leonardo Roman da Rosa */
 /* monster.h - monsters: spawning, chase AI and combat.
  * Monsters are kept in parallel arrays (not in the terrain buffer) so they
  * can move and carry HP independently of what is drawn. */

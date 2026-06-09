@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later
+ * Copyright (C) 2026 Leonardo Roman da Rosa */
 /* monster.c - monster catalogue, depth-based spawning, chase AI, combat and
  * experience. Monsters live in parallel arrays (not in the terrain buffer). */
 

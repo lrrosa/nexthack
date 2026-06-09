@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later
+ * Copyright (C) 2026 Leonardo Roman da Rosa */
 /* item.c - inventory and items (pragmatic v1).
  *
  * The inventory is a flat list of item type chars. Equipment is tracked with
