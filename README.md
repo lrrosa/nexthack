@@ -1,16 +1,20 @@
-# NetHack Next — porting NetHack 3.5.0 to the ZX Spectrum Next
+# NetHack Next — a NetHack-inspired roguelike for the ZX Spectrum Next
 
-A port of NetHack to the [ZX Spectrum Next](https://www.specnext.com/), built
-with **Z88DK** (the `zsdcc`/SDCC C compiler) and tested on the **CSpect** emulator.
+A from-scratch NetHack-style roguelike for the
+[ZX Spectrum Next](https://www.specnext.com/), built with **Z88DK** (the
+`zsdcc`/SDCC C compiler) and tested on the **CSpect** emulator.
 
 ## Strategy
 
-Chosen target: **pragmatic hybrid** — reuse as much of the original NetHack 3.5.0
-C engine as fits on the Z80N, with a reduced scope (smaller maps, fewer
-monsters/items, no Lua/special levels at first). You cannot "compile all 130
-files and fix the errors" — it is ~250k lines of C and the Z80 only sees 64 KB at
-a time. The path is to build a **Next platform layer** (display, keyboard, files)
-and pull in the real NetHack modules bottom-up.
+This is a **fresh reimplementation** of NetHack's design in C, sized for the Z80N
+— not a recompile of NetHack's source. The reference source in
+`../nethack-500-src` is the NetHack **5.0 development version** (the development
+branch long known as 3.7; the latest *stable* release is 3.6.7). You cannot just
+compile the original: it is ~250k lines of C that assume 32-bit ints and
+megabytes of flat RAM (5.0 even depends on Lua), while the Z80 only sees 64 KB at
+a time. So the engine is rebuilt on a dedicated **Next platform layer** (display,
+keyboard, sound), reusing NetHack's design, key bindings and feel rather than its
+code.
 
 ## Status
 
