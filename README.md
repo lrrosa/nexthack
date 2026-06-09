@@ -9,7 +9,7 @@ A from-scratch NetHack-style roguelike for the
 This is a **fresh reimplementation** of NetHack's design in C, sized for the Z80N
 — not a recompile of NetHack's source. The design reference is the NetHack **5.0
 development version** (the branch long known as 3.7; the latest *stable* release is
-3.6.7), consulted locally and **not included in this repository**. You cannot just
+3.6.7). You cannot just
 compile the original: it is ~250k lines of C that assume 32-bit ints and
 megabytes of flat RAM (5.0 even depends on Lua), while the Z80 only sees 64 KB at
 a time. So the engine is rebuilt on a dedicated **Next platform layer** (display,
@@ -141,12 +141,18 @@ run.bat              REM runs nexthack.nex on CSpect
 
 Walk into a monster to attack it; walk over gold to pick it up.
 
-## Map & item legend
+## Map & item tiles
 
-`@` hero · `.` floor · `#` corridor · `-` `|` wall · `+` door · `<` `>` stairs ·
-`$` gold · `)` weapon · `[` armor · `!` potion · `%` food · `?` scroll · `=` ring
+The world is drawn as colourful 8×8 pixel-art tiles, not ASCII text. The tiles and
+the entities they depict (the symbol in parentheses is the internal map code, kept
+from the roguelike tradition):
 
-Monsters: `r` rat · `B` bat · `k` kobold · `d` dog · `S` snake · `o` orc · `Z` zombie
+- **Terrain:** floor (`.`), corridor (`#`), wall (`-` `|`), door (`+`),
+  stairs up/down (`<` `>`)
+- **Items:** gold (`$`), weapon (`)`), armor (`[`), potion (`!`), food (`%`),
+  scroll (`?`), ring (`=`)
+- **Creatures:** hero (`@`), rat (`r`), bat (`B`), kobold (`k`), dog (`d`),
+  snake (`S`), orc (`o`), zombie (`Z`)
 
 ## Technical notes
 
