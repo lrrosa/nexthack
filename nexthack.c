@@ -1,5 +1,5 @@
 /* ============================================================
- * NetHack Next - a roguelike for the ZX Spectrum Next
+ * NextHack - a roguelike for the ZX Spectrum Next
  * ------------------------------------------------------------
  * This module is the game itself: shared player/run state, the main
  * loop, rendering of the map and status bar, and the title screen.
@@ -9,7 +9,7 @@
  *   rng.c       - random number generator
  *   level.c     - terrain, procedural generation, persistence
  *   monster.c   - monsters, chase AI, combat
- *   nhnext.c    - this file: game state, loop, rendering, title
+ *   nexthack.c  - this file: game state, loop, rendering, title
  *
  * Pragmatic-hybrid port: not a recompile of NetHack's C, but a fresh
  * engine on the same design, sized for the Z80N.
@@ -322,7 +322,7 @@ static void title_screen(void)
     uint16_t s = 1;
 
     tm_cls();
-    print_str(34,  8, "NetHack Next", C_YELLOW | C_BRIGHT);
+    print_str(36,  8, "NextHack", C_YELLOW | C_BRIGHT);
     print_str(22, 10, "A roguelike for the ZX Spectrum Next", C_CYAN | C_BRIGHT);
     print_str(27, 14, "Press any key to begin...", C_WHITE | C_BRIGHT);
 
@@ -352,7 +352,7 @@ void main(void)
     draw_help();
     draw_status();
     draw_map();
-    msg("Welcome to NetHack Next!");
+    msg("Welcome to NextHack!");
 
     for (;;) {
         k = getkey();

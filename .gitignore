@@ -10,7 +10,7 @@
 
 # raw extensionless binaries produced by zcc
 /hello
-/nhnext
+/nexthack
 
 # editor/OS noise
 *.swp

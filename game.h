@@ -7,7 +7,7 @@
 /* deepest level for which per-level mutations (gold/monsters) are remembered */
 #define MAXLVL 24
 
-/* player and run state (defined in nhnext.c) */
+/* player and run state (defined in nexthack.c) */
 extern int      hero_x, hero_y;
 extern uint16_t dlvl;
 extern uint16_t turns;

@@ -10,13 +10,13 @@ REM  real folder). Pointing it at a real directory makes CSpect
 REM  mount it as the SD root, find no NextZXOS and drop into 48K
 REM  BASIC instead of autoloading the .nex.
 REM ------------------------------------------------------------
-REM  Usage:  run.bat            (runs nhnext.nex)
+REM  Usage:  run.bat            (runs nexthack.nex)
 REM          run.bat my.nex
 REM ============================================================
 
 SET CSPECT_DIR=%~dp0..\CSpect
 
-IF "%~1"=="" (SET NEX=nhnext.nex) ELSE (SET NEX=%~1)
+IF "%~1"=="" (SET NEX=nexthack.nex) ELSE (SET NEX=%~1)
 SET MAPF=%NEX:.nex=.map%
 
 REM -w4      window 4x        -tv   scanline filter (optional)

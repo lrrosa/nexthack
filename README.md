@@ -1,4 +1,4 @@
-# NetHack Next — a NetHack-inspired roguelike for the ZX Spectrum Next
+# NextHack — a NetHack-inspired roguelike for the ZX Spectrum Next
 
 A from-scratch NetHack-style roguelike for the
 [ZX Spectrum Next](https://www.specnext.com/), built with **Z88DK** (the
@@ -22,7 +22,7 @@ code.
 - [x] **Phase 1 — Vertical slice**: a NetHack-style level (2 rooms + corridor),
       hero `@` moving with NetHack's vi-keys, wall collision, decorative
       monsters/items/stairs.
-- [x] **Phase 1b — 80-column display** ([nhnext.c](nhnext.c)): rendered on the
+- [x] **Phase 1b — 80-column display** ([nexthack.c](nexthack.c)): rendered on the
       Next's hardware **tilemap** (80×32), matching NetHack's native map width.
 - [x] **Phase 2** — Procedural level generation: random rooms on a grid of
       sectors, corridors with doors, up/down stairs (`>` descends to a new
@@ -81,7 +81,7 @@ layer is kept separate from game logic):
 | `monster.c` / `.h` | monsters: spawning, chase AI, combat, XP |
 | `item.c` / `.h` | inventory and items (pick up, wield/wear/quaff/eat) |
 | `sfx.c` / `.h` | beeper sound effects |
-| `nhnext.c` | game state, main loop, map/status rendering, title screen |
+| `nexthack.c` | game state, main loop, map/status rendering, title screen |
 | `game.h` | shared player/run state used across modules |
 
 ## Build
@@ -90,7 +90,7 @@ Prerequisite: the `..\z88dk` folder (already in the project).
 
 ```bat
 build.bat            REM builds hello.c
-build.bat nhnext.c   REM builds nhnext.c -> nhnext.nex (+ nhnext.map)
+build.bat nexthack.c   REM builds nexthack.c -> nexthack.nex (+ nexthack.map)
 ```
 
 Equivalent direct invocation:
@@ -98,7 +98,7 @@ Equivalent direct invocation:
 ```bat
 set ZCCCFG=..\z88dk\lib\config\
 set PATH=..\z88dk\bin;%PATH%
-zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -m nhnext.c -o nhnext -create-app
+zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -m nexthack.c -o nexthack -create-app
 ```
 
 ## Run on CSpect
@@ -107,7 +107,7 @@ CSpect 3.x boots with a built-in Next ROM, so **no system ROM or SD card image i
 required**.
 
 ```bat
-run.bat              REM runs nhnext.nex on CSpect
+run.bat              REM runs nexthack.nex on CSpect
 ```
 
 > Note: `run.bat` passes `-mmc` a non-existent `.img` path on purpose. Pointing
@@ -158,4 +158,15 @@ Monsters: `r` rat · `B` bat · `k` kobold · `d` dog · `S` snake · `o` orc ·
 - NetHack: <https://www.nethack.org/>
 - z88dk: <https://github.com/z88dk/z88dk>
 - CSpect emulator: <https://mdf200.itch.io/cspect>
+
+## License
+
+NextHack is free software, released under the **GNU General Public License v3.0**
+(see [LICENSE](LICENSE)).
+
+It is an independent, from-scratch engine *inspired by* NetHack's design. It
+contains no NetHack source code and is **not affiliated with or endorsed by** the
+NetHack DevTeam; "NetHack" is mentioned only to credit the inspiration. Because the
+codebase shares no code with NetHack, NetHack's own licence (the NGPL) does not
+apply to it, leaving us free to license NextHack under the GPLv3.
 ```

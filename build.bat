@@ -1,6 +1,6 @@
 @ECHO OFF
-REM === NetHack-Next build ===
-REM   build.bat            builds the full game (all modules) -> nhnext.nex
+REM === NextHack build ===
+REM   build.bat            builds the full game (all modules) -> nexthack.nex
 REM   build.bat foo.c      builds a single source file        -> foo.nex
 
 SET Z88DK_DIR=%~dp0..\z88dk
@@ -11,10 +11,10 @@ SET FLAGS=+zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -
 
 IF NOT "%~1"=="" GOTO single
 
-SET SRCS=nhnext.c platform.c rng.c level.c monster.c item.c sfx.c
-ECHO Building NetHack Next (nhnext.nex) ...
-zcc %FLAGS% %SRCS% -o nhnext -create-app
-IF EXIST nhnext.nex (ECHO. & ECHO OK: nhnext.nex built.) ELSE (ECHO. & ECHO BUILD FAILED.)
+SET SRCS=nexthack.c platform.c rng.c level.c monster.c item.c sfx.c
+ECHO Building NextHack (nexthack.nex) ...
+zcc %FLAGS% %SRCS% -o nexthack -create-app
+IF EXIST nexthack.nex (ECHO. & ECHO OK: nexthack.nex built.) ELSE (ECHO. & ECHO BUILD FAILED.)
 GOTO end
 
 :single
