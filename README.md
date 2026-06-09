@@ -67,6 +67,8 @@ code.
       with `P`, improves AC). Bounded the BFS queue to fix a RAM overflow.
 - [ ] **Phase 14** — Save/restore via the NextZXOS/esxDOS file API.
 - [ ] Later — equipment erosion; shops; special levels; a win condition.
+- [ ] Polish (minor, low priority) — show each held item's graphic tile beside its
+      name on the inventory screen (`i`); tackle after the items above.
 
 ## Project structure
 
