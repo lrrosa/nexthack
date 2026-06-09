@@ -7,6 +7,10 @@ Next** (Z80N), built with **z88dk** (the `zsdcc`/SDCC compiler) and tested on th
 **CSpect** emulator. It is a fresh engine on NetHack's design, not a recompile of
 NetHack's source — sized to fit the Z80.
 
+**Project status & roadmap:** see the phase checklist in `README.md` (done items
+and the "Later" list) and `git log --oneline` — each commit is one phase. Start a
+session from this folder so this file is auto-loaded.
+
 ## Build & run
 
 The z88dk SDK and CSpect live one directory up (`..\z88dk`, `..\CSpect`); they are
