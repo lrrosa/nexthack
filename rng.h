@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* rng.h - small xorshift16 PRNG */
 #ifndef RNG_H
 #define RNG_H

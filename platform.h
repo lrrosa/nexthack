@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* platform.h - ZX Spectrum Next hardware layer: tilemap display, tile/font
  * graphics, text/messages and keyboard. Nothing game-specific lives here. */
 #ifndef PLATFORM_H

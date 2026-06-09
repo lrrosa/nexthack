@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* platform.c - ZX Spectrum Next hardware layer.
  *
  * Renders on the hardware TILEMAP (80x32). Memory map (Bank 5, fixed at

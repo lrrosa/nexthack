@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* game.h - shared game/player state used across modules */
 #ifndef GAME_H
 #define GAME_H

@@ -161,8 +161,10 @@ Monsters: `r` rat · `B` bat · `k` kobold · `d` dog · `S` snake · `o` orc ·
 
 ## License
 
-NextHack is free software, released under the **GNU General Public License v3.0**
-(see [LICENSE](LICENSE)).
+NextHack is free software, released under the **GNU General Public License,
+version 3 or (at your option) any later version** (SPDX identifier
+`GPL-3.0-or-later`). The full text of GPLv3 is in [LICENSE](LICENSE); for later
+versions see <https://www.gnu.org/licenses/>.
 
 It is an independent, from-scratch engine *inspired by* NetHack's design. It
 contains no NetHack source code and is **not affiliated with or endorsed by** the

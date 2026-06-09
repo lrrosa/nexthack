@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* sfx.c - beeper sound effects using z88dk's bit_beepfx library.
  *
  * The beeper effects are cycle-timed for a 3.5 MHz Spectrum, but the game

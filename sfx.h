@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* sfx.h - simple beeper sound effects (named, game-level wrappers). */
 #ifndef SFX_H
 #define SFX_H

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* ============================================================
  * NextHack - a roguelike for the ZX Spectrum Next
  * ------------------------------------------------------------

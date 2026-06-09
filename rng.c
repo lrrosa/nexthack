@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* rng.c - small xorshift16 PRNG, seeded from the machine state */
 
 #include "rng.h"

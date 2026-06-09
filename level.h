@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* level.h - terrain buffer, procedural generation and per-level persistence.
  *
  * Map glyphs:

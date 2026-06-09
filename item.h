@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* item.h - inventory and items: pick up, list, wield/wear/quaff/eat.
  * Floor items live in the terrain buffer as single chars:
  *   ')' weapon   '[' armor   '!' potion   '%' food */

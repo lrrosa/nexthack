@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* level.c - terrain buffer, procedural dungeon generation and per-level
  * persistence (deterministic layout from a per-depth seed + remembered gold). */
 
