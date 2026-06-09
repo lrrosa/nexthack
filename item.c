@@ -40,6 +40,7 @@ static const char *item_name(char t)
     case '%': return "a food ration";
     case '?': return "a scroll";
     case '=': return "a ring of protection";
+    case '"': return "the Amulet of Yendor";
     default:  return "something strange";
     }
 }
@@ -81,8 +82,17 @@ void item_reset(void)
 void do_pickup(void)
 {
     char c = terrain(hero_x, hero_y);
-    if (c == ')' || c == '[' || c == '!' || c == '%' ||
-        c == '?' || c == '=') {
+    if (c == '"') {                       /* the Amulet of Yendor */
+        if (inv_add(c)) {
+            has_amulet = 1;
+            level_take_item((uint8_t)hero_x, (uint8_t)hero_y);
+            msg("You feel a wondrous power!  Bring the Amulet up to the surface.");
+            sfx_levelup();
+        } else {
+            msg("Your pack is full.");
+        }
+    } else if (c == ')' || c == '[' || c == '!' || c == '%' ||
+               c == '?' || c == '=') {
         if (inv_add(c)) {
             level_take_item((uint8_t)hero_x, (uint8_t)hero_y);
             msg2("You pick up ", item_name(c), ".");

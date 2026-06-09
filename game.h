@@ -9,6 +9,9 @@
 /* deepest level for which per-level mutations (gold/monsters) are remembered */
 #define MAXLVL 24
 
+/* the deepest level; the Amulet of Yendor waits here (carry it back to win) */
+#define DLVL_AMULET 10
+
 /* player and run state (defined in nexthack.c) */
 extern int      hero_x, hero_y;
 extern uint16_t dlvl;
@@ -16,6 +19,8 @@ extern uint16_t turns;
 extern uint8_t  php, pmaxhp;
 extern uint16_t gold;
 extern uint8_t  dead;
+extern uint8_t  has_amulet; /* carrying the Amulet of Yendor                 */
+extern uint8_t  won;        /* surfaced with the Amulet (victory)            */
 extern uint8_t  acted;     /* did the player's action consume a turn? */
 extern int16_t  nutrition; /* hunger: drops each turn, food refills it    */
 

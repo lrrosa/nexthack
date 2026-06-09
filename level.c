@@ -63,6 +63,7 @@ uint8_t tile_for(char c)
     case '!': return T_POTION;
     case '?': return T_SCROLL;
     case '=': return T_RING;
+    case '"': return T_AMULET;
     default:  return T_ROCK;
     }
 }
@@ -295,6 +296,13 @@ void gen_level(void)
     if (dlvl >= 2) place_item('!');
     if (rn2(2))    place_item('?');     /* scroll */
     if (dlvl >= 3 && rn2(2)) place_item('=');   /* ring */
+
+    /* The deepest level holds the Amulet of Yendor instead of a way down:
+     * put it on the would-be down-stairs cell (a guaranteed room-floor tile).
+     * This needs no RNG, so it can't shift the deterministic gold/item indices
+     * or change this level's monster spawns. */
+    if (dlvl == DLVL_AMULET)
+        lvl[dn_y][dn_x] = has_amulet ? '.' : '"';
 }
 
 void apply_gold_persistence(void)

@@ -32,6 +32,8 @@ uint16_t turns = 0;
 uint8_t  php = 12, pmaxhp = 12;
 uint16_t gold = 0;
 uint8_t  dead = 0;
+uint8_t  has_amulet = 0;
+uint8_t  won = 0;
 uint8_t  acted = 0;
 uint8_t  weapon_dmg = 0;
 uint8_t  armor_def = 0;
@@ -221,6 +223,7 @@ static void describe(char dest, int moved)
     case '!': msg("There is a potion here.  (, to pick up)");        break;
     case '?': msg("There is a scroll here.  (, to pick up)");        break;
     case '=': msg("There is a ring here.  (, to pick up)");          break;
+    case '"': msg("The Amulet of Yendor lies here!  (, to pick up)"); break;
     default:  msg("");                                break;
     }
 }
@@ -281,6 +284,8 @@ static void go_up(void)
             hero_x = dn_x; hero_y = dn_y; /* arrive on the new down-stairs */
             msg("You climb up the stairs.");
             sfx_stairs();
+        } else if (has_amulet) {
+            won = 1;                      /* surfaced with the Amulet: victory */
         } else {
             msg("You can't go up from here.");
         }
@@ -297,6 +302,8 @@ static void new_game(void)
     dlvl = 1;
     turns = 0;
     dead = 0;
+    has_amulet = 0;
+    won = 0;
     xp = 0;
     xlvl = 1;
     nutrition = 900;
@@ -333,6 +340,23 @@ static void title_screen(void)
     s ^= (uint16_t)(((uint16_t)ZXN_READ_REG(0x1F) << 8) ^ ZXN_READ_REG(0x1E));
     world_seed = s ? s : 0xACE1u;
     rng_set(world_seed);
+    in_wait_nokey();
+}
+
+/* Shown when the hero surfaces carrying the Amulet of Yendor. */
+static void victory_screen(void)
+{
+    int k;
+
+    sfx_levelup();
+    tm_cls();
+    print_str(27,  7, "*  *  *  YOU WIN!  *  *  *", C_YELLOW | C_BRIGHT);
+    print_str(21, 10, "You ascend from the dungeon and bring", C_WHITE | C_BRIGHT);
+    print_str(22, 11, "the Amulet of Yendor to the surface.", C_WHITE | C_BRIGHT);
+    print_str(29, 14, "You have won NextHack!", C_CYAN | C_BRIGHT);
+    print_str(26, 17, "Press Enter to play again...", C_GREEN | C_BRIGHT);
+    in_wait_nokey();
+    do { k = getkey(); } while (k != 13);
     in_wait_nokey();
 }
 
@@ -408,7 +432,16 @@ void main(void)
         draw_status();
         draw_map();
 
-        if (dead) {
+        if (won) {
+            victory_screen();
+            new_game();
+            tm_cls();
+            draw_help();
+            draw_status();
+            draw_map();
+            msg("A new adventure begins!");
+            in_wait_nokey();
+        } else if (dead) {
             sfx_die();
             msg("You die...   Press Enter to start over.");
             in_wait_nokey();

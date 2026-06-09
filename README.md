@@ -65,7 +65,10 @@ code.
 - [x] **Phase 13** — Scrolls & rings: scrolls (`?`, read with `r`) with random
       effects (magic mapping / teleport) and a ring of protection (`=`, put on
       with `P`, improves AC). Bounded the BFS queue to fix a RAM overflow.
-- [ ] **Phase 14** — Save/restore via the NextZXOS/esxDOS file API.
+- [x] **Phase 14 — Win condition**: the Amulet of Yendor (`"`) waits on the
+      deepest level (Dlvl 10), in place of its down-stairs; carry it back up and
+      climb the stairs on Dlvl 1 to win the game.
+- [ ] **Phase 15** — Save/restore via the NextZXOS/esxDOS file API.
 - [ ] Later — equipment erosion; shops; special levels; a win condition.
 - [ ] Polish (minor, low priority) — show each held item's graphic tile beside its
       name on the inventory screen (`i`); tackle after the items above.
@@ -152,7 +155,7 @@ from the roguelike tradition):
 - **Terrain:** floor (`.`), corridor (`#`), wall (`-` `|`), door (`+`),
   stairs up/down (`<` `>`)
 - **Items:** gold (`$`), weapon (`)`), armor (`[`), potion (`!`), food (`%`),
-  scroll (`?`), ring (`=`)
+  scroll (`?`), ring (`=`), the Amulet of Yendor (`"`)
 - **Creatures:** hero (`@`), rat (`r`), bat (`B`), kobold (`k`), dog (`d`),
   snake (`S`), orc (`o`), zombie (`Z`)
 

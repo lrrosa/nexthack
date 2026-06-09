@@ -91,7 +91,7 @@ is declared `extern` in `game.h` and **defined once in `nexthack.c`**. Modules i
 
 ### Level generation, persistence & FOV (`level.c`)
 - The map is a `char lvl[MAPH][MAPW]` grid (`'.'` floor, `#` corridor, `-`/`|` wall,
-  `+` door, `<`/`>` stairs, `$`/`)`/`[`/`!`/`%`/`?`/`=` items, `' '` rock). Monsters are
+  `+` door, `<`/`>` stairs, `$`/`)`/`[`/`!`/`%`/`?`/`=`/`"` items, `' '` rock). Monsters are
   **not** in this buffer (they live in `monster.c` arrays and are drawn on top).
 - **Persistence is deterministic**, not stored maps: `gen_level()` calls
   `rng_set(level_seed(dlvl))` so a given depth always regenerates identically. Player
@@ -102,6 +102,11 @@ is declared `extern` in `game.h` and **defined once in `nexthack.c`**. Modules i
 - `build_level()` (in `nexthack.c`) orchestrates: `gen_level()` → spawn monsters →
   apply gold/monster/item persistence. Gold/items are placed before monsters so
   spawning sees the same map each visit.
+- **Win condition**: the deepest level (`DLVL_AMULET`, currently 10) has no
+  down-stairs — the Amulet of Yendor (`"`) sits on that cell instead. Picking it up
+  sets `has_amulet`; climbing `<` on Dlvl 1 while carrying it sets `won` (victory
+  screen, then restart). The amulet is placed **without RNG** (on the would-be
+  down-stairs cell), so it cannot desync the deterministic per-depth generation.
 - **FOV** uses per-depth explored bitmaps (`seen_bits`, 1 bit/cell) plus a
   recomputed-each-turn `vis_now` bitmap. Visibility = the hero's room (lit on entry)
   + radius 1 + line-of-sight rays down corridors (walls/rock/**doors are opaque**, so

@@ -44,6 +44,7 @@
 #define T_ZOMBIE 148
 #define T_SCROLL 149
 #define T_RING   150
+#define T_AMULET 151
 
 /* tilemap dimensions (characters) */
 #define TM_W 80
