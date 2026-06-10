@@ -66,13 +66,17 @@ code.
       effects (magic mapping / teleport) and a ring of protection (`=`, put on
       with `P`, improves AC). Bounded the BFS queue to fix a RAM overflow.
 - [x] **Phase 14 — Win condition**: the Amulet of Yendor (`"`) waits on the
-      deepest level (Dlvl 10), in place of its down-stairs; carry it back up and
+      deepest level (Dlvl 50), in place of its down-stairs; carry it back up and
       climb the stairs on Dlvl 1 to win the game.
 - [x] **Phase 15 — Save/restore**: `S` saves the whole game (seed, player,
       inventory, per-depth persistence and explored map) to `nexthack.sav` on the
       SD card and returns to the title; it is loaded automatically on the next
       boot and then deleted (NetHack-style — no save-scumming).
-- [ ] Later — equipment erosion; shops; special levels; a win condition.
+- [x] **Phase 16 — Deeper dungeon**: the dungeon now descends to Dlvl 50. Cheap
+      per-level state (gold/items/kills) is kept for every level; the fog-of-war
+      lives in a 12-level **LRU pool** (recently visited levels stay mapped,
+      distant ones are forgotten) so RAM stays flat with depth.
+- [ ] Later — equipment erosion; shops; special levels.
 - [ ] Polish (minor, low priority) — show each held item's graphic tile beside its
       name on the inventory screen (`i`); tackle after the items above.
 

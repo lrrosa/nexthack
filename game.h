@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 /* the deepest level; the Amulet of Yendor waits here (carry it back to win) */
-#define DLVL_AMULET 10
+#define DLVL_AMULET 50
 
 /* deepest level for which per-level mutations (gold/monsters/fog-of-war) are
  * remembered. Must be >= DLVL_AMULET (the deepest reachable level); kept tight

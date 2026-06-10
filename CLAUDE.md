@@ -103,13 +103,15 @@ is declared `extern` in `game.h` and **defined once in `nexthack.c`**. Modules i
 - `build_level()` (in `nexthack.c`) orchestrates: `gen_level()` → spawn monsters →
   apply gold/monster/item persistence. Gold/items are placed before monsters so
   spawning sees the same map each visit.
-- **Win condition**: the deepest level (`DLVL_AMULET`, currently 10) has no
+- **Win condition**: the deepest level (`DLVL_AMULET`, currently 50) has no
   down-stairs — the Amulet of Yendor (`"`) sits on that cell instead. Picking it up
   sets `has_amulet`; climbing `<` on Dlvl 1 while carrying it sets `won` (victory
   screen, then restart). The amulet is placed **without RNG** (on the would-be
   down-stairs cell), so it cannot desync the deterministic per-depth generation.
-- **FOV** uses per-depth explored bitmaps (`seen_bits`, 1 bit/cell) plus a
-  recomputed-each-turn `vis_now` bitmap. Visibility = the hero's room (lit on entry)
+- **FOV** remembers explored cells in an **LRU pool** (`fov_pool`: the `FOV_SLOTS`
+  most recently visited levels' 1-bit-per-cell maps; entering a new level evicts and
+  forgets the least-recently-used one) plus a recomputed-each-turn `vis_now` bitmap.
+  Visibility = the hero's room (lit on entry)
   + radius 1 + line-of-sight rays down corridors (walls/rock/**doors are opaque**, so
   rooms are only revealed on entry). `draw_map` shows unseen=black, in-sight=full,
   seen-but-not-visible=dimmed.
@@ -123,13 +125,16 @@ is declared `extern` in `game.h` and **defined once in `nexthack.c`**. Modules i
   deterministically from the restored `world_seed` + persistence bitmasks, exactly
   as a revisit does. Saved state = `world_seed`, the player globals, the inventory
   (`item.c`), and the per-depth `gold_taken`/`item_taken`/`mon_dead` masks plus the
-  `seen_bits` fog-of-war (`level.c`/`monster.c`).
+  `fov_pool` LRU fog-of-war (`level.c`/`monster.c`).
 - File I/O lives in the **platform layer** (`file_*` in `platform.c`, wrapping
   esxDOS `esx_f_*`). It needs a mounted writable filesystem, which `run.bat` does
   **not** give — use **`run-sd.bat`** (copies the `.nex` into `..\CSpect\zxnext.sd`
   with `hdfmonkey`, boots NextZXOS; run the `.nex` from the Browser).
-- esxDOS pulls in ~1.5 KB of BSS (sector buffers), so `MAXLVL` was tightened to
-  `DLVL_AMULET` — only reachable depths need persistence, freeing that RAM.
+- Memory budget: the cheap per-level masks scale to all 50 levels (`MAXLVL =
+  DLVL_AMULET`, ~3 bytes/level), but the fog-of-war does **not** — it is a fixed
+  `FOV_SLOTS`-entry LRU pool, so RAM is independent of dungeon depth. esxDOS itself
+  adds ~1.5 KB of BSS (sector buffers), so `FOV_SLOTS` (12) is kept below the RAM
+  max (~18) to reserve headroom for future features.
 
 ### Monster AI (`monster.c`)
 - Monster types are a table (`montypes[]`: char, hp, damage, xp, min depth, tile, name);
