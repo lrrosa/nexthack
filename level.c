@@ -477,3 +477,19 @@ int fov_visible(int x, int y)
     idx = (uint16_t)y * MAPW + x;
     return (vis_now[idx >> 3] >> (idx & 7)) & 1;
 }
+
+/* ---- save / restore: per-depth gold/item bitmasks + explored bitmaps ---- */
+
+void level_save(uint8_t h)
+{
+    file_write(h, gold_taken, MAXLVL + 1);
+    file_write(h, item_taken, MAXLVL + 1);
+    file_write(h, seen_bits, (uint16_t)((MAXLVL + 1) * FOV_BYTES));
+}
+
+void level_load(uint8_t h)
+{
+    file_read(h, gold_taken, MAXLVL + 1);
+    file_read(h, item_taken, MAXLVL + 1);
+    file_read(h, seen_bits, (uint16_t)((MAXLVL + 1) * FOV_BYTES));
+}

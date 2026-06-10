@@ -70,4 +70,13 @@ void msg_num(const char *a, uint16_t n, const char *c);
 /* keyboard: returns the key currently held (does not wait for release) */
 int getkey(void);
 
+/* ---- save-file I/O via NextZXOS/esxDOS ---- */
+#define FILE_ERR 0xFF                        /* handle returned on failure */
+uint8_t file_create(const char *name);       /* create/truncate for writing */
+uint8_t file_open(const char *name);         /* open an existing file to read */
+void    file_write(uint8_t h, const void *src, uint16_t n);
+void    file_read(uint8_t h, void *dst, uint16_t n);
+void    file_close(uint8_t h);
+void    file_remove(const char *name);
+
 #endif /* PLATFORM_H */

@@ -22,6 +22,9 @@ void spawn_level_monsters(void);
 void apply_monster_persistence(void);
 /* forget all remembered kills (new game) */
 void monster_reset_persistence(void);
+/* save/restore the per-depth killed-monster bitmask */
+void monster_save(uint8_t h);
+void monster_load(uint8_t h);
 
 /* hero attacks monster mi (the monster strikes back on its own turn) */
 void attack_monster(uint8_t mi);

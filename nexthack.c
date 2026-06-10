@@ -47,6 +47,92 @@ static uint8_t heal_timer = 0;
 static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 /* ============================================================
+ * Save / restore (NetHack-style: save & quit, consumed on load)
+ * ============================================================ */
+
+#define SAVE_NAME  "nexthack.sav"
+#define SAVE_MAGIC 0x484Eu          /* 'N','H' */
+#define SAVE_VER   1
+
+struct save_hdr {
+    uint16_t magic;
+    uint8_t  ver;
+};
+
+struct save_player {
+    uint16_t world_seed;
+    int16_t  hero_x, hero_y;
+    uint16_t dlvl, turns;
+    uint8_t  php, pmaxhp;
+    uint16_t gold;
+    int16_t  nutrition;
+    uint16_t xp;
+    uint8_t  xlvl;
+    uint8_t  has_amulet;
+};
+
+/* Write seed + player + each module's state. Returns 1 on success. */
+static int save_game(void)
+{
+    uint8_t h = file_create(SAVE_NAME);
+    struct save_hdr    hdr;
+    struct save_player p;
+
+    if (h == FILE_ERR) return 0;
+
+    hdr.magic = SAVE_MAGIC; hdr.ver = SAVE_VER;
+    file_write(h, &hdr, sizeof hdr);
+
+    p.world_seed = world_seed;
+    p.hero_x = (int16_t)hero_x; p.hero_y = (int16_t)hero_y;
+    p.dlvl = dlvl;   p.turns = turns;
+    p.php = php;     p.pmaxhp = pmaxhp;
+    p.gold = gold;   p.nutrition = nutrition;
+    p.xp = xp;       p.xlvl = xlvl; p.has_amulet = has_amulet;
+    file_write(h, &p, sizeof p);
+
+    item_save(h);
+    level_save(h);
+    monster_save(h);
+    file_close(h);
+    return 1;
+}
+
+/* Load a saved game and delete the file (so it cannot be reloaded - the
+ * NetHack anti-save-scum rule). Returns 1 if a valid save was restored. */
+static int load_game(void)
+{
+    uint8_t h = file_open(SAVE_NAME);
+    struct save_hdr    hdr;
+    struct save_player p;
+
+    if (h == FILE_ERR) return 0;
+
+    file_read(h, &hdr, sizeof hdr);
+    if (hdr.magic != SAVE_MAGIC || hdr.ver != SAVE_VER) {
+        file_close(h);
+        file_remove(SAVE_NAME);     /* discard an incompatible save */
+        return 0;
+    }
+
+    file_read(h, &p, sizeof p);
+    world_seed = p.world_seed;
+    hero_x = p.hero_x; hero_y = p.hero_y;
+    dlvl = p.dlvl;     turns = p.turns;
+    php = p.php;       pmaxhp = p.pmaxhp;
+    gold = p.gold;     nutrition = p.nutrition;
+    xp = p.xp;         xlvl = p.xlvl; has_amulet = p.has_amulet;
+    dead = 0; won = 0;
+
+    item_load(h);
+    level_load(h);
+    monster_load(h);
+    file_close(h);
+    file_remove(SAVE_NAME);
+    return 1;
+}
+
+/* ============================================================
  * Level orchestration
  * ============================================================ */
 
@@ -164,7 +250,7 @@ static void draw_help(void)
         "Move: cursor or vi-keys (h j k l + y u b n)    Stairs: > < Enter    Wait: s",
         C_CYAN | C_BRIGHT);
     print_str(0, 26,
-        "Cmd: , get  i inv  w wield  W wear  P ring  q quaff  e eat  r read",
+        "Cmd: , get  i inv  w wield  W wear  P ring  q quaff  e eat  r read  S save",
         C_CYAN | C_BRIGHT);
 }
 
@@ -367,18 +453,28 @@ void main(void)
     zx_border(C_BLACK);
     tm_init();
 
+start_game:
     title_screen();
-    item_reset();
-    fov_reset();
-    build_level();
-    hero_x = up_x; hero_y = up_y;
-    fov_update(hero_x, hero_y);
-
-    tm_cls();
-    draw_help();
-    draw_status();
-    draw_map();
-    msg("Welcome to NextHack!");
+    if (load_game()) {              /* a saved game was found: resume it */
+        build_level();              /* regenerate the saved depth        */
+        fov_update(hero_x, hero_y);
+        tm_cls();
+        draw_help();
+        draw_status();
+        draw_map();
+        msg("Game restored.  Welcome back!");
+    } else {                        /* no save: start a fresh adventure  */
+        item_reset();
+        fov_reset();
+        build_level();
+        hero_x = up_x; hero_y = up_y;
+        fov_update(hero_x, hero_y);
+        tm_cls();
+        draw_help();
+        draw_status();
+        draw_map();
+        msg("Welcome to NextHack!");
+    }
 
     for (;;) {
         k = getkey();
@@ -404,6 +500,20 @@ void main(void)
         case 'e': do_eat();         turns++; acted = 1; in_wait_nokey(); break;
         case 'r': do_read();        turns++; acted = 1; in_wait_nokey(); break;
         case 'i': show_inventory(); break;          /* viewing costs no turn */
+
+        case 'S':                                   /* save game and quit to title */
+            if (save_game()) {
+                tm_cls();
+                print_str(23, 10, "Game saved.  You may switch off.", C_WHITE | C_BRIGHT);
+                print_str(24, 13, "Press Enter to return to the title.", C_CYAN | C_BRIGHT);
+                in_wait_nokey();
+                do { k = getkey(); } while (k != 13);
+                in_wait_nokey();
+                goto start_game;
+            }
+            msg("Save failed - is the SD card writable?");
+            in_wait_nokey();
+            break;
 
         /* search / wait */
         case 's':

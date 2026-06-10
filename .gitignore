@@ -7,6 +7,7 @@
 *.bat
 !build.bat
 !run.bat
+!run-sd.bat
 
 # raw extensionless binaries produced by zcc
 /nexthack

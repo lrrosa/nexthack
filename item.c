@@ -240,3 +240,25 @@ void do_read(void)
         msg("You feel a wrenching sensation.");
     }
 }
+
+/* ---- save / restore (the inventory list + equipment flags) ---- */
+
+void item_save(uint8_t h)
+{
+    file_write(h, inv_type, MAXINV);
+    file_write(h, &inv_count, 1);
+    file_write(h, &wielded_flag, 1);
+    file_write(h, &worn_armor, 1);
+    file_write(h, &worn_ring, 1);
+}
+
+void item_load(uint8_t h)
+{
+    file_read(h, inv_type, MAXINV);
+    file_read(h, &inv_count, 1);
+    file_read(h, &wielded_flag, 1);
+    file_read(h, &worn_armor, 1);
+    file_read(h, &worn_ring, 1);
+    weapon_dmg = (uint8_t)(wielded_flag ? 2 : 0);
+    recompute_def();
+}

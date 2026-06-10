@@ -44,6 +44,10 @@ int  level_take_item(uint8_t x, uint8_t y);
 /* forget all remembered gold/item pickups (new game) */
 void level_reset_persistence(void);
 
+/* save/restore the per-depth persistence bitmasks and the fog-of-war bitmaps */
+void level_save(uint8_t h);
+void level_load(uint8_t h);
+
 /* ---- field of view (fog of war) ----
  * fov_reset:   forget all explored cells (entering a level)
  * fov_update:  recompute visibility from the hero position, mark seen cells

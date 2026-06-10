@@ -115,6 +115,16 @@ void monster_reset_persistence(void)
         mon_dead[i] = 0;
 }
 
+void monster_save(uint8_t h)
+{
+    file_write(h, mon_dead, MAXLVL + 1);
+}
+
+void monster_load(uint8_t h)
+{
+    file_read(h, mon_dead, MAXLVL + 1);
+}
+
 /* ---- experience ---- */
 static void gain_xp(uint8_t amt)
 {

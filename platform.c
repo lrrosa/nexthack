@@ -14,6 +14,7 @@
  */
 
 #include "platform.h"
+#include <arch/zxn/esxdos.h>
 
 #define TILEDEF_BASE  0x4000u
 #define TILEMAP_BASE  0x6000u
@@ -255,6 +256,38 @@ void tm_cls(void)
     uint8_t y;
     for (y = 0; y < TM_H; y++)
         clear_line(y, C_BLACK);
+}
+
+/* ---- save-file I/O (NextZXOS/esxDOS). Returns FILE_ERR on failure. ---- */
+
+uint8_t file_create(const char *name)
+{
+    return esx_f_open(name, (uint8_t)(ESX_MODE_W | ESX_MODE_OPEN_CREAT_TRUNC));
+}
+
+uint8_t file_open(const char *name)
+{
+    return esx_f_open(name, (uint8_t)(ESX_MODE_R | ESX_MODE_OPEN_EXIST));
+}
+
+void file_write(uint8_t h, const void *src, uint16_t n)
+{
+    esx_f_write(h, (void *)src, n);
+}
+
+void file_read(uint8_t h, void *dst, uint16_t n)
+{
+    esx_f_read(h, dst, n);
+}
+
+void file_close(uint8_t h)
+{
+    esx_f_close(h);
+}
+
+void file_remove(const char *name)
+{
+    esx_f_unlink(name);
 }
 
 /* ---- message line (row 0) ---- */

@@ -6,11 +6,13 @@
 
 #include <stdint.h>
 
-/* deepest level for which per-level mutations (gold/monsters) are remembered */
-#define MAXLVL 24
-
 /* the deepest level; the Amulet of Yendor waits here (carry it back to win) */
 #define DLVL_AMULET 10
+
+/* deepest level for which per-level mutations (gold/monsters/fog-of-war) are
+ * remembered. Must be >= DLVL_AMULET (the deepest reachable level); kept tight
+ * so the fog-of-war bitmaps leave room for the esxDOS save buffers in RAM. */
+#define MAXLVL DLVL_AMULET
 
 /* player and run state (defined in nexthack.c) */
 extern int      hero_x, hero_y;

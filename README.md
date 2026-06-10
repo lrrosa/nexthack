@@ -68,7 +68,10 @@ code.
 - [x] **Phase 14 — Win condition**: the Amulet of Yendor (`"`) waits on the
       deepest level (Dlvl 10), in place of its down-stairs; carry it back up and
       climb the stairs on Dlvl 1 to win the game.
-- [ ] **Phase 15** — Save/restore via the NextZXOS/esxDOS file API.
+- [x] **Phase 15 — Save/restore**: `S` saves the whole game (seed, player,
+      inventory, per-depth persistence and explored map) to `nexthack.sav` on the
+      SD card and returns to the title; it is loaded automatically on the next
+      boot and then deleted (NetHack-style — no save-scumming).
 - [ ] Later — equipment erosion; shops; special levels; a win condition.
 - [ ] Polish (minor, low priority) — show each held item's graphic tile beside its
       name on the inventory screen (`i`); tackle after the items above.
@@ -130,6 +133,18 @@ run.bat              REM runs nexthack.nex on CSpect
 > `-mmc` at a real folder makes CSpect mount it as the SD root, find no NextZXOS,
 > and drop into 48K BASIC instead of autoloading the `.nex`.
 
+### Testing save/restore
+
+`S` saves to the SD card, so it needs a mounted, writable filesystem — which the
+plain `run.bat` (no SD) does not provide. Use `run-sd.bat`, which copies
+`nexthack.nex` into the NextZXOS SD image (`..\CSpect\zxnext.sd`) with `hdfmonkey`
+and boots from it; then run `/nexthack.nex` from the NextZXOS Browser.
+
+```bat
+build.bat            REM build first
+run-sd.bat           REM deploy into the SD image and boot NextZXOS
+```
+
 ## Controls
 
 | Key                       | Action          |
@@ -143,6 +158,7 @@ run.bat              REM runs nexthack.nex on CSpect
 | `w` / `W`                 | wield weapon / wear armor |
 | `P`                       | put on a ring |
 | `q` / `e` / `r`           | quaff potion / eat food / read scroll |
+| `S`                       | save game and quit to the title |
 
 Walk into a monster to attack it; walk over gold to pick it up.
 

@@ -19,8 +19,9 @@ not in this repo. Build/run are Windows batch scripts (run from this folder):
 ```bat
 build.bat            REM builds the whole game -> nexthack.nex (+ nexthack.map)
 build.bat foo.c      REM builds a single .c file -> foo.nex
-run.bat              REM runs nexthack.nex in CSpect
+run.bat              REM runs nexthack.nex in CSpect (no SD; can't test save)
 run.bat foo.nex      REM runs a specific .nex
+run-sd.bat           REM deploys into zxnext.sd and boots NextZXOS (tests save)
 ```
 
 `build.bat` sets `ZCCCFG`/`PATH` and invokes:
@@ -113,6 +114,23 @@ is declared `extern` in `game.h` and **defined once in `nexthack.c`**. Modules i
   rooms are only revealed on entry). `draw_map` shows unseen=black, in-sight=full,
   seen-but-not-visible=dimmed.
 
+### Save / restore (`nexthack.c` + per-module `*_save`/`*_load`)
+- **Model**: NetHack-style *save & quit*. `S` writes the whole game to
+  `nexthack.sav` (a magic+version header, the player struct, then each module's
+  state) and returns to the title; the boot path calls `load_game()`, which
+  restores and then **deletes** the file (no save-scumming), else starts fresh.
+- The *current* level is **not** saved: `build_level()` regenerates it
+  deterministically from the restored `world_seed` + persistence bitmasks, exactly
+  as a revisit does. Saved state = `world_seed`, the player globals, the inventory
+  (`item.c`), and the per-depth `gold_taken`/`item_taken`/`mon_dead` masks plus the
+  `seen_bits` fog-of-war (`level.c`/`monster.c`).
+- File I/O lives in the **platform layer** (`file_*` in `platform.c`, wrapping
+  esxDOS `esx_f_*`). It needs a mounted writable filesystem, which `run.bat` does
+  **not** give — use **`run-sd.bat`** (copies the `.nex` into `..\CSpect\zxnext.sd`
+  with `hdfmonkey`, boots NextZXOS; run the `.nex` from the Browser).
+- esxDOS pulls in ~1.5 KB of BSS (sector buffers), so `MAXLVL` was tightened to
+  `DLVL_AMULET` — only reachable depths need persistence, freeing that RAM.
+
 ### Monster AI (`monster.c`)
 - Monster types are a table (`montypes[]`: char, hp, damage, xp, min depth, tile, name);
   `spawn_level_monsters()` draws from the depth-appropriate pool. HP/damage scale with
@@ -127,7 +145,7 @@ is declared `extern` in `game.h` and **defined once in `nexthack.c`**. Modules i
   `monsters_turn()` → recompute FOV → redraw → handle death → `in_pause(40)` to
   throttle held-key movement.
 - Movement: cursor keys **and** vi-keys (`hjkl`+`yubn`). Commands are NetHack-style
-  single letters (`,` `i` `w` `W` `P` `q` `e` `r`, `>`/`<`/Enter for stairs). Uppercase
+  single letters (`,` `i` `w` `W` `P` `q` `e` `r` `S`, `>`/`<`/Enter for stairs). Uppercase
   is **not** folded to lowercase (so `w` wield vs `W` wear are distinct).
 
 ### Sound (`sfx.c`)
