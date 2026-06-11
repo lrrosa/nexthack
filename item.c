@@ -334,15 +334,53 @@ void do_puton(void)
     sfx_magic();
 }
 
+/* Pick an item of class cls. Returns its index, -1 if you have none, or -2 if
+ * you cancelled. With a single type present it picks it silently; only when two
+ * *different* types are carried does it pop a letter menu (NetHack-style). */
+static int select_item(char cls, const char *prompt)
+{
+    int first = -1;
+    uint8_t i, row, multi = 0;
+    int k;
+
+    for (i = 0; i < inv_count; i++) {
+        if (objtypes[inv[i].otyp].cls != cls) continue;
+        if (first < 0) first = i;
+        else if (inv[i].otyp != inv[first].otyp) multi = 1;
+    }
+    if (first < 0) return -1;
+    if (!multi)    return first;
+
+    for (row = 1; row <= 21; row++) clear_line(row, C_BLACK);
+    print_str(2, 2, prompt, C_WHITE | C_BRIGHT);
+    row = 4;
+    for (i = 0; i < inv_count; i++) {
+        uint8_t x;
+        if (objtypes[inv[i].otyp].cls != cls) continue;
+        putcell(2, row, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
+        x = print_str(3, row, " - ", C_WHITE);
+        print_str(x, row, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
+        row++;
+    }
+    print_str(2, (uint8_t)(row + 1),
+              "(press the letter, any other key cancels)", C_CYAN | C_BRIGHT);
+
+    in_wait_nokey();
+    k = getkey();
+    in_wait_nokey();
+    if (k >= 'a' && (uint8_t)(k - 'a') < inv_count &&
+        objtypes[inv[k - 'a'].otyp].cls == cls)
+        return k - 'a';
+    return -2;
+}
+
 void do_quaff(void)
 {
-    int s = find_class('!');
+    int s = select_item('!', "Drink which potion?");
     uint8_t heal;
 
-    if (s < 0) {
-        msg("You have no potions to drink.");
-        return;
-    }
+    if (s == -1) { msg("You have no potions to drink."); return; }
+    if (s == -2) { msg("Never mind."); return; }
     heal = (uint8_t)(rn2(6) + objtypes[inv[s].otyp].prop);
     if (inv[s].otyp == O_EXHEAL) {
         if (pmaxhp < 250) pmaxhp++;
@@ -354,15 +392,14 @@ void do_quaff(void)
     if (php > pmaxhp) php = pmaxhp;
     inv_remove((uint8_t)s);
     sfx_quaff();
+    acted = 1; turns++;
 }
 
 void do_eat(void)
 {
-    int s = find_class('%');
-    if (s < 0) {
-        msg("You have nothing to eat.");
-        return;
-    }
+    int s = select_item('%', "Eat what?");
+    if (s == -1) { msg("You have nothing to eat."); return; }
+    if (s == -2) { msg("Never mind."); return; }
     if (nutrition > 1200) {
         msg("You are too full to eat now.");
         return;
@@ -372,17 +409,16 @@ void do_eat(void)
     inv_remove((uint8_t)s);
     msg("You finish your meal.  Delicious!");
     sfx_eat();
+    acted = 1; turns++;
 }
 
 void do_read(void)
 {
-    int s = find_class('?');
+    int s = select_item('?', "Read which scroll?");
     uint8_t ot;
 
-    if (s < 0) {
-        msg("You have nothing to read.");
-        return;
-    }
+    if (s == -1) { msg("You have nothing to read."); return; }
+    if (s == -2) { msg("Never mind."); return; }
     ot = inv[s].otyp;
     inv_remove((uint8_t)s);
     sfx_magic();
@@ -395,6 +431,7 @@ void do_read(void)
         hero_x = tx; hero_y = ty;
         msg("You feel a wrenching sensation.");
     }
+    acted = 1; turns++;
 }
 
 /* ---- save / restore (the inventory objects) ---- */

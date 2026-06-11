@@ -150,6 +150,9 @@ is declared `extern` in `game.h` and **defined once in `nexthack.c`**. Modules i
 - `w`/`W`/`P` equip the **best** carried weapon/armour/ring (highest
   `prop + ench - ero`). The combat globals (`weapon_dmg`, `armor_def`, `ac`) are
   recomputed by `recompute_gear()` from the worn items.
+- `q`/`e`/`r` use `select_item()`: silent when you carry one type, but it pops a
+  letter menu when two *different* types are present. These three set
+  `acted`/`turns` themselves, so a cancel or a no-op costs no turn.
 
 ### Monster AI (`monster.c`)
 - Monster types are a table (`montypes[]`: char, hp, damage, xp, min depth, tile, name);

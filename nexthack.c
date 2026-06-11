@@ -492,9 +492,9 @@ start_game:
         case 'w': do_wield();       turns++; acted = 1; in_wait_nokey(); break;
         case 'W': do_wear();        turns++; acted = 1; in_wait_nokey(); break;
         case 'P': do_puton();       turns++; acted = 1; in_wait_nokey(); break;
-        case 'q': do_quaff();       turns++; acted = 1; in_wait_nokey(); break;
-        case 'e': do_eat();         turns++; acted = 1; in_wait_nokey(); break;
-        case 'r': do_read();        turns++; acted = 1; in_wait_nokey(); break;
+        case 'q': do_quaff();       in_wait_nokey(); break;   /* set acted/turns */
+        case 'e': do_eat();         in_wait_nokey(); break;   /* themselves, so a */
+        case 'r': do_read();        in_wait_nokey(); break;   /* cancel costs none */
         case 'i': show_inventory(); break;          /* viewing costs no turn */
 
         case 'S':                                   /* save game and quit to title */
