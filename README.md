@@ -74,8 +74,13 @@ code.
       boot and then deleted (NetHack-style — no save-scumming).
 - [x] **Phase 16 — Deeper dungeon**: the dungeon now descends to Dlvl 50. Cheap
       per-level state (gold/items/kills) is kept for every level; the fog-of-war
-      lives in a 12-level **LRU pool** (recently visited levels stay mapped,
+      lives in a 10-level **LRU pool** (recently visited levels stay mapped,
       distant ones are forgotten) so RAM stays flat with depth.
+- [x] **Phase 17 — Item variety**: the inventory is now a per-item record
+      (type + enchantment + erosion); a catalogue gives several weapons and
+      armours (resolved by depth, sometimes enchanted), two potions and typed
+      scrolls/rings. `w`/`W`/`P` equip the best you carry; stepping on an item
+      names it ("You see here a +1 short sword"); the pack holds 24 in two columns.
 - [ ] Later — equipment erosion; shops; special levels.
 - [ ] Polish (minor, low priority) — show each held item's graphic tile beside its
       name on the inventory screen (`i`); tackle after the items above.

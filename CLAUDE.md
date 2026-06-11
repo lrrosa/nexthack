@@ -133,8 +133,23 @@ is declared `extern` in `game.h` and **defined once in `nexthack.c`**. Modules i
 - Memory budget: the cheap per-level masks scale to all 50 levels (`MAXLVL =
   DLVL_AMULET`, ~3 bytes/level), but the fog-of-war does **not** — it is a fixed
   `FOV_SLOTS`-entry LRU pool, so RAM is independent of dungeon depth. esxDOS itself
-  adds ~1.5 KB of BSS (sector buffers), so `FOV_SLOTS` (12) is kept below the RAM
+  adds ~1.5 KB of BSS (sector buffers), so `FOV_SLOTS` (10) is kept below the RAM
   max (~18) to reserve headroom for future features.
+
+### Items (`item.c`)
+- The inventory is an `obj_t[]` (an `otyp` into the `objtypes[]` catalogue, an
+  `ench` enchantment, an `ero` erosion level and a `worn` flag) — up to 24,
+  drawn in two columns on the inventory screen.
+- The floor only stores an item's **class char** (`)` `[` `!` `%` `?` `=`), so
+  generation/persistence stays untouched. The *specific* object (which weapon,
+  what enchantment) is resolved when the cell is looked at or picked up,
+  deterministically from `(dlvl, x, y, world_seed)` via a side hash that does
+  **not** touch the RNG stream — so a floor item is always the same thing and
+  stays in sync with the deterministic generation. Better/enchanted items appear
+  deeper (`mindep` per catalogue entry).
+- `w`/`W`/`P` equip the **best** carried weapon/armour/ring (highest
+  `prop + ench - ero`). The combat globals (`weapon_dmg`, `armor_def`, `ac`) are
+  recomputed by `recompute_gear()` from the worn items.
 
 ### Monster AI (`monster.c`)
 - Monster types are a table (`montypes[]`: char, hp, damage, xp, min depth, tile, name);

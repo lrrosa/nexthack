@@ -52,7 +52,7 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   2
+#define SAVE_VER   4
 
 struct save_hdr {
     uint16_t magic;
@@ -303,13 +303,9 @@ static void describe(char dest, int moved)
     switch (dest) {
     case '>': msg("There is a staircase down here."); break;
     case '<': msg("There is a staircase up here.");   break;
-    case '%': msg("There is a food ration here.  (, to pick up)");   break;
-    case ')': msg("There is a weapon here.  (, to pick up)");        break;
-    case '[': msg("There is some armor here.  (, to pick up)");      break;
-    case '!': msg("There is a potion here.  (, to pick up)");        break;
-    case '?': msg("There is a scroll here.  (, to pick up)");        break;
-    case '=': msg("There is a ring here.  (, to pick up)");          break;
     case '"': msg("The Amulet of Yendor lies here!  (, to pick up)"); break;
+    case ')': case '[': case '!': case '%': case '?': case '=':
+        msg2("You see here ", floor_item_desc(), ".  (, to pick up)"); break;
     default:  msg("");                                break;
     }
 }

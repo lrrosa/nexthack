@@ -10,6 +10,7 @@
 
 void item_reset(void);     /* empty inventory and unequip (new game)        */
 void do_pickup(void);      /* pick up the item under the hero               */
+const char *floor_item_desc(void); /* describe the item under the hero (look) */
 void show_inventory(void); /* full-screen inventory list (blocks for a key) */
 void do_wield(void);       /* wield the first weapon                        */
 void do_wear(void);        /* wear the first armor                          */
