@@ -102,6 +102,23 @@ static void recompute_gear(void)
     armor_def = redux;
 }
 
+/* corrode the worn item of class cls (acid/rust from a monster): bump its
+ * erosion up to a cap of 3, weakening it via recompute_gear. */
+void corrode_worn(char cls)
+{
+    uint8_t i;
+    for (i = 0; i < inv_count; i++) {
+        if (inv[i].worn && objtypes[inv[i].otyp].cls == cls) {
+            if (inv[i].ero < 3) {
+                inv[i].ero++;
+                recompute_gear();
+                msg2("Your ", objtypes[inv[i].otyp].name, " corrodes!");
+            }
+            return;
+        }
+    }
+}
+
 /* a printable description with an erosion prefix and +N enchantment, e.g.
  * "+2 long sword" or "rusty chain mail". Returns a shared static buffer. */
 static const char *obj_desc(const obj_t *o)

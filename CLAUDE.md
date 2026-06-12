@@ -133,7 +133,7 @@ is declared `extern` in `game.h` and **defined once in `nexthack.c`**. Modules i
 - Memory budget: the cheap per-level masks scale to all 50 levels (`MAXLVL =
   DLVL_AMULET`, ~3 bytes/level), but the fog-of-war does **not** — it is a fixed
   `FOV_SLOTS`-entry LRU pool, so RAM is independent of dungeon depth. esxDOS itself
-  adds ~1.5 KB of BSS (sector buffers), so `FOV_SLOTS` (10) is kept below the RAM
+  adds ~1.5 KB of BSS (sector buffers), so `FOV_SLOTS` (8) is kept below the RAM
   max (~18) to reserve headroom for future features.
 
 ### Items (`item.c`)
@@ -155,9 +155,11 @@ is declared `extern` in `game.h` and **defined once in `nexthack.c`**. Modules i
   `acted`/`turns` themselves, so a cancel or a no-op costs no turn.
 
 ### Monster AI (`monster.c`)
-- Monster types are a table (`montypes[]`: char, hp, damage, xp, min depth, tile, name);
-  `spawn_level_monsters()` draws from the depth-appropriate pool. HP/damage scale with
-  depth.
+- Monster types are a table (`montypes[]`: char, hp, damage, xp, min depth, tile,
+  `corr`, name); `spawn_level_monsters()` draws from the depth-appropriate pool.
+  HP/damage scale with depth. A `corr` (corrosive) monster — the acid blob — calls
+  `corrode_worn()` (in `item.c`) to rust the hero's armour when it bites and the
+  wielded weapon when struck; erosion raises `obj_t.ero`, capped at 3.
 - Pathfinding is a **per-turn BFS "Dijkstra map"** from the hero (`compute_dist_map`)
   over walkable cells; each monster steps to the lowest-distance neighbour. One search
   serves all monsters. The BFS frontier queue `bfsq` is **bounded** (`BFSQ_SIZE`) with

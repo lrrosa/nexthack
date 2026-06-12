@@ -37,7 +37,7 @@ static const uint8_t master[16] = {
 
 /* Each tile: 64 pixels (8 rows x 8 cols), values are master-palette indices.
  * Order matches the T_* numbering starting at T_ROCK. */
-static const uint8_t gfx[24][64] = {
+static const uint8_t gfx[25][64] = {
   { /* T_ROCK */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
@@ -109,7 +109,10 @@ static const uint8_t gfx[24][64] = {
     0,13,0,0,0,13,0,0, 0,0,13,13,13,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
   { /* T_AMULET (Amulet of Yendor: gold-set blue gem on a chain) */
     0,0,0,13,13,0,0,0, 0,0,0,13,13,0,0,0, 0,0,13,13,13,13,0,0, 0,13,11,12,11,11,13,0,
-    0,13,11,11,11,11,13,0, 0,13,11,11,11,11,13,0, 0,0,13,11,11,13,0,0, 0,0,0,13,13,0,0,0 }
+    0,13,11,11,11,11,13,0, 0,13,11,11,11,11,13,0, 0,0,13,11,11,13,0,0, 0,0,0,13,13,0,0,0 },
+  { /* T_ACIDBLOB (slimy green blob with a wet highlight) */
+    0,0,0,9,9,0,0,0, 0,0,9,4,9,9,0,0, 0,9,9,9,9,9,9,0, 9,9,9,9,9,9,9,9,
+    9,9,10,9,9,10,9,9, 9,9,9,9,9,9,9,9, 0,9,9,9,9,9,9,0, 0,0,9,9,9,9,0,0 }
 };
 
 /* pack 64 palette indices into a 4bpp 8x8 tile (32 bytes) at a tile slot */
@@ -124,7 +127,7 @@ static void pack_tile(uint8_t tilenum, const uint8_t *px)
 static void load_gfx_tiles(void)
 {
     uint8_t i;
-    for (i = 0; i < 24; i++)
+    for (i = 0; i < 25; i++)
         pack_tile((uint8_t)(T_ROCK + i), gfx[i]);
 }
 

@@ -362,7 +362,7 @@ void level_reset_persistence(void)
  * recently visited FOV_SLOTS levels stay resident. A level evicted from the pool
  * forgets its map (it shows unexplored again if revisited later). The cheap
  * per-level bitmasks (gold/item/monster kills) are still kept for every level. */
-#define FOV_SLOTS 10  /* remember the 10 most recently visited levels' maps;
+#define FOV_SLOTS 8   /* remember the 8 most recently visited levels' maps;
                        * kept well below the RAM max to reserve BSS for future
                        * features (see the memory budget note). */
 

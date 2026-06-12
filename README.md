@@ -74,14 +74,17 @@ code.
       boot and then deleted (NetHack-style — no save-scumming).
 - [x] **Phase 16 — Deeper dungeon**: the dungeon now descends to Dlvl 50. Cheap
       per-level state (gold/items/kills) is kept for every level; the fog-of-war
-      lives in a 10-level **LRU pool** (recently visited levels stay mapped,
+      lives in an 8-level **LRU pool** (recently visited levels stay mapped,
       distant ones are forgotten) so RAM stays flat with depth.
 - [x] **Phase 17 — Item variety**: the inventory is now a per-item record
       (type + enchantment + erosion); a catalogue gives several weapons and
       armours (resolved by depth, sometimes enchanted), two potions and typed
       scrolls/rings. `w`/`W`/`P` equip the best you carry; stepping on an item
       names it ("You see here a +1 short sword"); the pack holds 24 in two columns.
-- [ ] Later — equipment erosion; shops; special levels.
+- [x] **Phase 18 — Equipment corrosion**: an acid blob (`a`) corrodes your worn
+      armour when it hits you and your wielded weapon when you strike it; eroded
+      gear reads "rusty"/"corroded" and loses effectiveness (erosion capped at 3).
+- [ ] Later — shops; special levels.
 - [ ] Polish (minor, low priority) — show each held item's graphic tile beside its
       name on the inventory screen (`i`); tackle after the items above.
 
@@ -181,8 +184,8 @@ from the roguelike tradition):
   stairs up/down (`<` `>`)
 - **Items:** gold (`$`), weapon (`)`), armor (`[`), potion (`!`), food (`%`),
   scroll (`?`), ring (`=`), the Amulet of Yendor (`"`)
-- **Creatures:** hero (`@`), rat (`r`), bat (`B`), kobold (`k`), dog (`d`),
-  snake (`S`), orc (`o`), zombie (`Z`)
+- **Creatures:** hero (`@`), rat (`r`), bat (`B`), acid blob (`a`), kobold (`k`),
+  dog (`d`), snake (`S`), orc (`o`), zombie (`Z`)
 
 ## Technical notes
 

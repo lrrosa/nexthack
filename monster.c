@@ -9,6 +9,7 @@
 #include "rng.h"          /* rn2                                              */
 #include "game.h"         /* hero/php/dead/dlvl, xp/xlvl, weapon_dmg/armor_def */
 #include "sfx.h"          /* sound effects                                    */
+#include "item.h"         /* corrode_worn                                     */
 
 #define MAXMON 8
 
@@ -27,17 +28,20 @@ typedef struct {
     uint8_t     xp;         /* experience granted for a kill  */
     uint8_t     mindepth;   /* shallowest depth it appears at */
     uint8_t     tile;
+    uint8_t     corr;       /* corrodes the hero's gear on contact */
     const char *name;
 } MonType;
 
 static const MonType montypes[] = {
-    { 'r',  3, 3, 1, 1, T_RAT,    "rat"    },
-    { 'B',  3, 2, 1, 1, T_BAT,    "bat"    },
-    { 'k',  4, 2, 2, 1, T_KOBOLD, "kobold" },
-    { 'd',  6, 3, 2, 2, T_DOG,    "dog"    },
-    { 'S',  6, 4, 3, 3, T_SNAKE,  "snake"  },
-    { 'o',  8, 4, 4, 4, T_ORC,    "orc"    },
-    { 'Z', 14, 4, 6, 6, T_ZOMBIE, "zombie" }
+    /* ch  hp dmg xp mindep tile        corr name */
+    { 'r',  3, 3, 1, 1, T_RAT,      0, "rat"       },
+    { 'B',  3, 2, 1, 1, T_BAT,      0, "bat"       },
+    { 'a',  5, 2, 3, 2, T_ACIDBLOB, 1, "acid blob" },
+    { 'k',  4, 2, 2, 1, T_KOBOLD,   0, "kobold"    },
+    { 'd',  6, 3, 2, 2, T_DOG,      0, "dog"       },
+    { 'S',  6, 4, 3, 3, T_SNAKE,    0, "snake"     },
+    { 'o',  8, 4, 4, 4, T_ORC,      0, "orc"       },
+    { 'Z', 14, 4, 6, 6, T_ZOMBIE,   0, "zombie"    }
 };
 #define NMON ((uint8_t)(sizeof(montypes) / sizeof(montypes[0])))
 
@@ -157,6 +161,8 @@ void attack_monster(uint8_t mi)
         msg2("You hit the ", mt->name, ".");
         sfx_hit();
     }
+    if (mt->corr && rn2(2))         /* acid eats the weapon you strike it with */
+        corrode_worn(')');
 }
 
 /* ---- monster turn: chase the hero, attack when adjacent ---- */
@@ -181,6 +187,8 @@ static void monster_hits_player(uint8_t i)
     } else {
         php = (uint8_t)(php - bite);
         msg2("The ", mt->name, " bites you!");
+        if (mt->corr && rn2(2))     /* acid/rust corrodes your worn armour */
+            corrode_worn('[');
     }
 }
 

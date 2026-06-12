@@ -19,6 +19,8 @@ void do_eat(void);         /* eat the first food                            */
 void do_puton(void);       /* put on the first ring                         */
 void do_read(void);        /* read the first scroll                         */
 
+void corrode_worn(char cls); /* acid/rust corrodes the worn item of this class */
+
 void item_save(uint8_t h); /* serialise inventory + equipment to a save file */
 void item_load(uint8_t h); /* restore them from a save file                  */
 
