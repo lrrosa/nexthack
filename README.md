@@ -90,7 +90,11 @@ code.
       into a resident half (hot code + all data in `0x8000-0xBFF0`) and cold code
       banked into the `0xC000` window, via z88dk `__banked`. Frees ~19 KB for new
       code. Needs the nightly z88dk (see Build).
-- [ ] Later — shops; special levels (now unblocked by Phase 20).
+- [x] **Phase 21 — Shops**: ~1/3 of levels (depth 2+) hold a shop room stocked
+      with priced items and a stationary shopkeeper (`@`). Picking an item up in a
+      shop buys it (gold deducted, refused if you can't pay); `d` sells a carried
+      item back for half price. Gives the hero's gold a purpose at last.
+- [ ] Later — special levels.
 - [ ] Polish (minor, low priority) — show each held item's graphic tile beside its
       name on the inventory screen (`i`); tackle after the items above.
 
