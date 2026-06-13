@@ -13,8 +13,11 @@ session from this folder so this file is auto-loaded.
 
 ## Build & run
 
-The z88dk SDK and CSpect live one directory up (`..\z88dk`, `..\CSpect`); they are
-not in this repo. Build/run are Windows batch scripts (run from this folder):
+The z88dk SDK and CSpect live one directory up (`..\z88dk-latest`, `..\CSpect`);
+they are not in this repo. **The build needs the nightly z88dk** (`..\z88dk-latest`,
+v24836+) for its `__banked` trampoline — the game is **code-banked** (see Memory
+budget). The old pinned `..\z88dk` (v23854) lacks it and can no longer build this
+source. Build/run are scripts run from this folder:
 
 ```bat
 build.bat            REM builds the whole game -> nexthack.nex (+ nexthack.map)
@@ -28,20 +31,21 @@ run-sd.bat           REM deploys into zxnext.sd and boots NextZXOS (tests save)
 .\build.ps1 -Clean   # force a full rebuild
 ```
 
-`build.bat` sets `ZCCCFG`/`PATH` and invokes (one zcc pass over all modules):
+`build.bat` sets `ZCCCFG`/`PATH` (to `..\z88dk-latest`) and invokes one zcc pass:
 
 ```
-zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -m <srcs> -o nexthack -create-app
+zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startup=1 -pragma-include:zpragma.inc -m <srcs> -o nexthack -create-app
 ```
 
-That single pass recompiles **everything** every time (~4 min). `build.ps1` does
-the same compile per `.c` (byte-identical output — zcc/SDCC compile per
-translation unit, so `--max-allocs` quality is unchanged), but **skips untouched
-modules and parallelises** across cores: clean ~80s, one-module edit ~25s, no-op
-~2s. Prefer it for iteration; `build.bat` stays as the simple single-shot fallback.
+`zpragma.inc` (`REGISTER_SP=0xBFF0`, `CRT_APPEND_MMAP=1`, `CLIB_BANKING_SEGMENT=3`)
+and `mmap.inc` (the `PAGE_20_CODE`/`PAGE_22_CODE` section ORGs) drive the banking.
+That single pass recompiles **everything** (~3 min). `build.ps1` does the same
+compile per `.c` to a `.o` (byte-identical output — verified same SHA-256), but
+**skips untouched modules and parallelises** across cores: clean ~75s, one-module
+edit ~25s, no-op ~2s. Prefer it; `build.bat` is the single-shot fallback.
 
 When adding a new `.c` module, add it to the `SRCS`/`$srcs` list in **both**
-`build.bat` and `build.ps1`.
+`build.bat` and `build.ps1`, and decide resident vs banked (see Memory budget).
 
 There are no automated tests. Verification is manual: build, then run in CSpect and
 observe. The build agent cannot see the emulator window, so behaviour is confirmed
@@ -63,20 +67,28 @@ by the human running `run.bat`.
 
 Strict split between the **Next hardware platform layer** and **game logic**:
 
-| File | Responsibility |
-|------|----------------|
-| `platform.c/.h` | All ZX Next hardware: tilemap setup, tile/font/palette, drawing primitives, text/messages, keyboard |
-| `rng.c/.h` | xorshift16 PRNG + `world_seed` |
-| `level.c/.h` | terrain buffer, procedural generation, persistence, field of view |
-| `monster.c/.h` | monster catalogue, BFS pathfinding, combat, XP |
-| `item.c/.h` | inventory and item actions (pick up, wield/wear/quaff/eat/read/put-on) |
-| `sfx.c/.h` | beeper sound effects |
-| `game.h` | shared player/run state (`extern`s defined in `nexthack.c`) |
-| `nexthack.c` | game state definitions, main loop, map/status rendering, title screen |
+Modules are also split by **resident vs banked** (see Memory budget). Header `.h`
+files declare the interface; the `.c` is resident (R) or banked (B):
+
+| File | R/B | Responsibility |
+|------|-----|----------------|
+| `mainentry.c` | R | `main()` only: the turn loop / dispatcher (CRT entry — can't be banked) |
+| `platform.c/.h` | R | hot Next hardware: tilemap draw primitives, text/messages, keyboard, file I/O; `gfx`/palette tables |
+| `platform_init.c` | B | one-time setup: tilemap/font/tile/palette init (`tm_init`) |
+| `rng.c/.h` | R | xorshift16 PRNG + `world_seed` |
+| `level.c/.h` | R | terrain buffer + the per-cell leaves `terrain`/`walkable`/`tile_for`; `.h` declares the whole level interface |
+| `levelgen.c` | B | procedural generation + gold/item persistence (owns room table + masks) |
+| `levelfov.c` | B | field of view + save/restore (owns the fog-of-war pool) |
+| `monster.c/.h` | R | monster arrays + per-monster leaves (`monster_at`, `mon_find`, `mon_tile`, `pick_mon`); catalogue |
+| `monster_ai.c` | B | BFS chase, combat, spawning, kill-persistence |
+| `item.c/.h` | B | inventory and item actions (pick up, wield/wear/quaff/eat/read/put-on) |
+| `sfx.c/.h` | B | beeper sound effects |
+| `nexthack.c/.h` | B | game-state globals (resident DATA) + rendering, turn step, level orchestration, save/restore, screens; `.h` declares its `__banked` entry points for `mainentry.c` |
+| `game.h` | — | shared player/run state (`extern`s defined in `nexthack.c`) |
 
 Shared mutable state (`hero_x/y`, `dlvl`, `php`, `gold`, `ac`, `xp`, `nutrition`, …)
-is declared `extern` in `game.h` and **defined once in `nexthack.c`**. Modules include
-`game.h` to read/write it.
+is declared `extern` in `game.h` and **defined once in `nexthack.c`** (as resident
+DATA — banked code's data is resident too). Modules include `game.h` to read/write it.
 
 ### Display (the tilemap)
 - Renders on the Next **hardware tilemap, 80×32 chars** (`TM_W`×`TM_H`). The ULA layer
@@ -188,19 +200,42 @@ is declared `extern` in `game.h` and **defined once in `nexthack.c`**. Modules i
 - Beeper effects via z88dk's `bit_beepfx`. The effects are cycle-timed for 3.5 MHz, so
   `sfx_*` drops the CPU to 3.5 MHz for the effect and restores 28 MHz after.
 
-## Memory budget — the constraint to respect
-The program (code + data + BSS + stack) lives in `0x8000-0xFFFF` (32 KB; Bank 5 below
-is the tilemap). The stack pointer is `0xFF58` with a 512-byte stack, so **BSS must end
-well below `~0xFD58`** or it corrupts the stack and the machine resets to BASIC. The
-`.nex` is two 16K banks. Large `static` arrays are the danger — check
-`__BSS_END_tail` vs `__register_sp` in `nexthack.map` after adding any. This already bit
-the BFS queue once (it was `MAPW*MAPH`).
+## Memory budget — the constraint to respect (CODE-BANKED architecture)
+The game **broke the 64 KB ceiling by code-banking**. Layout:
+- **Resident** (`0x8000-0xBFF0`, one 16 KB bank): hot code + **all** data/BSS + the
+  512 B stack (`REGISTER_SP=0xBFF0`). This is the tight half.
+- **Banked** (`0xC000-0xFFFF`, `CLIB_BANKING_SEGMENT=3`): cold code in two pages,
+  `PAGE_20_CODE` (Bank 10) and `PAGE_22_CODE` (Bank 11), mapped in on demand by the
+  z88dk `__banked` trampoline. **~19 KB free here for new code.**
+- **Bank 5** (`0x4000-0x7FFF`, always mapped): tilemap + tile defs, and its free tail
+  (`0x7400-0x8000`) holds the BFS scratch `dist[]`+`bfsq[]` (data-banked out of resident).
 
-**`--max-allocs-per-node200000` is also load-bearing for code *size*, not just
-quality/speed.** The SDCC register allocator's thoroughness shrinks the code; measured
-`__BSS_END_tail` by setting: 200000 → `$FCD6` (+130 B headroom), 25000 → `$FD08` (+80 B),
-default 3000 → `$FEE1` (**−393 B, overflows the stack → boots to BASIC**). So do **not**
-lower it to speed up compiles — the budget can't spare the ~500 B the code grows. For
-faster builds use `build.ps1` (incremental/parallel, same 200000, byte-identical) instead.
-Current headroom is only ~130 B, so a new feature that overflows may need code shrinking,
-not a `max-allocs` bump.
+**The resident half is the constraint.** Everything resident (code+data+BSS) must end
+below the stack floor `~0xBDF0`, or the stack corrupts and the machine resets to BASIC.
+Check `__CODE_END_tail` / `__BSS_END_tail` in `nexthack.map` after any change. Current:
+`__CODE_END=$AFE6`, `__BSS_END=$BD9E` — only **~82 B** to the stack floor.
+
+**Adding a feature:**
+- **New code → make it banked** (it has room): put it in a module compiled into
+  `PAGE_20_CODE`/`PAGE_22_CODE`, mark entry points `__banked`. Cold/per-turn code banks
+  freely (the trampoline cost is negligible off the per-cell path).
+- **New resident DATA is scarce (~82 B).** Banked code's `static` data is still
+  resident, so data-heavy features need data-banking (Bank 5 is full; would need true
+  MMU data paging) or trimming (e.g. `FOV_SLOTS`, already cut 8→4).
+- **`--max-allocs-per-node200000` is load-bearing for resident code size** (the SDCC
+  allocator's thoroughness shrinks code); don't lower it.
+
+**Partitioning rules (how the split is done — see `nextzxos-banking-findings` memory):**
+1. Split a mixed module into wholly-hot/wholly-cold **files** — in-file `#pragma codeseg`
+   does NOT partition by position (it scrambles sections).
+2. A module containing `main()` → bank the module, move only `main()` to a tiny resident
+   file (`mainentry.c`); the CRT jumps straight to main, so it can't be banked.
+3. Keep the per-cell/per-move **leaves** resident (`platform.c` draw primitives + `gfx`,
+   `level.c` terrain/walkable/tile_for, `monster.c` monster_at/mon_find/…) so banked
+   callers reach them by direct calls; banked entry points are `__banked`, intra-page
+   static helpers stay plain.
+4. Data shared across a split is defined in one file, `extern` in the other (DATA is
+   resident regardless of which file's code is banked).
+5. Resident modules: `mainentry.c`, `platform.c`, `level.c`, `monster.c`, `rng.c`.
+   Banked: `nexthack.c`+`platform_init.c` (PAGE_22); `item.c`,`levelgen.c`,`levelfov.c`,
+   `monster_ai.c`,`sfx.c` (PAGE_20).
