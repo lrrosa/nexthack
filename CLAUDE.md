@@ -195,3 +195,12 @@ well below `~0xFD58`** or it corrupts the stack and the machine resets to BASIC.
 `.nex` is two 16K banks. Large `static` arrays are the danger — check
 `__BSS_END_tail` vs `__register_sp` in `nexthack.map` after adding any. This already bit
 the BFS queue once (it was `MAPW*MAPH`).
+
+**`--max-allocs-per-node200000` is also load-bearing for code *size*, not just
+quality/speed.** The SDCC register allocator's thoroughness shrinks the code; measured
+`__BSS_END_tail` by setting: 200000 → `$FCD6` (+130 B headroom), 25000 → `$FD08` (+80 B),
+default 3000 → `$FEE1` (**−393 B, overflows the stack → boots to BASIC**). So do **not**
+lower it to speed up compiles — the budget can't spare the ~500 B the code grows. For
+faster builds use `build.ps1` (incremental/parallel, same 200000, byte-identical) instead.
+Current headroom is only ~130 B, so a new feature that overflows may need code shrinking,
+not a `max-allocs` bump.
