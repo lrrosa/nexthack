@@ -142,8 +142,10 @@ static void monster_hits_player(uint8_t i)
 
 #define UNREACH 255
 /* BFS frontier queue. A level has far fewer walkable cells than MAPW*MAPH, so
- * a bounded queue saves RAM; enqueues are guarded so it can never overflow. */
-#define BFSQ_SIZE 700
+ * a bounded queue saves RAM; enqueues are guarded so it can never overflow.
+ * 696 (was 700) so it packs exactly behind dist[] in Bank 5: dist is 1680 B at
+ * 0x7400, bfsq is 696*2=1392 B at 0x7A90, ending exactly at 0x8000. */
+#define BFSQ_SIZE 696
 
 /* dist[] lives in Bank 5's free space (after the 80x32x2 tilemap, 0x7400),
  * which the CPU always sees at 0x4000-0x7FFF (segment 1) and which code banking
@@ -155,7 +157,9 @@ static void monster_hits_player(uint8_t i)
  * SDCC rejects casts to a pointer-to-array type, so index the flat view as
  * dist[y*MAPW + x] (compute_dist_map works through the flat `d`). */
 #define dist ((uint8_t *)0x7400u)
-static uint16_t bfsq[BFSQ_SIZE];
+/* bfsq also lives in Bank 5 (right after dist), same rationale: pure per-turn
+ * BFS scratch, never touched during esxDOS file I/O. */
+#define bfsq ((uint16_t *)0x7A90u)
 
 static void compute_dist_map(void)
 {

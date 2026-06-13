@@ -51,8 +51,8 @@
 #define TM_W 80
 #define TM_H 32
 
-/* set up the tilemap, font, graphic tiles and palette */
-void tm_init(void);
+/* set up the tilemap, font, graphic tiles and palette (banked; runs once) */
+void tm_init(void) __banked;
 
 /* drawing */
 void    putcell(uint8_t x, uint8_t y, uint8_t ch, uint8_t coff);   /* font tile */

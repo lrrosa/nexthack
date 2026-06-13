@@ -22,13 +22,15 @@
 
 /* Text ink colours, indexed by colour offset 1..15 (offset 0 is reserved
  * for the graphic-tile master palette). */
-static const uint8_t inkcol[16] = {
+/* These tables are read by the banked setup in platform_init.c (via extern),
+ * so they are not static. They stay resident (read once at startup). */
+const uint8_t inkcol[16] = {
     0x00, 0x02, 0x80, 0x82, 0x10, 0x12, 0x90, 0x92,  /* dim    */
     0x00, 0x03, 0xE0, 0xE3, 0x1C, 0x1F, 0xFC, 0xFF   /* bright */
 };
 
 /* 16-colour master palette (RRRGGGBB) used by the graphic tiles. */
-static const uint8_t master[16] = {
+const uint8_t master[16] = {
     0x00, 0x49, 0x92, 0xDB, 0xFF,   /* 0 black 1 dkgrey 2 grey 3 ltgrey 4 white */
     0x44, 0x88, 0xD5,               /* 5 dkbrown 6 brown 7 tan                  */
     0xE0, 0x1C, 0x08, 0x03,         /* 8 red 9 green 10 dkgreen 11 blue         */
@@ -37,7 +39,7 @@ static const uint8_t master[16] = {
 
 /* Each tile: 64 pixels (8 rows x 8 cols), values are master-palette indices.
  * Order matches the T_* numbering starting at T_ROCK. */
-static const uint8_t gfx[25][64] = {
+const uint8_t gfx[25][64] = {
   { /* T_ROCK */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
@@ -116,92 +118,9 @@ static const uint8_t gfx[25][64] = {
 };
 
 /* pack 64 palette indices into a 4bpp 8x8 tile (32 bytes) at a tile slot */
-static void pack_tile(uint8_t tilenum, const uint8_t *px)
-{
-    uint8_t *dst = (uint8_t *)(TILEDEF_BASE + (uint16_t)tilenum * 32);
-    uint8_t i;
-    for (i = 0; i < 32; i++)
-        dst[i] = (uint8_t)(((px[i * 2] & 0x0F) << 4) | (px[i * 2 + 1] & 0x0F));
-}
-
-static void load_gfx_tiles(void)
-{
-    uint8_t i;
-    for (i = 0; i < 25; i++)
-        pack_tile((uint8_t)(T_ROCK + i), gfx[i]);
-}
-
-/* expand the 1bpp ROM font into 4bpp font tiles 0..127 */
-static void tm_init_font(void)
-{
-    const uint8_t *src = (const uint8_t *)ROM_FONT;
-    uint8_t *dst = (uint8_t *)TILEDEF_BASE;
-    uint16_t c;
-    uint8_t row, col, b;
-
-    for (c = 0; c < 128; c++) {
-        const uint8_t *g = src + (c << 3);
-        for (row = 0; row < 8; row++) {
-            b = g[row];
-            for (col = 0; col < 4; col++) {        /* 2 pixels per byte */
-                uint8_t left  = (b & 0x80) ? 1 : 0; b <<= 1;
-                uint8_t right = (b & 0x80) ? 1 : 0; b <<= 1;
-                *dst++ = (uint8_t)((left << 4) | right);
-            }
-        }
-    }
-}
-
-static void tm_init_palette(void)
-{
-    uint8_t i, o;
-
-    /* reg 0x43: bits 5-4 = layer (11 = tilemap), bit 6 = first/second.
-     * Tilemap first palette = 0b0011_0000 = 0x30 (autoinc on). */
-    ZXN_WRITE_REG(0x43, 0x30);
-
-    /* offset 0 (indices 0..15): master palette for graphic tiles, full bright */
-    ZXN_WRITE_REG(0x40, 0x00);
-    for (i = 0; i < 16; i++)
-        ZXN_WRITE_REG(0x41, master[i]);
-
-    /* offset 1 (indices 16..31): the master palette with every RGB channel
-     * halved, for remembered, out-of-sight terrain. Half is the darkest a grey
-     * can go and stay neutral on the Next's 3-3-2 colour (dimmer tints it). */
-    ZXN_WRITE_REG(0x40, 16);
-    for (i = 0; i < 16; i++) {
-        uint8_t c = master[i];
-        uint8_t r = (uint8_t)((c >> 5) & 7);
-        uint8_t g = (uint8_t)((c >> 2) & 7);
-        uint8_t b = (uint8_t)(c & 3);
-        ZXN_WRITE_REG(0x41,
-            (uint8_t)(((r >> 1) << 5) | ((g >> 1) << 2) | (b >> 1)));
-    }
-
-    /* offsets 2..15: black paper + ink colour, for coloured text */
-    for (o = 2; o < 16; o++) {
-        ZXN_WRITE_REG(0x40, (uint8_t)(o << 4));   /* index o*16        */
-        ZXN_WRITE_REG(0x41, 0x00);                /* o*16+0 : black    */
-        ZXN_WRITE_REG(0x41, inkcol[o]);           /* o*16+1 : ink      */
-    }
-}
-
-void tm_init(void)
-{
-    ZXN_WRITE_REG(0x07, 0x03);   /* 28 MHz turbo for snappy redraws         */
-    ZXN_WRITE_REG(0x68, 0x80);   /* disable ULA layer: only tilemap is shown*/
-    ZXN_WRITE_REG(0x4A, 0x00);   /* fallback colour = black (border area)   */
-    ZXN_WRITE_REG(0x6F, 0x00);   /* tile definitions base -> 0x4000         */
-    ZXN_WRITE_REG(0x6E, 0x20);   /* tilemap base          -> 0x6000         */
-    ZXN_WRITE_REG(0x4C, 0x0F);   /* tilemap transparency index              */
-    ZXN_WRITE_REG(0x6C, 0x00);   /* default attribute                       */
-
-    tm_init_font();
-    load_gfx_tiles();
-    tm_init_palette();
-
-    ZXN_WRITE_REG(0x6B, 0xC0);   /* enable: bit7 on, bit6 80x32, attrs kept */
-}
+/* The one-time tilemap/font/tile/palette setup (pack_tile, load_gfx_tiles,
+ * tm_init_font, tm_init_palette, tm_init) moved to the banked platform_init.c.
+ * TILEDEF_BASE/ROM_FONT went with it; only TILEMAP_BASE is used below. */
 
 /* ---- drawing ---- */
 

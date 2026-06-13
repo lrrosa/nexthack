@@ -48,21 +48,24 @@ int  level_take_item(uint8_t x, uint8_t y) __banked;
 /* forget all remembered gold/item pickups (new game) */
 void level_reset_persistence(void) __banked;
 
-/* save/restore the per-depth persistence bitmasks and the fog-of-war bitmaps */
-void level_save(uint8_t h);
-void level_load(uint8_t h);
+/* save/restore the per-depth persistence bitmasks and the fog-of-war bitmaps
+ * (banked, in levelfov.c) */
+void level_save(uint8_t h) __banked;
+void level_load(uint8_t h) __banked;
 
-/* ---- field of view (fog of war) ----
+/* ---- field of view (fog of war) -- banked (levelfov.c) ----
+ * None of these is per-cell hot: fov_update runs once per turn; draw_map calls
+ * fov_bitmap()/vis_bitmap() once per redraw and reads the bitmap inline.
  * fov_reset:   forget all explored cells (entering a level)
  * fov_update:  recompute visibility from the hero position, mark seen cells
  * fov_seen:    has this cell ever been explored? (remembered terrain)
  * fov_visible: is this cell within the hero's current view right now?       */
-void fov_reset(void);
-void fov_update(int hx, int hy);
-int  fov_seen(int x, int y);
-int  fov_visible(int x, int y);
-const uint8_t *fov_bitmap(void);   /* current level's explored bitmap (1 bit/cell) */
-const uint8_t *vis_bitmap(void);   /* cells visible this turn (1 bit/cell)        */
-void fov_reveal(void);             /* mark the whole current level as explored    */
+void fov_reset(void) __banked;
+void fov_update(int hx, int hy) __banked;
+int  fov_seen(int x, int y) __banked;
+int  fov_visible(int x, int y) __banked;
+const uint8_t *fov_bitmap(void) __banked;   /* current level's explored bitmap */
+const uint8_t *vis_bitmap(void) __banked;   /* cells visible this turn (1 bit/cell) */
+void fov_reveal(void) __banked;             /* mark the whole current level as explored */
 
 #endif /* LEVEL_H */
