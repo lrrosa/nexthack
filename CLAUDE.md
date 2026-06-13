@@ -23,14 +23,25 @@ run.bat              REM runs nexthack.nex in CSpect (no SD; can't test save)
 run.bat foo.nex      REM runs a specific .nex
 run-sd.bat           REM deploys into zxnext.sd and boots NextZXOS (tests save)
 ```
+```powershell
+.\build.ps1          # incremental + parallel build -> nexthack.nex (preferred)
+.\build.ps1 -Clean   # force a full rebuild
+```
 
-`build.bat` sets `ZCCCFG`/`PATH` and invokes:
+`build.bat` sets `ZCCCFG`/`PATH` and invokes (one zcc pass over all modules):
 
 ```
 zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -m <srcs> -o nexthack -create-app
 ```
 
-When adding a new `.c` module, add it to the `SRCS` list in `build.bat`.
+That single pass recompiles **everything** every time (~4 min). `build.ps1` does
+the same compile per `.c` (byte-identical output — zcc/SDCC compile per
+translation unit, so `--max-allocs` quality is unchanged), but **skips untouched
+modules and parallelises** across cores: clean ~80s, one-module edit ~25s, no-op
+~2s. Prefer it for iteration; `build.bat` stays as the simple single-shot fallback.
+
+When adding a new `.c` module, add it to the `SRCS`/`$srcs` list in **both**
+`build.bat` and `build.ps1`.
 
 There are no automated tests. Verification is manual: build, then run in CSpect and
 observe. The build agent cannot see the emulator window, so behaviour is confirmed
