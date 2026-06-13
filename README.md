@@ -84,7 +84,13 @@ code.
 - [x] **Phase 18 — Equipment corrosion**: an acid blob (`a`) corrodes your worn
       armour when it hits you and your wielded weapon when you strike it; eroded
       gear reads "rusty"/"corroded" and loses effectiveness (erosion capped at 3).
-- [ ] Later — shops; special levels.
+- [x] **Phase 19 — Wandering monsters**: a small per-turn chance to spawn a new
+      monster (NetHack-style), so a level is never permanently cleared by camping.
+- [x] **Phase 20 — Code banking (breaks the 64 KB ceiling)**: the engine is split
+      into a resident half (hot code + all data in `0x8000-0xBFF0`) and cold code
+      banked into the `0xC000` window, via z88dk `__banked`. Frees ~19 KB for new
+      code. Needs the nightly z88dk (see Build).
+- [ ] Later — shops; special levels (now unblocked by Phase 20).
 - [ ] Polish (minor, low priority) — show each held item's graphic tile beside its
       name on the inventory screen (`i`); tackle after the items above.
 
@@ -108,16 +114,17 @@ layer is kept separate from game logic):
 
 This repository contains **only the game source**. The toolchain and emulator are
 external tools you install yourself; the build/run scripts expect them as sibling
-folders of this one (the scripts use `..\z88dk` and `..\CSpect`):
+folders of this one. The game is **code-banked** (>64 KB), which needs a recent
+z88dk (the `__banked` trampoline, build v24836+):
 
 ```
 <parent>/
-├─ nexthack/   ← this repository
-├─ z88dk/      ← the z88dk SDK        (https://github.com/z88dk/z88dk)
-└─ CSpect/     ← the CSpect emulator  (https://mdf200.itch.io/cspect)
+├─ nexthack/        ← this repository
+├─ z88dk-latest/    ← z88dk SDK, nightly v24836+  (https://github.com/z88dk/z88dk)
+└─ CSpect/          ← the CSpect emulator         (https://mdf200.itch.io/cspect)
 ```
 
-With that layout in place:
+With that layout in place (`build.ps1` is the faster incremental+parallel build):
 
 ```bat
 build.bat            REM builds the whole game (all modules) -> nexthack.nex
@@ -127,10 +134,13 @@ build.bat foo.c      REM builds a single .c file             -> foo.nex
 Equivalent direct invocation of the full build:
 
 ```bat
-set ZCCCFG=..\z88dk\lib\config\
-set PATH=..\z88dk\bin;%PATH%
-zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -m nexthack.c platform.c rng.c level.c monster.c item.c sfx.c -o nexthack -create-app
+set ZCCCFG=..\z88dk-latest\lib\config\
+set PATH=..\z88dk-latest\bin;%PATH%
+zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startup=1 -pragma-include:zpragma.inc -m mainentry.c nexthack.c platform.c platform_init.c rng.c level.c levelgen.c levelfov.c monster.c monster_ai.c item.c sfx.c -o nexthack -create-app
 ```
+
+The banking layout is configured by `zpragma.inc` (stack at `0xBFF0`, banking
+segment 3) and `mmap.inc` (the `PAGE_20_CODE`/`PAGE_22_CODE` page ORGs).
 
 ## Run on CSpect
 
@@ -197,8 +207,11 @@ from the roguelike tradition):
 - **`int` is 16-bit** in SDCC, so values that can exceed ±32767 (gold, the turn
   counter, bit flags) need care: `long` works but is slow, and 16-bit arithmetic
   must be audited for overflow.
-- **Memory**: the Next has 1–2 MB in 8 KB banks; large code and data will need
-  manual banking in later phases.
+- **Memory / code banking**: the engine outgrew the 64 KB the Z80 sees at once, so
+  it is **code-banked** — a resident half (hot code + all data + stack in
+  `0x8000-0xBFF0`) plus cold code in two 16 KB pages swapped into the `0xC000` window
+  by z88dk's `__banked` trampoline. The BFS scratch arrays live in Bank 5's free tail.
+  This freed ~19 KB for new code; the resident *data* budget stays tight.
 
 ## References
 
