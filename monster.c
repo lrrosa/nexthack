@@ -200,7 +200,18 @@ static void monster_hits_player(uint8_t i)
 /* BFS frontier queue. A level has far fewer walkable cells than MAPW*MAPH, so
  * a bounded queue saves RAM; enqueues are guarded so it can never overflow. */
 #define BFSQ_SIZE 700
-static uint8_t  dist[MAPH][MAPW];
+
+/* dist[] lives in Bank 5's free space (after the 80x32x2 tilemap, 0x7400),
+ * which the CPU always sees at 0x4000-0x7FFF (segment 1) and which code banking
+ * (segment 3, 0xC000) never touches. Placing this 1680-byte per-turn scratch
+ * map there frees that much of the tight resident BSS budget. Safe to bank as
+ * data because it is rewritten every turn and never read during esxDOS file
+ * I/O (a transient bank-5 remap can't corrupt live state). NOTE: 0x7400 assumes
+ * the tilemap ends there (TILEMAP_BASE 0x6000 + 80*32*2) -- keep in sync with
+ * platform.c if the tilemap geometry changes. */
+/* A flat 1-D view: SDCC rejects casts to a pointer-to-array type, so index it
+ * as dist[y*MAPW + x] (compute_dist_map already works through the flat `d`). */
+#define dist ((uint8_t *)0x7400u)            /* fixed Bank-5 address, see above */
 static uint16_t bfsq[BFSQ_SIZE];
 
 static void compute_dist_map(void)
@@ -263,14 +274,14 @@ static void mon_step(uint8_t i)
         return;
     }
 
-    bestd = dist[m_y[i]][m_x[i]];             /* our current distance */
+    bestd = dist[(uint16_t)m_y[i] * MAPW + m_x[i]];   /* our current distance */
     for (dy = -1; dy <= 1; dy++) {
         for (dx = -1; dx <= 1; dx++) {
             int nx = (int)m_x[i] + dx, ny = (int)m_y[i] + dy;
             uint8_t nd;
             if (dx == 0 && dy == 0) continue;
             if (nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH) continue;
-            nd = dist[ny][nx];
+            nd = dist[(uint16_t)ny * MAPW + nx];
             if (nd == UNREACH || nd >= bestd) continue;
             if (monster_at(nx, ny) >= 0) continue;   /* don't stack */
             bestd = nd; bestx = nx; besty = ny;
