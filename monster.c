@@ -289,3 +289,49 @@ void monsters_turn(void)
         if (dead) return;
     }
 }
+
+/* ---- wandering monsters ----
+ * NetHack keeps generating monsters over time, so a level is never permanently
+ * cleared by camping.  Each turn there is a small chance (~1/70, faster while
+ * carrying the Amulet) to add one.  A freed (dead) slot is reused when one is
+ * available, else a new slot is appended up to MAXMON; the newcomer always
+ * arrives off-screen (never in the hero's lap).  Wanderers are not persisted:
+ * they share the m_dead bitmask space but live only on the current visit.
+ *
+ * This rolls rn2(), so it must run only from the turn loop -- never inside
+ * gen_level(), which reseeds the RNG per depth; an extra roll there would
+ * desync the deterministic generation and the persistence bit indices. */
+void maybe_spawn_wanderer(void)
+{
+    const MonType *mt;
+    char    type;
+    uint8_t slot, i, x, y;
+
+    if (rn2(has_amulet ? 25 : 70) != 0) return;
+
+    slot = MAXMON;                          /* find a reusable dead slot...   */
+    for (i = 0; i < mcount; i++)
+        if (!m_alive[i]) { slot = i; break; }
+    if (slot == MAXMON) {                    /* ...else append if there's room */
+        if (mcount >= MAXMON) return;
+        slot = mcount;
+    }
+
+    type = pick_mon();
+    mt   = mon_find(type);
+
+    i = (uint8_t)rn2(rcount);
+    rand_floor(i, &x, &y);
+    if (lvl[y][x] != '.')       return;      /* floor only            */
+    if (x == up_x && y == up_y) return;      /* keep the start clear  */
+    if (monster_at(x, y) >= 0)  return;      /* not onto another mon  */
+    if (iabs((int)x - hero_x) <= 1 &&
+        iabs((int)y - hero_y) <= 1) return;  /* not in the hero's lap */
+
+    m_x[slot]    = x;
+    m_y[slot]    = y;
+    m_hp[slot]   = (uint8_t)(mt->hp + dlvl / 2);
+    m_type[slot] = type;
+    m_alive[slot] = 1;
+    if (slot == mcount) mcount++;
+}

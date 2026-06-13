@@ -30,5 +30,7 @@ void monster_load(uint8_t h);
 void attack_monster(uint8_t mi);
 /* every living monster chases the hero and attacks when adjacent */
 void monsters_turn(void);
+/* small per-turn chance to add a wandering monster (turn loop only) */
+void maybe_spawn_wanderer(void);
 
 #endif /* MONSTER_H */

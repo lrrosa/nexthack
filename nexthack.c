@@ -242,6 +242,8 @@ static void upkeep(void)
         heal_timer = 0;
         if (php < pmaxhp) php++;
     }
+
+    maybe_spawn_wanderer();                     /* the dungeon refills over time */
 }
 
 static void draw_help(void)
