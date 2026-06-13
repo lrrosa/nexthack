@@ -1,6 +1,7 @@
 # z88dk / appmake build artifacts
 *.nex
 *.map
+*.o
 *_CODE.bin
 
 # appmake generated loaders (.bat) — keep our own scripts
