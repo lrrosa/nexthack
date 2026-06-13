@@ -20,6 +20,12 @@
 #include "rng.h"         /* rn2, world_seed                                  */
 #include "sfx.h"         /* sound effects                                    */
 
+/* item.c is a BANKED (cold) module -- all its code lives in PAGE_20_CODE,
+ * mapped into the 0xC000 window on demand. Public entry points are __banked
+ * (see item.h); the static helpers below are reached only by in-page calls,
+ * so they stay plain. Banked code may only touch RESIDENT data. */
+#pragma codeseg PAGE_20_CODE
+
 #define MAXINV 24
 
 /* ---- object catalogue (like montypes[]) ---- */
@@ -104,7 +110,7 @@ static void recompute_gear(void)
 
 /* corrode the worn item of class cls (acid/rust from a monster): bump its
  * erosion up to a cap of 3, weakening it via recompute_gear. */
-void corrode_worn(char cls)
+void corrode_worn(char cls) __banked
 {
     uint8_t i;
     for (i = 0; i < inv_count; i++) {
@@ -188,7 +194,7 @@ static void inv_remove(uint8_t s)
     inv_count--;
 }
 
-void item_reset(void)
+void item_reset(void) __banked
 {
     inv_count = 0;
     weapon_dmg = 0;
@@ -247,14 +253,14 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
 }
 
 /* description of the item on the hero's cell (for the "You see here" message) */
-const char *floor_item_desc(void)
+const char *floor_item_desc(void) __banked
 {
     obj_t o;
     resolve_floor((uint8_t)hero_x, (uint8_t)hero_y, &o);
     return obj_desc(&o);
 }
 
-void do_pickup(void)
+void do_pickup(void) __banked
 {
     char c = terrain(hero_x, hero_y);
     obj_t o;
@@ -279,7 +285,7 @@ void do_pickup(void)
     }
 }
 
-void show_inventory(void)
+void show_inventory(void) __banked
 {
     uint8_t i, y;
 
@@ -317,7 +323,7 @@ void show_inventory(void)
 
 /* ---- equip / use ---- */
 
-void do_wield(void)
+void do_wield(void) __banked
 {
     int s = find_best(')');
     if (s < 0) { msg("You have no weapon to wield."); return; }
@@ -328,7 +334,7 @@ void do_wield(void)
     msg2("You wield ", obj_desc(&inv[s]), ".");
 }
 
-void do_wear(void)
+void do_wear(void) __banked
 {
     int s = find_best('[');
     if (s < 0) { msg("You have no armor to wear."); return; }
@@ -339,7 +345,7 @@ void do_wear(void)
     msg2("You don ", obj_desc(&inv[s]), ".");
 }
 
-void do_puton(void)
+void do_puton(void) __banked
 {
     int s = find_best('=');
     if (s < 0) { msg("You have no ring to put on."); return; }
@@ -391,7 +397,7 @@ static int select_item(char cls, const char *prompt)
     return -2;
 }
 
-void do_quaff(void)
+void do_quaff(void) __banked
 {
     int s = select_item('!', "Drink which potion?");
     uint8_t heal;
@@ -412,7 +418,7 @@ void do_quaff(void)
     acted = 1; turns++;
 }
 
-void do_eat(void)
+void do_eat(void) __banked
 {
     int s = select_item('%', "Eat what?");
     if (s == -1) { msg("You have nothing to eat."); return; }
@@ -429,7 +435,7 @@ void do_eat(void)
     acted = 1; turns++;
 }
 
-void do_read(void)
+void do_read(void) __banked
 {
     int s = select_item('?', "Read which scroll?");
     uint8_t ot;
@@ -453,13 +459,13 @@ void do_read(void)
 
 /* ---- save / restore (the inventory objects) ---- */
 
-void item_save(uint8_t h)
+void item_save(uint8_t h) __banked
 {
     file_write(h, inv, sizeof inv);
     file_write(h, &inv_count, 1);
 }
 
-void item_load(uint8_t h)
+void item_load(uint8_t h) __banked
 {
     file_read(h, inv, sizeof inv);
     file_read(h, &inv_count, 1);
