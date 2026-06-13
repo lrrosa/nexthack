@@ -13,7 +13,7 @@ $nightly = (Resolve-Path "$root\..\z88dk-latest").Path
 $env:ZCCCFG = "$nightly\lib\config\"
 $env:PATH   = "$nightly\bin;$env:PATH"
 
-$srcs = 'mainentry.c','nexthack.c','platform.c','rng.c','level.c','levelgen.c','monster.c','item.c','sfx.c'
+$srcs = 'mainentry.c','nexthack.c','platform.c','rng.c','level.c','levelgen.c','monster.c','monster_ai.c','item.c','sfx.c'
 Remove-Item nexthack_bank.* -Force -ErrorAction SilentlyContinue
 
 $sw = [Diagnostics.Stopwatch]::StartNew()
