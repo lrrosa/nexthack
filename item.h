@@ -22,6 +22,7 @@ void do_quaff(void) __banked;       /* drink the first potion                   
 void do_eat(void) __banked;         /* eat the first food                       */
 void do_puton(void) __banked;       /* put on the first ring                    */
 void do_read(void) __banked;        /* read the first scroll                    */
+void do_sell(void) __banked;        /* sell an item to a shopkeeper (in a shop) */
 
 void corrode_worn(char cls) __banked; /* acid/rust corrodes the worn item       */
 

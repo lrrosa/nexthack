@@ -53,7 +53,7 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   5
+#define SAVE_VER   6      /* bumped at Phase 21: shop levels changed generation */
 
 struct save_hdr {
     uint16_t magic;
@@ -150,6 +150,7 @@ void build_level(void) __banked
 {
     gen_level();
     spawn_level_monsters();
+    { uint8_t kx, ky; if (shop_keeper_xy(&kx, &ky)) place_shopkeeper(kx, ky); }
     apply_gold_persistence();
     apply_monster_persistence();
     apply_item_persistence();
@@ -259,7 +260,7 @@ void draw_help(void) __banked
         "Move: cursor or vi-keys (h j k l + y u b n)    Stairs: > < Enter    Wait: s",
         C_CYAN | C_BRIGHT);
     print_str(0, 26,
-        "Cmd: , get  i inv  w wield  W wear  P ring  q quaff  e eat  r read  S save",
+        "Cmd: ,get  i inv  d sell  w wield  W wear  P ring  q quaff e eat r read  S save",
         C_CYAN | C_BRIGHT);
 }
 
@@ -332,6 +333,10 @@ void try_move(int dx, int dy) __banked
     }
     mi = monster_at(nx, ny);
     if (mi >= 0) {
+        if (m_type[mi] == MON_KEEPER) {            /* don't anger the shopkeeper */
+            msg("The shopkeeper won't let you pass there.");
+            return;                                /* no attack, no turn */
+        }
         acted = 1;
         attack_monster((uint8_t)mi);
         return;

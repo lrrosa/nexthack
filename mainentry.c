@@ -72,6 +72,7 @@ start_game:
         case 'e': do_eat();         in_wait_nokey(); break;   /* themselves, so a */
         case 'r': do_read();        in_wait_nokey(); break;   /* cancel costs none */
         case 'i': show_inventory(); break;          /* viewing costs no turn */
+        case 'd': do_sell(); in_wait_nokey(); break; /* sell in a shop; no turn */
 
         case 'S':                                   /* save game and quit to title */
             if (save_game()) {

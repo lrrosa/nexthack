@@ -47,6 +47,22 @@ void spawn_level_monsters(void) __banked
         spawn_monster(pick_mon());
 }
 
+/* Append the shopkeeper at (x,y). Called from build_level AFTER the random
+ * monsters (which reset mcount), so the keeper gets a stable high slot that the
+ * deterministic mob spawns never reuse. */
+void place_shopkeeper(uint8_t x, uint8_t y) __banked
+{
+    const MonType *mt = mon_find(MON_KEEPER);
+    if (mcount >= MAXMON) return;
+    if (monster_at(x, y) >= 0) return;
+    m_x[mcount]     = x;
+    m_y[mcount]     = y;
+    m_hp[mcount]    = mt->hp;
+    m_type[mcount]  = MON_KEEPER;
+    m_alive[mcount] = 1;
+    mcount++;
+}
+
 void apply_monster_persistence(void) __banked
 {
     uint8_t b;
@@ -211,8 +227,12 @@ static void compute_dist_map(void)
 /* a monster steps to the neighbour closest to the hero (lowest distance) */
 static void mon_step(uint8_t i)
 {
-    int ddx = hero_x - (int)m_x[i];
-    int ddy = hero_y - (int)m_y[i];
+    int ddx, ddy;
+
+    if (m_type[i] == MON_KEEPER) return;   /* the shopkeeper never moves */
+
+    ddx = hero_x - (int)m_x[i];
+    ddy = hero_y - (int)m_y[i];
     uint8_t bestd;
     int bestx = -1, besty = -1, dx, dy;
 

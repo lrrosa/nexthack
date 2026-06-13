@@ -252,6 +252,14 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
     }
 }
 
+/* shop value of an object: catalogue base price plus a little per enchant */
+static uint16_t item_price(const obj_t *o)
+{
+    uint16_t p = objtypes[o->otyp].price;
+    if (o->ench > 0) p = (uint16_t)(p + (uint16_t)o->ench * 5u);
+    return p;
+}
+
 /* description of the item on the hero's cell (for the "You see here" message) */
 const char *floor_item_desc(void) __banked
 {
@@ -272,6 +280,23 @@ void do_pickup(void) __banked
     }
 
     resolve_floor((uint8_t)hero_x, (uint8_t)hero_y, &o);
+
+    /* In a shop, picking an item up buys it: pay on the spot (no carrying a
+     * tab), refuse if you can't afford it. (The Amulet is never in a shop.) */
+    if (c != '"' && shop_in_room(hero_x, hero_y)) {
+        uint16_t price = item_price(&o);
+        if (gold < price) {
+            msg_num("You can't afford that (", price, " gold).");
+            return;
+        }
+        if (!inv_add(&o)) { msg("Your pack is full."); return; }
+        gold = (uint16_t)(gold - price);
+        level_take_item((uint8_t)hero_x, (uint8_t)hero_y);
+        msg_num("You buy it for ", price, " gold.");
+        sfx_gold();
+        return;
+    }
+
     if (!inv_add(&o)) { msg("Your pack is full."); return; }
     level_take_item((uint8_t)hero_x, (uint8_t)hero_y);
 
@@ -282,6 +307,51 @@ void do_pickup(void) __banked
     } else {
         msg2("You pick up ", obj_desc(&o), ".");
         sfx_pick();
+    }
+}
+
+/* Sell an item to the shopkeeper for half its price (only inside a shop). Shows
+ * a lettered list with the sell value; any non-letter key cancels. Costs no
+ * turn (a counter transaction), so monsters don't move while you haggle. */
+void do_sell(void) __banked
+{
+    uint8_t i, row;
+    int k, s;
+
+    if (!shop_in_room(hero_x, hero_y)) {
+        msg("You can only sell things inside a shop.");
+        return;
+    }
+    if (inv_count == 0) { msg("You have nothing to sell."); return; }
+
+    for (row = 1; row <= 21; row++) clear_line(row, C_BLACK);
+    print_str(2, 2, "Sell which item?   (any other key cancels)", C_WHITE | C_BRIGHT);
+    for (i = 0; i < inv_count; i++) {
+        uint16_t sp = (uint16_t)(item_price(&inv[i]) / 2u);
+        uint8_t  r2 = (uint8_t)(4 + i);
+        uint8_t  x;
+        putcell(2, r2, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
+        x = print_str(3, r2, " - ", C_WHITE);
+        x = print_str(x, r2, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
+        x = print_str(x, r2, "   [", C_CYAN);
+        x = put_uint(x, r2, sp, C_YELLOW | C_BRIGHT);
+        print_str(x, r2, " gold]", C_CYAN);
+    }
+
+    in_wait_nokey();
+    k = getkey();
+    in_wait_nokey();
+    s = (k >= 'a' && (uint8_t)(k - 'a') < inv_count) ? (k - 'a') : -1;
+    if (s < 0) return;                  /* cancelled; the caller redraws */
+
+    {
+        uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u);
+        if (gold > (uint16_t)(60000u - sp)) gold = 60000u;   /* clamp, 16-bit */
+        else                                gold = (uint16_t)(gold + sp);
+        inv_remove((uint8_t)s);
+        recompute_gear();               /* in case the sold item was worn */
+        msg_num("You sell it for ", sp, " gold.");
+        sfx_gold();
     }
 }
 

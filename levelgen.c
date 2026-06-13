@@ -40,6 +40,10 @@ static uint8_t g_x[8], g_y[8];
 static uint8_t icount;
 static uint8_t i_x[8], i_y[8];
 
+/* Shop: index of the room that is a shop on the current level, or -1. Set by
+ * gen_level each time, read by shop_in_room/shop_keeper_xy. Resident (1 B). */
+static int8_t shop_room = -1;
+
 static uint16_t level_seed(uint16_t d)
 {
     return (uint16_t)(world_seed + (uint16_t)(d * 0x9E37u));
@@ -208,6 +212,27 @@ static void place_gold(void)
     g_x[gcount] = x; g_y[gcount] = y; gcount++;
 }
 
+/* Stock the shop room with priced items. Deterministic (no rn2, so it can't
+ * desync the dungeon): items go on ~half the interior floor cells (the rest are
+ * aisles), the class chosen per cell by a side hash, up to the 8-item cap. They
+ * are tracked in i_*[] like normal floor items, so pickup/persistence just work;
+ * resolve_floor() then prices each one (item.c). */
+static void stock_shop(uint8_t r)
+{
+    static const char SHOPCLS[6] = { ')', '[', '!', '?', '=', '%' };
+    uint8_t xx, yy;
+    for (yy = (uint8_t)(r_y[r] + 1); yy + 1 < r_y[r] + r_h[r] && icount < 8; yy++)
+        for (xx = (uint8_t)(r_x[r] + 1); xx + 1 < r_x[r] + r_w[r] && icount < 8; xx++) {
+            uint16_t h;
+            if (lvl[yy][xx] != '.') continue;          /* skip stairs etc.   */
+            h = (uint16_t)(world_seed + (uint16_t)dlvl * 2657u
+                           + (uint16_t)xx * 131u + (uint16_t)yy * 1009u);
+            if (h & 1) continue;                       /* leave ~half as aisle */
+            lvl[yy][xx] = SHOPCLS[h % 6u];
+            i_x[icount] = xx; i_y[icount] = yy; icount++;
+        }
+}
+
 void gen_level(void) __banked
 {
     uint8_t i, j;
@@ -257,17 +282,29 @@ void gen_level(void) __banked
         dn_x = x; dn_y = y;
     }
 
-    /* loot (gold piles tracked for persistence; the rest are re-placed each
-     * visit since item pickups are not persisted yet) */
-    place_gold();
-    place_gold();
-    place_item('%');      /* food   */
-    place_item(')');      /* weapon */
-    place_item('[');      /* armor  */
-    place_item('!');      /* potion */
-    if (dlvl >= 2) place_item('!');
-    if (rn2(2))    place_item('?');     /* scroll */
-    if (dlvl >= 3 && rn2(2)) place_item('=');   /* ring */
+    /* loot: a shop on ~1/3 of levels (depth >= 2), else scattered items. The
+     * shop decision uses a side hash (no rn2), so non-shop levels generate
+     * exactly as before and the deterministic persistence stays in sync. */
+    {
+        uint16_t sh = (uint16_t)(world_seed * 1009u + (uint16_t)dlvl * 2657u + 13u);
+        sh ^= (uint16_t)(sh << 7);
+        sh ^= (uint16_t)(sh >> 9);
+        if (dlvl >= 2 && dlvl != DLVL_AMULET && (sh % 3u) == 0) {
+            shop_room = (int8_t)((sh >> 5) % rcount);
+            stock_shop((uint8_t)shop_room);
+        } else {
+            shop_room = -1;
+            place_gold();
+            place_gold();
+            place_item('%');      /* food   */
+            place_item(')');      /* weapon */
+            place_item('[');      /* armor  */
+            place_item('!');      /* potion */
+            if (dlvl >= 2) place_item('!');
+            if (rn2(2))    place_item('?');     /* scroll */
+            if (dlvl >= 3 && rn2(2)) place_item('=');   /* ring */
+        }
+    }
 
     /* The deepest level holds the Amulet of Yendor instead of a way down:
      * put it on the would-be down-stairs cell (a guaranteed room-floor tile).
@@ -275,6 +312,37 @@ void gen_level(void) __banked
      * or change this level's monster spawns. */
     if (dlvl == DLVL_AMULET)
         lvl[dn_y][dn_x] = has_amulet ? '.' : '"';
+}
+
+/* is (x,y) inside the current level's shop room? (item.c uses this to bill) */
+int shop_in_room(int x, int y) __banked
+{
+    uint8_t r;
+    if (shop_room < 0) return 0;
+    r = (uint8_t)shop_room;
+    return x >= r_x[r] && x < r_x[r] + r_w[r] &&
+           y >= r_y[r] && y < r_y[r] + r_h[r];
+}
+
+/* pick the shopkeeper's cell: an empty floor tile just inside a door if there
+ * is one, else any empty interior floor. Returns 0 if this level has no shop. */
+int shop_keeper_xy(uint8_t *kx, uint8_t *ky) __banked
+{
+    uint8_t r, xx, yy, pass;
+    if (shop_room < 0) return 0;
+    r = (uint8_t)shop_room;
+    for (pass = 0; pass < 2; pass++)
+        for (yy = (uint8_t)(r_y[r] + 1); yy + 1 < r_y[r] + r_h[r]; yy++)
+            for (xx = (uint8_t)(r_x[r] + 1); xx + 1 < r_x[r] + r_w[r]; xx++) {
+                if (lvl[yy][xx] != '.') continue;       /* empty floor only */
+                if (pass == 0 &&                        /* pass 0: next to a door */
+                    !(lvl[yy][xx - 1] == '+' || lvl[yy][xx + 1] == '+' ||
+                      lvl[yy - 1][xx] == '+' || lvl[yy + 1][xx] == '+'))
+                    continue;
+                *kx = xx; *ky = yy;
+                return 1;
+            }
+    return 0;
 }
 
 void apply_gold_persistence(void) __banked

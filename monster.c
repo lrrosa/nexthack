@@ -28,7 +28,10 @@ static const MonType montypes[] = {
     { 'd',  6, 3, 2, 2, T_DOG,      0, "dog"       },
     { 'S',  6, 4, 3, 3, T_SNAKE,    0, "snake"     },
     { 'o',  8, 4, 4, 4, T_ORC,      0, "orc"       },
-    { 'Z', 14, 4, 6, 6, T_ZOMBIE,   0, "zombie"    }
+    { 'Z', 14, 4, 6, 6, T_ZOMBIE,   0, "zombie"    },
+    /* the shopkeeper: drawn as '@' (reuses T_HERO), placed only in shops, never
+     * randomly spawned (pick_mon skips it), and stationary (monster_ai mon_step). */
+    { MON_KEEPER, 30, 0, 0, 1, T_HERO, 0, "shopkeeper" }
 };
 #define NMON ((uint8_t)(sizeof(montypes) / sizeof(montypes[0])))
 
@@ -59,7 +62,7 @@ char pick_mon(void)
     char pool[NMON];
     uint8_t n = 0, i;
     for (i = 0; i < NMON; i++)
-        if (montypes[i].mindepth <= dlvl)
+        if (montypes[i].ch != MON_KEEPER && montypes[i].mindepth <= dlvl)
             pool[n++] = montypes[i].ch;
     return n ? pool[rn2(n)] : 'r';
 }

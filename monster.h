@@ -15,6 +15,7 @@
 #include <stdint.h>
 
 #define MAXMON 8
+#define MON_KEEPER '@'   /* the shopkeeper (drawn as the hero tile, stationary) */
 
 extern uint8_t mcount;
 extern uint8_t m_x[], m_y[], m_alive[], m_hp[];
@@ -49,5 +50,6 @@ void monster_load(uint8_t h)        __banked;
 void attack_monster(uint8_t mi)     __banked;  /* hero hits monster mi */
 void monsters_turn(void)            __banked;  /* every monster chases + attacks */
 void maybe_spawn_wanderer(void)     __banked;  /* small per-turn spawn chance */
+void place_shopkeeper(uint8_t x, uint8_t y) __banked;  /* add the shop's keeper */
 
 #endif /* MONSTER_H */
