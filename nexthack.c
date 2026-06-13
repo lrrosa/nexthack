@@ -24,6 +24,7 @@
 #include "monster.h"
 #include "item.h"
 #include "sfx.h"
+#include "nexthack.h"
 
 /* ---- shared game/run state (declared extern in game.h) ---- */
 int      hero_x, hero_y;
@@ -71,8 +72,14 @@ struct save_player {
     uint8_t  has_amulet;
 };
 
+/* From here down, all of nexthack.c's CODE is banked into PAGE_22_CODE (mapped
+ * into the 0xC000 window on demand). The globals above are DATA and stay
+ * resident. The functions main() calls are __banked (see nexthack.h); the
+ * static helpers (hunger_*, describe) are reached by in-page calls. */
+#pragma codeseg PAGE_22_CODE
+
 /* Write seed + player + each module's state. Returns 1 on success. */
-static int save_game(void)
+int save_game(void) __banked
 {
     uint8_t h = file_create(SAVE_NAME);
     struct save_hdr    hdr;
@@ -100,7 +107,7 @@ static int save_game(void)
 
 /* Load a saved game and delete the file (so it cannot be reloaded - the
  * NetHack anti-save-scum rule). Returns 1 if a valid save was restored. */
-static int load_game(void)
+int load_game(void) __banked
 {
     uint8_t h = file_open(SAVE_NAME);
     struct save_hdr    hdr;
@@ -139,7 +146,7 @@ static int load_game(void)
 /* Build the current dlvl: terrain + gold, then monsters (which must see the
  * freshly placed gold), then re-apply remembered mutations. The order keeps
  * generation deterministic across revisits. */
-static void build_level(void)
+void build_level(void) __banked
 {
     gen_level();
     spawn_level_monsters();
@@ -154,7 +161,7 @@ static void build_level(void)
  * Rendering
  * ============================================================ */
 
-static void draw_map(void)
+void draw_map(void) __banked
 {
     const uint8_t *seen = fov_bitmap();   /* explored bitmap        */
     const uint8_t *vis  = vis_bitmap();   /* visible-this-turn map  */
@@ -218,7 +225,7 @@ static uint8_t hunger_color(void)
 
 /* once-per-turn upkeep: hunger ticks down, HP slowly regenerates (or you
  * starve when out of food) */
-static void upkeep(void)
+void upkeep(void) __banked
 {
     uint8_t hs;
 
@@ -246,7 +253,7 @@ static void upkeep(void)
     maybe_spawn_wanderer();                     /* the dungeon refills over time */
 }
 
-static void draw_help(void)
+void draw_help(void) __banked
 {
     print_str(0, 25,
         "Move: cursor or vi-keys (h j k l + y u b n)    Stairs: > < Enter    Wait: s",
@@ -256,7 +263,7 @@ static void draw_help(void)
         C_CYAN | C_BRIGHT);
 }
 
-static void draw_status(void)
+void draw_status(void) __banked
 {
     uint8_t x;
     const char *h = hunger_label();
@@ -312,7 +319,7 @@ static void describe(char dest, int moved)
     }
 }
 
-static void try_move(int dx, int dy)
+void try_move(int dx, int dy) __banked
 {
     int nx = hero_x + dx;
     int ny = hero_y + dy;
@@ -344,7 +351,7 @@ static void try_move(int dx, int dy)
     }
 }
 
-static void go_down(void)
+void go_down(void) __banked
 {
     if (terrain(hero_x, hero_y) == '>') {
         dlvl++;
@@ -358,7 +365,7 @@ static void go_down(void)
     }
 }
 
-static void go_up(void)
+void go_up(void) __banked
 {
     if (terrain(hero_x, hero_y) == '<') {
         if (dlvl > 1) {
@@ -378,7 +385,7 @@ static void go_up(void)
     }
 }
 
-static void new_game(void)
+void new_game(void) __banked
 {
     pmaxhp = 12;
     php = pmaxhp;
@@ -410,7 +417,7 @@ static void new_game(void)
 /* The seed comes from how long the player takes to press a key, which gives
  * far more variety than reading the machine state at the same instant on
  * every cold boot. */
-static void title_screen(void)
+void title_screen(void) __banked
 {
     uint16_t s = 1;
 
@@ -428,7 +435,7 @@ static void title_screen(void)
 }
 
 /* Shown when the hero surfaces carrying the Amulet of Yendor. */
-static void victory_screen(void)
+void victory_screen(void) __banked
 {
     int k;
 
@@ -444,123 +451,5 @@ static void victory_screen(void)
     in_wait_nokey();
 }
 
-void main(void)
-{
-    int k;
-
-    zx_border(C_BLACK);
-    tm_init();
-
-start_game:
-    title_screen();
-    if (load_game()) {              /* a saved game was found: resume it */
-        build_level();              /* regenerate the saved depth        */
-        fov_update(hero_x, hero_y);
-        tm_cls();
-        draw_help();
-        draw_status();
-        draw_map();
-        msg("Game restored.  Welcome back!");
-    } else {                        /* no save: start a fresh adventure  */
-        item_reset();
-        fov_reset();
-        build_level();
-        hero_x = up_x; hero_y = up_y;
-        fov_update(hero_x, hero_y);
-        tm_cls();
-        draw_help();
-        draw_status();
-        draw_map();
-        msg("Welcome to NextHack!");
-    }
-
-    for (;;) {
-        k = getkey();
-
-        acted = 0;
-        switch (k) {
-        /* movement: cursor keys + NetHack vi-keys (hjkl + yubn diagonals) */
-        case 'h': case  8: try_move(-1,  0); break;   /* left       */
-        case 'l': case  9: try_move(+1,  0); break;   /* right      */
-        case 'j': case 10: try_move( 0, +1); break;   /* down       */
-        case 'k': case 11: try_move( 0, -1); break;   /* up         */
-        case 'y': try_move(-1, -1); break;            /* up-left    */
-        case 'u': try_move(+1, -1); break;            /* up-right   */
-        case 'b': try_move(-1, +1); break;            /* down-left  */
-        case 'n': try_move(+1, +1); break;            /* down-right */
-
-        /* NetHack-style commands (debounced: one press = one action) */
-        case ',': do_pickup();      turns++; acted = 1; in_wait_nokey(); break;
-        case 'w': do_wield();       turns++; acted = 1; in_wait_nokey(); break;
-        case 'W': do_wear();        turns++; acted = 1; in_wait_nokey(); break;
-        case 'P': do_puton();       turns++; acted = 1; in_wait_nokey(); break;
-        case 'q': do_quaff();       in_wait_nokey(); break;   /* set acted/turns */
-        case 'e': do_eat();         in_wait_nokey(); break;   /* themselves, so a */
-        case 'r': do_read();        in_wait_nokey(); break;   /* cancel costs none */
-        case 'i': show_inventory(); break;          /* viewing costs no turn */
-
-        case 'S':                                   /* save game and quit to title */
-            if (save_game()) {
-                tm_cls();
-                print_str(23, 10, "Game saved.  You may switch off.", C_WHITE | C_BRIGHT);
-                print_str(24, 13, "Press Enter to return to the title.", C_CYAN | C_BRIGHT);
-                in_wait_nokey();
-                do { k = getkey(); } while (k != 13);
-                in_wait_nokey();
-                goto start_game;
-            }
-            msg("Save failed - is the SD card writable?");
-            in_wait_nokey();
-            break;
-
-        /* search / wait */
-        case 's':
-        case '.':
-        case ' ': turns++; acted = 1; msg("You wait."); break;
-
-        /* stairs: '>'/'<' or Enter for whichever you stand on */
-        case '>': go_down(); in_wait_nokey(); break;
-        case '<': go_up();   in_wait_nokey(); break;
-        case 13:
-            if (terrain(hero_x, hero_y) == '>')      go_down();
-            else if (terrain(hero_x, hero_y) == '<') go_up();
-            else msg("There are no stairs here.");
-            in_wait_nokey();
-            break;
-        default:  break;
-        }
-
-        if (acted && !dead) {
-            upkeep();               /* hunger ticks, HP regenerates  */
-            if (!dead)
-                monsters_turn();    /* monsters chase and attack     */
-        }
-
-        fov_update(hero_x, hero_y); /* recompute what the hero can see */
-        draw_status();
-        draw_map();
-
-        if (won) {
-            victory_screen();
-            new_game();
-            tm_cls();
-            draw_help();
-            draw_status();
-            draw_map();
-            msg("A new adventure begins!");
-            in_wait_nokey();
-        } else if (dead) {
-            sfx_die();
-            msg("You die...   Press Enter to start over.");
-            in_wait_nokey();
-            do { k = getkey(); } while (k != 13);
-            new_game();
-            draw_status();
-            draw_map();
-            msg("You feel much better.  A new adventure begins!");
-            in_wait_nokey();
-        }
-
-        in_pause(40);   /* throttle continuous (held-key) movement */
-    }
-}
+/* main() lives in mainentry.c (resident): the CRT jumps straight to it, so it
+ * cannot be banked. Everything it calls above is __banked (nexthack.h). */
