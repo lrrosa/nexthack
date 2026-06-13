@@ -21,28 +21,32 @@ extern char    lvl[MAPH][MAPW];
 extern uint8_t rcount;                    /* number of rooms          */
 extern uint8_t up_x, up_y, dn_x, dn_y;    /* this level's stairs      */
 
+/* terrain/walkable/tile_for and the fov_* group are HOT (resident, level.c).
+ * Generation and persistence are COLD (banked, levelgen.c) and so declared
+ * __banked -- callers reach them through the trampoline. save/load stay
+ * resident in level.c (they touch the FOV pool). */
 char    terrain(int x, int y);
 int     walkable(char c);
-void    rand_floor(uint8_t room, uint8_t *px, uint8_t *py);
-void    level_random_floor(uint8_t *px, uint8_t *py);   /* a random floor cell */
+void    rand_floor(uint8_t room, uint8_t *px, uint8_t *py) __banked;
+void    level_random_floor(uint8_t *px, uint8_t *py) __banked;  /* random floor cell */
 uint8_t tile_for(char c);
 
 /* Build the terrain for the current dlvl (deterministic per depth). Gold is
  * placed but not yet filtered by persistence - call apply_gold_persistence()
  * after monsters have been spawned (so spawning sees the same map each visit). */
-void gen_level(void);
-void apply_gold_persistence(void);
+void gen_level(void) __banked;
+void apply_gold_persistence(void) __banked;
 
 /* pick up the gold pile at (x,y): clear it and remember it. Returns 1 if a
  * known pile was there. */
-int  level_take_gold(uint8_t x, uint8_t y);
+int  level_take_gold(uint8_t x, uint8_t y) __banked;
 
 /* same for a floor item (weapon/armor/potion/food) */
-void apply_item_persistence(void);
-int  level_take_item(uint8_t x, uint8_t y);
+void apply_item_persistence(void) __banked;
+int  level_take_item(uint8_t x, uint8_t y) __banked;
 
 /* forget all remembered gold/item pickups (new game) */
-void level_reset_persistence(void);
+void level_reset_persistence(void) __banked;
 
 /* save/restore the per-depth persistence bitmasks and the fog-of-war bitmaps */
 void level_save(uint8_t h);
