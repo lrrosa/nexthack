@@ -425,21 +425,48 @@ void new_game(void) __banked
 /* The seed comes from how long the player takes to press a key, which gives
  * far more variety than reading the machine state at the same instant on
  * every cold boot. */
+/* ---- Layer 2 pixel-art title screen --------------------------------------
+ * The 256x192 image (titlegfx.c) lives in banks 16/17/18, read in place by the
+ * Layer 2 display engine; its 9-bit palette (title_pal) is banked alongside this
+ * code (PAGE_22). Showing it just reprograms a handful of NextRegs: stream the
+ * palette, point Layer 2 at bank 16, turn the tilemap off and Layer 2 on. The
+ * game's tilemap setup (tm_init) is untouched, so hiding Layer 2 again restores
+ * the playfield instantly. */
+extern const uint8_t title_pal[];   /* 256 colours, 2 bytes each (NextReg 0x44) */
+
+static void title_show_layer2(void)
+{
+    uint16_t i;
+    ZXN_WRITE_REG(0x43, 0x10);       /* select Layer 2 palette, autoinc on      */
+    ZXN_WRITE_REG(0x40, 0x00);       /* start at colour index 0                 */
+    for (i = 0; i < 256; i++) {      /* stream 9-bit colours: two bytes each    */
+        ZXN_WRITE_REG(0x44, title_pal[i * 2]);
+        ZXN_WRITE_REG(0x44, title_pal[i * 2 + 1]);
+    }
+    ZXN_WRITE_REG(0x70, 0x00);       /* Layer 2 = 256x192, palette offset 0     */
+    ZXN_WRITE_REG(0x12, 16);         /* Layer 2 framebuffer = bank 16           */
+    ZXN_WRITE_REG(0x6B, 0x00);       /* tilemap off (so only Layer 2 shows)     */
+    ZXN_WRITE_REG(0x69, 0x80);       /* Layer 2 visible (bit 7)                 */
+}
+
+static void title_hide_layer2(void)
+{
+    ZXN_WRITE_REG(0x69, 0x00);       /* Layer 2 off                             */
+    ZXN_WRITE_REG(0x6B, 0xC0);       /* tilemap back on (enable, 80x32)         */
+}
+
 void title_screen(void) __banked
 {
     uint16_t s = 1;
 
-    tm_cls();
-    print_str(36,  8, "NextHack", C_YELLOW | C_BRIGHT);
-    print_str(22, 10, "A roguelike for the ZX Spectrum Next", C_CYAN | C_BRIGHT);
-    print_str(27, 14, "Press any key to begin...", C_WHITE | C_BRIGHT);
-
-    while (in_inkey() == 0)
+    title_show_layer2();
+    while (in_inkey() == 0)          /* seed from how long until the first key  */
         s += 0x9E37u;
     s ^= (uint16_t)(((uint16_t)ZXN_READ_REG(0x1F) << 8) ^ ZXN_READ_REG(0x1E));
     world_seed = s ? s : 0xACE1u;
     rng_set(world_seed);
     in_wait_nokey();
+    title_hide_layer2();
 }
 
 /* Shown when the hero surfaces carrying the Amulet of Yendor. */

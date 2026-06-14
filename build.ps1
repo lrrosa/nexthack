@@ -20,7 +20,7 @@ $env:PATH   = (Join-Path $root '..\z88dk-latest\bin') + ';' + $env:PATH
 $zcccfg = $env:ZCCCFG   # captured for the parallel runspaces ($using:)
 $zpath  = $env:PATH
 
-$srcs   = 'mainentry','nexthack','platform','platform_init','rng','level','levelgen','levelfov','monster','monster_ai','item','sfx'
+$srcs   = 'mainentry','nexthack','platform','platform_init','rng','level','levelgen','levelfov','monster','monster_ai','item','sfx','titlegfx0','titlegfx1','titlegfx2','titlepal'
 $cflags = @('+zxn','-clib=sdcc_iy','-SO3','--max-allocs-per-node200000','-pragma-include:zpragma.inc')
 
 # Coarse but safe dependency rule: a module is stale if its .o is missing,

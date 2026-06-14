@@ -83,6 +83,8 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `monster_ai.c` | B | BFS chase, combat, spawning, kill-persistence |
 | `item.c/.h` | B | inventory and item actions (pick up, wield/wear/quaff/eat/read/put-on) |
 | `sfx.c/.h` | B | beeper sound effects |
+| `titlegfx0/1/2.c` | B | the Layer 2 title image (generated): 3×16 KB framebuffer thirds const-banked into banks 16/17/18 (see Title screen) |
+| `titlepal.c` | B | the title image's 9-bit palette, const-banked in `PAGE_22_CODE` next to the title code that streams it |
 | `nexthack.c/.h` | B | game-state globals (resident DATA) + rendering, turn step, level orchestration, save/restore, screens; `.h` declares its `__banked` entry points for `mainentry.c` |
 | `game.h` | — | shared player/run state (`extern`s defined in `nexthack.c`) |
 
@@ -112,6 +114,30 @@ DATA — banked code's data is resident too). Modules include `game.h` to read/w
   running tilemap pointer and inline FOV bit-tests for speed; writing each cell exactly
   once (rather than clear-then-fill) is what keeps it flicker-free. Status/message
   lines follow the same write-once-then-pad rule.
+
+### Title screen (Layer 2)
+The **only** use of the Next's **Layer 2** framebuffer (256×192, 8bpp); everything
+else is the tilemap. `title_screen()` (`nexthack.c`) shows the pixel-art loading
+image, then the game switches back to the tilemap.
+- The image is **generated**: `tools/png2layer2.py` (Pillow) converts
+  `tools/title.png` (a 4:3 768×576 letterboxed render) → 256×192, quantizes
+  (`MAXCOVERAGE`, so small saturated areas keep a palette slot) and snaps to the
+  Next 9-bit (RGB333) palette → `titlegfx0/1/2.c` (the framebuffer, row-major
+  `y*256+x`, in three 16 KB thirds) + `titlepal.c` (palette). Re-run it if
+  `title.png` changes; the generated `.c` files **are** committed.
+- The three thirds are **const-banked into banks 16/17/18** so the `.nex` loader
+  writes them where Layer 2 reads them **in place — no runtime copy, zero resident
+  cost** (banks outside the CPU window). `title_screen` just streams the palette
+  (NextReg 0x43/0x40/0x44), points Layer 2 at bank 16 (NextReg 0x12=16), turns the
+  tilemap off (0x6B=0) + Layer 2 on (0x69 bit7); on a keypress it reverses that
+  (0x69=0, 0x6B=0xC0) and the game proceeds. The palette **must** live in
+  `PAGE_22_CODE` (bank 11) because the title code that reads it runs from there.
+- **Two banking gotchas this exposed:** (a) SDCC `#pragma constseg` is
+  *per-translation-unit* — switching it mid-file does NOT split areas (the last one
+  wins), so each bank's array needs its **own `.c`** (hence three files). (b) z88dk
+  **predefines** `BANK_nn` sections already ORG'd at `0x__C000` (bank 16 = 0x20C000,
+  i.e. `(page8k<<16)|0xC000`), so reference them from `constseg` but do **not**
+  re-`ORG` them in `mmap.inc` (that errors "ORG redefined").
 
 ### Level generation, persistence & FOV (`level.c`)
 - The map is a `char lvl[MAPH][MAPW]` grid (`'.'` floor, `#` corridor, `-`/`|` wall,
@@ -213,8 +239,9 @@ The game **broke the 64 KB ceiling by code-banking**. Layout:
 **The resident half is the constraint.** Everything resident (code+data+BSS) must end
 below the stack floor `~0xBDF0`, or the stack corrupts and the machine resets to BASIC.
 Check `__CODE_END_tail` / `__BSS_END_tail` in `nexthack.map` after any change. Current:
-`__CODE_END=$AAA2`, `__BSS_END=$BBB1` — about **~575 B** to the stack floor (after
-const-banking `gfx[]`, see below).
+`__CODE_END=$AA5A`, `__BSS_END=$BB69` — about **~650 B** to the stack floor (after
+const-banking `gfx[]`, see below; the Layer 2 title freed a little more by dropping
+the old text-title strings from resident rodata).
 
 **Adding a feature:**
 - **New code → make it banked** (it has room): put it in a module compiled into

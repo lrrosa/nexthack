@@ -3,6 +3,7 @@
 *.map
 *.o
 *_CODE.bin
+*_BANK_*.bin
 
 # appmake generated loaders (.bat) — keep our own scripts
 *.bat
