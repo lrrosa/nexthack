@@ -46,6 +46,11 @@ static uint8_t i_x[8], i_y[8];
 static int8_t  shop_room = -1;
 static uint8_t keeper_x, keeper_y;
 
+/* Treasure vault (Phase 23): index of the room sealed as a vault on the current
+ * level, or -1. Set by gen_level; read by level_vault_room so the monster
+ * spawner can post tough guards inside. Resident (1 B). */
+static int8_t  vault_room = -1;
+
 static uint16_t level_seed(uint16_t d)
 {
     return (uint16_t)(world_seed + (uint16_t)(d * 0x9E37u));
@@ -257,6 +262,39 @@ static void stock_shop(uint8_t r)
         }
 }
 
+static int cell_in_room(uint8_t r, uint8_t x, uint8_t y)
+{
+    return x >= r_x[r] && x < r_x[r] + r_w[r] &&
+           y >= r_y[r] && y < r_y[r] + r_h[r];
+}
+
+/* Pack a treasure vault: gold piles + valuable items over the room's interior,
+ * up to the 8+8 persistence caps (the rest stays floor, so there is room to move
+ * and fight the guards). Deterministic (a side hash per cell, no rn2), exactly
+ * like stock_shop, so the vault can't desync the per-depth generation and its
+ * loot is tracked in the gold/item arrays for normal pickup and persistence. */
+static void fill_vault(uint8_t r)
+{
+    static const char VCLS[5] = { ')', '[', '!', '?', '=' };
+    uint8_t xx, yy;
+    for (yy = (uint8_t)(r_y[r] + 1); yy + 1 < r_y[r] + r_h[r]; yy++)
+        for (xx = (uint8_t)(r_x[r] + 1); xx + 1 < r_x[r] + r_w[r]; xx++) {
+            uint16_t h;
+            if (lvl[yy][xx] != '.') continue;          /* skip any stair etc. */
+            h = (uint16_t)(world_seed + (uint16_t)dlvl * 3911u
+                           + (uint16_t)xx * 131u + (uint16_t)yy * 1009u);
+            if ((h % 3u) == 0) {
+                if (gcount >= 8) continue;
+                lvl[yy][xx] = '$';
+                g_x[gcount] = xx; g_y[gcount] = yy; gcount++;
+            } else {
+                if (icount >= 8) continue;
+                lvl[yy][xx] = VCLS[(uint8_t)((h >> 2) % 5u)];
+                i_x[icount] = xx; i_y[icount] = yy; icount++;
+            }
+        }
+}
+
 /* ---- special levels (Phase 22+) -------------------------------------------
  * Some depths are landmark "special" levels with a hand-built layout instead of
  * the procedural rooms+corridors. ONE deterministic dispatcher (special_gen)
@@ -382,10 +420,34 @@ void gen_level(void) __banked
         dn_x = x; dn_y = y;
     }
 
-    /* loot: a shop on ~1/3 of levels (depth >= 2), else scattered items. The
-     * shop decision uses a side hash (no rn2), so non-shop levels generate
-     * exactly as before and the deterministic persistence stays in sync. */
+    /* loot: a sealed treasure vault on a few deep levels (takes precedence),
+     * else a shop on ~1/3 of levels (depth >= 2), else scattered items. Both the
+     * vault and shop decisions use side hashes (no rn2), so non-special levels
+     * generate exactly as before and the deterministic persistence stays in sync.
+     * The vault is a leaf room (one door, never a through-route) that holds no
+     * stairs, so sealing it as treasure never cuts the level in two. */
+    vault_room = -1;
+    shop_room  = -1;
     {
+        uint16_t vh = (uint16_t)(world_seed * 2179u + (uint16_t)dlvl * 6863u + 7u);
+        vh ^= (uint16_t)(vh << 7);
+        vh ^= (uint16_t)(vh >> 9);
+        if (dlvl >= 4 && dlvl != DLVL_AMULET && (vh % 7u) == 0) {
+            uint8_t k;
+            for (k = 0; k < SECT_ROWS; k++) {
+                uint8_t r = (uint8_t)((((uint8_t)(vh >> 4) + k) % SECT_ROWS)
+                                      * SECT_COLS + (SECT_COLS - 1));   /* a leaf room */
+                if (cell_in_room(r, up_x, up_y) || cell_in_room(r, dn_x, dn_y))
+                    continue;                              /* keep the stairs reachable */
+                if (r_w[r] < 5 || r_h[r] < 4) continue;    /* a chamber, not a 1-row strip */
+                vault_room = (int8_t)r;
+                break;
+            }
+            if (vault_room >= 0)
+                fill_vault((uint8_t)vault_room);
+        }
+    }
+    if (vault_room < 0) {
         uint16_t sh = (uint16_t)(world_seed * 1009u + (uint16_t)dlvl * 2657u + 13u);
         sh ^= (uint16_t)(sh << 7);
         sh ^= (uint16_t)(sh >> 9);
@@ -394,7 +456,6 @@ void gen_level(void) __banked
             pick_keeper_cell((uint8_t)shop_room);
             stock_shop((uint8_t)shop_room);
         } else {
-            shop_room = -1;
             place_gold();
             place_gold();
             place_item('%');      /* food   */
@@ -431,6 +492,22 @@ int shop_keeper_xy(uint8_t *kx, uint8_t *ky) __banked
     if (shop_room < 0) return 0;
     *kx = keeper_x; *ky = keeper_y;
     return 1;
+}
+
+/* index of this level's treasure-vault room, or -1 (monster_ai posts guards) */
+int level_vault_room(void) __banked
+{
+    return vault_room;
+}
+
+/* is (x,y) inside the treasure vault? (item.c upgrades vault loot quality) */
+int in_vault_room(int x, int y) __banked
+{
+    uint8_t r;
+    if (vault_room < 0) return 0;
+    r = (uint8_t)vault_room;
+    return x >= r_x[r] && x < r_x[r] + r_w[r] &&
+           y >= r_y[r] && y < r_y[r] + r_h[r];
 }
 
 void apply_gold_persistence(void) __banked

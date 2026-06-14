@@ -161,6 +161,18 @@ image, then the game switches back to the tilemap.
 - `build_level()` (in `nexthack.c`) orchestrates: `gen_level()` → spawn monsters →
   apply gold/monster/item persistence. Gold/items are placed before monsters so
   spawning sees the same map each visit.
+- **Special levels** (Phases 22-23, `levelgen.c`): certain depths are landmark
+  levels, decided by **side hashes** (never `rn2`, so ordinary levels stay
+  byte-identical and persistence stays in sync). `special_gen()` at the top of
+  `gen_level` fully *replaces* a level — the **Big Room** (every 11th depth) is one
+  giant lit chamber filling the playable area (`rcount=1`, room in `r_*[0]`). The
+  **treasure vault** (some depths ≥ 4, in the loot block, precedence over shops)
+  instead *augments* a normal level: it packs a **leaf room** (one door, never a
+  through-route, holds no stairs — so filling it never splits the map) with gold +
+  items, `monster_ai.c` posts tough guards in it (the first few spawns, kept ≤
+  `MAXMON`), and `item.c` resolves its loot at a deeper effective depth (`dlvl +
+  VAULT_DEPTH_BONUS`) for richer gear. `level_vault_room()` / `in_vault_room()`
+  expose it to the spawner and to `item.c`.
 - **Win condition**: the deepest level (`DLVL_AMULET`, currently 50) has no
   down-stairs — the Amulet of Yendor (`"`) sits on that cell instead. Picking it up
   sets `has_amulet`; climbing `<` on Dlvl 1 while carrying it sets `won` (victory

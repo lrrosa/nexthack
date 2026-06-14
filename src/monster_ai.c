@@ -38,14 +38,38 @@ static void spawn_monster(char type)
     mcount++;
 }
 
+/* A vault guard: a tough monster (the tougher of two depth-appropriate draws),
+ * with a bigger HP bonus than usual, placed inside the treasure vault.
+ * rand_floor returns an interior cell (floor or treasure -- the guard just
+ * stands on top), so no '.'-only check. */
+static void spawn_guard(uint8_t room)
+{
+    char a = pick_mon(), b = pick_mon();
+    const MonType *mt = mon_find(mon_find(a)->hp >= mon_find(b)->hp ? a : b);
+    uint8_t x, y;
+    if (mcount >= MAXMON) return;
+    rand_floor(room, &x, &y);
+    if (x == up_x && y == up_y) return;
+    if (monster_at(x, y) >= 0) return;
+    m_x[mcount] = x; m_y[mcount] = y;
+    m_hp[mcount] = (uint8_t)(mt->hp + dlvl);       /* tougher than the usual +dlvl/2 */
+    m_type[mcount] = mt->ch; m_alive[mcount] = 1;
+    mcount++;
+}
+
 void spawn_level_monsters(void) __banked
 {
     uint8_t count = (uint8_t)(2 + dlvl);   /* more monsters the deeper you go */
+    int     vr    = level_vault_room();    /* -1 if this level has no vault     */
+    uint8_t guards = (vr >= 0) ? 3 : 0;    /* a few tough guards inside it       */
     uint8_t i;
     if (count > MAXMON) count = MAXMON;
+    if (guards > count) guards = count;
     mcount = 0;
-    for (i = 0; i < count; i++)
-        spawn_monster(pick_mon());
+    for (i = 0; i < count; i++) {
+        if (i < guards) spawn_guard((uint8_t)vr);   /* low slots -> persistence-tracked */
+        else            spawn_monster(pick_mon());
+    }
 }
 
 /* Append the shopkeeper at (x,y). Called from build_level AFTER the random

@@ -52,6 +52,10 @@ void level_reset_persistence(void) __banked;
 int  shop_in_room(int x, int y) __banked;            /* is (x,y) in the shop room? */
 int  shop_keeper_xy(uint8_t *kx, uint8_t *ky) __banked;  /* keeper cell, 0 if no shop */
 
+/* ---- treasure vault (Phase 23) ---- */
+int  level_vault_room(void) __banked;   /* this level's vault room index, or -1 */
+int  in_vault_room(int x, int y) __banked;   /* is (x,y) in the vault? (better loot) */
+
 /* save/restore the per-depth persistence bitmasks and the fog-of-war bitmaps
  * (banked, in levelfov.c) */
 void level_save(uint8_t h) __banked;

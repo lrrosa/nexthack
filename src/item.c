@@ -215,12 +215,16 @@ static uint16_t item_hash(uint8_t x, uint8_t y)
     return h ? h : 0xA5A5u;
 }
 
-/* pick a concrete object of class cls that may appear at the current depth */
-static uint8_t resolve_otyp(char cls, uint16_t h)
+/* vault loot resolves as if this many floors deeper: a richer type pool and
+ * more enchantment, so a treasure vault really is worth breaking into. */
+#define VAULT_DEPTH_BONUS 8
+
+/* pick a concrete object of class cls that may appear by the given depth */
+static uint8_t resolve_otyp(char cls, uint16_t h, uint8_t depth)
 {
     uint8_t i, elig[NUMOBJ], n = 0;
     for (i = 0; i < NUMOBJ; i++)
-        if (objtypes[i].cls == cls && objtypes[i].mindep <= (uint8_t)dlvl)
+        if (objtypes[i].cls == cls && objtypes[i].mindep <= depth)
             elig[n++] = i;
     if (n == 0) {
         for (i = 0; i < NUMOBJ; i++)
@@ -231,11 +235,19 @@ static uint8_t resolve_otyp(char cls, uint16_t h)
 }
 
 /* resolve the concrete object lying at (x,y) - shared by the "you see here"
- * look and by pickup, so they always agree */
+ * look and by pickup, so they always agree. The cell's identity hash stays
+ * tied to the real dlvl (so the item is stable across visits), but inside a
+ * treasure vault the *quality* is resolved at a deeper effective depth. */
 static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
 {
     char c = terrain(x, y);
     uint16_t h = item_hash(x, y);
+    uint8_t depth = (uint8_t)dlvl;
+
+    if (in_vault_room((int)x, (int)y)) {
+        uint16_t d = (uint16_t)(dlvl + VAULT_DEPTH_BONUS);
+        depth = (uint8_t)(d > MAXLVL ? MAXLVL : d);
+    }
 
     o->ench = 0;
     o->ero  = 0;
@@ -244,11 +256,11 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
         o->otyp = O_AMULET;
         return;
     }
-    o->otyp = resolve_otyp(c, h);
+    o->otyp = resolve_otyp(c, h, depth);
     if (c == ')' || c == '[') {              /* small, depth-scaled enchant */
         uint8_t roll = (uint8_t)((h >> 5) % 100u);
-        if (roll < (uint8_t)dlvl)       o->ench = 1;
-        if (roll < (uint8_t)(dlvl / 3)) o->ench = 2;
+        if (roll < depth)                o->ench = 1;
+        if (roll < (uint8_t)(depth / 3)) o->ench = 2;
     }
 }
 

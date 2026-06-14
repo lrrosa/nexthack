@@ -33,8 +33,9 @@ code.
 - **Items and equipment** — weapons, armour, potions, food, scrolls and rings,
   each with its own enchantment and erosion; wield/wear the best you carry,
   quaff/eat/read, and watch acid blobs corrode your gear.
-- **Shops** with priced goods and a shopkeeper to buy from and sell to, and
-  **special levels** such as the Big Room.
+- **Shops** with priced goods and a shopkeeper to buy from and sell to, plus
+  **special levels** — the cavernous Big Room and guarded **treasure vaults**
+  (a sealed chamber of gold and superior gear, defended by tough monsters).
 - Hunger and slow HP regeneration, beeper sound effects, and **save & quit** to
   the SD card, NetHack-style (reloaded once on the next boot, then deleted — no
   save-scumming).
