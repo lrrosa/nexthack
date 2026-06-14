@@ -29,7 +29,7 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC  = os.path.join(HERE, "title.png")
-ROOT = os.path.join(HERE, "..")
+ROOT = os.path.join(HERE, "..", "src")   # the generated titlegfx*.c live with the sources
 
 W, H = 256, 192
 BANK = 16384

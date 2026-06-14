@@ -27,12 +27,12 @@ $cflags = @('+zxn','-clib=sdcc_iy','-SO3','--max-allocs-per-node200000','-pragma
 # older than its own .c, or older than ANY header (a game.h/platform.h change
 # touches many modules, so rebuild them all) or zpragma.inc/mmap.inc. Most edits
 # are to one .c -> only that module recompiles.
-$depTime = (Get-ChildItem *.h, zpragma.inc, mmap.inc | Measure-Object LastWriteTime -Maximum).Maximum
+$depTime = (Get-ChildItem src/*.h, zpragma.inc, mmap.inc | Measure-Object LastWriteTime -Maximum).Maximum
 $todo = $srcs | Where-Object {
-    $o = "$_.o"
+    $o = "src/$_.o"
     $Clean -or
     -not (Test-Path $o) -or
-    ((Get-Item $o).LastWriteTime -lt (Get-Item "$_.c").LastWriteTime) -or
+    ((Get-Item $o).LastWriteTime -lt (Get-Item "src/$_.c").LastWriteTime) -or
     ((Get-Item $o).LastWriteTime -lt $depTime)
 }
 
@@ -43,12 +43,12 @@ if ($todo) {
     $results = $todo | ForEach-Object -ThrottleLimit 8 -Parallel {
         $env:ZCCCFG = $using:zcccfg
         $env:PATH   = $using:zpath
-        $log = & zcc $using:cflags -c "$_.c" -o "$_.o" 2>&1
+        $log = & zcc $using:cflags -c "src/$_.c" -o "src/$_.o" 2>&1
         [pscustomobject]@{ Mod = $_; Code = $LASTEXITCODE; Log = ($log -join "`n") }
     }
-    $failed = $results | Where-Object { $_.Code -ne 0 -or -not (Test-Path "$($_.Mod).o") }
+    $failed = $results | Where-Object { $_.Code -ne 0 -or -not (Test-Path "src/$($_.Mod).o") }
     if ($failed) {
-        $failed | ForEach-Object { "COMPILE FAILED: $($_.Mod).c`n$($_.Log)" }
+        $failed | ForEach-Object { "COMPILE FAILED: src/$($_.Mod).c`n$($_.Log)" }
         throw "Build aborted: $($failed.Count) module(s) failed to compile."
     }
 } else {
@@ -57,7 +57,7 @@ if ($todo) {
 
 # Link stage: combine the .o files into the .nex (+ .map), applying the banking
 # pragmas (REGISTER_SP/CRT_APPEND_MMAP/CLIB_BANKING_SEGMENT) and the page mmap.
-$objs = $srcs | ForEach-Object { "$_.o" }
+$objs = $srcs | ForEach-Object { "src/$_.o" }
 & zcc +zxn -subtype=nex -vn -clib=sdcc_iy -startup=1 -pragma-include:zpragma.inc -m $objs -o nexthack -create-app
 $sw.Stop()
 

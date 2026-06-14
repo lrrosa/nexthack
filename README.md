@@ -51,7 +51,9 @@ The code is split into modules with clear responsibilities — the platform
 (ZX Next hardware) layer kept separate from the game logic. Because the engine
 is **code-banked**, each module is also either **resident** (hot code
 that stays mapped in, R) or **banked** (cold code paged into the `0xC000` window
-on demand, B). Headers declare the interface; the `.c` is the R/B half:
+on demand, B). Headers declare the interface; the `.c` is the R/B half. The
+source files live in **`src/`**; the build scripts, `mmap.inc` and `zpragma.inc`
+stay at the repo root (the build runs from there, where z88dk looks for `mmap.inc`):
 
 | File | R/B | Responsibility |
 |------|-----|----------------|
@@ -104,7 +106,7 @@ Equivalent direct invocation of the full build:
 ```bat
 set ZCCCFG=..\z88dk-latest\lib\config\
 set PATH=..\z88dk-latest\bin;%PATH%
-zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startup=1 -pragma-include:zpragma.inc -m mainentry.c nexthack.c platform.c platform_init.c rng.c level.c levelgen.c levelfov.c monster.c monster_ai.c item.c sfx.c -o nexthack -create-app
+zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startup=1 -pragma-include:zpragma.inc -m src/mainentry.c src/nexthack.c src/platform.c src/platform_init.c src/rng.c src/level.c src/levelgen.c src/levelfov.c src/monster.c src/monster_ai.c src/item.c src/sfx.c src/titlegfx0.c src/titlegfx1.c src/titlegfx2.c src/titlepal.c -o nexthack -create-app
 ```
 
 The banking layout is configured by `zpragma.inc` (stack at `0xBFF0`, banking

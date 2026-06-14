@@ -44,8 +44,9 @@ compile per `.c` to a `.o` (byte-identical output — verified same SHA-256), bu
 **skips untouched modules and parallelises** across cores: clean ~75s, one-module
 edit ~25s, no-op ~2s. Prefer it; `build.bat` is the single-shot fallback.
 
-When adding a new `.c` module, add it to the `SRCS`/`$srcs` list in **both**
-`build.bat` and `build.ps1`, and decide resident vs banked (see Memory budget).
+When adding a new `.c` module, put it in `src/`, add it to the `SRCS`/`$srcs`
+list in **both** `build.bat` and `build.ps1`, and decide resident vs banked
+(see Memory budget).
 
 There are no automated tests. Verification is manual: build, then run in CSpect and
 observe. The build agent cannot see the emulator window, so behaviour is confirmed
@@ -66,6 +67,11 @@ by the human running `run.bat`.
 ## Architecture
 
 Strict split between the **Next hardware platform layer** and **game logic**:
+
+All source modules live in **`src/`**; the build scripts, `mmap.inc` and
+`zpragma.inc` stay at the repo root (the build runs from root, where z88dk's
+`CRT_APPEND_MMAP` looks for `mmap.inc`). `tools/` holds the title-art converter,
+`docs/` the README images.
 
 Modules are also split by **resident vs banked** (see Memory budget). Header `.h`
 files declare the interface; the `.c` is resident (R) or banked (B):
