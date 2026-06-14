@@ -73,8 +73,8 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | File | R/B | Responsibility |
 |------|-----|----------------|
 | `mainentry.c` | R | `main()` only: the turn loop / dispatcher (CRT entry — can't be banked) |
-| `platform.c/.h` | R | hot Next hardware: tilemap draw primitives, text/messages, keyboard, file I/O; `gfx`/palette tables |
-| `platform_init.c` | B | one-time setup: tilemap/font/tile/palette init (`tm_init`) |
+| `platform.c/.h` | R | hot Next hardware: tilemap draw primitives, text/messages, keyboard, file I/O; `master`/`inkcol` palette tables |
+| `platform_init.c` | B | one-time setup: tilemap/font/tile/palette init (`tm_init`) + the `gfx[]` tile table (const-banked) |
 | `rng.c/.h` | R | xorshift16 PRNG + `world_seed` |
 | `level.c/.h` | R | terrain buffer + the per-cell leaves `terrain`/`walkable`/`tile_for`; `.h` declares the whole level interface |
 | `levelgen.c` | B | procedural generation + gold/item persistence (owns room table + masks) |
@@ -98,9 +98,9 @@ DATA — banked code's data is resident too). Modules include `game.h` to read/w
   (NextReg 0x6F/0x6E). **Tile definitions must stay below `0x5C00`** (NextZXOS sysvars).
 - **Tiles 0..127 = ROM font** (expanded from `0x3C00`), used for text and coloured
   per cell via the attribute's palette **offset** (see palette below). Tiles 128+
-  (`T_*` in `platform.h`) are **4bpp colour graphic tiles** (`gfx[]` in `platform.c`)
-  for map cells. Adding a graphic tile: add a `T_*` number, an entry in `gfx[]`, and
-  bump the count in `load_gfx_tiles()`.
+  (`T_*` in `platform.h`) are **4bpp colour graphic tiles** (`gfx[]` in `platform_init.c`,
+  const-banked) for map cells. Adding a graphic tile: add a `T_*` number, an entry in
+  `gfx[]`, and bump the count in `load_gfx_tiles()`.
 - **Palette offsets** (tilemap palette, NextReg 0x43=0x30):
   - offset 0 (indices 0..15) = full-colour **master palette** for graphic tiles in view.
   - offset 1 (indices 16..31) = **dimmed master** (channels halved) for remembered,
@@ -213,15 +213,20 @@ The game **broke the 64 KB ceiling by code-banking**. Layout:
 **The resident half is the constraint.** Everything resident (code+data+BSS) must end
 below the stack floor `~0xBDF0`, or the stack corrupts and the machine resets to BASIC.
 Check `__CODE_END_tail` / `__BSS_END_tail` in `nexthack.map` after any change. Current:
-`__CODE_END=$AFE6`, `__BSS_END=$BD9E` — only **~82 B** to the stack floor.
+`__CODE_END=$AAA2`, `__BSS_END=$BBB1` — about **~575 B** to the stack floor (after
+const-banking `gfx[]`, see below).
 
 **Adding a feature:**
 - **New code → make it banked** (it has room): put it in a module compiled into
   `PAGE_20_CODE`/`PAGE_22_CODE`, mark entry points `__banked`. Cold/per-turn code banks
   freely (the trampoline cost is negligible off the per-cell path).
-- **New resident DATA is scarce (~82 B).** Banked code's `static` data is still
-  resident, so data-heavy features need data-banking (Bank 5 is full; would need true
-  MMU data paging) or trimming (e.g. `FOV_SLOTS`, already cut 8→4).
+- **New resident DATA is still the scarce resource.** Banked code's `static` data —
+  **and its string/const literals (resident rodata)** — stay resident, so data/text-heavy
+  features eat the ~575 B fast (the shops' message strings did). Levers when it overflows:
+  (a) **const-bank read-once tables** — `gfx[]` (1600 B, read only by `load_gfx_tiles` at
+  startup) lives in `platform_init.c` under `#pragma constseg PAGE_22_CODE`, so it sits in
+  Bank 11 next to its reader (which runs with that page mapped); (b) data-bank scratch
+  arrays into Bank 5's free tail (like `dist`/`bfsq`); (c) trim strings.
 - **`--max-allocs-per-node200000` is load-bearing for resident code size** (the SDCC
   allocator's thoroughness shrinks code); don't lower it.
 
@@ -230,10 +235,10 @@ Check `__CODE_END_tail` / `__BSS_END_tail` in `nexthack.map` after any change. C
    does NOT partition by position (it scrambles sections).
 2. A module containing `main()` → bank the module, move only `main()` to a tiny resident
    file (`mainentry.c`); the CRT jumps straight to main, so it can't be banked.
-3. Keep the per-cell/per-move **leaves** resident (`platform.c` draw primitives + `gfx`,
+3. Keep the per-cell/per-move **leaves** resident (`platform.c` draw primitives,
    `level.c` terrain/walkable/tile_for, `monster.c` monster_at/mon_find/…) so banked
    callers reach them by direct calls; banked entry points are `__banked`, intra-page
-   static helpers stay plain.
+   static helpers stay plain. (Read-once tables like `gfx[]` are *not* leaves — bank them.)
 4. Data shared across a split is defined in one file, `extern` in the other (DATA is
    resident regardless of which file's code is banked).
 5. Resident modules: `mainentry.c`, `platform.c`, `level.c`, `monster.c`, `rng.c`.
