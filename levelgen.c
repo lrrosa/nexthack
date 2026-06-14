@@ -40,9 +40,11 @@ static uint8_t g_x[8], g_y[8];
 static uint8_t icount;
 static uint8_t i_x[8], i_y[8];
 
-/* Shop: index of the room that is a shop on the current level, or -1. Set by
- * gen_level each time, read by shop_in_room/shop_keeper_xy. Resident (1 B). */
-static int8_t shop_room = -1;
+/* Shop: index of the room that is a shop on the current level, or -1, plus the
+ * reserved shopkeeper cell. Set by gen_level each time; read by shop_in_room /
+ * shop_keeper_xy. Resident (3 B). */
+static int8_t  shop_room = -1;
+static uint8_t keeper_x, keeper_y;
 
 static uint16_t level_seed(uint16_t d)
 {
@@ -217,6 +219,27 @@ static void place_gold(void)
  * aisles), the class chosen per cell by a side hash, up to the 8-item cap. They
  * are tracked in i_*[] like normal floor items, so pickup/persistence just work;
  * resolve_floor() then prices each one (item.c). */
+/* Reserve the shopkeeper's cell: an empty floor tile just inside a door if
+ * there is one, else any interior floor. Chosen on the bare room (before
+ * stocking) so it is always available. */
+static void pick_keeper_cell(uint8_t r)
+{
+    uint8_t xx, yy, pass;
+    keeper_x = (uint8_t)(r_x[r] + 1);              /* sane fallback */
+    keeper_y = (uint8_t)(r_y[r] + 1);
+    for (pass = 0; pass < 2; pass++)
+        for (yy = (uint8_t)(r_y[r] + 1); yy + 1 < r_y[r] + r_h[r]; yy++)
+            for (xx = (uint8_t)(r_x[r] + 1); xx + 1 < r_x[r] + r_w[r]; xx++) {
+                if (lvl[yy][xx] != '.') continue;
+                if (pass == 0 &&
+                    !(lvl[yy][xx - 1] == '+' || lvl[yy][xx + 1] == '+' ||
+                      lvl[yy - 1][xx] == '+' || lvl[yy + 1][xx] == '+'))
+                    continue;
+                keeper_x = xx; keeper_y = yy;
+                return;
+            }
+}
+
 static void stock_shop(uint8_t r)
 {
     static const char SHOPCLS[6] = { ')', '[', '!', '?', '=', '%' };
@@ -225,6 +248,7 @@ static void stock_shop(uint8_t r)
         for (xx = (uint8_t)(r_x[r] + 1); xx + 1 < r_x[r] + r_w[r] && icount < 8; xx++) {
             uint16_t h;
             if (lvl[yy][xx] != '.') continue;          /* skip stairs etc.   */
+            if (xx == keeper_x && yy == keeper_y) continue;  /* keep keeper cell clear */
             h = (uint16_t)(world_seed + (uint16_t)dlvl * 2657u
                            + (uint16_t)xx * 131u + (uint16_t)yy * 1009u);
             if (h & 1) continue;                       /* leave ~half as aisle */
@@ -291,6 +315,7 @@ void gen_level(void) __banked
         sh ^= (uint16_t)(sh >> 9);
         if (dlvl >= 2 && dlvl != DLVL_AMULET && (sh % 3u) == 0) {
             shop_room = (int8_t)((sh >> 5) % rcount);
+            pick_keeper_cell((uint8_t)shop_room);
             stock_shop((uint8_t)shop_room);
         } else {
             shop_room = -1;
@@ -324,25 +349,12 @@ int shop_in_room(int x, int y) __banked
            y >= r_y[r] && y < r_y[r] + r_h[r];
 }
 
-/* pick the shopkeeper's cell: an empty floor tile just inside a door if there
- * is one, else any empty interior floor. Returns 0 if this level has no shop. */
+/* the shopkeeper's reserved cell (chosen in gen_level). 0 if no shop. */
 int shop_keeper_xy(uint8_t *kx, uint8_t *ky) __banked
 {
-    uint8_t r, xx, yy, pass;
     if (shop_room < 0) return 0;
-    r = (uint8_t)shop_room;
-    for (pass = 0; pass < 2; pass++)
-        for (yy = (uint8_t)(r_y[r] + 1); yy + 1 < r_y[r] + r_h[r]; yy++)
-            for (xx = (uint8_t)(r_x[r] + 1); xx + 1 < r_x[r] + r_w[r]; xx++) {
-                if (lvl[yy][xx] != '.') continue;       /* empty floor only */
-                if (pass == 0 &&                        /* pass 0: next to a door */
-                    !(lvl[yy][xx - 1] == '+' || lvl[yy][xx + 1] == '+' ||
-                      lvl[yy - 1][xx] == '+' || lvl[yy + 1][xx] == '+'))
-                    continue;
-                *kx = xx; *ky = yy;
-                return 1;
-            }
-    return 0;
+    *kx = keeper_x; *ky = keeper_y;
+    return 1;
 }
 
 void apply_gold_persistence(void) __banked

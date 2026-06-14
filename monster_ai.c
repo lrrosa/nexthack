@@ -30,6 +30,7 @@ static void spawn_monster(char type)
     rand_floor(i, &x, &y);
     if (lvl[y][x] != '.') return;                 /* floor only          */
     if (x == up_x && y == up_y) return;           /* keep the start clear */
+    if (shop_in_room(x, y)) return;               /* shops hold only the keeper */
     if (monster_at(x, y) >= 0) return;
     m_x[mcount] = x; m_y[mcount] = y;
     m_hp[mcount] = (uint8_t)(mt->hp + dlvl / 2);   /* tougher the deeper you go */
@@ -302,6 +303,7 @@ void maybe_spawn_wanderer(void) __banked
     rand_floor(i, &x, &y);
     if (lvl[y][x] != '.')       return;      /* floor only            */
     if (x == up_x && y == up_y) return;      /* keep the start clear  */
+    if (shop_in_room(x, y))     return;      /* shops hold only the keeper */
     if (monster_at(x, y) >= 0)  return;      /* not onto another mon  */
     if (iabs((int)x - hero_x) <= 1 &&
         iabs((int)y - hero_y) <= 1) return;  /* not in the hero's lap */

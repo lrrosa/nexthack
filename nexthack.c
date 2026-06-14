@@ -333,9 +333,12 @@ void try_move(int dx, int dy) __banked
     }
     mi = monster_at(nx, ny);
     if (mi >= 0) {
-        if (m_type[mi] == MON_KEEPER) {            /* don't anger the shopkeeper */
-            msg("The shopkeeper won't let you pass there.");
-            return;                                /* no attack, no turn */
+        if (m_type[mi] == MON_KEEPER) {            /* swap past, don't attack */
+            m_x[mi] = (uint8_t)hero_x;             /* the keeper steps aside   */
+            m_y[mi] = (uint8_t)hero_y;             /* so it can never trap you */
+            hero_x = nx; hero_y = ny;
+            turns++; acted = 1;
+            return;
         }
         acted = 1;
         attack_monster((uint8_t)mi);
