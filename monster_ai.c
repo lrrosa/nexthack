@@ -251,7 +251,8 @@ static void mon_step(uint8_t i)
             if (nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH) continue;
             nd = dist[(uint16_t)ny * MAPW + nx];
             if (nd == UNREACH || nd >= bestd) continue;
-            if (monster_at(nx, ny) >= 0) continue;   /* don't stack */
+            if (monster_at(nx, ny) >= 0) continue;   /* don't stack       */
+            if (shop_in_room(nx, ny)) continue;      /* shop is a safe zone */
             bestd = nd; bestx = nx; besty = ny;
         }
     }
