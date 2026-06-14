@@ -120,11 +120,14 @@ The **only** use of the Next's **Layer 2** framebuffer (256×192, 8bpp); everyth
 else is the tilemap. `title_screen()` (`nexthack.c`) shows the pixel-art loading
 image, then the game switches back to the tilemap.
 - The image is **generated**: `tools/png2layer2.py` (Pillow) converts
-  `tools/title.png` (a 4:3 768×576 letterboxed render) → 256×192, quantizes
-  (`MAXCOVERAGE`, so small saturated areas keep a palette slot) and snaps to the
-  Next 9-bit (RGB333) palette → `titlegfx0/1/2.c` (the framebuffer, row-major
-  `y*256+x`, in three 16 KB thirds) + `titlepal.c` (palette). Re-run it if
-  `title.png` changes; the generated `.c` files **are** committed.
+  `tools/title.png` → `titlegfx0/1/2.c` (the framebuffer, row-major `y*256+x`, in
+  three 16 KB thirds) + `titlepal.c` (palette). It picks the path by source size:
+  a **256×192** source (the hand-edited final-res art) is packed **pixel-exact**
+  (each pixel just snapped to the nearest Next 9-bit RGB333 colour, palette built
+  from the distinct colours — no resampling); a larger render is resized to
+  256×192 and quantized (`MAXCOVERAGE`, so small saturated areas keep a slot). To
+  edit the art, edit a 256×192 PNG in the Next palette and re-run the tool; the
+  generated `.c` files **are** committed.
 - The three thirds are **const-banked into banks 16/17/18** so the `.nex` loader
   writes them where Layer 2 reads them **in place — no runtime copy, zero resident
   cost** (banks outside the CPU window). `title_screen` just streams the palette

@@ -3,19 +3,26 @@
 # Copyright (C) 2026 Leonardo Roman da Rosa
 #
 # png2layer2.py - convert the title art into a ZX Spectrum Next Layer 2 image
-# embedded as C const data (titlegfx.c).
+# embedded as C const data (titlegfx0/1/2.c + titlepal.c).
 #
 #   python tools/png2layer2.py
 #
-# Reads tools/title.png (a 4:3 768x576 letterboxed render), produces a 256x192
-# 8bpp Layer 2 framebuffer + a 256-entry 9-bit palette, and writes titlegfx.c:
-#   - title_img0/1/2[16384]  : the framebuffer, row-major (y*256+x), split into
-#                              the three consecutive 16K banks Layer 2 reads.
-#   - title_pal[512]         : 2 bytes per colour, ready to stream to NextReg
-#                              0x44 (first byte RRRGGGBB, second byte bit0 = blue
-#                              LSB) for true 9-bit (RGB333) colour.
-# The arrays live in banked const sections (see mmap.inc / nexthack.c), so the
-# image costs nothing against the resident memory budget.
+# Reads tools/title.png and produces a 256x192 8bpp Layer 2 framebuffer + a
+# 256-entry 9-bit palette:
+#   - title_img0/1/2[16384] : the framebuffer, row-major (y*256+x), split into
+#                             the three consecutive 16K banks Layer 2 reads.
+#   - title_pal[512]        : 2 bytes per colour, ready to stream to NextReg 0x44
+#                             (first byte RRRGGGBB, second byte bit0 = blue LSB).
+#
+# The source resolution selects the path:
+#   - 256x192 (the final-res hand-edited art): packed PIXEL-EXACT - each pixel is
+#     only snapped to the nearest Next 9-bit (RGB333) colour and the palette is
+#     built directly from the distinct colours (no resampling, no re-quantizing).
+#   - anything larger (e.g. a 768x576 render): resized to 256x192 and quantized
+#     (MAXCOVERAGE keeps small saturated areas a palette slot of their own).
+#
+# SDCC's `#pragma constseg` is per-translation-unit (the last one wins for the
+# whole file), so each const lives in its OWN .c with a single constseg.
 
 from PIL import Image
 import os
@@ -27,11 +34,6 @@ ROOT = os.path.join(HERE, "..")
 W, H = 256, 192
 BANK = 16384
 
-# SDCC's `#pragma constseg` is per-translation-unit (switching it mid-file does
-# NOT create separate areas - the last one wins for the whole file). So each
-# const lives in its OWN .c file with a single constseg: the three framebuffer
-# thirds in three consecutive 16K banks Layer 2 reads in place, and the palette
-# in PAGE_22_CODE (bank 11) next to the title code that streams it.
 FILES = [
     ("titlegfx0.c", "title_img0", "BANK_16"),
     ("titlegfx1.c", "title_img1", "BANK_17"),
@@ -40,35 +42,57 @@ FILES = [
 ]
 
 
-def rgb333(r, g, b):
-    """Snap an 8-bit-per-channel colour to the Next 9-bit (RGB333) grid and
-    return the two NextReg bytes: (RRRGGGBB, 0000000B0)."""
-    r3 = round(r / 255 * 7)
-    g3 = round(g / 255 * 7)
-    b3 = round(b / 255 * 7)
-    byte1 = (r3 << 5) | (g3 << 2) | (b3 >> 1)   # RRR GGG BB
-    byte2 = b3 & 1                               # blue LSB
-    return byte1, byte2
+def levels(r, g, b):
+    """8-bit-per-channel RGB -> Next 9-bit (RGB333) levels (0..7 each)."""
+    return (round(r / 255 * 7), round(g / 255 * 7), round(b / 255 * 7))
+
+
+def to_rgb(l):
+    """RGB333 levels -> 8-bit RGB (for re-quantizing a snapped image)."""
+    return (l[0] * 255 // 7, l[1] * 255 // 7, l[2] * 255 // 7)
+
+
+def to_bytes(l):
+    """RGB333 levels -> the two NextReg 0x44 bytes (RRRGGGBB, 0000000B0)."""
+    r3, g3, b3 = l
+    return [(r3 << 5) | (g3 << 2) | (b3 >> 1), b3 & 1]
+
+
+def from_final(img):
+    """256x192 hand-edited art: snap each pixel and build the palette directly,
+    so the result is pixel-exact (lossless when <=256 distinct snapped colours)."""
+    px = [levels(*p) for p in img.getdata()]
+    order, index_of = [], {}
+    for s in px:
+        if s not in index_of:
+            index_of[s] = len(order)
+            order.append(s)
+    if len(order) > 256:                       # rare: fall back to a quantize
+        disp = Image.new("RGB", (W, H))
+        disp.putdata([to_rgb(s) for s in px])
+        return from_render(disp)
+    idx = [index_of[s] for s in px]
+    pal = order + [(0, 0, 0)] * (256 - len(order))
+    return idx, pal
+
+
+def from_render(img):
+    """Larger render: resize to 256x192 and quantize to <=256 colours."""
+    small = img.resize((W, H), Image.LANCZOS)
+    q = small.quantize(colors=256, method=Image.MAXCOVERAGE, dither=Image.FLOYDSTEINBERG)
+    p = q.getpalette()
+    pal = [levels(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]) for i in range(256)]
+    return list(q.getdata()), pal
 
 
 def main():
-    img = Image.open(SRC).convert("RGB").resize((W, H), Image.LANCZOS)
-    # Quantize to <=256 colours with dithering, then snap the palette to RGB333.
-    # MAXCOVERAGE (vs MEDIANCUT) keeps small saturated regions a palette slot of
-    # their own -- without it the tiny green ZX rainbow stripe gets merged into
-    # the abundant yellow/teal and is lost.
-    q = img.quantize(colors=256, method=Image.MAXCOVERAGE, dither=Image.FLOYDSTEINBERG)
-
-    pal = q.getpalette()            # 256*3 RGB
-    palbytes = []
-    for i in range(256):
-        b1, b2 = rgb333(pal[i * 3], pal[i * 3 + 1], pal[i * 3 + 2])
-        palbytes += [b1, b2]
-
-    idx = list(q.getdata())         # 256*192 palette indices, row-major
+    img = Image.open(SRC).convert("RGB")
+    idx, pal = from_final(img) if img.size == (W, H) else from_render(img)
     assert len(idx) == W * H, len(idx)
 
-    used = len({(pal[i*3], pal[i*3+1], pal[i*3+2]) for i in set(idx)})
+    palbytes = []
+    for l in pal:
+        palbytes += to_bytes(l)
 
     chunks = {
         "title_img0": idx[0 * BANK:1 * BANK],
@@ -96,8 +120,9 @@ def main():
     for fname, name, seg in FILES:
         emit(fname, name, seg)
 
-    print("wrote %s  (%d distinct colours)"
-          % (", ".join(f for f, _, _ in FILES), used))
+    print("wrote %s  (%d colours, %s source)"
+          % (", ".join(f for f, _, _ in FILES), len(set(idx)),
+             "final-res" if img.size == (W, H) else "resized"))
 
 
 if __name__ == "__main__":
