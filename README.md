@@ -4,9 +4,9 @@ A from-scratch NetHack-style roguelike for the
 [ZX Spectrum Next](https://www.specnext.com/), built with **Z88DK** (the
 `zsdcc`/SDCC C compiler) and tested on the **CSpect** emulator.
 
-![NextHack gameplay: a procedurally generated dungeon level drawn in colour 8×8 tiles, with the status and command bars below the map.](docs/gameplay.png)
+![NextHack title screen — a pixel-art loading screen: an armoured knight facing a demon in a torch-lit dungeon archway, beneath the NextHack logo.](docs/title.png)
 
-*Exploring a dungeon level — rooms light up on entry, corridors reveal as you go, and gold, items and monsters share the floor.*
+*The title screen, drawn on the Next's Layer 2 framebuffer (256×192).*
 
 ## Strategy
 
@@ -40,6 +40,10 @@ code.
   save-scumming).
 - The goal: retrieve the **Amulet of Yendor** from the bottom of the dungeon and
   climb back out alive.
+
+![NextHack gameplay: a procedurally generated dungeon level drawn in colour 8×8 tiles, with the status and command bars below the map.](docs/gameplay.png)
+
+*Exploring a dungeon level — rooms light up on entry, corridors reveal as you go, and gold, items and monsters share the floor.*
 
 ## Project structure
 
