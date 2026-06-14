@@ -16,110 +16,50 @@ a time. So the engine is rebuilt on a dedicated **Next platform layer** (display
 keyboard, sound), reusing NetHack's design, key bindings and feel rather than its
 code.
 
-## Status
+## Features
 
-- [x] **Phase 0 — Toolchain** validated: `zcc` compiles C → a valid `.nex`.
-- [x] **Phase 1 — Vertical slice**: a NetHack-style level (2 rooms + corridor),
-      hero `@` moving with NetHack's vi-keys, wall collision, decorative
-      monsters/items/stairs.
-- [x] **Phase 1b — 80-column display** ([nexthack.c](nexthack.c)): rendered on the
-      Next's hardware **tilemap** (80×32), matching NetHack's native map width.
-- [x] **Phase 2** — Procedural level generation: random rooms on a grid of
-      sectors, corridors with doors, up/down stairs (`>` descends to a new
-      level), scattered gold/food/monsters. WASD + arrow-key movement.
-- [x] **Phase 3** — Graphics & interaction: colourful 8x8 pixel-art tiles for
-      the whole map; gold pickup; bump-to-attack combat with monster/player HP,
-      retaliation and death/restart; hold-a-key continuous movement.
-- [x] **Phase 4** — Level persistence: each Dlvl is regenerated deterministically
-      from a per-depth seed (same depth = same map), with collected gold and
-      killed monsters remembered. Title screen seeds the world from the player's
-      reaction time for good variety.
-- [x] **Phase 5** — Monster AI: monsters chase the hero each turn (greedy
-      pathing) and attack when adjacent; turn-based combat (you strike on your
-      turn, they strike back on theirs).
-- [x] **Phase 6** — Field of view (fog of war): the hero's room lights up,
-      corridors reveal around the hero, explored terrain is remembered, and
-      monsters only show while in view.
-- [x] **Phase 7** — Inventory and items: weapons, armor, potions and food on
-      the floor; pick up, inventory screen, wield/wear/quaff/eat. Corridors now
-      leave rooms through a single edge door and run through the rock.
-- [x] **Phase 8** — Survival & persistence: hunger and slow HP regeneration;
-      rooms joined to grid-adjacent neighbours (no spurious doors); per-level
-      fog-of-war memory; gold, monster kills and item pickups all remembered
-      across revisits.
-- [x] **Phase 9** — Bestiary & progression: several monster types (rat, bat,
-      kobold, dog, snake, orc, zombie) with their own tiles and stats, spawned
-      by depth; monster HP/damage scale with depth; XP and experience levels
-      (kills raise max HP); stairs placed in random rooms.
-- [x] **Phase 10** — Sound: beeper effects for hits, kills, taking damage,
-      picking up gold (a distinct coin sound) and items, drinking, eating,
-      stairs, levelling up and dying (CPU drops to 3.5 MHz per effect so the
-      cycle-timed beeper stays in tune, then restores 28 MHz).
-- [x] **Phase 11** — Pathfinding & polish: monsters path with a per-turn BFS
-      "Dijkstra map" from the hero (routing around walls, no more getting stuck);
-      corridor line-of-sight so chasers are visible (rooms revealed on entry);
-      render optimizations and flicker-free status/message lines.
-- [x] **Phase 12** — Dimmed memory: terrain you've explored but can't currently
-      see is drawn in a darker shade (a second, halved palette), distinct from
-      what's in view.
-- [x] **Phase 13** — Scrolls & rings: scrolls (`?`, read with `r`) with random
-      effects (magic mapping / teleport) and a ring of protection (`=`, put on
-      with `P`, improves AC). Bounded the BFS queue to fix a RAM overflow.
-- [x] **Phase 14 — Win condition**: the Amulet of Yendor (`"`) waits on the
-      deepest level (Dlvl 50), in place of its down-stairs; carry it back up and
-      climb the stairs on Dlvl 1 to win the game.
-- [x] **Phase 15 — Save/restore**: `S` saves the whole game (seed, player,
-      inventory, per-depth persistence and explored map) to `nexthack.sav` on the
-      SD card and returns to the title; it is loaded automatically on the next
-      boot and then deleted (NetHack-style — no save-scumming).
-- [x] **Phase 16 — Deeper dungeon**: the dungeon now descends to Dlvl 50. Cheap
-      per-level state (gold/items/kills) is kept for every level; the fog-of-war
-      lives in an 8-level **LRU pool** (recently visited levels stay mapped,
-      distant ones are forgotten) so RAM stays flat with depth.
-- [x] **Phase 17 — Item variety**: the inventory is now a per-item record
-      (type + enchantment + erosion); a catalogue gives several weapons and
-      armours (resolved by depth, sometimes enchanted), two potions and typed
-      scrolls/rings. `w`/`W`/`P` equip the best you carry; stepping on an item
-      names it ("You see here a +1 short sword"); the pack holds 24 in two columns.
-- [x] **Phase 18 — Equipment corrosion**: an acid blob (`a`) corrodes your worn
-      armour when it hits you and your wielded weapon when you strike it; eroded
-      gear reads "rusty"/"corroded" and loses effectiveness (erosion capped at 3).
-- [x] **Phase 19 — Wandering monsters**: a small per-turn chance to spawn a new
-      monster (NetHack-style), so a level is never permanently cleared by camping.
-- [x] **Phase 20 — Code banking (breaks the 64 KB ceiling)**: the engine is split
-      into a resident half (hot code + all data in `0x8000-0xBFF0`) and cold code
-      banked into the `0xC000` window, via z88dk `__banked`. Frees ~19 KB for new
-      code. Needs the nightly z88dk (see Build).
-- [x] **Phase 21 — Shops**: ~1/3 of levels (depth 2+) hold a shop room stocked
-      with priced items and a stationary shopkeeper (`@`). Picking an item up in a
-      shop buys it (gold deducted, refused if you can't pay); `d` sells a carried
-      item back for half price. Gives the hero's gold a purpose at last.
-- [x] **Phase 22 — Special levels (framework + Big Room)**: a deterministic
-      dispatcher in `gen_level` turns certain depths into hand-built landmark
-      levels, without perturbing the procedural RNG (and persistence) of the
-      normal levels. The first kind — the **Big Room** (every 11th depth:
-      11/22/33/44) — fills the whole playable area with one giant lit chamber,
-      scattered with loot and a crowd of monsters.
-- [ ] Later — more special levels: treasure vault (Phase 23) and hand-drawn
-      map templates (Phase 24), both reusing this framework.
-- [ ] Polish (minor, low priority) — show each held item's graphic tile beside its
-      name on the inventory screen (`i`); tackle after the items above.
+- A **50-level dungeon**, generated procedurally and **deterministically**: each
+  depth regenerates identically from its own seed, while the changes you make
+  (gold taken, monsters killed, items picked up) are remembered across revisits.
+- **Field of view** with fog of war — rooms light up on entry, corridors reveal
+  around you, and explored-but-unseen terrain is drawn dimmed from memory.
+- **Turn-based combat** against a depth-scaled bestiary (rats, bats, kobolds,
+  dogs, snakes, orcs, zombies, acid blobs…) that chases you with BFS pathfinding;
+  experience levels raise your HP.
+- **Items and equipment** — weapons, armour, potions, food, scrolls and rings,
+  each with its own enchantment and erosion; wield/wear the best you carry,
+  quaff/eat/read, and watch acid blobs corrode your gear.
+- **Shops** with priced goods and a shopkeeper to buy from and sell to, and
+  **special levels** such as the Big Room.
+- Hunger and slow HP regeneration, beeper sound effects, and **save & quit** to
+  the SD card, NetHack-style (reloaded once on the next boot, then deleted — no
+  save-scumming).
+- The goal: retrieve the **Amulet of Yendor** from the bottom of the dungeon and
+  climb back out alive.
 
 ## Project structure
 
-The code is split into modules with clear responsibilities (the platform
-layer is kept separate from game logic):
+The code is split into modules with clear responsibilities — the platform
+(ZX Next hardware) layer kept separate from the game logic. Because the engine
+is **code-banked**, each module is also either **resident** (hot code
+that stays mapped in, R) or **banked** (cold code paged into the `0xC000` window
+on demand, B). Headers declare the interface; the `.c` is the R/B half:
 
-| File | Responsibility |
-|------|----------------|
-| `platform.c` / `.h` | ZX Next hardware: tilemap, font, graphic tiles, palette, text/messages, keyboard |
-| `rng.c` / `.h` | random number generator |
-| `level.c` / `.h` | terrain buffer, procedural generation, level persistence |
-| `monster.c` / `.h` | monsters: spawning, chase AI, combat, XP |
-| `item.c` / `.h` | inventory and items (pick up, wield/wear/quaff/eat) |
-| `sfx.c` / `.h` | beeper sound effects |
-| `nexthack.c` | game state, main loop, map/status rendering, title screen |
-| `game.h` | shared player/run state used across modules |
+| File | R/B | Responsibility |
+|------|-----|----------------|
+| `mainentry.c` | R | `main()` only: the turn loop / dispatcher (the CRT entry point) |
+| `platform.c` / `.h` | R | hot ZX Next hardware: tilemap draw primitives, text/messages, keyboard, file I/O; palette tables |
+| `platform_init.c` | B | one-time setup: tilemap/font/tile/palette init and the `gfx[]` graphic-tile table |
+| `rng.c` / `.h` | R | random number generator (xorshift16) and the world seed |
+| `level.c` / `.h` | R | terrain buffer and the per-cell leaves (terrain / walkable / tile lookup) |
+| `levelgen.c` | B | procedural generation, special levels, gold/item persistence |
+| `levelfov.c` | B | field of view (fog of war) and save/restore |
+| `monster.c` / `.h` | R | monster arrays, per-monster lookups and the bestiary |
+| `monster_ai.c` | B | chase pathing (BFS), combat, spawning, kill persistence |
+| `item.c` / `.h` | B | inventory and items (pick up, wield/wear/quaff/eat/read/put-on) |
+| `sfx.c` / `.h` | B | beeper sound effects |
+| `nexthack.c` / `.h` | B | game-state globals (resident data), rendering, turn step, level orchestration, save/restore, screens |
+| `game.h` | — | shared player/run state used across modules |
 
 ## Build
 
@@ -135,7 +75,16 @@ z88dk (the `__banked` trampoline, build v24836+):
 └─ CSpect/          ← the CSpect emulator         (https://mdf200.itch.io/cspect)
 ```
 
-With that layout in place (`build.ps1` is the faster incremental+parallel build):
+With that layout in place, `build.ps1` is the preferred build — incremental and
+parallel, so it skips untouched modules and uses all cores (clean ~75 s, a
+one-module edit ~25 s):
+
+```powershell
+.\build.ps1          # incremental + parallel build -> nexthack.nex
+.\build.ps1 -Clean   # force a full rebuild
+```
+
+`build.bat` is the single-shot fallback (recompiles everything in one pass):
 
 ```bat
 build.bat            REM builds the whole game (all modules) -> nexthack.nex
@@ -178,6 +127,11 @@ build.bat            REM build first
 run-sd.bat           REM deploy into the SD image and boot NextZXOS
 ```
 
+Alternatively, the **ZEsarUX** emulator auto-mounts esxDOS onto the folder that
+holds the `.nex`, so save/restore works directly against the host directory — no
+SD image or `hdfmonkey` needed. Load `nexthack.nex` in ZEsarUX and play; `S` then
+writes `nexthack.sav` beside it, to be reloaded automatically on the next boot.
+
 ## Controls
 
 | Key                       | Action          |
@@ -188,6 +142,7 @@ run-sd.bat           REM deploy into the SD image and boot NextZXOS
 | `s` or `.`                | wait / search |
 | `,`                       | pick up the item under you |
 | `i`                       | show inventory |
+| `d`                       | sell a carried item back to the shop |
 | `w` / `W`                 | wield weapon / wear armor |
 | `P`                       | put on a ring |
 | `q` / `e` / `r`           | quaff potion / eat food / read scroll |
@@ -205,8 +160,8 @@ from the roguelike tradition):
   stairs up/down (`<` `>`)
 - **Items:** gold (`$`), weapon (`)`), armor (`[`), potion (`!`), food (`%`),
   scroll (`?`), ring (`=`), the Amulet of Yendor (`"`)
-- **Creatures:** hero (`@`), rat (`r`), bat (`B`), acid blob (`a`), kobold (`k`),
-  dog (`d`), snake (`S`), orc (`o`), zombie (`Z`)
+- **Creatures:** hero and shopkeeper (`@`), rat (`r`), bat (`B`), acid blob (`a`),
+  kobold (`k`), dog (`d`), snake (`S`), orc (`o`), zombie (`Z`)
 
 ## Technical notes
 
@@ -233,6 +188,7 @@ from the roguelike tradition):
 - NetHack: <https://www.nethack.org/>
 - z88dk: <https://github.com/z88dk/z88dk>
 - CSpect emulator: <https://mdf200.itch.io/cspect>
+- ZEsarUX emulator: <https://github.com/chernandezba/zesarux>
 
 ## License
 
