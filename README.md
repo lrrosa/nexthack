@@ -4,6 +4,10 @@ A from-scratch NetHack-style roguelike for the
 [ZX Spectrum Next](https://www.specnext.com/), built with **Z88DK** (the
 `zsdcc`/SDCC C compiler) and tested on the **CSpect** emulator.
 
+![NextHack gameplay: a procedurally generated dungeon level drawn in colour 8×8 tiles, with the status and command bars below the map.](docs/gameplay.png)
+
+*Exploring a dungeon level — rooms light up on entry, corridors reveal as you go, and gold, items and monsters share the floor.*
+
 ## Strategy
 
 This is a **fresh reimplementation** of NetHack's design in C, sized for the Z80N
@@ -149,6 +153,10 @@ writes `nexthack.sav` beside it, to be reloaded automatically on the next boot.
 | `S`                       | save game and quit to the title |
 
 Walk into a monster to attack it; walk over gold to pick it up.
+
+![The NextHack inventory screen, listing carried weapons, armour, potions, food and a scroll, with the worn and wielded items marked.](docs/inventory.png)
+
+*The inventory screen (`i`): each item is a record of type, enchantment and erosion — the worn armour and wielded weapon are flagged.*
 
 ## Map & item tiles
 
