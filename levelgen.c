@@ -257,6 +257,79 @@ static void stock_shop(uint8_t r)
         }
 }
 
+/* ---- special levels (Phase 22+) -------------------------------------------
+ * Some depths are landmark "special" levels with a hand-built layout instead of
+ * the procedural rooms+corridors. ONE deterministic dispatcher (special_gen)
+ * sits at the top of gen_level: the per-depth decision (special_kind) is a fixed
+ * predicate that NEVER calls rn2, so non-special depths generate byte-for-byte
+ * as before and their deterministic persistence stays in sync. A chosen
+ * generator builds terrain + sets rcount/r_*[] (so FOV lights its rooms) +
+ * up_x/dn_x, after which gen_level returns early. Big Room is the first kind;
+ * the treasure vault and hand-drawn templates (Phases 23-24) plug in here. */
+enum { SP_NONE = 0, SP_BIGROOM };
+
+/* Which special level (if any) lives at depth d. Fixed predicate, no rn2. The
+ * win level (DLVL_AMULET) is always left normal. Big Room recurs every 11th
+ * depth (11, 22, 33, 44) -- rare landmarks, none colliding with DLVL_AMULET. */
+static uint8_t special_kind(uint16_t d)
+{
+    if (d == DLVL_AMULET) return SP_NONE;
+    if (d >= 2 && (d % 11u) == 0) return SP_BIGROOM;
+    return SP_NONE;
+}
+
+/* Big Room: one giant lit chamber filling the whole playable area. rcount=1
+ * with the room in r_*[0], so FOV lights the entire room the moment you arrive
+ * (you step in on a stair placed inside it). The two stairs go on random
+ * interior cells. rn2 here is fine: this depth reseeded, so the stream is
+ * deterministic per depth and isolated from every other level. */
+static void gen_big_room(void)
+{
+    uint8_t rx = PX0, ry = PY0;
+    uint8_t rw = (uint8_t)(PX1 - PX0 + 1);
+    uint8_t rh = (uint8_t)(PY1 - PY0 + 1);
+    uint8_t x, y, ux, uy, dx, dy;
+
+    for (y = ry; y < ry + rh; y++)
+        for (x = rx; x < rx + rw; x++) {
+            if (y == ry || y == (uint8_t)(ry + rh - 1))      lvl[y][x] = '-';
+            else if (x == rx || x == (uint8_t)(rx + rw - 1)) lvl[y][x] = '|';
+            else                                             lvl[y][x] = '.';
+        }
+
+    rcount = 1;
+    r_x[0] = rx; r_y[0] = ry; r_w[0] = rw; r_h[0] = rh;
+
+    rand_floor(0, &ux, &uy);
+    do { rand_floor(0, &dx, &dy); } while (dx == ux && dy == uy);
+    lvl[uy][ux] = '<'; up_x = ux; up_y = uy;
+    lvl[dy][dx] = '>'; dn_x = dx; dn_y = dy;
+}
+
+/* Dispatcher: if this depth is special, fully build its level (terrain, rooms,
+ * stairs, loot) and return 1 so gen_level returns early; else return 0 for the
+ * normal procedural path. Special levels get scattered loot but no shop (a shop
+ * over the whole big room makes no sense). Monsters are spawned later in
+ * build_level and land in the big room automatically (rcount=1). */
+static int special_gen(void)
+{
+    if (special_kind(dlvl) != SP_BIGROOM) return 0;
+
+    gen_big_room();
+
+    place_gold();
+    place_gold();
+    place_gold();
+    place_item('%');      /* food   */
+    place_item(')');      /* weapon */
+    place_item('[');      /* armor  */
+    place_item('!');      /* potion */
+    place_item('!');
+    if (rn2(2))    place_item('?');     /* scroll */
+    if (dlvl >= 3) place_item('=');     /* ring   */
+    return 1;
+}
+
 void gen_level(void) __banked
 {
     uint8_t i, j;
@@ -269,6 +342,9 @@ void gen_level(void) __banked
     rcount = 0;
     gcount = 0;
     icount = 0;
+
+    if (special_gen())
+        return;        /* special level fully built (terrain, rooms, stairs, loot) */
 
     for (j = 0; j < SECT_ROWS; j++) {
         for (i = 0; i < SECT_COLS; i++) {

@@ -94,7 +94,14 @@ code.
       with priced items and a stationary shopkeeper (`@`). Picking an item up in a
       shop buys it (gold deducted, refused if you can't pay); `d` sells a carried
       item back for half price. Gives the hero's gold a purpose at last.
-- [ ] Later — special levels.
+- [x] **Phase 22 — Special levels (framework + Big Room)**: a deterministic
+      dispatcher in `gen_level` turns certain depths into hand-built landmark
+      levels, without perturbing the procedural RNG (and persistence) of the
+      normal levels. The first kind — the **Big Room** (every 11th depth:
+      11/22/33/44) — fills the whole playable area with one giant lit chamber,
+      scattered with loot and a crowd of monsters.
+- [ ] Later — more special levels: treasure vault (Phase 23) and hand-drawn
+      map templates (Phase 24), both reusing this framework.
 - [ ] Polish (minor, low priority) — show each held item's graphic tile beside its
       name on the inventory screen (`i`); tackle after the items above.
 
