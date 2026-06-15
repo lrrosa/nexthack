@@ -395,6 +395,9 @@ void gen_level(void) __banked
     rcount = 0;
     gcount = 0;
     icount = 0;
+    shop_room  = -1;   /* reset for EVERY level: special levels (Big Room/template) */
+    vault_room = -1;   /* return early below, so they must not inherit the last     */
+                       /* level's shop/vault (else phantom billing + a stray keeper) */
 
     if (special_gen())
         return;        /* special level fully built (terrain, rooms, stairs, loot) */
@@ -440,9 +443,8 @@ void gen_level(void) __banked
      * vault and shop decisions use side hashes (no rn2), so non-special levels
      * generate exactly as before and the deterministic persistence stays in sync.
      * The vault is a leaf room (one door, never a through-route) that holds no
-     * stairs, so sealing it as treasure never cuts the level in two. */
-    vault_room = -1;
-    shop_room  = -1;
+     * stairs, so sealing it as treasure never cuts the level in two.
+     * (shop_room/vault_room were already reset at the top of gen_level.) */
     {
         uint16_t vh = (uint16_t)(world_seed * 2179u + (uint16_t)dlvl * 6863u + 7u);
         vh ^= (uint16_t)(vh << 7);

@@ -19,7 +19,7 @@ HERE = Path(__file__).resolve().parent
 TDIR = HERE / "templates"
 OUT  = HERE.parent / "src" / "leveltmpl_data.h"
 MAPW, MAPH = 80, 21
-MAXROOM = 3
+MAXROOM = 6
 
 
 def load(path):

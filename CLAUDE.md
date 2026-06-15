@@ -182,6 +182,11 @@ image, then the game switches back to the tilemap.
   it reads the const in place) stamps the grid into `lvl[][]`, finds `<`/`>`, and
   fills `r_*[]`/`rcount` from the metadata so FOV lights the chambers. To add or
   edit a template: edit a `.txt`, re-run the tool; the generated `.h` is committed.
+  There are 5 templates (cavern/crypt/fortress/maze/temple); they nearly fill bank
+  11 (~2 KB free), so a 6th would need a dedicated bank (mirror the title banks).
+  **Any early-returning special level must rely on `gen_level` resetting
+  `shop_room`/`vault_room` at the top** — `special_gen` skips the loot block, so
+  without that reset a special level inherits the previous level's shop/vault.
 - **Win condition**: the deepest level (`DLVL_AMULET`, currently 50) has no
   down-stairs — the Amulet of Yendor (`"`) sits on that cell instead. Picking it up
   sets `has_amulet`; climbing `<` on Dlvl 1 while carrying it sets `won` (victory
