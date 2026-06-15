@@ -385,8 +385,9 @@ void show_inventory(void) __banked
             uint8_t row = (uint8_t)(4 + (i % 12));
             uint8_t cx  = (uint8_t)(i < 12 ? 2 : 42);
             uint8_t x;
-            putcell(cx, row, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
-            x = print_str((uint8_t)(cx + 1), row, " - ", C_WHITE);
+            puttile(cx, row, tile_for(cls));    /* the item's graphic tile */
+            putcell((uint8_t)(cx + 2), row, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
+            x = print_str((uint8_t)(cx + 3), row, " - ", C_WHITE);
             x = print_str(x, row, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
             if (inv[i].worn) {
                 const char *w = (cls == ')') ? " (wielded)" :
