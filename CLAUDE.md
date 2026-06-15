@@ -90,8 +90,8 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `monster_ai.c` | B | BFS chase, combat, spawning, kill-persistence |
 | `item.c/.h` | B | inventory and item actions (pick up, wield/wear/quaff/eat/read/put-on) |
 | `sfx.c/.h` | B | beeper sound effects |
-| `titlegfx0/1/2.c` | B | the Layer 2 title image (generated): 3×16 KB framebuffer thirds const-banked into banks 16/17/18 (see Title screen) |
-| `titlepal.c` | B | the title image's 9-bit palette, const-banked in `PAGE_22_CODE` next to the title code that streams it |
+| `titlegfx0/1/2.c`, `victorygfx0/1/2.c` | B | the Layer 2 title / victory images (generated): 3×16 KB framebuffer thirds const-banked into banks 16/17/18 and 19/20/21 (see Title & victory screens) |
+| `titlepal.c`, `victorypal.c` | B | each image's 9-bit palette, const-banked in `PAGE_22_CODE` next to the code that streams it |
 | `nexthack.c/.h` | B | game-state globals (resident DATA) + rendering, turn step, level orchestration, save/restore, screens; `.h` declares its `__banked` entry points for `mainentry.c` |
 | `game.h` | — | shared player/run state (`extern`s defined in `nexthack.c`) |
 
@@ -122,26 +122,28 @@ DATA — banked code's data is resident too). Modules include `game.h` to read/w
   once (rather than clear-then-fill) is what keeps it flicker-free. Status/message
   lines follow the same write-once-then-pad rule.
 
-### Title screen (Layer 2)
+### Title & victory screens (Layer 2)
 The **only** use of the Next's **Layer 2** framebuffer (256×192, 8bpp); everything
-else is the tilemap. `title_screen()` (`nexthack.c`) shows the pixel-art loading
-image, then the game switches back to the tilemap.
-- The image is **generated**: `tools/png2layer2.py` (Pillow) converts
-  `tools/title.png` → `titlegfx0/1/2.c` (the framebuffer, row-major `y*256+x`, in
-  three 16 KB thirds) + `titlepal.c` (palette). It picks the path by source size:
-  a **256×192** source (the hand-edited final-res art) is packed **pixel-exact**
-  (each pixel just snapped to the nearest Next 9-bit RGB333 colour, palette built
-  from the distinct colours — no resampling); a larger render is resized to
-  256×192 and quantized (`MAXCOVERAGE`, so small saturated areas keep a slot). To
-  edit the art, edit a 256×192 PNG in the Next palette and re-run the tool; the
-  generated `.c` files **are** committed.
-- The three thirds are **const-banked into banks 16/17/18** so the `.nex` loader
-  writes them where Layer 2 reads them **in place — no runtime copy, zero resident
-  cost** (banks outside the CPU window). `title_screen` just streams the palette
-  (NextReg 0x43/0x40/0x44), points Layer 2 at bank 16 (NextReg 0x12=16), turns the
-  tilemap off (0x6B=0) + Layer 2 on (0x69 bit7); on a keypress it reverses that
-  (0x69=0, 0x6B=0xC0) and the game proceeds. The palette **must** live in
-  `PAGE_22_CODE` (bank 11) because the title code that reads it runs from there.
+else is the tilemap. `title_screen()` shows the loading image; `victory_screen()`
+shows the win image (both in `nexthack.c`), then the game switches back to the
+tilemap.
+- The images are **generated**: `tools/png2layer2.py` (Pillow) converts each
+  source in its `IMAGES` table — `tools/title.png` → `titlegfx0/1/2.c` (framebuffer,
+  row-major `y*256+x`, three 16 KB thirds) + `titlepal.c`, and `tools/victory.png`
+  → `victorygfx0/1/2.c` + `victorypal.c`. `python tools/png2layer2.py [name]`
+  regenerates one or all. It picks the path by source size: a **256×192** source
+  (hand-edited final-res art) is packed **pixel-exact** (each pixel snapped to the
+  nearest Next 9-bit RGB333 colour, palette = the distinct colours — no resampling);
+  a larger render is resized to 256×192 and quantized (`MAXCOVERAGE`, so small
+  saturated areas keep a slot). To edit the art, edit a 256×192 PNG in the Next
+  palette and re-run the tool; the generated `.c` files **are** committed.
+- The thirds are **const-banked** (title 16/17/18, victory 19/20/21) so the `.nex`
+  loader writes them where Layer 2 reads them **in place — no runtime copy, zero
+  resident cost** (banks outside the CPU window). The shared `show_layer2(pal,bank)`
+  streams the palette (NextReg 0x43/0x40/0x44), points Layer 2 at the image's first
+  bank (NextReg 0x12), turns the tilemap off (0x6B=0) + Layer 2 on (0x69 bit7);
+  `hide_layer2()` reverses it (0x69=0, 0x6B=0xC0). Each palette **must** live in
+  `PAGE_22_CODE` (bank 11) because the code that streams it runs from there.
 - **Two banking gotchas this exposed:** (a) SDCC `#pragma constseg` is
   *per-translation-unit* — switching it mid-file does NOT split areas (the last one
   wins), so each bank's array needs its **own `.c`** (hence three files). (b) z88dk
