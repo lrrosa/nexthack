@@ -56,6 +56,10 @@ int  shop_keeper_xy(uint8_t *kx, uint8_t *ky) __banked;  /* keeper cell, 0 if no
 int  level_vault_room(void) __banked;   /* this level's vault room index, or -1 */
 int  in_vault_room(int x, int y) __banked;   /* is (x,y) in the vault? (better loot) */
 
+/* ---- hand-drawn templates (Phase 24, leveltmpl.c) ---- */
+uint8_t template_count(void) __banked;       /* number of templates available */
+void    load_template(uint8_t idx) __banked; /* stamp template into lvl[][]+r_*[] */
+
 /* save/restore the per-depth persistence bitmasks and the fog-of-war bitmaps
  * (banked, in levelfov.c) */
 void level_save(uint8_t h) __banked;

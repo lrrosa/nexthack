@@ -304,15 +304,21 @@ static void fill_vault(uint8_t r)
  * generator builds terrain + sets rcount/r_*[] (so FOV lights its rooms) +
  * up_x/dn_x, after which gen_level returns early. Big Room is the first kind;
  * the treasure vault and hand-drawn templates (Phases 23-24) plug in here. */
-enum { SP_NONE = 0, SP_BIGROOM };
+enum { SP_NONE = 0, SP_BIGROOM, SP_TEMPLATE };
 
 /* Which special level (if any) lives at depth d. Fixed predicate, no rn2. The
  * win level (DLVL_AMULET) is always left normal. Big Room recurs every 11th
- * depth (11, 22, 33, 44) -- rare landmarks, none colliding with DLVL_AMULET. */
+ * depth (11, 22, 33, 44); a hand-drawn template appears on ~1/9 of the other
+ * depths (>= 3), chosen by a side hash so non-special depths are unchanged. */
 static uint8_t special_kind(uint16_t d)
 {
+    uint16_t th;
     if (d == DLVL_AMULET) return SP_NONE;
     if (d >= 2 && (d % 11u) == 0) return SP_BIGROOM;
+    th = (uint16_t)(world_seed * 3331u + (uint16_t)d * 5779u + 23u);
+    th ^= (uint16_t)(th << 7);
+    th ^= (uint16_t)(th >> 9);
+    if (d >= 3 && (th % 9u) == 0) return SP_TEMPLATE;
     return SP_NONE;
 }
 
@@ -351,10 +357,19 @@ static void gen_big_room(void)
  * build_level and land in the big room automatically (rcount=1). */
 static int special_gen(void)
 {
-    if (special_kind(dlvl) != SP_BIGROOM) return 0;
+    uint8_t k = special_kind(dlvl);
 
-    gen_big_room();
+    if (k == SP_BIGROOM) {
+        gen_big_room();
+    } else if (k == SP_TEMPLATE) {
+        /* stamp a hand-drawn map: terrain + stairs + the chambers' r_*[] rects */
+        load_template((uint8_t)(level_seed(dlvl) % template_count()));
+    } else {
+        return 0;          /* normal procedural level */
+    }
 
+    /* both special kinds set rcount + r_*[], so scatter loot through the rooms
+     * (no shop); monsters spawn there too via build_level -> spawn_level_monsters */
     place_gold();
     place_gold();
     place_gold();

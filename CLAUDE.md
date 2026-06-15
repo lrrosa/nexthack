@@ -70,8 +70,8 @@ Strict split between the **Next hardware platform layer** and **game logic**:
 
 All source modules live in **`src/`**; the build scripts, `mmap.inc` and
 `zpragma.inc` stay at the repo root (the build runs from root, where z88dk's
-`CRT_APPEND_MMAP` looks for `mmap.inc`). `tools/` holds the title-art converter,
-`docs/` the README images.
+`CRT_APPEND_MMAP` looks for `mmap.inc`). `tools/` holds the asset converters
+(title art, level templates), `docs/` the README images.
 
 Modules are also split by **resident vs banked** (see Memory budget). Header `.h`
 files declare the interface; the `.c` is resident (R) or banked (B):
@@ -85,6 +85,7 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `level.c/.h` | R | terrain buffer + the per-cell leaves `terrain`/`walkable`/`tile_for`; `.h` declares the whole level interface |
 | `levelgen.c` | B | procedural generation + gold/item persistence (owns room table + masks) |
 | `levelfov.c` | B | field of view + save/restore (owns the fog-of-war pool) |
+| `leveltmpl.c` | B | loader for the hand-drawn special-level templates (generated `leveltmpl_data.h`, const-banked in PAGE_22) |
 | `monster.c/.h` | R | monster arrays + per-monster leaves (`monster_at`, `mon_find`, `mon_tile`, `pick_mon`); catalogue |
 | `monster_ai.c` | B | BFS chase, combat, spawning, kill-persistence |
 | `item.c/.h` | B | inventory and item actions (pick up, wield/wear/quaff/eat/read/put-on) |
@@ -161,18 +162,26 @@ image, then the game switches back to the tilemap.
 - `build_level()` (in `nexthack.c`) orchestrates: `gen_level()` → spawn monsters →
   apply gold/monster/item persistence. Gold/items are placed before monsters so
   spawning sees the same map each visit.
-- **Special levels** (Phases 22-23, `levelgen.c`): certain depths are landmark
+- **Special levels** (Phases 22-24, `levelgen.c`): certain depths are landmark
   levels, decided by **side hashes** (never `rn2`, so ordinary levels stay
   byte-identical and persistence stays in sync). `special_gen()` at the top of
   `gen_level` fully *replaces* a level — the **Big Room** (every 11th depth) is one
-  giant lit chamber filling the playable area (`rcount=1`, room in `r_*[0]`). The
-  **treasure vault** (some depths ≥ 4, in the loot block, precedence over shops)
-  instead *augments* a normal level: it packs a **leaf room** (one door, never a
+  giant lit chamber filling the playable area (`rcount=1`, room in `r_*[0]`), and a
+  **hand-drawn template** (≈1/9 of depths ≥ 3) stamps a fixed map. The **treasure
+  vault** (some depths ≥ 4, in the loot block, precedence over shops) instead
+  *augments* a normal level: it packs a **leaf room** (one door, never a
   through-route, holds no stairs — so filling it never splits the map) with gold +
   items, `monster_ai.c` posts tough guards in it (the first few spawns, kept ≤
   `MAXMON`), and `item.c` resolves its loot at a deeper effective depth (`dlvl +
   VAULT_DEPTH_BONUS`) for richer gear. `level_vault_room()` / `in_vault_room()`
   expose it to the spawner and to `item.c`.
+- **Templates** (Phase 24): hand-drawn 21×80 ASCII maps in `tools/templates/*.txt`
+  (with a `;rooms:` metadata line) are packed by `tools/txt2template.py` into the
+  generated `src/leveltmpl_data.h` — `const` grids + room rects, const-banked into
+  `PAGE_22_CODE`. The banked loader `load_template()` (`leveltmpl.c`, same page so
+  it reads the const in place) stamps the grid into `lvl[][]`, finds `<`/`>`, and
+  fills `r_*[]`/`rcount` from the metadata so FOV lights the chambers. To add or
+  edit a template: edit a `.txt`, re-run the tool; the generated `.h` is committed.
 - **Win condition**: the deepest level (`DLVL_AMULET`, currently 50) has no
   down-stairs — the Amulet of Yendor (`"`) sits on that cell instead. Picking it up
   sets `has_amulet`; climbing `<` on Dlvl 1 while carrying it sets `won` (victory
