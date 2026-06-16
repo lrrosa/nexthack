@@ -348,18 +348,26 @@ void do_sell(void) __banked
     }
     if (inv_count == 0) { msg("You have nothing to sell."); return; }
 
-    for (row = 1; row <= 21; row++) clear_line(row, C_BLACK);
+    for (row = 0; row <= 21; row++) clear_line(row, C_BLACK);   /* incl. msg row 0 */
     print_str(2, 2, "Sell which item?   (any other key cancels)", C_WHITE | C_BRIGHT);
     for (i = 0; i < inv_count; i++) {
-        uint16_t sp = (uint16_t)(item_price(&inv[i]) / 2u);
-        uint8_t  r2 = (uint8_t)(4 + i);
+        char     cls = objtypes[inv[i].otyp].cls;
+        uint16_t sp  = (uint16_t)(item_price(&inv[i]) / 2u);
+        uint8_t  r2  = (uint8_t)(4 + i);
         uint8_t  x;
-        putcell(2, r2, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
-        x = print_str(3, r2, " - ", C_WHITE);
+        puttile(2, r2, tile_for(cls));    /* the item's graphic tile */
+        putcell(4, r2, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
+        x = print_str(5, r2, " - ", C_WHITE);
         x = print_str(x, r2, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
         x = print_str(x, r2, "   [", C_CYAN);
         x = put_uint(x, r2, sp, C_YELLOW | C_BRIGHT);
-        print_str(x, r2, " gold]", C_CYAN);
+        x = print_str(x, r2, " gold]", C_CYAN);
+        if (inv[i].worn) {                /* mark what you're currently using */
+            const char *w = (cls == ')') ? " (wielded)" :
+                            (cls == '[') ? " (worn)"    :
+                            (cls == '=') ? " (on hand)" : "";
+            print_str(x, r2, w, C_CYAN | C_BRIGHT);
+        }
     }
 
     in_wait_nokey();
@@ -383,7 +391,7 @@ void show_inventory(void) __banked
 {
     uint8_t i, y;
 
-    for (y = 1; y <= 21; y++)        /* clear the map area */
+    for (y = 0; y <= 21; y++)        /* clear the map + message rows */
         clear_line(y, C_BLACK);
 
     print_str(2, 2, "Inventory   (press any key to continue)",
