@@ -4,10 +4,10 @@
  * of platform.c so this startup-only code lives in PAGE_22_CODE. It runs once
  * (tm_init, from main) and then never again, so the trampoline cost is nil.
  *
- * The palette/tile source tables (gfx/master/inkcol) stay RESIDENT in
- * platform.c and are read here via extern -- banked code reads resident data
- * directly. (Banking the 1600-byte gfx[] too would need const-section banking;
- * left resident for now.) */
+ * master/inkcol (the palette tables) stay RESIDENT in platform.c and are read
+ * here via extern. The big gfx[] tile table is const-banked into this module's
+ * PAGE_22 const section (below), so it costs no resident rodata -- it is read
+ * once at startup by load_gfx_tiles() running with PAGE_22 mapped in. */
 
 #include "platform.h"
 #include <arch/zxn.h>
@@ -20,14 +20,14 @@
 extern const uint8_t master[16];    /* graphic-tile master palette  (platform.c) */
 extern const uint8_t inkcol[16];    /* text ink colours             (platform.c) */
 
-/* The 1600-byte graphic-tile table is read ONCE, here, by load_gfx_tiles(), so
+/* The 1728-byte graphic-tile table is read ONCE, here, by load_gfx_tiles(), so
  * it lives in this banked module's const section (PAGE_22_CODE) instead of
- * resident rodata -- reclaiming ~1.6 KB of the tight resident budget. It is
+ * resident rodata -- reclaiming ~1.7 KB of the tight resident budget. It is
  * reachable because load_gfx_tiles() runs with PAGE_22 mapped in.
  * Each tile: 64 pixels (8 rows x 8 cols), values are master-palette indices.
  * Order matches the T_* numbering starting at T_ROCK. */
 #pragma constseg PAGE_22_CODE
-const uint8_t gfx[25][64] = {
+const uint8_t gfx[27][64] = {
   { /* T_ROCK */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
@@ -102,7 +102,13 @@ const uint8_t gfx[25][64] = {
     0,13,11,11,11,11,13,0, 0,13,11,11,11,11,13,0, 0,0,13,11,11,13,0,0, 0,0,0,13,13,0,0,0 },
   { /* T_ACIDBLOB (slimy green blob with a wet highlight) */
     0,0,0,9,9,0,0,0, 0,0,9,4,9,9,0,0, 0,9,9,9,9,9,9,0, 9,9,9,9,9,9,9,9,
-    9,9,10,9,9,10,9,9, 9,9,9,9,9,9,9,9, 0,9,9,9,9,9,9,0, 0,0,9,9,9,9,0,0 }
+    9,9,10,9,9,10,9,9, 9,9,9,9,9,9,9,9, 0,9,9,9,9,9,9,0, 0,0,9,9,9,9,0,0 },
+  { /* T_SHOPWALL (T_WALL brick recoloured warm: 7 tan / 6 brown / 5 dkbrown) */
+    7,7,7,7,7,7,7,5, 7,6,6,6,6,6,6,5, 7,6,6,6,6,6,6,5, 5,5,5,5,5,5,5,5,
+    7,7,7,5,7,7,7,7, 6,6,6,5,6,6,6,6, 6,6,6,5,6,6,6,6, 5,5,5,5,5,5,5,5 },
+  { /* T_KEEPER (shopkeeper: T_HERO recoloured with an orange 14 robe) */
+    0,0,0,15,15,0,0,0, 0,0,0,15,15,0,0,0, 0,0,15,15,15,15,0,0, 0,0,0,14,14,0,0,0,
+    0,14,14,14,14,14,14,0, 0,0,14,14,14,14,0,0, 0,0,14,0,0,14,0,0, 0,0,14,0,0,14,0,0 }
 };
 
 static void pack_tile(uint8_t tilenum, const uint8_t *px)
@@ -116,7 +122,7 @@ static void pack_tile(uint8_t tilenum, const uint8_t *px)
 static void load_gfx_tiles(void)
 {
     uint8_t i;
-    for (i = 0; i < 25; i++)
+    for (i = 0; i < 27; i++)
         pack_tile((uint8_t)(T_ROCK + i), gfx[i]);
 }
 

@@ -46,6 +46,8 @@
 #define T_RING   150
 #define T_AMULET 151
 #define T_ACIDBLOB 152
+#define T_SHOPWALL 153   /* a shop's walls: warm tan/brown bricks (vs grey T_WALL) */
+#define T_KEEPER   154   /* the shopkeeper: orange robe, distinct from the blue hero */
 
 /* tilemap dimensions (characters) */
 #define TM_W 80

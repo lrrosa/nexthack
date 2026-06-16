@@ -293,14 +293,26 @@ void do_pickup(void) __banked
 
     resolve_floor((uint8_t)hero_x, (uint8_t)hero_y, &o);
 
-    /* In a shop, picking an item up buys it: pay on the spot (no carrying a
-     * tab), refuse if you can't afford it. (The Amulet is never in a shop.) */
+    /* In a shop, picking an item up buys it: confirm first (so you don't waste
+     * gold by accident), pay on the spot, refuse if you can't afford it. (The
+     * Amulet is never in a shop.) */
     if (c != '"' && shop_in_room(hero_x, hero_y)) {
         uint16_t price = item_price(&o);
+        uint8_t  x;
+        int      k;
         if (gold < price) {
             msg_num("You can't afford that (", price, " gold).");
             return;
         }
+        clear_line(0, C_BLACK);                       /* compose the prompt */
+        x = print_str(0, 0, "Buy ", C_WHITE | C_BRIGHT);
+        x = print_str(x, 0, obj_desc(&o), C_YELLOW | C_BRIGHT);
+        x = print_str(x, 0, " for ", C_WHITE | C_BRIGHT);
+        x = put_uint(x, 0, price, C_YELLOW | C_BRIGHT);
+        print_str(x, 0, " gold?  (y/n)", C_WHITE | C_BRIGHT);
+        in_wait_nokey();                              /* release the ',' */
+        k = getkey();
+        if (k != 'y' && k != 'Y') { msg("You leave it on the shelf."); return; }
         if (!inv_add(&o)) { msg("Your pack is full."); return; }
         gold = (uint16_t)(gold - price);
         level_take_item((uint8_t)hero_x, (uint8_t)hero_y);

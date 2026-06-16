@@ -469,7 +469,21 @@ void gen_level(void) __banked
         sh ^= (uint16_t)(sh << 7);
         sh ^= (uint16_t)(sh >> 9);
         if (dlvl >= 2 && dlvl != DLVL_AMULET && (sh % 3u) == 0) {
+            uint8_t tries = 0;
             shop_room = (int8_t)((sh >> 5) % rcount);
+            /* the shop must miss the stairs (a staircase in a shop is odd) and be
+             * big enough to stock a few items (>= 6x4): otherwise skip to the next
+             * room, and if none qualifies, fall through to scattered loot. */
+            while (tries < rcount &&
+                   (cell_in_room((uint8_t)shop_room, up_x, up_y) ||
+                    cell_in_room((uint8_t)shop_room, dn_x, dn_y) ||
+                    r_w[shop_room] < 6 || r_h[shop_room] < 4)) {
+                shop_room = (int8_t)(((uint8_t)shop_room + 1u) % rcount);
+                tries++;
+            }
+            if (tries >= rcount) shop_room = -1;   /* no roomy stair-free room */
+        }
+        if (shop_room >= 0) {
             pick_keeper_cell((uint8_t)shop_room);
             stock_shop((uint8_t)shop_room);
         } else {
@@ -501,6 +515,16 @@ int shop_in_room(int x, int y) __banked
     r = (uint8_t)shop_room;
     return x >= r_x[r] && x < r_x[r] + r_w[r] &&
            y >= r_y[r] && y < r_y[r] + r_h[r];
+}
+
+/* the shop room's rectangle, so the renderer can recolour its walls; 0 = no shop */
+int shop_rect(uint8_t *sx, uint8_t *sy, uint8_t *sw, uint8_t *sh) __banked
+{
+    uint8_t r;
+    if (shop_room < 0) return 0;
+    r = (uint8_t)shop_room;
+    *sx = r_x[r]; *sy = r_y[r]; *sw = r_w[r]; *sh = r_h[r];
+    return 1;
 }
 
 /* the shopkeeper's reserved cell (chosen in gen_level). 0 if no shop. */

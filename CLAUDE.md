@@ -287,7 +287,7 @@ the old text-title strings from resident rodata).
 - **New resident DATA is still the scarce resource.** Banked code's `static` data —
   **and its string/const literals (resident rodata)** — stay resident, so data/text-heavy
   features eat the ~575 B fast (the shops' message strings did). Levers when it overflows:
-  (a) **const-bank read-once tables** — `gfx[]` (1600 B, read only by `load_gfx_tiles` at
+  (a) **const-bank read-once tables** — `gfx[]` (1728 B, read only by `load_gfx_tiles` at
   startup) lives in `platform_init.c` under `#pragma constseg PAGE_22_CODE`, so it sits in
   Bank 11 next to its reader (which runs with that page mapped); (b) data-bank scratch
   arrays into Bank 5's free tail (like `dist`/`bfsq`); (c) trim strings.

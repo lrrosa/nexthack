@@ -31,7 +31,7 @@ static const MonType montypes[] = {
     { 'Z', 14, 4, 6, 6, T_ZOMBIE,   0, "zombie"    },
     /* the shopkeeper: drawn as '@' (reuses T_HERO), placed only in shops, never
      * randomly spawned (pick_mon skips it), and stationary (monster_ai mon_step). */
-    { MON_KEEPER, 30, 0, 0, 1, T_HERO, 0, "shopkeeper" }
+    { MON_KEEPER, 30, 0, 0, 1, T_KEEPER, 0, "shopkeeper" }
 };
 #define NMON ((uint8_t)(sizeof(montypes) / sizeof(montypes[0])))
 

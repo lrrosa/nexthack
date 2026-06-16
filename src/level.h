@@ -51,6 +51,7 @@ void level_reset_persistence(void) __banked;
 /* ---- shops (Phase 21) ---- */
 int  shop_in_room(int x, int y) __banked;            /* is (x,y) in the shop room? */
 int  shop_keeper_xy(uint8_t *kx, uint8_t *ky) __banked;  /* keeper cell, 0 if no shop */
+int  shop_rect(uint8_t *sx, uint8_t *sy, uint8_t *sw, uint8_t *sh) __banked; /* shop bounds */
 
 /* ---- treasure vault (Phase 23) ---- */
 int  level_vault_room(void) __banked;   /* this level's vault room index, or -1 */

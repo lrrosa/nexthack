@@ -53,7 +53,7 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   10     /* fix: special levels no longer inherit the last level's shop/vault */
+#define SAVE_VER   11     /* fix: the shop avoids stair rooms and is big enough to stock */
 
 struct save_hdr {
     uint16_t magic;
@@ -169,6 +169,10 @@ void draw_map(void) __banked
     uint16_t idx = 0;
     uint8_t x, y, t, attr;
     int mi;
+    /* the shop room's bounds (read once), so its walls render in warm bricks */
+    uint8_t sx, sy, sw, sh, sx1 = 0, sy1 = 0;
+    int has_shop = shop_rect(&sx, &sy, &sw, &sh);
+    if (has_shop) { sx1 = (uint8_t)(sx + sw - 1); sy1 = (uint8_t)(sy + sh - 1); }
 
     /* Single pass, running tilemap pointer, inline FOV bit tests (kept out of
      * per-cell function calls so held-key movement stays fluid). Fog of war:
@@ -191,6 +195,9 @@ void draw_map(void) __banked
                 t = tile_for(lvl[y][x]);
                 attr = 0x10;                      /* palette offset 1     */
             }
+            if (has_shop && t == T_WALL &&        /* shop walls: warm bricks */
+                x >= sx && x <= sx1 && y >= sy && y <= sy1)
+                t = T_SHOPWALL;
             *p++ = t;
             *p++ = attr;
         }
@@ -315,9 +322,19 @@ static void describe(char dest, int moved)
     case '<': msg("There is a staircase up here.");   break;
     case '"': msg("The Amulet of Yendor lies here!  (, to pick up)"); break;
     case ')': case '[': case '!': case '%': case '?': case '=':
-        msg2("You see here ", floor_item_desc(), ".  (, to pick up)"); break;
+        msg2("You see here ", floor_item_desc(),
+             shop_in_room(hero_x, hero_y) ? ".  (, to buy)" : ".  (, to pick up)");
+        break;
     default:  msg("");                                break;
     }
+}
+
+/* a cell worth re-announcing: stairs, the amulet, or a floor item */
+static int lookable(char c)
+{
+    return c == '>' || c == '<' || c == '"' ||
+           c == ')' || c == '[' || c == '!' ||
+           c == '%' || c == '?' || c == '=';
 }
 
 void try_move(int dx, int dy) __banked
@@ -325,10 +342,14 @@ void try_move(int dx, int dy) __banked
     int nx = hero_x + dx;
     int ny = hero_y + dy;
     char dest = terrain(nx, ny);
-    int mi;
+    int was_shop, mi;
 
     if (!walkable(dest)) {
-        describe(dest, 0);
+        /* Bumping a wall: if you're standing on an item or stairs, re-announce
+         * that (the @ hides the tile) rather than burying it under "It's a wall". */
+        char under = terrain(hero_x, hero_y);
+        if (lookable(under)) describe(under, 1);
+        else                 describe(dest, 0);
         return;
     }
     mi = monster_at(nx, ny);
@@ -344,6 +365,7 @@ void try_move(int dx, int dy) __banked
         attack_monster((uint8_t)mi);
         return;
     }
+    was_shop = shop_in_room(hero_x, hero_y);
     hero_x = nx;
     hero_y = ny;
     turns++;
@@ -354,6 +376,8 @@ void try_move(int dx, int dy) __banked
         level_take_gold((uint8_t)nx, (uint8_t)ny);
         msg_num("You pick up ", amt, " gold pieces.");
         sfx_gold();
+    } else if (!was_shop && shop_in_room(nx, ny)) {
+        msg("The shopkeeper: \"Welcome, traveller!  You may buy (,) or sell (d) here.\"");
     } else {
         describe(dest, 1);
     }
