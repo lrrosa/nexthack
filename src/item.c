@@ -24,7 +24,11 @@
  * mapped into the 0xC000 window on demand. Public entry points are __banked
  * (see item.h); the static helpers below are reached only by in-page calls,
  * so they stay plain. Banked code may only touch RESIDENT data. */
+#ifdef __ZXNEXT
 #pragma codeseg PAGE_20_CODE
+#else
+#pragma codeseg BANK_1
+#endif
 
 #define MAXINV 24
 
@@ -287,7 +291,7 @@ void do_pickup(void) __banked
 
     if (c != '"' && c != ')' && c != '[' && c != '!' &&
         c != '%' && c != '?' && c != '=') {
-        msg("There is nothing here to pick up.");
+        msg("Nothing here to pick up.");
         return;
     }
 
@@ -301,15 +305,15 @@ void do_pickup(void) __banked
         uint8_t  x;
         int      k;
         if (gold < price) {
-            msg_num("You can't afford that (", price, " gold).");
+            msg_num("Too dear (", price, "g).");
             return;
         }
         clear_line(0, C_BLACK);                       /* compose the prompt */
         x = print_str(0, 0, "Buy ", C_WHITE | C_BRIGHT);
         x = print_str(x, 0, obj_desc(&o), C_YELLOW | C_BRIGHT);
-        x = print_str(x, 0, " for ", C_WHITE | C_BRIGHT);
+        x = print_str(x, 0, " ", C_WHITE | C_BRIGHT);
         x = put_uint(x, 0, price, C_YELLOW | C_BRIGHT);
-        print_str(x, 0, " gold?  (y/n)", C_WHITE | C_BRIGHT);
+        print_str(x, 0, "g? y/n", C_WHITE | C_BRIGHT);
         in_wait_nokey();                              /* release the ',' */
         k = getkey();
         if (k != 'y' && k != 'Y') { msg("You leave it on the shelf."); return; }
@@ -326,10 +330,10 @@ void do_pickup(void) __banked
 
     if (c == '"') {
         has_amulet = 1;
-        msg("You feel a wondrous power!  Bring the Amulet up to the surface.");
+        msg("Got the Amulet!  Climb back up!");
         sfx_levelup();
     } else {
-        msg2("You pick up ", obj_desc(&o), ".");
+        msg2("Got ", obj_desc(&o), ".");        /* short, so 23-char names fit 32 cols */
         sfx_pick();
     }
 }
@@ -337,13 +341,14 @@ void do_pickup(void) __banked
 /* Sell an item to the shopkeeper for half its price (only inside a shop). Shows
  * a lettered list with the sell value; any non-letter key cancels. Costs no
  * turn (a counter transaction), so monsters don't move while you haggle. */
+#ifdef __ZXNEXT
 void do_sell(void) __banked
 {
     uint8_t i, row;
     int k, s;
 
     if (!shop_in_room(hero_x, hero_y)) {
-        msg("You can only sell things inside a shop.");
+        msg("Only sell things in a shop.");
         return;
     }
     if (inv_count == 0) { msg("You have nothing to sell."); return; }
@@ -386,7 +391,57 @@ void do_sell(void) __banked
         sfx_gold();
     }
 }
+#else
+void do_sell(void) __banked
+{
+    uint8_t i, row;
+    int k, s;
 
+    if (!shop_in_room(hero_x, hero_y)) {
+        msg("Only sell things in a shop.");
+        return;
+    }
+    if (inv_count == 0) { msg("You have nothing to sell."); return; }
+
+    for (row = 0; row <= 23; row++) clear_line(row, C_BLACK);   /* full screen */
+    map_dirty = 1;                                              /* restore the map on return */
+    print_str(0, 0, "Sell which item?  (else cancel)", C_WHITE | C_BRIGHT);
+    for (i = 0; i < inv_count && i < 23; i++) {    /* one item per row, rows 1..23 */
+        char     cls = objtypes[inv[i].otyp].cls;
+        uint16_t sp  = (uint16_t)(item_price(&inv[i]) / 2u);
+        uint8_t  r2  = (uint8_t)(1 + i);
+        uint8_t  x;
+        puttile(0, r2, tile_for(cls));    /* the item's graphic tile */
+        putcell(2, r2, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
+        x = print_str(3, r2, " ", C_WHITE);
+        x = print_str(x, r2, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
+        x = print_str(x, r2, " ", C_CYAN);
+        x = put_uint(x, r2, sp, C_YELLOW | C_BRIGHT);
+        x = print_str(x, r2, "g", C_CYAN);
+        if (inv[i].worn) print_str(x, r2, "*", C_CYAN | C_BRIGHT);  /* equipped */
+    }
+
+    in_wait_nokey();
+    k = getkey();
+    in_wait_nokey();
+    clear_line(0, C_BLACK);             /* wipe the header row (a cancel shows no
+                                         * message to overwrite it) */
+    s = (k >= 'a' && (uint8_t)(k - 'a') < inv_count) ? (k - 'a') : -1;
+    if (s < 0) return;                  /* cancelled; the caller redraws */
+
+    {
+        uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u);
+        if (gold > (uint16_t)(60000u - sp)) gold = 60000u;   /* clamp, 16-bit */
+        else                                gold = (uint16_t)(gold + sp);
+        inv_remove((uint8_t)s);
+        recompute_gear();               /* in case the sold item was worn */
+        msg_num("You sell it for ", sp, " gold.");
+        sfx_gold();
+    }
+}
+#endif
+
+#ifdef __ZXNEXT
 void show_inventory(void) __banked
 {
     uint8_t i, y;
@@ -423,6 +478,42 @@ void show_inventory(void) __banked
     in_wait_nokey();
     /* the caller redraws the map afterwards */
 }
+#else
+void show_inventory(void) __banked
+{
+    uint8_t i, y;
+
+    for (y = 0; y <= 23; y++)        /* full screen (status too) for the list */
+        clear_line(y, C_BLACK);
+    map_dirty = 1;                   /* restore the map + status on return */
+
+    print_str(0, 0, "Inventory  (any key continues)", C_WHITE | C_BRIGHT);
+
+    if (inv_count == 0) {
+        print_str(2, 2, "Your pack is empty.", C_WHITE);
+    } else {
+        for (i = 0; i < inv_count && i < 23; i++) {   /* one column, rows 1..23 */
+            char cls = objtypes[inv[i].otyp].cls;
+            uint8_t row = (uint8_t)(1 + i);
+            uint8_t x;
+            puttile(0, row, tile_for(cls));    /* the item's graphic tile */
+            putcell(2, row, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
+            x = print_str(3, row, " ", C_WHITE);
+            x = print_str(x, row, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
+            if (inv[i].worn)                   /* '*' marks an equipped item */
+                print_str(x, row, "*", C_CYAN | C_BRIGHT);
+        }
+    }
+
+    in_wait_nokey();    /* wait for the 'i' that opened this to be released */
+    getkey();           /* then wait for a fresh key press                  */
+    in_wait_nokey();
+    clear_line(0, C_BLACK);   /* viewing costs no turn, so no message clears the
+                               * header row -- wipe it so it doesn't stick on the
+                               * message line after the map is redrawn below */
+    /* the caller redraws the map afterwards */
+}
+#endif
 
 /* ---- equip / use ---- */
 
@@ -430,18 +521,18 @@ void do_wield(void) __banked
 {
     int s = find_best(')');
     if (s < 0) { msg("You have no weapon to wield."); return; }
-    if (inv[s].worn) { msg("You are already wielding your best weapon."); return; }
+    if (inv[s].worn) { msg("Already wielding your best."); return; }
     unworn_class(')');
     inv[s].worn = 1;
     recompute_gear();
-    msg2("You wield ", obj_desc(&inv[s]), ".");
+    msg2("Wield ", obj_desc(&inv[s]), ".");
 }
 
 void do_wear(void) __banked
 {
     int s = find_best('[');
     if (s < 0) { msg("You have no armor to wear."); return; }
-    if (inv[s].worn) { msg("You are already wearing your best armor."); return; }
+    if (inv[s].worn) { msg("Already wearing your best."); return; }
     unworn_class('[');                  /* swap: take off the old suit first */
     inv[s].worn = 1;
     recompute_gear();
@@ -456,13 +547,14 @@ void do_puton(void) __banked
     unworn_class('=');
     inv[s].worn = 1;
     recompute_gear();
-    msg("The ring tingles on your finger.  You feel protected.");
+    msg("The ring tingles.  Protected!");
     sfx_magic();
 }
 
 /* Pick an item of class cls. Returns its index, -1 if you have none, or -2 if
  * you cancelled. With a single type present it picks it silently; only when two
  * *different* types are carried does it pop a letter menu (NetHack-style). */
+#ifdef __ZXNEXT
 static int select_item(char cls, const char *prompt)
 {
     int first = -1;
@@ -499,6 +591,45 @@ static int select_item(char cls, const char *prompt)
         return k - 'a';
     return -2;
 }
+#else
+static int select_item(char cls, const char *prompt)
+{
+    int first = -1;
+    uint8_t i, row, multi = 0;
+    int k;
+
+    for (i = 0; i < inv_count; i++) {
+        if (objtypes[inv[i].otyp].cls != cls) continue;
+        if (first < 0) first = i;
+        else if (inv[i].otyp != inv[first].otyp) multi = 1;
+    }
+    if (first < 0) return -1;
+    if (!multi)    return first;
+
+    for (row = 0; row <= 21; row++) clear_line(row, C_BLACK);
+    map_dirty = 1;                   /* restore the map on return */
+    print_str(0, 0, prompt, C_WHITE | C_BRIGHT);
+    row = 2;
+    for (i = 0; i < inv_count; i++) {
+        uint8_t x;
+        if (objtypes[inv[i].otyp].cls != cls) continue;
+        putcell(0, row, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
+        x = print_str(1, row, " ", C_WHITE);
+        print_str(x, row, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
+        row++;
+    }
+    print_str(0, (uint8_t)(row + 1),
+              "(letter, else cancel)", C_CYAN | C_BRIGHT);
+
+    in_wait_nokey();
+    k = getkey();
+    in_wait_nokey();
+    if (k >= 'a' && (uint8_t)(k - 'a') < inv_count &&
+        objtypes[inv[k - 'a'].otyp].cls == cls)
+        return k - 'a';
+    return -2;
+}
+#endif
 
 void do_quaff(void) __banked
 {
@@ -533,7 +664,7 @@ void do_eat(void) __banked
     nutrition += 800;
     if (nutrition > 1500) nutrition = 1500;
     inv_remove((uint8_t)s);
-    msg("You finish your meal.  Delicious!");
+    msg("You eat.  Delicious!");
     sfx_eat();
     acted = 1; turns++;
 }
@@ -550,7 +681,7 @@ void do_read(void) __banked
     sfx_magic();
     if (ot == O_MAPPING) {
         fov_reveal();
-        msg("A map of the level forms in your mind!");
+        msg("The level map fills your mind!");
     } else {                            /* O_TELEPORT */
         uint8_t tx, ty;
         level_random_floor(&tx, &ty);

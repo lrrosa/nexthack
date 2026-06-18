@@ -15,7 +15,11 @@
 #include "rng.h"          /* rng_set, rn2, world_seed  */
 #include "game.h"         /* dlvl, MAXLVL, DLVL_AMULET, has_amulet */
 
+#ifdef __ZXNEXT
 #pragma codeseg PAGE_20_CODE
+#else
+#pragma codeseg BANK_1
+#endif
 
 /* playable area (leaves a rock margin around the edges) */
 #define PX0 1

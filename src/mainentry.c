@@ -77,14 +77,19 @@ start_game:
         case 'S':                                   /* save game and quit to title */
             if (save_game()) {
                 tm_cls();
+#ifdef __ZXNEXT
                 print_str(23, 10, "Game saved.  You may switch off.", C_WHITE | C_BRIGHT);
                 print_str(24, 13, "Press Enter to return to the title.", C_CYAN | C_BRIGHT);
+#else
+                print_str(10, 10, "Game saved.", C_WHITE | C_BRIGHT);
+                print_str(5, 13, "Enter returns to title.", C_CYAN | C_BRIGHT);
+#endif
                 in_wait_nokey();
                 do { k = getkey(); } while (k != 13);
                 in_wait_nokey();
                 goto start_game;
             }
-            msg("Save failed - is the SD card writable?");
+            msg("Save failed (SD writable?)");
             in_wait_nokey();
             break;
 
@@ -126,13 +131,13 @@ start_game:
             in_wait_nokey();
         } else if (dead) {
             sfx_die();
-            msg("You die...   Press Enter to start over.");
+            msg("You die...  Enter to restart.");
             in_wait_nokey();
             do { k = getkey(); } while (k != 13);
             new_game();
             draw_status();
             draw_map();
-            msg("You feel much better.  A new adventure begins!");
+            msg("You feel better.  New game!");
             in_wait_nokey();
         }
 

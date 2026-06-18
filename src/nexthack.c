@@ -24,6 +24,9 @@
 #include "monster.h"
 #include "item.h"
 #include "sfx.h"
+#ifndef __ZXNEXT
+#include "scr.h"
+#endif
 #include "nexthack.h"
 
 /* ---- shared game/run state (declared extern in game.h) ---- */
@@ -36,6 +39,7 @@ uint8_t  dead = 0;
 uint8_t  has_amulet = 0;
 uint8_t  won = 0;
 uint8_t  acted = 0;
+uint8_t  map_dirty = 1;   /* +zx renderer flag (unused on Next) */
 uint8_t  weapon_dmg = 0;
 uint8_t  armor_def = 0;
 uint8_t  ac = 10;
@@ -76,7 +80,11 @@ struct save_player {
  * into the 0xC000 window on demand). The globals above are DATA and stay
  * resident. The functions main() calls are __banked (see nexthack.h); the
  * static helpers (hunger_*, describe) are reached by in-page calls. */
+#ifdef __ZXNEXT
 #pragma codeseg PAGE_22_CODE
+#else
+#pragma codeseg BANK_3
+#endif
 
 /* Write seed + player + each module's state. Returns 1 on success. */
 int save_game(void) __banked
@@ -154,6 +162,7 @@ void build_level(void) __banked
     apply_gold_persistence();
     apply_monster_persistence();
     apply_item_persistence();
+    map_dirty = 1;       /* +zx: next draw_map recenters (no-op on Next) */
     /* note: FOV memory is per depth and persists across visits, so it is NOT
      * reset here - only on a new game (see new_game / main). */
 }
@@ -162,6 +171,7 @@ void build_level(void) __banked
  * Rendering
  * ============================================================ */
 
+#ifdef __ZXNEXT
 void draw_map(void) __banked
 {
     const uint8_t *seen = fov_bitmap();   /* explored bitmap        */
@@ -203,6 +213,72 @@ void draw_map(void) __banked
         }
     }
 }
+#else
+#define VIEW_EDGE   6
+#define VIEW_SHADOW ((uint8_t *)0x6000u)
+static uint8_t vx_origin;
+void draw_map(void) __banked
+{
+    const uint8_t *seen = fov_bitmap();   /* explored bitmap        */
+    const uint8_t *vis  = vis_bitmap();   /* visible-this-turn map  */
+    uint8_t *shad = VIEW_SHADOW;
+    uint8_t sc, x, y, t, attr, vx, full;
+    int mi, hsc, nvx;
+    /* the shop room's bounds (read once), so its walls render in warm bricks */
+    uint8_t sx, sy, sw, sh, sx1 = 0, sy1 = 0;
+    int has_shop = shop_rect(&sx, &sy, &sw, &sh);
+    if (has_shop) { sx1 = (uint8_t)(sx + sw - 1); sy1 = (uint8_t)(sy + sh - 1); }
+
+    /* keep the viewport origin unless the hero left the central band (or a full
+     * redraw is already pending), then recenter on the hero. A change forces a
+     * full redraw; otherwise only changed cells are written (diff vs shad[]). */
+    full = map_dirty;
+    if (map_dirty) {
+        nvx = hero_x - TM_W / 2;
+        map_dirty = 0;
+    } else {
+        hsc = hero_x - (int)vx_origin;
+        nvx = (hsc >= VIEW_EDGE && hsc <= TM_W - 1 - VIEW_EDGE)
+              ? (int)vx_origin : hero_x - TM_W / 2;
+    }
+    if (nvx < 0) nvx = 0;
+    if (nvx > MAPW - TM_W) nvx = MAPW - TM_W;
+    if ((uint8_t)nvx != vx_origin) { vx_origin = (uint8_t)nvx; full = 1; }
+    vx = vx_origin;
+
+    for (y = 0; y < MAPH; y++) {
+        uint16_t idx = (uint16_t)y * MAPW + vx;
+        for (sc = 0; sc < TM_W; sc++, idx++) {
+            uint8_t byte = (uint8_t)(idx >> 3);
+            uint8_t mask = (uint8_t)(1u << (idx & 7));
+            uint16_t si;
+            x = (uint8_t)(vx + sc);
+            if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) {
+                t = T_HERO;
+                attr = (uint8_t)(udg_ink[T_HERO - T_ROCK] | 0x40);
+            } else if (!(seen[byte] & mask)) {
+                t = T_ROCK; attr = 0;             /* never seen -> black  */
+            } else if (vis[byte] & mask) {        /* in sight -> bright   */
+                mi = monster_at(x, y);
+                t = (mi >= 0) ? mon_tile(m_type[mi]) : tile_for(lvl[y][x]);
+                if (has_shop && t == T_WALL &&
+                    x >= sx && x <= sx1 && y >= sy && y <= sy1) t = T_SHOPWALL;
+                attr = (uint8_t)(udg_ink[t - T_ROCK] | 0x40);
+            } else {                              /* remembered -> dim    */
+                t = tile_for(lvl[y][x]);
+                if (has_shop && t == T_WALL &&
+                    x >= sx && x <= sx1 && y >= sy && y <= sy1) t = T_SHOPWALL;
+                attr = udg_ink[t - T_ROCK];       /* BRIGHT off = dimmed  */
+            }
+            si = (uint16_t)(((uint16_t)y * TM_W + sc) << 1);
+            if (full || shad[si] != t || shad[si + 1] != attr) {
+                puttile_attr(sc, (uint8_t)(OY + y), t, attr);
+                shad[si] = t; shad[si + 1] = attr;
+            }
+        }
+    }
+}
+#endif
 
 static uint8_t hunger_now(void)
 {
@@ -242,8 +318,8 @@ void upkeep(void) __banked
 
     hs = hunger_now();
     if (hs > hunger_state) {
-        if (hs == 1)      msg("You are beginning to feel hungry.");
-        else if (hs == 2) msg("You are getting weak from hunger.");
+        if (hs == 1)      msg("You begin to feel hungry.");
+        else if (hs == 2) msg("You are weak from hunger.");
         else if (hs == 3) msg("You faint from lack of food!");
     }
     hunger_state = hs;
@@ -261,6 +337,7 @@ void upkeep(void) __banked
     maybe_spawn_wanderer();                     /* the dungeon refills over time */
 }
 
+#ifdef __ZXNEXT
 void draw_help(void) __banked
 {
     print_str(0, 25,
@@ -270,7 +347,15 @@ void draw_help(void) __banked
         "Cmd: ,get  i inv  d sell  w wield  W wear  P ring  q quaff e eat r read  S save",
         C_CYAN | C_BRIGHT);
 }
+#else
+void draw_help(void) __banked
+{
+    /* The 24-row ULA has no room for a persistent help bar (row 0 = message,
+     * rows 1-21 = map, rows 22-23 = status). Commands are in the manual. */
+}
+#endif
 
+#ifdef __ZXNEXT
 void draw_status(void) __banked
 {
     uint8_t x;
@@ -305,6 +390,37 @@ void draw_status(void) __banked
     x = put_uint(x, 23, turns, C_GREEN | C_BRIGHT);
     while (x < 80) putcell(x++, 23, ' ', C_GREEN);
 }
+#else
+void draw_status(void) __banked
+{
+    uint8_t x;
+    const char *h = hunger_label();
+
+    x = print_str(0, 22, "Dlvl:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 22, dlvl, C_GREEN | C_BRIGHT);
+    x = print_str(x, 22, " ", C_GREEN | C_BRIGHT);
+    puttile(x, 22, T_DOLLAR); x++;        /* green '$' tile (ROM '$' is blank) */
+    x = print_str(x, 22, ":", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 22, gold, C_GREEN | C_BRIGHT);
+    x = print_str(x, 22, " HP:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 22, php, C_GREEN | C_BRIGHT);
+    x = print_str(x, 22, "/", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 22, pmaxhp, C_GREEN | C_BRIGHT);
+    while (x < TM_W) putcell(x++, 22, ' ', C_GREEN);
+
+    x = print_str(0, 23, "AC:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, ac, C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, " Xp:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, xlvl, C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, " T:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, turns, C_GREEN | C_BRIGHT);
+    if (*h) {
+        x = print_str(x, 23, " ", C_GREEN | C_BRIGHT);
+        x = print_str(x, 23, h, hunger_color());
+    }
+    while (x < TM_W) putcell(x++, 23, ' ', C_GREEN);
+}
+#endif
 
 /* ============================================================
  * Player actions
@@ -320,10 +436,10 @@ static void describe(char dest, int moved)
     switch (dest) {
     case '>': msg("There is a staircase down here."); break;
     case '<': msg("There is a staircase up here.");   break;
-    case '"': msg("The Amulet of Yendor lies here!  (, to pick up)"); break;
+    case '"': msg("The Amulet of Yendor! (,get)"); break;
     case ')': case '[': case '!': case '%': case '?': case '=':
-        msg2("You see here ", floor_item_desc(),
-             shop_in_room(hero_x, hero_y) ? ".  (, to buy)" : ".  (, to pick up)");
+        msg2(floor_item_desc(),
+             shop_in_room(hero_x, hero_y) ? " (,buy)" : " (,get)", "");
         break;
     default:  msg("");                                break;
     }
@@ -377,7 +493,7 @@ void try_move(int dx, int dy) __banked
         msg_num("You pick up ", amt, " gold pieces.");
         sfx_gold();
     } else if (!was_shop && shop_in_room(nx, ny)) {
-        msg("The shopkeeper: \"Welcome, traveller!  You may buy (,) or sell (d) here.\"");
+        msg("Shop: , to buy, d to sell.");
     } else {
         describe(dest, 1);
     }
@@ -449,6 +565,7 @@ void new_game(void) __banked
 /* The seed comes from how long the player takes to press a key, which gives
  * far more variety than reading the machine state at the same instant on
  * every cold boot. */
+#ifdef __ZXNEXT
 /* ---- Layer 2 pixel-art screens (title + victory) -------------------------
  * Each 256x192 image lives in three banks (title 16/17/18, victory 19/20/21),
  * read in place by the Layer 2 display engine; its 9-bit palette is banked
@@ -507,6 +624,40 @@ void victory_screen(void) __banked
     in_wait_nokey();
     hide_layer2();
 }
+#else
+/* ---- title / victory screens ---------------------------------------------
+ * Plain text for now; the hand-drawn SCR loading screens are Phase 2. The
+ * world seed still comes from how long the player takes to press the first key
+ * (mixed with the FRAMES counter), which gives far more variety than reading
+ * the machine state at the same instant on every cold boot. */
+void title_screen(void) __banked
+{
+    uint16_t s = 1;
+
+    show_title_scr();                /* the hand-drawn SCR loading screen */
+    while (in_inkey() == 0)          /* seed from how long until the first key  */
+        s += 0x9E37u;
+    s ^= *(volatile uint16_t *)0x5C78u;   /* mix in the FRAMES counter */
+    world_seed = s ? s : 0xACE1u;
+    rng_set(world_seed);
+    in_wait_nokey();
+    tm_cls();
+}
+
+/* Shown when the hero surfaces carrying the Amulet of Yendor; dismissed with
+ * Enter (back to the title to restart). */
+void victory_screen(void) __banked
+{
+    int k;
+
+    sfx_levelup();
+    show_victory_scr();              /* the hand-drawn SCR win screen */
+    in_wait_nokey();
+    do { k = getkey(); } while (k != 13);
+    in_wait_nokey();
+    tm_cls();
+}
+#endif
 
 /* main() lives in mainentry.c (resident): the CRT jumps straight to it, so it
  * cannot be banked. Everything it calls above is __banked (nexthack.h). */

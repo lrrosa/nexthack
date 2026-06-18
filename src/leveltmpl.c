@@ -13,8 +13,16 @@
 
 extern uint8_t r_x[], r_y[], r_w[], r_h[];   /* room rects (defined in levelgen.c) */
 
+#ifdef __ZXNEXT
 #pragma codeseg PAGE_22_CODE
+#else
+#pragma codeseg BANK_3
+#endif
+#ifdef __ZXNEXT
 #pragma constseg PAGE_22_CODE
+#else
+#pragma constseg BANK_3
+#endif
 #include "leveltmpl_data.h"   /* NTMPL, tmpl_map, tmpl_nroom, tmpl_room (const) */
 
 uint8_t template_count(void) __banked

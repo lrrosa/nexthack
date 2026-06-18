@@ -17,7 +17,11 @@
 #include "sfx.h"          /* sound effects                                    */
 #include "item.h"         /* corrode_worn                                     */
 
+#ifdef __ZXNEXT
 #pragma codeseg PAGE_20_CODE
+#else
+#pragma codeseg BANK_1
+#endif
 
 static uint8_t mon_dead[MAXLVL + 1];     /* bit i: monster i killed */
 
@@ -123,7 +127,7 @@ static void gain_xp(uint8_t amt)
         xlvl++;
         pmaxhp = (uint8_t)(pmaxhp + gain);
         php = (uint8_t)(php + gain);
-        msg("Welcome to a new experience level!");
+        msg("Welcome to a new level!");
         sfx_levelup();
     }
 }
@@ -182,6 +186,13 @@ static void monster_hits_player(uint8_t i)
  * with the smallest distance, which routes optimally around walls.        */
 
 #define UNREACH 255
+#ifndef __ZXNEXT
+/* +zx (3.5 MHz) only: cap the BFS this far from the hero, and skip it unless a
+ * live monster is within MON_WAKE. The Next (28 MHz, whole 80-wide map visible)
+ * keeps the original unbounded chase, so distant on-screen monsters still path. */
+#define MAXDIST  30
+#define MON_WAKE 22
+#endif
 /* BFS frontier queue. A level has far fewer walkable cells than MAPW*MAPH, so
  * a bounded queue saves RAM; enqueues are guarded so it can never overflow.
  * 696 (was 700) so it packs exactly behind dist[] in Bank 5: dist is 1680 B at
@@ -242,7 +253,11 @@ static void compute_dist_map(void)
                 c = lf[np];                       /* inline walkable check */
                 if (c == '|' || c == '-' || c == ' ') continue;
                 d[np] = nd;
+#ifdef __ZXNEXT
                 if (tail < BFSQ_SIZE)
+#else
+                if (nd < MAXDIST && tail < BFSQ_SIZE)   /* don't expand past MAXDIST */
+#endif
                     bfsq[tail++] = (uint16_t)(((uint16_t)ny << 8) | (uint8_t)nx);
             }
         }
@@ -286,6 +301,16 @@ static void mon_step(uint8_t i)
 void monsters_turn(void) __banked
 {
     uint8_t i;
+#ifndef __ZXNEXT
+    /* +zx: skip the whole pass when every live monster is far off-screen */
+    uint8_t awake = 0;
+    for (i = 0; i < mcount; i++) {
+        if (!m_alive[i]) continue;
+        if (iabs((int)m_x[i] - hero_x) <= MON_WAKE &&
+            iabs((int)m_y[i] - hero_y) <= MON_WAKE) { awake = 1; break; }
+    }
+    if (!awake) return;
+#endif
     compute_dist_map();
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i]) continue;

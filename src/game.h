@@ -24,6 +24,7 @@ extern uint8_t  dead;
 extern uint8_t  has_amulet; /* carrying the Amulet of Yendor                 */
 extern uint8_t  won;        /* surfaced with the Amulet (victory)            */
 extern uint8_t  acted;     /* did the player's action consume a turn? */
+extern uint8_t  map_dirty; /* +zx renderer: force a full map redraw (unused on Next) */
 extern int16_t  nutrition; /* hunger: drops each turn, food refills it    */
 
 /* equipment effects (set by item.c, used in combat and the status bar) */

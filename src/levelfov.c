@@ -13,7 +13,11 @@
 #include "platform.h"     /* file_read/file_write */
 #include "game.h"         /* dlvl, MAXLVL          */
 
+#ifdef __ZXNEXT
 #pragma codeseg PAGE_20_CODE
+#else
+#pragma codeseg BANK_1
+#endif
 
 extern uint8_t r_x[], r_y[], r_w[], r_h[];   /* room rects (levelgen.c) */
 extern uint8_t gold_taken[], item_taken[];   /* persistence masks (levelgen.c) */

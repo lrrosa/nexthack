@@ -5,11 +5,19 @@
 *_CODE.bin
 *_BANK_*.bin
 
+# ZX 128K (+zx) build artifacts
+*.zxo
+*.tap
+*.sna
+/obj-zx128/
+/nexthack128
+
 # appmake generated loaders (.bat) — keep our own scripts
 *.bat
 !build.bat
 !run.bat
 !run-sd.bat
+!run-zx128.bat
 
 # raw extensionless binaries produced by zcc
 /nexthack

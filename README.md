@@ -1,12 +1,22 @@
-# NextHack — a NetHack-inspired roguelike for the ZX Spectrum Next
+# NextHack — a NetHack-inspired roguelike for the ZX Spectrum Next & 128K
 
-A from-scratch NetHack-style roguelike for the
-[ZX Spectrum Next](https://www.specnext.com/), built with **Z88DK** (the
-`zsdcc`/SDCC C compiler) and tested on the **CSpect** emulator.
+A from-scratch NetHack-style roguelike built with **Z88DK** (the `zsdcc`/SDCC C
+compiler). **One codebase builds two targets:**
+
+- the **ZX Spectrum Next** ([+zxn](https://www.specnext.com/)) — hardware tilemap,
+  full-colour 8×8 tiles, Layer 2 title/victory art; tested on **CSpect**;
+- the plain **ZX Spectrum 128K** (+zx) — ULA display, 1-bit UDG tiles, an
+  edge-scrolling 32-column viewport over the 80-wide map, and attribute-clash SCR
+  loading screens; tested on **ZEsarUX**.
+
+The two share **all** game logic; only the platform/render layer differs, selected
+at compile time by `#ifdef __ZXNEXT`. Both are **code-banked** to break the Z80's
+64 KB ceiling (the Next via its MMU, the 128K via port `0x7FFD`).
 
 ![NextHack title screen — a pixel-art loading screen: an armoured knight facing a demon in a torch-lit dungeon archway, beneath the NextHack logo.](docs/title.png)
 
-*The title screen, drawn on the Next's Layer 2 framebuffer (256×192).*
+*The title screen, on the Next's Layer 2 framebuffer (256×192); the 128K build
+shows the same art as an attribute-clash SCR.*
 
 ## Strategy
 
@@ -50,12 +60,21 @@ code.
 ## Project structure
 
 The code is split into modules with clear responsibilities — the platform
-(ZX Next hardware) layer kept separate from the game logic. Because the engine
+(hardware) layer kept separate from the game logic. Because the engine
 is **code-banked**, each module is also either **resident** (hot code
 that stays mapped in, R) or **banked** (cold code paged into the `0xC000` window
 on demand, B). Headers declare the interface; the `.c` is the R/B half. The
 source files live in **`src/`**; the build scripts, `mmap.inc` and `zpragma.inc`
-stay at the repo root (the build runs from there, where z88dk looks for `mmap.inc`):
+stay at the repo root (the build runs from there, where z88dk looks for `mmap.inc`).
+
+The platform/render layer is **dual-target** via `#ifdef __ZXNEXT`: `platform.c`,
+`platform_init.c` and `nexthack.c`'s renderer carry both the Next (tilemap /
+Layer 2) and the 128K (ULA / UDG / SCR) code paths in one file, and the build
+picks the right one. The 128K target adds `scr.c` (SCR blitter), `title_scr.c` /
+`victory_scr.c` (const-banked SCRs) and `banked_call.asm` (the `0x7FFD`
+trampoline); the Next target adds the `titlegfx*` / `victorygfx*` Layer 2 images.
+The table below describes the **Next** build; the 128K build's modules are the
+same minus the Layer 2 images.
 
 | File | R/B | Responsibility |
 |------|-----|----------------|
@@ -114,6 +133,23 @@ zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startu
 The banking layout is configured by `zpragma.inc` (stack at `0xBFF0`, banking
 segment 3) and `mmap.inc` (the `PAGE_20_CODE`/`PAGE_22_CODE` page ORGs).
 
+### Building the ZX Spectrum 128K target
+
+The plain 128K build uses the classic `+zx` target with manual 16 KB bank paging
+(port `0x7FFD`). It needs `..\ZEsarUX\` as a sibling folder to run.
+
+```powershell
+.\build-zx128.ps1          # incremental -> nexthack128.tap (+ a 128K nexthack128.sna)
+.\build-zx128.ps1 -Clean   # force a full rebuild
+```
+
+It compiles the same modules (taking their `#else` 128K code paths) plus the ULA
+SCR screens (`scr.c`, `title_scr.c`, `victory_scr.c`) and the vendored `0x7FFD`
+banking trampoline (`banked_call.asm`); the 96 KB of Next Layer 2 image modules
+are dropped. Banking comes from `zpragma-zx128.inc` (the `CRT_ORG_BANK_N`
+far-bank ORGs); `tools/png2scr.py` regenerates the title/victory SCRs from the
+PNG art.
+
 ## Run on CSpect
 
 CSpect 3.x boots with a built-in Next ROM, so **no system ROM or SD card image is
@@ -143,6 +179,17 @@ Alternatively, the **ZEsarUX** emulator auto-mounts esxDOS onto the folder that
 holds the `.nex`, so save/restore works directly against the host directory — no
 SD image or `hdfmonkey` needed. Load `nexthack.nex` in ZEsarUX and play; `S` then
 writes `nexthack.sav` beside it, to be reloaded automatically on the next boot.
+
+## Run the ZX Spectrum 128K build
+
+```bat
+run-zx128.bat        REM boots nexthack128.sna in ZEsarUX (--machine 128k)
+```
+
+`run-zx128.bat` launches **ZEsarUX** (sibling `..\ZEsarUX\`) in 128K mode with its
+esxDOS handler, so `S` writes `nexthack.sav` to the game folder and save/restore
+works with no SD image. The same `.tap` also loads on real 128K hardware / other
+emulators (its loader pages each bank into place via `0x7FFD`).
 
 ## Controls
 

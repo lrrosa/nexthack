@@ -1,12 +1,18 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
  * Copyright (C) 2026 Leonardo Roman da Rosa */
-/* platform.h - ZX Spectrum Next hardware layer: tilemap display, tile/font
- * graphics, text/messages and keyboard. Nothing game-specific lives here. */
+/* platform.h - hardware layer: display, tile/font graphics, text/messages and
+ * keyboard. Two targets share this API: the ZX Spectrum Next (+zxn, hardware
+ * tilemap, __ZXNEXT) and the plain ZX Spectrum 128K (+zx, ULA + 1-bit UDGs).
+ * Nothing game-specific lives here. */
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
 #include <stdint.h>
+#ifdef __ZXNEXT
 #include <arch/zxn.h>     /* ZXN_WRITE_REG / ZXN_READ_REG, zx_border */
+#else
+#include <arch/zx.h>      /* ULA: zx_border, screen/attr address helpers (+zx) */
+#endif
 #include <input.h>        /* in_inkey, in_wait_nokey, in_pause       */
 
 /* ---- colour offsets (0..15): low 3 bits = hue, +8 = bright ---- */
@@ -49,17 +55,31 @@
 #define T_SHOPWALL 153   /* a shop's walls: warm tan/brown bricks (vs grey T_WALL) */
 #define T_KEEPER   154   /* the shopkeeper: orange robe, distinct from the blue hero */
 
-/* tilemap dimensions (characters) */
-#define TM_W 80
-#define TM_H 32
+#define NTILES   27      /* T_ROCK..T_KEEPER: the graphic tiles */
 
-/* set up the tilemap, font, graphic tiles and palette (banked; runs once) */
+/* display dimensions (characters) */
+#ifdef __ZXNEXT
+#define TM_W 80          /* Next hardware tilemap 80x32 */
+#define TM_H 32
+#else
+#define TM_W 32          /* ULA 256x192 = 32x24 */
+#define TM_H 24
+#endif
+
+/* one-time display setup (banked; runs once from main) */
 void tm_init(void) __banked;
 
 /* drawing */
-void    putcell(uint8_t x, uint8_t y, uint8_t ch, uint8_t coff);   /* font tile */
-void    puttile(uint8_t x, uint8_t y, uint8_t tile);               /* graphic tile */
-uint8_t *tm_cell_ptr(uint8_t x, uint8_t y);   /* address of a tilemap cell */
+void    putcell(uint8_t x, uint8_t y, uint8_t ch, uint8_t coff);   /* ROM-font glyph */
+void    puttile(uint8_t x, uint8_t y, uint8_t tile);               /* graphic/UDG tile */
+#ifdef __ZXNEXT
+uint8_t *tm_cell_ptr(uint8_t x, uint8_t y);   /* address of a tilemap cell (Next) */
+#else
+void    puttile_attr(uint8_t x, uint8_t y, uint8_t tile, uint8_t attr); /* UDG + explicit attr */
+/* 1-bit map-tile shapes + their base inks (platform.c), built from udg_src[] */
+extern uint8_t       udg_bitmap[NTILES][8];
+extern const uint8_t udg_ink[NTILES];
+#endif
 uint8_t print_str(uint8_t x, uint8_t y, const char *s, uint8_t coff);
 uint8_t put_uint(uint8_t x, uint8_t y, uint16_t v, uint8_t coff);
 void    clear_line(uint8_t y, uint8_t coff);
