@@ -75,7 +75,7 @@ const uint8_t udg_ink[NTILES] = {
     /* HERO   DOG    RAT    GOLD   FOOD   DOLLAR WEAPON ARMOR  POTION */
        5,     6,     7,     6,     2,     4,     7,     7,     5,
     /* KOBOLD ORC    SNAKE  BAT    ZOMBIE SCROLL RING   AMULET ACIDBLOB */
-       6,     4,     4,     7,     4,     7,     6,     6,     4,
+       6,     4,     4,     1,     4,     7,     6,     6,     4,  /* bat: blue */
     /* SHOPWALL KEEPER */
        6,       3        /* keeper magenta: distinct from cyan hero + yellow items */
 };
