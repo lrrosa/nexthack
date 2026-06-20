@@ -80,52 +80,15 @@ const uint8_t udg_ink[NTILES] = {
        6,       3        /* keeper magenta: distinct from cyan hero + yellow items */
 };
 
-/* Top pixel-line address of char cell (x,y): 0x4000 + third*0x800
- * + (row-in-third)*0x20 + x. Successive pixel lines are +0x100 apart. */
-static uint8_t *cell_addr(uint8_t x, uint8_t y)
-{
-    return (uint8_t *)(SCRN_BASE
-        + ((uint16_t)(y & 0x18) << 8)    /* third  (y>>3)*0x800 */
-        + ((uint16_t)(y & 0x07) << 5)    /* row    (y&7)*0x20   */
-        + x);
-}
-
-static uint8_t attr_from(uint8_t coff)
-{
-    /* low 3 bits = ink; bit 3 (C_BRIGHT) -> ULA bright (0x40); paper black */
-    return (uint8_t)((coff & 7) | ((coff & 8) ? 0x40 : 0));
-}
-
-void putcell(uint8_t x, uint8_t y, uint8_t ch, uint8_t coff)
-{
-    const uint8_t *src = (const uint8_t *)(ROM_FONT + ((uint16_t)ch << 3));
-    uint8_t *d = cell_addr(x, y);
-    uint8_t L;
-    for (L = 0; L < 8; L++) { *d = src[L]; d += 0x100; }
-    *((uint8_t *)(ATTR_BASE + ((uint16_t)y << 5) + x)) = attr_from(coff);
-}
-
-void puttile(uint8_t x, uint8_t y, uint8_t tile)
-{
-    const uint8_t *src = udg_bitmap[tile - T_ROCK];
-    uint8_t *d = cell_addr(x, y);
-    uint8_t L;
-    for (L = 0; L < 8; L++) { *d = src[L]; d += 0x100; }
-    /* drawn "in hand": full BRIGHT ink (status bar / inventory use this) */
-    *((uint8_t *)(ATTR_BASE + ((uint16_t)y << 5) + x)) =
-        (uint8_t)(udg_ink[tile - T_ROCK] | 0x40);
-}
-
-/* Draw a UDG tile with an explicit attribute (the map renderer's fog-of-war
- * dim: BRIGHT in sight, plain when only remembered). */
-void puttile_attr(uint8_t x, uint8_t y, uint8_t tile, uint8_t attr)
-{
-    const uint8_t *src = udg_bitmap[tile - T_ROCK];
-    uint8_t *d = cell_addr(x, y);
-    uint8_t L;
-    for (L = 0; L < 8; L++) { *d = src[L]; d += 0x100; }
-    *((uint8_t *)(ATTR_BASE + ((uint16_t)y << 5) + x)) = attr;
-}
+/* The three ULA cell blits -- putcell (ROM-font text), puttile (a UDG tile
+ * drawn "in hand"), and puttile_attr (a UDG map tile with explicit fog-of-war
+ * attribute) -- all copy an 8-byte glyph into the bitmap (pixel rows +0x100
+ * apart) and set the cell attribute. They are the hot render path: the status
+ * bar redraws ~64 cells every turn and an edge-scroll redraws the whole
+ * ~672-cell viewport, so all three live in hand-written Z80 in
+ * src/puttile_asm.asm (declared in platform.h). The cell bitmap address is
+ * 0x4000 + (y&0x18)*256 + (y&7)*32 + x; the attribute 0x5800 + (y>>3)*256 +
+ * (y&7)*32 + x; text attr = (coff&7)|(BRIGHT?0x40:0), tiles = udg_ink|0x40. */
 
 void tm_cls(void)
 {
