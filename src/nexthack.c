@@ -351,7 +351,39 @@ void draw_help(void) __banked
 void draw_help(void) __banked
 {
     /* The 24-row ULA has no room for a persistent help bar (row 0 = message,
-     * rows 1-21 = map, rows 22-23 = status). Commands are in the manual. */
+     * rows 1-21 = map, rows 22-23 = status), so the keys live on a '?' screen
+     * (show_help) instead. */
+}
+#endif
+
+#ifdef __ZXNEXT
+void show_help(void) __banked { }    /* the help bar is always on screen */
+#else
+/* '?' on the 128K: the key list is not visible during play, so show it on a
+ * full screen, then restore the map. */
+void show_help(void) __banked
+{
+    tm_cls();
+    print_str(8,  1, "NextHack  Keys",       C_WHITE | C_BRIGHT);
+    print_str(2,  3, "Move: arrow keys, or", C_CYAN | C_BRIGHT);
+    print_str(7,  4, "h j k l  y u b n",     C_CYAN | C_BRIGHT);
+    print_str(2,  5, "Stairs: > < or Enter", C_CYAN | C_BRIGHT);
+    print_str(2,  6, "Wait: s",              C_CYAN | C_BRIGHT);
+    print_str(2,  8, ", pick up",            C_CYAN | C_BRIGHT);
+    print_str(2,  9, "i inventory",          C_CYAN | C_BRIGHT);
+    print_str(2, 10, "w wield    W wear",    C_CYAN | C_BRIGHT);
+    print_str(2, 11, "P put on ring",        C_CYAN | C_BRIGHT);
+    print_str(2, 12, "q quaff    e eat",     C_CYAN | C_BRIGHT);
+    print_str(2, 13, "r read     d sell",    C_CYAN | C_BRIGHT);
+    print_str(2, 14, "S save and quit",      C_CYAN | C_BRIGHT);
+    print_str(2, 15, "? this help",          C_CYAN | C_BRIGHT);
+    print_str(4, 18, "Press any key...",     C_WHITE | C_BRIGHT);
+    in_wait_nokey();
+    getkey();
+    in_wait_nokey();
+    map_dirty = 1;
+    draw_status();
+    draw_map();
 }
 #endif
 
