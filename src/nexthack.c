@@ -438,7 +438,8 @@ void draw_status(void) __banked
     x = put_uint(x, 22, php, C_GREEN | C_BRIGHT);
     x = print_str(x, 22, "/", C_GREEN | C_BRIGHT);
     x = put_uint(x, 22, pmaxhp, C_GREEN | C_BRIGHT);
-    while (x < TM_W) putcell(x++, 22, ' ', C_GREEN);
+    while (x < TM_W - 6) putcell(x++, 22, ' ', C_GREEN);     /* pad up to the hint */
+    print_str(TM_W - 6, 22, "?=help", C_GREEN | C_BRIGHT);   /* so the player finds show_help */
 
     x = print_str(0, 23, "AC:", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, ac, C_GREEN | C_BRIGHT);
