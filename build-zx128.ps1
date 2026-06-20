@@ -25,7 +25,7 @@ if (-not (Test-Path $obj)) { New-Item -ItemType Directory $obj | Out-Null }
 # Source modules (drop the 8 Next Layer 2 image modules). banked_call.asm is the
 # vendored 0x7FFD trampoline.
 $csrcs = 'mainentry','nexthack','platform','platform_init','rng','level','levelgen','levelfov','monster','monster_ai','item','sfx','leveltmpl','scr','title_scr','victory_scr'
-$asrcs = 'banked_call'
+$asrcs = 'banked_call','esxdetect'
 $cflags = @('+zx','-clib=sdcc_iy','-SO3','--max-allocs-per-node200000','-pragma-include:zpragma-zx128.inc')
 
 $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -72,6 +72,10 @@ $objs = ($csrcs + $asrcs) | ForEach-Object { "obj-zx128/$_.o" }
 & zcc +zx -vn -clib=sdcc_iy -startup=1 -pragma-include:zpragma-zx128.inc -m $objs -o nexthack128 -create-app
 "linking nexthack128.sna (128K) ..."
 & zcc +zx -subtype=sna -vn -clib=sdcc_iy -startup=1 -pragma-include:zpragma-zx128.inc -m $objs -o nexthack128 -create-app -Cz"--128"
+# z88dk's newlib +zx tape loader only loads the resident CODE, not the extra
+# banks -> rebuild the .tap with a 128K loader that pages + loads each bank.
+"rebuilding nexthack128.tap with the bank-paging 128K loader ..."
+& python tools/mktap128.py
 $sw.Stop()
 
 if (Test-Path nexthack128.tap) {

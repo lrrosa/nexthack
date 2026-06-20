@@ -171,13 +171,35 @@ void clear_line(uint8_t y, uint8_t coff)
 
 /* ---- save-file I/O (NextZXOS/esxDOS). Returns FILE_ERR on failure. ---- */
 
+/* esxDOS lives on RST 8. The Next always has NextZXOS, but a plain 128K usually
+ * has no DivMMC -- there RST 8 is the ROM error restart, so an unguarded esxDOS
+ * call drops to BASIC. On +zx we probe once (esxdetect.asm) and, if absent,
+ * make every file op fail cleanly (the game then just runs without save/load).*/
+uint8_t esxdos_ok = 1;          /* assumed present; +zx confirms below */
+
+#ifndef __ZXNEXT
+extern void esxdos_detect(void);    /* esxdetect.asm: sets esxdos_ok 1/0 */
+static uint8_t esx_checked = 0;
+static uint8_t esx_ready(void)
+{
+    if (!esx_checked) { esxdos_detect(); esx_checked = 1; }
+    return esxdos_ok;
+}
+#endif
+
 uint8_t file_create(const char *name)
 {
+#ifndef __ZXNEXT
+    if (!esx_ready()) return FILE_ERR;
+#endif
     return esx_f_open(name, (uint8_t)(ESX_MODE_W | ESX_MODE_OPEN_CREAT_TRUNC));
 }
 
 uint8_t file_open(const char *name)
 {
+#ifndef __ZXNEXT
+    if (!esx_ready()) return FILE_ERR;
+#endif
     return esx_f_open(name, (uint8_t)(ESX_MODE_R | ESX_MODE_OPEN_EXIST));
 }
 
