@@ -182,14 +182,22 @@ writes `nexthack.sav` beside it, to be reloaded automatically on the next boot.
 
 ## Run the ZX Spectrum 128K build
 
+**`nexthack128.tap` is the distributable.** It is a standard tape that loads on
+real 128K hardware and any accurate emulator (Spectaculator, Fuse, …): open it on
+a 128K model and let it load. Its BASIC loader pages each 16 KB bank into place
+via `0x7FFD`, then a small boot stub sets the interrupt mode before starting — so
+it does not depend on esxDOS just to run.
+
 ```bat
-run-zx128.bat        REM boots nexthack128.sna in ZEsarUX (--machine 128k)
+run-zx128.bat        REM dev convenience: boots nexthack128.sna in ZEsarUX (--machine 128k)
 ```
 
-`run-zx128.bat` launches **ZEsarUX** (sibling `..\ZEsarUX\`) in 128K mode with its
-esxDOS handler, so `S` writes `nexthack.sav` to the game folder and save/restore
-works with no SD image. The same `.tap` also loads on real 128K hardware / other
-emulators (its loader pages each bank into place via `0x7FFD`).
+`run-zx128.bat` launches **ZEsarUX** (sibling `..\ZEsarUX\`) for quick local
+testing. Save/restore on the 128K needs an **esxDOS/DivMMC** interface, which the
+game probes for at startup: with one, `S` writes `nexthack.sav` and it reloads on
+the next boot; without one the game runs normally but cannot save. The build also
+emits a `nexthack128.sna`, but that is only for ZEsarUX's quick-load — accurate
+emulators show garbage for it, so **ship the `.tap`, not the `.sna`**.
 
 ## Controls
 
