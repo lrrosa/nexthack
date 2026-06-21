@@ -423,35 +423,77 @@ void draw_status(void) __banked
     while (x < 80) putcell(x++, 23, ' ', C_GREEN);
 }
 #else
+/* The status bar (rows 22-23) is rebuilt every turn but most cells -- the
+ * labels, the spaces -- never change, so a write-through diff against a shadow
+ * skips the blit when a cell is unchanged. The shadow holds (glyph, colour)
+ * per cell in Bank 5 RAM, right after the map's VIEW_SHADOW (0x6000 + 21*32*2
+ * = 0x6540), well below the BFS scratch at 0x7400. A normal turn then redraws
+ * only the few digits that moved (T:, HP, gold) instead of all ~64 cells. */
+#define SSHADOW ((uint8_t *)0x6600u)
+static uint8_t sd_force;                /* 1 = redraw every cell (see draw_status) */
+
+/* glyph >= 128 is a UDG tile (the '$'); below that an ROM-font char. */
+static void sd_putc(uint8_t x, uint8_t y, uint8_t glyph, uint8_t coff)
+{
+    uint8_t *s = SSHADOW + (((uint16_t)(y - 22) * TM_W + x) << 1);
+    if (sd_force || s[0] != glyph || s[1] != coff) {
+        if (glyph >= 128) puttile(x, y, glyph);
+        else              putcell(x, y, glyph, coff);
+        s[0] = glyph; s[1] = coff;
+    }
+}
+static uint8_t sd_str(uint8_t x, uint8_t y, const char *p, uint8_t coff)
+{
+    while (*p && x < TM_W) { sd_putc(x++, y, (uint8_t)*p, coff); p++; }
+    return x;
+}
+static uint8_t sd_uint(uint8_t x, uint8_t y, uint16_t v, uint8_t coff)
+{
+    char t[5];
+    uint8_t n = 0;
+    if (v == 0) { sd_putc(x++, y, '0', coff); return x; }
+    while (v) { t[n++] = (char)('0' + (v % 10)); v /= 10; }
+    while (n) sd_putc(x++, y, (uint8_t)t[--n], coff);
+    return x;
+}
+
 void draw_status(void) __banked
 {
     uint8_t x;
     const char *h = hunger_label();
 
-    x = print_str(0, 22, "Dlvl:", C_GREEN | C_BRIGHT);
-    x = put_uint(x, 22, dlvl, C_GREEN | C_BRIGHT);
-    x = print_str(x, 22, " ", C_GREEN | C_BRIGHT);
-    puttile(x, 22, T_DOLLAR); x++;        /* green '$' tile (ROM '$' is blank) */
-    x = print_str(x, 22, ":", C_GREEN | C_BRIGHT);
-    x = put_uint(x, 22, gold, C_GREEN | C_BRIGHT);
-    x = print_str(x, 22, " HP:", C_GREEN | C_BRIGHT);
-    x = put_uint(x, 22, php, C_GREEN | C_BRIGHT);
-    x = print_str(x, 22, "/", C_GREEN | C_BRIGHT);
-    x = put_uint(x, 22, pmaxhp, C_GREEN | C_BRIGHT);
-    while (x < TM_W - 6) putcell(x++, 22, ' ', C_GREEN);     /* pad up to the hint */
-    print_str(TM_W - 6, 22, "?=help", C_GREEN | C_BRIGHT);   /* so the player finds show_help */
+    /* Reuse the renderer's full-redraw flag instead of a second one: every
+     * draw_status() call site is immediately followed by draw_map() (which
+     * then clears map_dirty), so reading it here -- without consuming it --
+     * forces a full status redraw after any overlay/level change/load, and a
+     * cheap diff on ordinary turns. The shadow is garbage at boot, but boot
+     * has map_dirty == 1, so the first pass writes (and seeds) every cell. */
+    sd_force = map_dirty;
 
-    x = print_str(0, 23, "AC:", C_GREEN | C_BRIGHT);
-    x = put_uint(x, 23, ac, C_GREEN | C_BRIGHT);
-    x = print_str(x, 23, " Xp:", C_GREEN | C_BRIGHT);
-    x = put_uint(x, 23, xlvl, C_GREEN | C_BRIGHT);
-    x = print_str(x, 23, " T:", C_GREEN | C_BRIGHT);
-    x = put_uint(x, 23, turns, C_GREEN | C_BRIGHT);
+    x = sd_str(0, 22, "Dlvl:", C_GREEN | C_BRIGHT);
+    x = sd_uint(x, 22, dlvl, C_GREEN | C_BRIGHT);
+    x = sd_str(x, 22, " ", C_GREEN | C_BRIGHT);
+    sd_putc(x, 22, T_DOLLAR, 0); x++;     /* green '$' tile (ROM '$' is blank) */
+    x = sd_str(x, 22, ":", C_GREEN | C_BRIGHT);
+    x = sd_uint(x, 22, gold, C_GREEN | C_BRIGHT);
+    x = sd_str(x, 22, " HP:", C_GREEN | C_BRIGHT);
+    x = sd_uint(x, 22, php, C_GREEN | C_BRIGHT);
+    x = sd_str(x, 22, "/", C_GREEN | C_BRIGHT);
+    x = sd_uint(x, 22, pmaxhp, C_GREEN | C_BRIGHT);
+    while (x < TM_W - 6) sd_putc(x++, 22, ' ', C_GREEN);     /* pad up to the hint */
+    sd_str(TM_W - 6, 22, "?=help", C_GREEN | C_BRIGHT);      /* so the player finds show_help */
+
+    x = sd_str(0, 23, "AC:", C_GREEN | C_BRIGHT);
+    x = sd_uint(x, 23, ac, C_GREEN | C_BRIGHT);
+    x = sd_str(x, 23, " Xp:", C_GREEN | C_BRIGHT);
+    x = sd_uint(x, 23, xlvl, C_GREEN | C_BRIGHT);
+    x = sd_str(x, 23, " T:", C_GREEN | C_BRIGHT);
+    x = sd_uint(x, 23, turns, C_GREEN | C_BRIGHT);
     if (*h) {
-        x = print_str(x, 23, " ", C_GREEN | C_BRIGHT);
-        x = print_str(x, 23, h, hunger_color());
+        x = sd_str(x, 23, " ", C_GREEN | C_BRIGHT);
+        x = sd_str(x, 23, h, hunger_color());
     }
-    while (x < TM_W) putcell(x++, 23, ' ', C_GREEN);
+    while (x < TM_W) sd_putc(x++, 23, ' ', C_GREEN);
 }
 #endif
 
