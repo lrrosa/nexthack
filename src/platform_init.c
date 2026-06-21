@@ -24,7 +24,7 @@ extern const uint8_t inkcol[16];    /* text ink colours             (platform.c)
  * Each tile: 64 pixels (8 rows x 8 cols), values are master-palette indices.
  * Order matches the T_* numbering starting at T_ROCK. */
 #pragma constseg PAGE_22_CODE
-const uint8_t gfx[27][64] = {
+const uint8_t gfx[NTILES][64] = {
   { /* T_ROCK */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
@@ -105,7 +105,13 @@ const uint8_t gfx[27][64] = {
     7,7,7,5,7,7,7,7, 6,6,6,5,6,6,6,6, 6,6,6,5,6,6,6,6, 5,5,5,5,5,5,5,5 },
   { /* T_KEEPER (shopkeeper: T_HERO recoloured with an orange 14 robe) */
     0,0,0,15,15,0,0,0, 0,0,0,15,15,0,0,0, 0,0,15,15,15,15,0,0, 0,0,0,14,14,0,0,0,
-    0,14,14,14,14,14,14,0, 0,0,14,14,14,14,0,0, 0,0,14,0,0,14,0,0, 0,0,14,0,0,14,0,0 }
+    0,14,14,14,14,14,14,0, 0,0,14,14,14,14,0,0, 0,0,14,0,0,14,0,0, 0,0,14,0,0,14,0,0 },
+  { /* T_LEPRECHAUN (small green sprite with a tan hat) */
+    0,0,0,7,7,0,0,0, 0,0,7,7,7,7,0,0, 0,0,0,9,9,0,0,0, 0,0,9,9,9,9,0,0,
+    0,9,9,9,9,9,9,0, 0,0,9,9,9,9,0,0, 0,0,9,0,0,9,0,0, 0,0,9,0,0,9,0,0 },
+  { /* T_YELLOWLIGHT (glowing yellow orb with an orange core) */
+    0,0,0,13,13,0,0,0, 0,0,13,13,13,13,0,0, 0,13,13,14,14,13,13,0, 0,13,14,14,14,14,13,0,
+    0,13,14,14,14,14,13,0, 0,13,13,14,14,13,13,0, 0,0,13,13,13,13,0,0, 0,0,0,13,13,0,0,0 }
 };
 
 static void pack_tile(uint8_t tilenum, const uint8_t *px)
@@ -119,7 +125,7 @@ static void pack_tile(uint8_t tilenum, const uint8_t *px)
 static void load_gfx_tiles(void)
 {
     uint8_t i;
-    for (i = 0; i < 27; i++)
+    for (i = 0; i < NTILES; i++)
         pack_tile((uint8_t)(T_ROCK + i), gfx[i]);
 }
 
@@ -229,7 +235,9 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x18,0x24,0x42,0x3C,0x18,0x3C,0x24,0x00 }, /* AMULET   (pendant)      */
     { 0x00,0x3C,0x7E,0xFF,0xFF,0xFF,0x7E,0x3C }, /* ACIDBLOB (blob)         */
     { 0xFF,0xA8,0xA8,0xFF,0x2A,0x2A,0xFF,0xA8 }, /* SHOPWALL (denser brick) */
-    { 0x18,0x3C,0x18,0x5A,0x18,0x18,0x24,0x42 }  /* KEEPER   (person variant)*/
+    { 0x18,0x3C,0x18,0x5A,0x18,0x18,0x24,0x42 }, /* KEEPER   (person variant)*/
+    { 0x18,0x3C,0x18,0x3C,0x7E,0x18,0x24,0x42 }, /* LEPRECHAUN (sprite + hat)*/
+    { 0x00,0x18,0x3C,0x7E,0x7E,0x3C,0x18,0x00 }  /* YELLOWLIGHT (glowing orb)*/
 };
 
 /* Copy the hand-drawn tiles into the resident udg_bitmap[] the renderer reads

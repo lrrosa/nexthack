@@ -20,18 +20,20 @@ uint8_t mcount;
 
 /* ---- monster catalogue (resident; mon_find/pick_mon read it) ---- */
 static const MonType montypes[] = {
-    /* ch  hp dmg xp mindep tile        corr name */
-    { 'r',  3, 3, 1, 1, T_RAT,      0, "rat"       },
-    { 'B',  3, 2, 1, 1, T_BAT,      0, "bat"       },
-    { 'a',  5, 2, 3, 2, T_ACIDBLOB, 1, "acid blob" },
-    { 'k',  4, 2, 2, 1, T_KOBOLD,   0, "kobold"    },
-    { 'd',  6, 3, 2, 2, T_DOG,      0, "dog"       },
-    { 'S',  6, 4, 3, 3, T_SNAKE,    0, "snake"     },
-    { 'o',  8, 4, 4, 4, T_ORC,      0, "orc"       },
-    { 'Z', 14, 4, 6, 6, T_ZOMBIE,   0, "zombie"    },
+    /* ch  hp dmg xp mindep tile          corr atk         name */
+    { 'r',  3, 3, 1, 1, T_RAT,         0, ATK_NONE,   "rat"          },
+    { 'B',  3, 2, 1, 1, T_BAT,         0, ATK_NONE,   "bat"          },
+    { 'a',  5, 2, 3, 2, T_ACIDBLOB,    1, ATK_NONE,   "acid blob"    },
+    { 'k',  4, 2, 2, 1, T_KOBOLD,      0, ATK_NONE,   "kobold"       },
+    { 'd',  6, 3, 2, 2, T_DOG,         0, ATK_NONE,   "dog"          },
+    { 'S',  6, 4, 3, 3, T_SNAKE,       0, ATK_POISON, "snake"        },
+    { 'o',  8, 4, 4, 4, T_ORC,         0, ATK_NONE,   "orc"          },
+    { 'Z', 14, 4, 6, 6, T_ZOMBIE,      0, ATK_NONE,   "zombie"       },
+    { 'l',  5, 2, 3, 3, T_LEPRECHAUN,  0, ATK_STEAL,  "leprechaun"   },
+    { 'y',  6, 3, 4, 5, T_YELLOWLIGHT, 0, ATK_BLIND,  "yellow light" },
     /* the shopkeeper: drawn as '@' (reuses T_HERO), placed only in shops, never
      * randomly spawned (pick_mon skips it), and stationary (monster_ai mon_step). */
-    { MON_KEEPER, 30, 0, 0, 1, T_KEEPER, 0, "shopkeeper" }
+    { MON_KEEPER, 30, 0, 0, 1, T_KEEPER, 0, ATK_NONE, "shopkeeper" }
 };
 #define NMON ((uint8_t)(sizeof(montypes) / sizeof(montypes[0])))
 

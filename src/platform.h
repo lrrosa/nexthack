@@ -54,8 +54,10 @@
 #define T_ACIDBLOB 152
 #define T_SHOPWALL 153   /* a shop's walls: warm tan/brown bricks (vs grey T_WALL) */
 #define T_KEEPER   154   /* the shopkeeper: orange robe, distinct from the blue hero */
+#define T_LEPRECHAUN  155  /* small green humanoid; steals gold and flees */
+#define T_YELLOWLIGHT 156  /* glowing orb; blinds on contact              */
 
-#define NTILES   27      /* T_ROCK..T_KEEPER: the graphic tiles */
+#define NTILES   29      /* T_ROCK..T_YELLOWLIGHT: the graphic tiles */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT

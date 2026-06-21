@@ -178,6 +178,23 @@ static void monster_hits_player(uint8_t i)
         msg2("The ", mt->name, " bites you!");
         if (mt->corr && rn2(2))     /* acid/rust corrodes your worn armour */
             corrode_worn('[');
+        switch (mt->atk) {          /* special on-hit effects (status-effect layer) */
+        case ATK_POISON:
+            if (rn2(2)) { st_poison = (uint8_t)(st_poison + rn2(4) + 3);
+                          msg("You feel poisoned!"); }
+            break;
+        case ATK_BLIND:
+            if (rn2(2)) { st_blind = (uint8_t)(st_blind + rn2(15) + 10);
+                          map_dirty = 1; msg("You are blinded!"); }
+            break;
+        case ATK_STEAL:
+            if (gold > 0) {
+                gold = (uint16_t)(gold >> 1);   /* grabs about half of it... */
+                m_alive[i] = 0;                 /* ...then vanishes with the loot */
+                msg2("The ", mt->name, " grabs your gold and vanishes!");
+            }
+            break;
+        }
     }
 }
 

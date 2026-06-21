@@ -30,8 +30,12 @@ typedef struct {
     uint8_t     mindepth;   /* shallowest depth it appears at */
     uint8_t     tile;
     uint8_t     corr;       /* corrodes the hero's gear on contact */
+    uint8_t     atk;        /* special on-hit attack (ATK_*)        */
     const char *name;
 } MonType;
+
+/* MonType.atk -- the special effect a successful bite may inflict */
+enum { ATK_NONE, ATK_POISON, ATK_BLIND, ATK_SLEEP, ATK_STEAL };
 
 /* ---- RESIDENT lookups (monster.c): hot, called per cell/monster by the
  * renderer and the banked AI; not banked so those calls stay direct ---- */
