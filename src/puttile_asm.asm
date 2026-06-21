@@ -10,10 +10,14 @@
 ; these share a tight `ld a,(hl)/ld (de),a/inc hl/inc d/djnz` core (~2x/cell),
 ; smoothing both the per-turn status redraw and the edge-scroll.
 ;
+; dist_clear is the same idea for the monster-BFS scratch map: a tight unrolled
+; fill of the 1680-byte dist[] that the chase BFS resets every turn (its biggest
+; per-turn cost on the 3.5 MHz 128K).
+;
 ; +zx only (the Next build keeps its tilemap path and never links this).
 
     SECTION code_compiler
-    PUBLIC  _putcell, _puttile, _puttile_attr
+    PUBLIC  _putcell, _puttile, _puttile_attr, _dist_clear
     EXTERN  _udg_bitmap, _udg_ink
 
 ROM_FONT equ 0x3c00
@@ -150,3 +154,53 @@ _puttile_attr:
     add  hl, bc             ; HL = src
     ld   a, (ix+7)          ; A = attr
     jp   pta_core
+
+; void dist_clear(uint8_t *p)
+;   Fill p[0..1679] with UNREACH (0xFF): the monster-BFS dist[] reset, its
+;   biggest per-turn cost when monsters are awake (1680 cell-writes vs the
+;   flood's ~112). 1680 = MAPH*MAPW (21*80), unrolled x16 -> 105 djnz passes.
+;   Keep the 1680 here in sync with monster_ai.c's dist[] / MAPH*MAPW.
+_dist_clear:
+    push ix
+    ld   ix, 0
+    add  ix, sp
+    ld   l, (ix+4)
+    ld   h, (ix+5)         ; HL = p (dist[])
+    ld   a, 0xff           ; UNREACH
+    ld   b, 105            ; 1680 / 16 bytes per pass
+dc_loop:
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    ld   (hl), a
+    inc  hl
+    djnz dc_loop
+    pop  ix
+    ret

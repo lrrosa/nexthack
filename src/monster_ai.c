@@ -213,14 +213,26 @@ static void monster_hits_player(uint8_t i)
  * BFS scratch, never touched during esxDOS file I/O. */
 #define bfsq ((uint16_t *)0x7A90u)
 
+#ifndef __ZXNEXT
+/* Hand-written Z80 fill of the 1680-byte dist[] (puttile_asm.asm). Clearing the
+ * whole map to UNREACH every turn is the BFS's biggest cost on the 3.5 MHz 128K
+ * -- profiled at 1680 cell-writes/turn vs the flood's ~112 -- and a tight
+ * unrolled fill beats SDCC's scalar loop ~3x. The Next (28 MHz) keeps the C
+ * loop. Keep the 1680 in dist_clear in sync with MAPH*MAPW. */
+extern void dist_clear(uint8_t *p);
+#endif
+
 static void compute_dist_map(void)
 {
-    uint16_t head = 0, tail = 0, k;
+    uint16_t head = 0, tail = 0;
     uint8_t *d = (uint8_t *)dist;      /* flat view, fast indexing */
     const char *lf = (const char *)lvl;
 
-    for (k = 0; k < (uint16_t)(MAPH * MAPW); k++)
-        d[k] = UNREACH;
+#ifdef __ZXNEXT
+    { uint16_t k; for (k = 0; k < (uint16_t)(MAPH * MAPW); k++) d[k] = UNREACH; }
+#else
+    dist_clear(d);
+#endif
 
     if (hero_x < 0 || hero_y < 0 || hero_x >= MAPW || hero_y >= MAPH)
         return;
