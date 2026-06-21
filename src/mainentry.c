@@ -142,6 +142,14 @@ start_game:
             in_wait_nokey();
         }
 
+#ifdef __ZXNEXT
         in_pause(40);   /* throttle continuous (held-key) movement */
+#else
+        in_pause(6);    /* 128K: light throttle (was 40). Below ~6 ms the per-
+                         * turn work -- mainly the monster-chase BFS -- is the
+                         * floor anyway, so further cuts saturate. in_pause(0)
+                         * is avoided: the lib's msec countdown underflows to a
+                         * ~65 s pause. */
+#endif
     }
 }
