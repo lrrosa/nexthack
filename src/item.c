@@ -37,7 +37,7 @@
 enum {
     O_DAGGER, O_SHORTSW, O_MACE, O_LONGSW,     /* ')' weapons */
     O_LEATHER, O_RINGMAIL, O_CHAIN, O_PLATE,   /* '[' armour  */
-    O_HEAL, O_EXHEAL,                          /* '!' potions */
+    O_HEAL, O_EXHEAL, O_CONFUSION, O_SLEEPING, O_BLINDNESS,  /* '!' potions */
     O_MAPPING, O_TELEPORT,                     /* '?' scrolls */
     O_PROTECT,                                 /* '=' ring    */
     O_FOOD,                                    /* '%' food    */
@@ -65,6 +65,9 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '[',  5,  200, 10, "plate mail" },
     { '!',  7,   20,  1, "potion of healing" },
     { '!', 14,   60,  4, "potion of extra healing" },
+    { '!',  0,   30,  2, "potion of confusion" },
+    { '!',  0,   30,  3, "potion of sleeping" },
+    { '!',  0,   30,  4, "potion of blindness" },
     { '?',  0,   40,  1, "scroll of magic mapping" },
     { '?',  0,   60,  1, "scroll of teleportation" },
     { '=',  1,  150,  3, "ring of protection" },
@@ -634,19 +637,32 @@ static int select_item(char cls, const char *prompt)
 void do_quaff(void) __banked
 {
     int s = select_item('!', "Drink which potion?");
-    uint8_t heal;
+    uint8_t ot;
 
     if (s == -1) { msg("You have no potions to drink."); return; }
     if (s == -2) { msg("Never mind."); return; }
-    heal = (uint8_t)(rn2(6) + objtypes[inv[s].otyp].prop);
-    if (inv[s].otyp == O_EXHEAL) {
-        if (pmaxhp < 250) pmaxhp++;
-        msg("You feel much healthier!");
-    } else {
-        msg("You feel much better.");
+    ot = inv[s].otyp;
+    if (ot == O_CONFUSION) {
+        st_conf = (uint8_t)(st_conf + rn2(15) + 15);
+        msg("Huh?  What?  Where am I?");
+    } else if (ot == O_SLEEPING) {
+        st_sleep = (uint8_t)(st_sleep + rn2(8) + 5);
+        msg("You suddenly fall asleep!");
+    } else if (ot == O_BLINDNESS) {
+        st_blind = (uint8_t)(st_blind + rn2(40) + 30);
+        map_dirty = 1;                      /* redraw: the world goes dark */
+        msg("A cloak of darkness falls around you.");
+    } else {                                /* healing / extra healing */
+        uint8_t heal = (uint8_t)(rn2(6) + objtypes[ot].prop);
+        if (ot == O_EXHEAL) {
+            if (pmaxhp < 250) pmaxhp++;
+            msg("You feel much healthier!");
+        } else {
+            msg("You feel much better.");
+        }
+        php = (uint8_t)(php + heal);
+        if (php > pmaxhp) php = pmaxhp;
     }
-    php = (uint8_t)(php + heal);
-    if (php > pmaxhp) php = pmaxhp;
     inv_remove((uint8_t)s);
     sfx_quaff();
     acted = 1; turns++;

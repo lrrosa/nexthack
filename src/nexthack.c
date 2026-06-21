@@ -47,6 +47,9 @@ uint16_t xp = 0;
 uint8_t  xlvl = 1;
 int16_t  nutrition = 900;
 
+/* transient status effects (see game.h): per-turn countdowns, 0 = inactive */
+uint8_t  st_conf = 0, st_blind = 0, st_sleep = 0, st_poison = 0;
+
 /* hunger/regeneration bookkeeping */
 static uint8_t heal_timer = 0;
 static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
@@ -57,7 +60,7 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   11     /* fix: the shop avoids stair rooms and is big enough to stock */
+#define SAVE_VER   12     /* + transient status effects (conf/blind/sleep/poison) */
 
 struct save_hdr {
     uint16_t magic;
@@ -74,6 +77,7 @@ struct save_player {
     uint16_t xp;
     uint8_t  xlvl;
     uint8_t  has_amulet;
+    uint8_t  st_conf, st_blind, st_sleep, st_poison;
 };
 
 /* From here down, all of nexthack.c's CODE is banked into PAGE_22_CODE (mapped
@@ -104,6 +108,8 @@ int save_game(void) __banked
     p.php = php;     p.pmaxhp = pmaxhp;
     p.gold = gold;   p.nutrition = nutrition;
     p.xp = xp;       p.xlvl = xlvl; p.has_amulet = has_amulet;
+    p.st_conf = st_conf;   p.st_blind = st_blind;
+    p.st_sleep = st_sleep; p.st_poison = st_poison;
     file_write(h, &p, sizeof p);
 
     item_save(h);
@@ -137,6 +143,8 @@ int load_game(void) __banked
     php = p.php;       pmaxhp = p.pmaxhp;
     gold = p.gold;     nutrition = p.nutrition;
     xp = p.xp;         xlvl = p.xlvl; has_amulet = p.has_amulet;
+    st_conf = p.st_conf;   st_blind = p.st_blind;
+    st_sleep = p.st_sleep; st_poison = p.st_poison;
     dead = 0; won = 0;
 
     item_load(h);
@@ -334,6 +342,16 @@ void upkeep(void) __banked
         if (php < pmaxhp) php++;
     }
 
+    /* transient status effects tick down; poison gnaws a hit point each turn */
+    if (st_poison) {
+        if (php > 0) php--;
+        if (php == 0) dead = 1;
+        if (!--st_poison && !dead) msg("The poison wears off.");
+    }
+    if (st_conf  && !--st_conf)  msg("Your head clears.");
+    if (st_blind && !--st_blind) { msg("You can see again."); map_dirty = 1; }
+    if (st_sleep && !--st_sleep) msg("You wake up.");
+
     maybe_spawn_wanderer();                     /* the dungeon refills over time */
 }
 
@@ -420,6 +438,10 @@ void draw_status(void) __banked
     x = put_uint(x, 23, xp, C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "  T:", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, turns, C_GREEN | C_BRIGHT);
+    if (st_conf)   x = print_str(x, 23, "  Conf",   C_RED | C_BRIGHT);
+    if (st_blind)  x = print_str(x, 23, "  Blind",  C_RED | C_BRIGHT);
+    if (st_sleep)  x = print_str(x, 23, "  Asleep", C_RED | C_BRIGHT);
+    if (st_poison) x = print_str(x, 23, "  Poison", C_RED | C_BRIGHT);
     while (x < 80) putcell(x++, 23, ' ', C_GREEN);
 }
 #else
@@ -489,6 +511,10 @@ void draw_status(void) __banked
     x = sd_uint(x, 23, xlvl, C_GREEN | C_BRIGHT);
     x = sd_str(x, 23, " T:", C_GREEN | C_BRIGHT);
     x = sd_uint(x, 23, turns, C_GREEN | C_BRIGHT);
+    if (st_conf)   x = sd_str(x, 23, " Conf", C_RED | C_BRIGHT);
+    if (st_blind)  x = sd_str(x, 23, " Blnd", C_RED | C_BRIGHT);
+    if (st_sleep)  x = sd_str(x, 23, " Slp",  C_RED | C_BRIGHT);
+    if (st_poison) x = sd_str(x, 23, " Pois", C_RED | C_BRIGHT);
     if (*h) {
         x = sd_str(x, 23, " ", C_GREEN | C_BRIGHT);
         x = sd_str(x, 23, h, hunger_color());
@@ -530,10 +556,16 @@ static int lookable(char c)
 
 void try_move(int dx, int dy) __banked
 {
-    int nx = hero_x + dx;
-    int ny = hero_y + dy;
-    char dest = terrain(nx, ny);
+    int nx, ny;
+    char dest;
     int was_shop, mi;
+
+    if (st_conf) {                  /* confused: lurch off in a random direction */
+        do { dx = (int)rn2(3) - 1; dy = (int)rn2(3) - 1; } while (!dx && !dy);
+    }
+    nx = hero_x + dx;
+    ny = hero_y + dy;
+    dest = terrain(nx, ny);
 
     if (!walkable(dest)) {
         /* Bumping a wall: if you're standing on an item or stairs, re-announce
@@ -623,6 +655,7 @@ void new_game(void) __banked
     nutrition = 900;
     heal_timer = 0;
     hunger_state = 0;
+    st_conf = st_blind = st_sleep = st_poison = 0;
     item_reset();
     level_reset_persistence();
     monster_reset_persistence();

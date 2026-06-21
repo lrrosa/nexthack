@@ -49,10 +49,11 @@ start_game:
     }
 
     for (;;) {
-        k = getkey();
-
         acted = 0;
-        switch (k) {
+        if (st_sleep) { acted = 1; turns++; }   /* asleep/paralysed: forfeit the turn */
+        else k = getkey();
+
+        if (!st_sleep) switch (k) {
         /* movement: cursor keys + NetHack vi-keys (hjkl + yubn diagonals) */
         case 'h': case  8: try_move(-1,  0); break;   /* left       */
         case 'l': case  9: try_move(+1,  0); break;   /* right      */

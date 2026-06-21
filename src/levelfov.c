@@ -135,6 +135,11 @@ void fov_update(int hx, int hy) __banked
     for (r = 0; r < rcount; r++)
         if (in_room(r, hx, hy)) { hero_room = r; break; }
 
+    /* blind: you sense only the cell you stand on -- no rooms, no rays, and no
+     * new exploration. draw_map then shows the rest from memory (dimmed) and
+     * monsters vanish (they are only drawn where currently visible). */
+    if (st_blind) { light(hx, hy); return; }
+
     /* radius 1 (the cells immediately around the hero) */
     for (dy = -1; dy <= 1; dy++)
         for (dx = -1; dx <= 1; dx++)

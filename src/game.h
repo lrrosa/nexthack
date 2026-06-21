@@ -34,4 +34,12 @@ extern uint8_t  ac;           /* displayed armour class                   */
 extern uint16_t xp;           /* experience points                        */
 extern uint8_t  xlvl;         /* experience level                         */
 
+/* transient status effects (per-turn countdowns; 0 = inactive). Defined in
+ * nexthack.c, ticked in upkeep(). The foundation other systems hook into --
+ * potions set them now; monsters and traps will later. */
+extern uint8_t  st_conf;      /* confused: each step lurches a random way */
+extern uint8_t  st_blind;     /* blind: you see only your own cell        */
+extern uint8_t  st_sleep;     /* asleep/paralysed: you forfeit turns      */
+extern uint8_t  st_poison;    /* poisoned: HP drains each turn            */
+
 #endif /* GAME_H */
