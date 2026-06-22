@@ -18,7 +18,9 @@
 
     SECTION code_compiler
     PUBLIC  _putcell, _puttile, _puttile_attr, _dist_clear
-    EXTERN  _udg_bitmap, _udg_ink
+    EXTERN  _udg_ink
+
+UDG_BITMAP equ 0x6680      ; tile shapes in Bank 5 (always mapped); see platform.h
 
 ROM_FONT equ 0x3c00
 
@@ -132,7 +134,7 @@ _puttile:
     add  hl, hl
     add  hl, hl
     add  hl, hl             ; index * 8
-    ld   bc, _udg_bitmap
+    ld   bc, UDG_BITMAP
     add  hl, bc             ; HL = src
     ld   a, e               ; A = attribute
     jp   pta_core
@@ -150,7 +152,7 @@ _puttile_attr:
     add  hl, hl
     add  hl, hl
     add  hl, hl             ; index * 8
-    ld   bc, _udg_bitmap
+    ld   bc, UDG_BITMAP
     add  hl, bc             ; HL = src
     ld   a, (ix+7)          ; A = attr
     jp   pta_core

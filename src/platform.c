@@ -65,10 +65,9 @@ void tm_cls(void)
 #define ATTR_BASE 0x5800u      /* attributes   */
 #define ROM_FONT  0x3C00u      /* ROM 8x8 font (char c -> 0x3C00 + (c<<3)) */
 
-/* 1-bit map-tile shapes (built from udg_src[] by platform_init's build_udgs)
- * + each tile's base ink (0..7); draw_map ORs in BRIGHT for in-sight cells. */
-uint8_t udg_bitmap[NTILES][8];
-
+/* Each tile's base ink (0..7); draw_map ORs in BRIGHT for in-sight cells.
+ * The 1-bit shapes (udg_bitmap, built from udg_src[] by build_udgs) live in
+ * Bank 5, not resident -- see the #define in platform.h. */
 const uint8_t udg_ink[NTILES] = {
     /* ROCK   FLOOR  WALL   CORR   DOOR   SUP    SDOWN */
        0,     7,     7,     7,     6,     7,     7,

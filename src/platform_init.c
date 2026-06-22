@@ -240,14 +240,15 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x00,0x18,0x3C,0x7E,0x7E,0x3C,0x18,0x00 }  /* YELLOWLIGHT (glowing orb)*/
 };
 
-/* Copy the hand-drawn tiles into the resident udg_bitmap[] the renderer reads
- * (it runs from resident code, which cannot reach this bank's const). */
+/* Copy the hand-drawn tiles into udg_bitmap[] (Bank 5, see platform.h) that the
+ * resident blits read; this bank's const udg_src is reachable here in place.
+ * udg_bitmap is a flat pointer, so index it tile*8 + row. */
 static void build_udgs(void)
 {
     uint8_t t, row;
     for (t = 0; t < NTILES; t++)
         for (row = 0; row < 8; row++)
-            udg_bitmap[t][row] = udg_src[t][row];
+            udg_bitmap[(uint16_t)t * 8 + row] = udg_src[t][row];
 }
 
 void tm_init(void) __banked

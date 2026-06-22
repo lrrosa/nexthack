@@ -78,8 +78,14 @@ void    puttile(uint8_t x, uint8_t y, uint8_t tile);               /* graphic/UD
 uint8_t *tm_cell_ptr(uint8_t x, uint8_t y);   /* address of a tilemap cell (Next) */
 #else
 void    puttile_attr(uint8_t x, uint8_t y, uint8_t tile, uint8_t attr); /* UDG + explicit attr */
-/* 1-bit map-tile shapes + their base inks (platform.c), built from udg_src[] */
-extern uint8_t       udg_bitmap[NTILES][8];
+/* 1-bit map-tile shapes + their base inks, built from udg_src[] at startup.
+ * udg_bitmap lives in Bank 5 (0x6680, after the status shadow), which the CPU
+ * always sees at 0x4000-0x7FFF on the 128K -- so the resident blits read it in
+ * place while it costs 0 resident BSS (232 B reclaimed). Keep 0x6680 clear of
+ * VIEW_SHADOW (0x6000), SSHADOW (0x6600) and the BFS scratch (0x7400). SDCC
+ * rejects a cast to a pointer-to-array, so it is a flat pointer indexed
+ * udg_bitmap[tile*8 + row] (the asm blits use the same base + index*8). */
+#define udg_bitmap ((uint8_t *)0x6680u)
 extern const uint8_t udg_ink[NTILES];
 #endif
 uint8_t print_str(uint8_t x, uint8_t y, const char *s, uint8_t coff);
