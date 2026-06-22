@@ -132,6 +132,36 @@ void corrode_worn(char cls) __banked
     }
 }
 
+/* ---- item identification ----------------------------------------------------
+ * Potions and scrolls start unidentified: shown by a per-game random appearance
+ * ("ruby potion", "scroll labeled XYZZY") until you use one, which reveals that
+ * whole type. The appearance is a deterministic rotation of a small pool keyed
+ * on world_seed, so it needs no storage and is stable across save/restore;
+ * id_known records which types you have since learned. */
+static const char *const pot_appear[] = {
+    "ruby potion", "blue potion", "fizzy potion", "smoky potion", "cloudy potion"
+};
+static const char *const scr_appear[] = {
+    "scroll labeled XYZZY", "scroll labeled ELBERETH"
+};
+#define NPOT 5
+#define NSCR 2
+
+static uint8_t id_known[(NUMOBJ + 7) / 8];   /* one "identified?" bit per otyp */
+static uint8_t id_is(uint8_t otyp)  { return (id_known[otyp >> 3] >> (otyp & 7)) & 1u; }
+static void    id_set(uint8_t otyp) { id_known[otyp >> 3] |= (uint8_t)(1u << (otyp & 7)); }
+
+/* display name: the true name once identified, else this game's appearance */
+static const char *item_name(uint8_t otyp)
+{
+    char cls = objtypes[otyp].cls;
+    if (!id_is(otyp)) {
+        if (cls == '!') return pot_appear[(uint8_t)(otyp - O_HEAL + (world_seed % NPOT)) % NPOT];
+        if (cls == '?') return scr_appear[(uint8_t)(otyp - O_MAPPING + (world_seed % NSCR)) % NSCR];
+    }
+    return objtypes[otyp].name;
+}
+
 /* a printable description with an erosion prefix and +N enchantment, e.g.
  * "+2 long sword" or "rusty chain mail". Returns a shared static buffer. */
 static const char *obj_desc(const obj_t *o)
@@ -150,7 +180,7 @@ static const char *obj_desc(const obj_t *o)
         *p++ = (char)('0' + (o->ench % 10));
         *p++ = ' ';
     }
-    s = t->name;
+    s = item_name(o->otyp);     /* true name if identified, else appearance */
     while (*s) *p++ = *s++;
     *p = 0;
     return buf;
@@ -203,8 +233,10 @@ static void inv_remove(uint8_t s)
 
 void item_reset(void) __banked
 {
+    uint8_t i;
     inv_count = 0;
     weapon_dmg = 0;
+    for (i = 0; i < sizeof id_known; i++) id_known[i] = 0;   /* nothing learned yet */
     recompute_gear();
 }
 
@@ -663,6 +695,7 @@ void do_quaff(void) __banked
         php = (uint8_t)(php + heal);
         if (php > pmaxhp) php = pmaxhp;
     }
+    id_set(ot);                 /* drinking it identifies the type */
     inv_remove((uint8_t)s);
     sfx_quaff();
     acted = 1; turns++;
@@ -693,6 +726,7 @@ void do_read(void) __banked
     if (s == -1) { msg("You have nothing to read."); return; }
     if (s == -2) { msg("Never mind."); return; }
     ot = inv[s].otyp;
+    id_set(ot);                 /* reading it identifies the type */
     inv_remove((uint8_t)s);
     sfx_magic();
     if (ot == O_MAPPING) {
@@ -713,11 +747,13 @@ void item_save(uint8_t h) __banked
 {
     file_write(h, inv, sizeof inv);
     file_write(h, &inv_count, 1);
+    file_write(h, id_known, sizeof id_known);
 }
 
 void item_load(uint8_t h) __banked
 {
     file_read(h, inv, sizeof inv);
     file_read(h, &inv_count, 1);
+    file_read(h, id_known, sizeof id_known);
     recompute_gear();
 }
