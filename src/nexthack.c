@@ -554,6 +554,43 @@ static int lookable(char c)
            c == '%' || c == '?' || c == '=';
 }
 
+/* Deterministic per-cell trap: a side hash (never rn2, so level generation and
+ * persistence stay in sync). From Dlvl 2 on, ~1/47 of floor cells hide one of
+ * three traps; it springs the first time you step there. */
+#define NTRAP 3
+static int trap_type(uint8_t x, uint8_t y)
+{
+    uint16_t h;
+    if (dlvl < 2) return -1;
+    h = (uint16_t)(world_seed * 31u + (uint16_t)dlvl * 2179u
+                   + (uint16_t)x * 71u + (uint16_t)y * 131u);
+    if ((h % 47u) != 0) return -1;
+    return (int)((h >> 6) % NTRAP);
+}
+
+static void spring_trap(int t, uint8_t x, uint8_t y)
+{
+    if (t == 0) {                       /* trap door: you drop to the next level */
+        msg("A trap door!  You fall.");
+        sfx_stairs();
+        dlvl++;
+        build_level();
+        hero_x = up_x; hero_y = up_y;
+        return;
+    }
+    lvl[y][x] = '^';                     /* the trap is now sprung and visible */
+    if (t == 1) {                       /* dart */
+        uint8_t d = (uint8_t)(rn2(5) + 2);
+        msg("A dart hits you!");
+        sfx_hurt();
+        if (php <= d) { php = 0; dead = 1; }
+        else        php = (uint8_t)(php - d);
+    } else {                            /* sleeping gas */
+        msg("Sleeping gas!");
+        st_sleep = (uint8_t)(st_sleep + rn2(4) + 3);
+    }
+}
+
 void try_move(int dx, int dy) __banked
 {
     int nx, ny;
@@ -593,6 +630,10 @@ void try_move(int dx, int dy) __banked
     hero_y = ny;
     turns++;
     acted = 1;
+    if (dest == '.') {                  /* stepping onto floor -- a hidden trap? */
+        int tt = trap_type((uint8_t)nx, (uint8_t)ny);
+        if (tt >= 0) { spring_trap(tt, (uint8_t)nx, (uint8_t)ny); return; }
+    }
     if (dest == '$') {
         uint16_t amt = (uint16_t)(rn2(20) + 1);
         gold = (uint16_t)(gold + amt);

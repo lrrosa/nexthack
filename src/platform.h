@@ -56,8 +56,9 @@
 #define T_KEEPER   154   /* the shopkeeper: orange robe, distinct from the blue hero */
 #define T_LEPRECHAUN  155  /* small green humanoid; steals gold and flees */
 #define T_YELLOWLIGHT 156  /* glowing orb; blinds on contact              */
+#define T_TRAP        157  /* a sprung trap (revealed after you step on it) */
 
-#define NTILES   29      /* T_ROCK..T_YELLOWLIGHT: the graphic tiles */
+#define NTILES   30      /* T_ROCK..T_TRAP: the graphic tiles */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT
