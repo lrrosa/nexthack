@@ -80,7 +80,15 @@ typedef struct {
     int8_t  ench;    /* +N enchantment (weapon dmg / armour class)        */
     uint8_t ero;     /* erosion level (rust/corrosion); 0 for now         */
     uint8_t worn;    /* 1 if this is the equipped weapon/armour/ring      */
+    uint8_t buc;     /* bits 0-1: 0 uncursed/1 blessed/2 cursed; bit 2 known */
 } obj_t;
+
+#define BUC_UNC   0
+#define BUC_BLESS 1
+#define BUC_CURSE 2
+#define BUC_KNOWN 4
+#define buc_st(o)   ((o)->buc & 3)         /* the blessed/uncursed/cursed state */
+#define buc_seen(o) ((o)->buc & BUC_KNOWN) /* has the player discovered it?      */
 
 static obj_t   inv[MAXINV];
 static uint8_t inv_count;
@@ -100,6 +108,8 @@ static void recompute_gear(void)
         if (!inv[i].worn) continue;
         t = &objtypes[inv[i].otyp];
         eff = (int)t->prop + inv[i].ench - inv[i].ero;
+        if (buc_st(&inv[i]) == BUC_BLESS)      eff += 1;   /* blessed gear is better */
+        else if (buc_st(&inv[i]) == BUC_CURSE) eff -= 2;   /* cursed gear is a drag   */
         if (eff < 0) eff = 0;
         if (t->cls == ')') {
             weapon_dmg = (uint8_t)eff;
@@ -107,8 +117,8 @@ static void recompute_gear(void)
             if ((uint8_t)eff <= base_ac) base_ac -= (uint8_t)eff;
             if (eff > 0) redux += (uint8_t)(eff > 1 ? eff - 1 : 1);
         } else if (t->cls == '=') {
-            if (t->prop <= base_ac) base_ac -= t->prop;
-            redux += t->prop;
+            if ((uint8_t)eff <= base_ac) base_ac -= (uint8_t)eff;
+            redux += (uint8_t)eff;
         }
     }
     ac = base_ac;
@@ -171,6 +181,11 @@ static const char *obj_desc(const obj_t *o)
     char *p = buf;
     const char *s;
 
+    if (buc_seen(o)) {              /* show the BUC state once you've discovered it */
+        s = (buc_st(o) == BUC_BLESS) ? "blessed " :
+            (buc_st(o) == BUC_CURSE) ? "cursed "  : "";
+        while (*s) *p++ = *s++;
+    }
     if (o->ero) {
         s = (o->ero >= 2) ? "corroded " : "rusty ";
         while (*s) *p++ = *s++;
@@ -216,6 +231,15 @@ static void unworn_class(char cls)   /* take off whatever of this class is worn 
     uint8_t i;
     for (i = 0; i < inv_count; i++)
         if (objtypes[inv[i].otyp].cls == cls) inv[i].worn = 0;
+}
+
+/* index of the currently-worn item of class cls, or -1 */
+static int find_worn(char cls)
+{
+    uint8_t i;
+    for (i = 0; i < inv_count; i++)
+        if (inv[i].worn && objtypes[inv[i].otyp].cls == cls) return i;
+    return -1;
 }
 
 static int inv_add(const obj_t *o)
@@ -291,6 +315,7 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
     o->ench = 0;
     o->ero  = 0;
     o->worn = 0;
+    o->buc  = BUC_UNC;
     if (c == '"') {
         o->otyp = O_AMULET;
         return;
@@ -300,6 +325,10 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
         uint8_t roll = (uint8_t)((h >> 5) % 100u);
         if (roll < depth)                o->ench = 1;
         if (roll < (uint8_t)(depth / 3)) o->ench = 2;
+    }
+    if (c == ')' || c == '[' || c == '=') {   /* equipment may be blessed or cursed */
+        uint8_t r = (uint8_t)((h >> 11) & 7);  /* 5/8 uncursed, 2/8 cursed, 1/8 blessed */
+        o->buc = (r < 5) ? BUC_UNC : (r < 7) ? BUC_CURSE : BUC_BLESS;
     }
 }
 
@@ -554,35 +583,53 @@ void show_inventory(void) __banked
 
 void do_wield(void) __banked
 {
-    int s = find_best(')');
+    int w = find_worn(')'), s;
+    if (w >= 0 && buc_st(&inv[w]) == BUC_CURSE && buc_seen(&inv[w])) {
+        msg("Your weapon is welded fast!"); return;
+    }
+    s = find_best(')');
     if (s < 0) { msg("You have no weapon to wield."); return; }
     if (inv[s].worn) { msg("Already wielding your best."); return; }
     unworn_class(')');
     inv[s].worn = 1;
+    inv[s].buc |= BUC_KNOWN;             /* equipping reveals the curse/blessing */
     recompute_gear();
-    msg2("Wield ", obj_desc(&inv[s]), ".");
+    if (buc_st(&inv[s]) == BUC_CURSE) msg2("Welded!  ", obj_desc(&inv[s]), ".");
+    else                             msg2("Wield ", obj_desc(&inv[s]), ".");
 }
 
 void do_wear(void) __banked
 {
-    int s = find_best('[');
+    int w = find_worn('['), s;
+    if (w >= 0 && buc_st(&inv[w]) == BUC_CURSE && buc_seen(&inv[w])) {
+        msg("Your armor is welded on!"); return;
+    }
+    s = find_best('[');
     if (s < 0) { msg("You have no armor to wear."); return; }
     if (inv[s].worn) { msg("Already wearing your best."); return; }
     unworn_class('[');                  /* swap: take off the old suit first */
     inv[s].worn = 1;
+    inv[s].buc |= BUC_KNOWN;
     recompute_gear();
-    msg2("You don ", obj_desc(&inv[s]), ".");
+    if (buc_st(&inv[s]) == BUC_CURSE) msg2("Welded!  ", obj_desc(&inv[s]), ".");
+    else                             msg2("You don ", obj_desc(&inv[s]), ".");
 }
 
 void do_puton(void) __banked
 {
-    int s = find_best('=');
+    int w = find_worn('='), s;
+    if (w >= 0 && buc_st(&inv[w]) == BUC_CURSE && buc_seen(&inv[w])) {
+        msg("Your ring is stuck fast!"); return;
+    }
+    s = find_best('=');
     if (s < 0) { msg("You have no ring to put on."); return; }
     if (inv[s].worn) { msg("You are already wearing a ring."); return; }
     unworn_class('=');
     inv[s].worn = 1;
+    inv[s].buc |= BUC_KNOWN;
     recompute_gear();
-    msg("The ring tingles.  Protected!");
+    if (buc_st(&inv[s]) == BUC_CURSE) msg2("Stuck!  ", obj_desc(&inv[s]), ".");
+    else                             msg("The ring tingles.  Protected!");
     sfx_magic();
 }
 

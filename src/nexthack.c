@@ -60,7 +60,7 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   13     /* + item identification (id_known bitmask) */
+#define SAVE_VER   14     /* + BUC (obj_t.buc: blessed/uncursed/cursed) */
 
 struct save_hdr {
     uint16_t magic;
