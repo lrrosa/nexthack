@@ -90,7 +90,16 @@ typedef struct {
 #define buc_st(o)   ((o)->buc & 3)         /* the blessed/uncursed/cursed state */
 #define buc_seen(o) ((o)->buc & BUC_KNOWN) /* has the player discovered it?      */
 
-static obj_t   inv[MAXINV];
+/* The inventory. On the 128K it lives in Bank 5 (always mapped at 0x4000-0x7FFF,
+ * just past udg_bitmap), so it costs no resident BSS; the Next keeps it resident
+ * because its Bank 5 at 0x6800 is the hardware tilemap. INV_BYTES is its true
+ * size for save/restore (sizeof on the 128K's pointer would be wrong). */
+#ifndef __ZXNEXT
+#define inv ((obj_t *)0x6800u)
+#else
+static obj_t inv[MAXINV];
+#endif
+#define INV_BYTES (sizeof(obj_t) * MAXINV)
 static uint8_t inv_count;
 
 /* ---- gear effects ---- */
@@ -792,14 +801,14 @@ void do_read(void) __banked
 
 void item_save(uint8_t h) __banked
 {
-    file_write(h, inv, sizeof inv);
+    file_write(h, inv, INV_BYTES);
     file_write(h, &inv_count, 1);
     file_write(h, id_known, sizeof id_known);
 }
 
 void item_load(uint8_t h) __banked
 {
-    file_read(h, inv, sizeof inv);
+    file_read(h, inv, INV_BYTES);
     file_read(h, &inv_count, 1);
     file_read(h, id_known, sizeof id_known);
     recompute_gear();
