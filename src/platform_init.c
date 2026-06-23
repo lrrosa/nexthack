@@ -114,7 +114,13 @@ const uint8_t gfx[NTILES][64] = {
     0,13,14,14,14,14,13,0, 0,13,13,14,14,13,13,0, 0,0,13,13,13,13,0,0, 0,0,0,13,13,0,0,0 },
   { /* T_TRAP (a red ^ chevron -- a sprung trap) */
     0,0,0,0,0,0,0,0, 0,0,0,8,8,0,0,0, 0,0,8,8,8,8,0,0, 0,8,8,0,0,8,8,0,
-    8,8,0,0,0,0,8,8, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 }
+    8,8,0,0,0,0,8,8, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
+  { /* T_HOMUNCULUS (small red imp with horns and yellow eyes) */
+    0,8,0,0,0,0,8,0, 0,0,8,8,8,8,0,0, 0,8,13,8,8,13,8,0, 0,0,8,8,8,8,0,0,
+    0,0,0,8,8,0,0,0, 0,0,8,8,8,8,0,0, 0,0,8,0,0,8,0,0, 0,0,8,0,0,8,0,0 },
+  { /* T_WRAITH (pale grey hooded wraith, dark eyes, wispy below) */
+    0,0,3,3,3,3,0,0, 0,3,4,4,4,4,3,0, 0,3,4,8,8,4,3,0, 0,3,4,4,4,4,3,0,
+    0,0,3,4,4,3,0,0, 0,0,3,3,3,3,0,0, 0,3,0,3,0,3,0,0, 0,0,3,0,3,0,3,0 }
 };
 
 static void pack_tile(uint8_t tilenum, const uint8_t *px)
@@ -241,7 +247,9 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x18,0x3C,0x18,0x5A,0x18,0x18,0x24,0x42 }, /* KEEPER   (person variant)*/
     { 0x18,0x3C,0x18,0x3C,0x7E,0x18,0x24,0x42 }, /* LEPRECHAUN (sprite + hat)*/
     { 0x00,0x18,0x3C,0x7E,0x7E,0x3C,0x18,0x00 }, /* YELLOWLIGHT (glowing orb)*/
-    { 0x00,0x18,0x3C,0x66,0xC3,0x81,0x00,0x00 }  /* TRAP  (^ chevron)        */
+    { 0x00,0x18,0x3C,0x66,0xC3,0x81,0x00,0x00 }, /* TRAP  (^ chevron)        */
+    { 0x42,0x3C,0x5A,0x3C,0x18,0x3C,0x66,0x00 }, /* HOMUNCULUS (horned imp)  */
+    { 0x3C,0x7E,0x66,0x7E,0x3C,0x3C,0x5A,0x24 }  /* WRAITH (hooded, wispy)   */
 };
 
 /* Copy the hand-drawn tiles into udg_bitmap[] (Bank 5, see platform.h) that the

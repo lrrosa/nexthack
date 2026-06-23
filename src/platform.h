@@ -57,8 +57,10 @@
 #define T_LEPRECHAUN  155  /* small green humanoid; steals gold and flees */
 #define T_YELLOWLIGHT 156  /* glowing orb; blinds on contact              */
 #define T_TRAP        157  /* a sprung trap (revealed after you step on it) */
+#define T_HOMUNCULUS  158  /* small imp; its bite puts you to sleep         */
+#define T_WRAITH      159  /* pale wraith; drains your life force           */
 
-#define NTILES   30      /* T_ROCK..T_TRAP: the graphic tiles */
+#define NTILES   32      /* T_ROCK..T_WRAITH: the graphic tiles */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT

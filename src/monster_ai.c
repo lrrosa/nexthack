@@ -194,6 +194,17 @@ static void monster_hits_player(uint8_t i)
                 msg2("The ", mt->name, " grabs your gold and vanishes!");
             }
             break;
+        case ATK_SLEEP:
+            if (rn2(3) == 0) { st_sleep = (uint8_t)(st_sleep + rn2(4) + 3);
+                               msg("You are put to sleep!"); }
+            break;
+        case ATK_DRAIN:
+            if (rn2(2) && pmaxhp > 2) {         /* a wraith saps your life force */
+                pmaxhp--;
+                if (php > pmaxhp) php = pmaxhp;
+                msg("You feel drained!");
+            }
+            break;
         }
     }
 }

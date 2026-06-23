@@ -35,7 +35,7 @@ typedef struct {
 } MonType;
 
 /* MonType.atk -- the special effect a successful bite may inflict */
-enum { ATK_NONE, ATK_POISON, ATK_BLIND, ATK_SLEEP, ATK_STEAL };
+enum { ATK_NONE, ATK_POISON, ATK_BLIND, ATK_SLEEP, ATK_STEAL, ATK_DRAIN };
 
 /* ---- RESIDENT lookups (monster.c): hot, called per cell/monster by the
  * renderer and the banked AI; not banked so those calls stay direct ---- */
