@@ -34,10 +34,11 @@ extern uint8_t gold_taken[], item_taken[];   /* persistence masks (levelgen.c) *
  * recently visited FOV_SLOTS levels stay resident. A level evicted from the pool
  * forgets its map (it shows unexplored again if revisited later). The cheap
  * per-level bitmasks (gold/item/monster kills) are still kept for every level. */
-#define FOV_SLOTS 8   /* remember the 8 most recently visited levels' maps.
-                       * (Cut to 4 then 2 during the banking work; restored once
-                       * const-banking gfx[] reclaimed ~1.6 KB of resident RAM.)
-                       * Each slot is FOV_BYTES (~210 B). */
+#define FOV_SLOTS 6   /* remember the 6 most recently visited levels' maps.
+                       * (Was 8; cut to 6 to reclaim ~420 B resident on BOTH
+                       * targets for v1.3.0's features -- the Next's Bank 5 is full
+                       * so it can't data-bank, and item.c's tables can't be
+                       * const-banked. Each slot is FOV_BYTES (~210 B).) */
 
 static uint8_t  fov_pool[FOV_SLOTS][FOV_BYTES];  /* resident explored bitmaps   */
 static uint8_t  slot_lvl[FOV_SLOTS];             /* dlvl in each slot (0 = free) */
