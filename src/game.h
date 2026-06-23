@@ -42,4 +42,10 @@ extern uint8_t  st_blind;     /* blind: you see only your own cell        */
 extern uint8_t  st_sleep;     /* asleep/paralysed: you forfeit turns      */
 extern uint8_t  st_poison;    /* poisoned: HP drains each turn            */
 
+/* Elbereth: a protective word scratched in the dust. 'E' engraves it on the
+ * hero's cell (el_x/el_y) with a turn life (el_life); while the hero stands on
+ * a live engraving, adjacent monsters dare not strike. Ticked down in upkeep,
+ * wiped on any level change. Defined in nexthack.c. */
+extern uint8_t  el_x, el_y, el_life;
+
 #endif /* GAME_H */

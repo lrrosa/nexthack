@@ -75,6 +75,10 @@ start_game:
         case 'i': show_inventory(); break;          /* viewing costs no turn */
         case '?': show_help();      break;          /* key list (128K) ; no turn */
         case 'd': do_sell(); in_wait_nokey(); break; /* sell in a shop; no turn */
+        case 'E':                                   /* engrave Elbereth in the dust */
+            el_x = (uint8_t)hero_x; el_y = (uint8_t)hero_y; el_life = 30;
+            msg("You engrave Elbereth in the dust.");
+            turns++; acted = 1; in_wait_nokey(); break;
 
         case 'S':                                   /* save game and quit to title */
             if (save_game()) {

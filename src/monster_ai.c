@@ -317,6 +317,8 @@ static void mon_step(uint8_t i)
     int bestx = -1, besty = -1, dx, dy;
 
     if (iabs(ddx) <= 1 && iabs(ddy) <= 1) {   /* adjacent -> attack */
+        if (el_life && hero_x == el_x && hero_y == el_y)
+            return;                           /* Elbereth: it dares not strike */
         monster_hits_player(i);
         return;
     }

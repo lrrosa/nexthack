@@ -49,6 +49,7 @@ int16_t  nutrition = 900;
 
 /* transient status effects (see game.h): per-turn countdowns, 0 = inactive */
 uint8_t  st_conf = 0, st_blind = 0, st_sleep = 0, st_poison = 0;
+uint8_t  el_x = 0, el_y = 0, el_life = 0;    /* Elbereth engraving (see game.h) */
 
 /* hunger/regeneration bookkeeping */
 static uint8_t heal_timer = 0;
@@ -164,6 +165,7 @@ int load_game(void) __banked
  * generation deterministic across revisits. */
 void build_level(void) __banked
 {
+    el_life = 0;             /* a dust engraving does not survive a level change */
     gen_level();
     spawn_level_monsters();
     { uint8_t kx, ky; if (shop_keeper_xy(&kx, &ky)) place_shopkeeper(kx, ky); }
@@ -351,6 +353,7 @@ void upkeep(void) __banked
     if (st_conf  && !--st_conf)  msg("Your head clears.");
     if (st_blind && !--st_blind) { msg("You can see again."); map_dirty = 1; }
     if (st_sleep && !--st_sleep) msg("You wake up.");
+    if (el_life && !--el_life)   msg("The engraving fades away.");
 
     maybe_spawn_wanderer();                     /* the dungeon refills over time */
 }
@@ -362,7 +365,7 @@ void draw_help(void) __banked
         "Move: cursor or vi-keys (h j k l + y u b n)    Stairs: > < Enter    Wait: s",
         C_CYAN | C_BRIGHT);
     print_str(0, 26,
-        "Cmd: ,get  i inv  d sell  w wield  W wear  P ring  q quaff e eat r read  S save",
+        "Cmd: ,get i inv d sell w wield W wear P ring q quaff e eat r read E engr S save",
         C_CYAN | C_BRIGHT);
 }
 #else
@@ -393,8 +396,8 @@ void show_help(void) __banked
     print_str(2, 11, "P put on ring",        C_CYAN | C_BRIGHT);
     print_str(2, 12, "q quaff    e eat",     C_CYAN | C_BRIGHT);
     print_str(2, 13, "r read     d sell",    C_CYAN | C_BRIGHT);
-    print_str(2, 14, "S save and quit",      C_CYAN | C_BRIGHT);
-    print_str(2, 15, "? this help",          C_CYAN | C_BRIGHT);
+    print_str(2, 14, "E engrave Elbereth",   C_CYAN | C_BRIGHT);
+    print_str(2, 15, "S save     ? help",    C_CYAN | C_BRIGHT);
     print_str(4, 18, "Press any key...",     C_WHITE | C_BRIGHT);
     in_wait_nokey();
     getkey();
