@@ -218,7 +218,7 @@ void altar_sense(void) __banked
     uint8_t i, any = 0;
     for (i = 0; i < inv_count; i++)
         if (!buc_seen(&inv[i])) { inv[i].buc |= BUC_KNOWN; any = 1; }
-    msg(any ? "The altar's aura reveals your possessions."
+    msg(any ? "The altar reveals your items."
             : "You feel the altar's calm.");
 }
 
