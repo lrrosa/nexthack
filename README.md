@@ -38,11 +38,18 @@ code.
 - **Field of view** with fog of war — rooms light up on entry, corridors reveal
   around you, and explored-but-unseen terrain is drawn dimmed from memory.
 - **Turn-based combat** against a depth-scaled bestiary (rats, bats, kobolds,
-  dogs, snakes, orcs, zombies, acid blobs…) that chases you with BFS pathfinding;
-  experience levels raise your HP.
+  dogs, snakes, orcs, zombies, acid blobs, leprechauns, yellow lights, homunculi,
+  wraiths…) that chases you with BFS pathfinding. Many bite with a **special
+  attack** — poison, blindness, sleep, gold theft, life-drain — and hidden
+  **traps** (trap doors, darts, sleeping gas) lurk in the deeper floors. Scratch
+  **Elbereth** (`E`) in the dust to keep monsters at bay; experience levels raise
+  your HP.
 - **Items and equipment** — weapons, armour, potions, food, scrolls and rings,
-  each with its own enchantment and erosion; wield/wear the best you carry,
-  quaff/eat/read, and watch acid blobs corrode your gear.
+  each with its own enchantment, erosion and **blessed/uncursed/cursed** state;
+  potions and scrolls start **unidentified**. Wield/wear the best you carry,
+  quaff/eat/read, watch acid blobs corrode your gear, beware cursed items that
+  won't come off — and step onto an **altar** (`_`) to reveal the blessings on
+  what you carry.
 - **Shops** with priced goods and a shopkeeper to buy from and sell to, plus
   **special levels** — the cavernous Big Room, guarded **treasure vaults** (gold
   and superior gear behind tough monsters), and **hand-drawn maps** like a
@@ -213,6 +220,7 @@ emulators show garbage for it, so **ship the `.tap`, not the `.sna`**.
 | `w` / `W`                 | wield weapon / wear armor |
 | `P`                       | put on a ring |
 | `q` / `e` / `r`           | quaff potion / eat food / read scroll |
+| `E`                       | engrave Elbereth in the dust (wards off monsters) |
 | `S`                       | save game and quit to the title |
 
 Walk into a monster to attack it; walk over gold to pick it up.
@@ -228,11 +236,12 @@ the entities they depict (the symbol in parentheses is the internal map code, ke
 from the roguelike tradition):
 
 - **Terrain:** floor (`.`), corridor (`#`), wall (`-` `|`), door (`+`),
-  stairs up/down (`<` `>`)
+  stairs up/down (`<` `>`), altar (`_`), a sprung trap (`^`)
 - **Items:** gold (`$`), weapon (`)`), armor (`[`), potion (`!`), food (`%`),
   scroll (`?`), ring (`=`), the Amulet of Yendor (`"`)
 - **Creatures:** hero and shopkeeper (`@`), rat (`r`), bat (`B`), acid blob (`a`),
-  kobold (`k`), dog (`d`), snake (`S`), orc (`o`), zombie (`Z`)
+  kobold (`k`), dog (`d`), snake (`S`), orc (`o`), zombie (`Z`), leprechaun (`l`),
+  yellow light (`y`), homunculus (`i`), wraith (`W`)
 
 ## Technical notes
 
