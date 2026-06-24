@@ -59,8 +59,9 @@
 #define T_TRAP        157  /* a sprung trap (revealed after you step on it) */
 #define T_HOMUNCULUS  158  /* small imp; its bite puts you to sleep         */
 #define T_WRAITH      159  /* pale wraith; drains your life force           */
+#define T_ALTAR       160  /* a stone altar; step on it to reveal item BUC  */
 
-#define NTILES   32      /* T_ROCK..T_WRAITH: the graphic tiles */
+#define NTILES   33      /* T_ROCK..T_ALTAR: the graphic tiles */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT

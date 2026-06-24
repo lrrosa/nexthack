@@ -211,6 +211,17 @@ static const char *obj_desc(const obj_t *o)
     return buf;
 }
 
+/* An altar senses the blessed/cursed state of everything you carry. Stepping
+ * onto one (try_move) marks every carried item's BUC as discovered at once. */
+void altar_sense(void) __banked
+{
+    uint8_t i, any = 0;
+    for (i = 0; i < inv_count; i++)
+        if (!buc_seen(&inv[i])) { inv[i].buc |= BUC_KNOWN; any = 1; }
+    msg(any ? "The altar's aura reveals your possessions."
+            : "You feel the altar's calm.");
+}
+
 /* ---- inventory helpers ---- */
 
 static int find_class(char cls)

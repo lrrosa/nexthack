@@ -163,6 +163,28 @@ int load_game(void) __banked
 /* Build the current dlvl: terrain + gold, then monsters (which must see the
  * freshly placed gold), then re-apply remembered mutations. The order keeps
  * generation deterministic across revisits. */
+/* room rects (defined in levelgen.c) -- read here to drop an altar in one */
+extern uint8_t r_x[], r_y[], r_w[], r_h[];
+
+/* Some levels hold an altar. A side hash of (world_seed, dlvl) -- never rn2, so
+ * the deterministic per-depth persistence stays in sync -- picks roughly one
+ * level in five and one of its rooms; we drop a '_' on that room's centre, but
+ * only when it is plain floor (so it never buries stairs, a door or an item).
+ * Pure terrain, regenerated identically on every visit, so nothing to save. */
+static void place_altar(void)
+{
+    uint16_t h;
+    uint8_t room, cx, cy;
+
+    if (rcount == 0) return;
+    h = (uint16_t)(world_seed + (uint16_t)dlvl * 0x9E37u);
+    if ((h % 5u) != 0) return;
+    room = (uint8_t)((h >> 3) % rcount);
+    cx = (uint8_t)(r_x[room] + r_w[room] / 2);
+    cy = (uint8_t)(r_y[room] + r_h[room] / 2);
+    if (lvl[cy][cx] == '.') lvl[cy][cx] = '_';
+}
+
 void build_level(void) __banked
 {
     el_life = 0;             /* a dust engraving does not survive a level change */
@@ -172,6 +194,7 @@ void build_level(void) __banked
     apply_gold_persistence();
     apply_monster_persistence();
     apply_item_persistence();
+    place_altar();       /* a deterministic altar on some levels (no RNG) */
     map_dirty = 1;       /* +zx: next draw_map recenters (no-op on Next) */
     /* note: FOV memory is per depth and persists across visits, so it is NOT
      * reset here - only on a new game (see new_game / main). */
@@ -545,6 +568,7 @@ static void describe(char dest, int moved)
         msg2(floor_item_desc(),
              shop_in_room(hero_x, hero_y) ? " (,buy)" : " (,get)", "");
         break;
+    case '_': msg("There is an altar here.");         break;
     default:  msg("");                                break;
     }
 }
@@ -554,7 +578,7 @@ static int lookable(char c)
 {
     return c == '>' || c == '<' || c == '"' ||
            c == ')' || c == '[' || c == '!' ||
-           c == '%' || c == '?' || c == '=';
+           c == '%' || c == '?' || c == '=' || c == '_';
 }
 
 /* Deterministic per-cell trap: a side hash (never rn2, so level generation and
@@ -643,6 +667,8 @@ void try_move(int dx, int dy) __banked
         level_take_gold((uint8_t)nx, (uint8_t)ny);
         msg_num("You pick up ", amt, " gold pieces.");
         sfx_gold();
+    } else if (dest == '_') {
+        altar_sense();              /* an altar reveals your items' BUC */
     } else if (!was_shop && shop_in_room(nx, ny)) {
         msg("Shop: , to buy, d to sell.");
     } else {

@@ -33,6 +33,7 @@ uint8_t tile_for(char c)
     switch (c) {
     case '.': return T_FLOOR;
     case '^': return T_TRAP;
+    case '_': return T_ALTAR;
     case '#': return T_CORR;
     case '-':
     case '|': return T_WALL;
