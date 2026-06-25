@@ -13,6 +13,10 @@ The two share **all** game logic; only the platform/render layer differs, select
 at compile time by `#ifdef __ZXNEXT`. Both are **code-banked** to break the Z80's
 64 KB ceiling (the Next via its MMU, the 128K via port `0x7FFD`).
 
+**Downloads & history:** grab the latest `.nex` / `.tap` from the
+[Releases](https://github.com/lrrosa/nexthack/releases) page; see
+[CHANGELOG.md](CHANGELOG.md) for what changed in each version.
+
 ![NextHack title screen — a pixel-art loading screen: an armoured knight facing a demon in a torch-lit dungeon archway, beneath the NextHack logo.](docs/title.png)
 
 *The title screen, on the Next's Layer 2 framebuffer (256×192); the 128K build
