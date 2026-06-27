@@ -26,6 +26,7 @@ void do_sell(void) __banked;        /* sell an item to a shopkeeper (in a shop) 
 
 void corrode_worn(char cls) __banked; /* acid/rust corrodes the worn item       */
 void altar_sense(void) __banked;      /* an altar reveals carried items' BUC    */
+uint8_t pray_uncurse(uint8_t all) __banked; /* a prayer lifts curses (worn/all) */
 
 void item_save(uint8_t h) __banked; /* serialise inventory + equipment          */
 void item_load(uint8_t h) __banked; /* restore them from a save file            */

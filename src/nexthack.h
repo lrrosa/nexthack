@@ -27,5 +27,6 @@ void upkeep(void)         __banked;
 void try_move(int dx, int dy) __banked;
 void go_down(void)        __banked;
 void go_up(void)          __banked;
+void do_pray(void)        __banked;
 
 #endif /* NEXTHACK_H */

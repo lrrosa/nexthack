@@ -48,4 +48,8 @@ extern uint8_t  st_poison;    /* poisoned: HP drains each turn            */
  * wiped on any level change. Defined in nexthack.c. */
 extern uint8_t  el_x, el_y, el_life;
 
+/* prayer: turns until your god will hear you again (0 = ready). Ticked in
+ * upkeep, set by a successful prayer, saved. */
+extern uint16_t pray_timeout;
+
 #endif /* GAME_H */

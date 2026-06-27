@@ -222,6 +222,23 @@ void altar_sense(void) __banked
             : "You feel the altar's calm.");
 }
 
+/* The gods lift curses: with `all`, from every carried item; otherwise only
+ * from worn gear. Returns how many items were uncursed (so a prayer can tell
+ * whether it actually helped). */
+uint8_t pray_uncurse(uint8_t all) __banked
+{
+    uint8_t i, n = 0;
+    for (i = 0; i < inv_count; i++) {
+        if (!all && !inv[i].worn) continue;
+        if (buc_st(&inv[i]) == BUC_CURSE) {
+            inv[i].buc = (uint8_t)((inv[i].buc & ~3) | BUC_UNC | BUC_KNOWN);
+            n++;
+        }
+    }
+    if (n) recompute_gear();        /* the cursed -2 penalty is lifted */
+    return n;
+}
+
 /* ---- inventory helpers ---- */
 
 static int find_class(char cls)

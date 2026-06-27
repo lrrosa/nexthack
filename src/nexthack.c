@@ -50,6 +50,7 @@ int16_t  nutrition = 900;
 /* transient status effects (see game.h): per-turn countdowns, 0 = inactive */
 uint8_t  st_conf = 0, st_blind = 0, st_sleep = 0, st_poison = 0;
 uint8_t  el_x = 0, el_y = 0, el_life = 0;    /* Elbereth engraving (see game.h) */
+uint16_t pray_timeout = 0;                   /* turns until you may pray again */
 
 /* hunger/regeneration bookkeeping */
 static uint8_t heal_timer = 0;
@@ -61,7 +62,7 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   15     /* v1.3.0 save format (FOV_SLOTS 8->6, + new feature state) */
+#define SAVE_VER   16     /* v1.4.0 save format (+ pray_timeout) */
 
 struct save_hdr {
     uint16_t magic;
@@ -79,6 +80,7 @@ struct save_player {
     uint8_t  xlvl;
     uint8_t  has_amulet;
     uint8_t  st_conf, st_blind, st_sleep, st_poison;
+    uint16_t pray_timeout;
 };
 
 /* From here down, all of nexthack.c's CODE is banked into PAGE_22_CODE (mapped
@@ -111,6 +113,7 @@ int save_game(void) __banked
     p.xp = xp;       p.xlvl = xlvl; p.has_amulet = has_amulet;
     p.st_conf = st_conf;   p.st_blind = st_blind;
     p.st_sleep = st_sleep; p.st_poison = st_poison;
+    p.pray_timeout = pray_timeout;
     file_write(h, &p, sizeof p);
 
     item_save(h);
@@ -146,6 +149,7 @@ int load_game(void) __banked
     xp = p.xp;         xlvl = p.xlvl; has_amulet = p.has_amulet;
     st_conf = p.st_conf;   st_blind = p.st_blind;
     st_sleep = p.st_sleep; st_poison = p.st_poison;
+    pray_timeout = p.pray_timeout;
     dead = 0; won = 0;
 
     item_load(h);
@@ -377,8 +381,34 @@ void upkeep(void) __banked
     if (st_blind && !--st_blind) { msg("You can see again."); map_dirty = 1; }
     if (st_sleep && !--st_sleep) msg("You wake up.");
     if (el_life && !--el_life)   msg("The engraving fades away.");
+    if (pray_timeout) pray_timeout--;
 
     maybe_spawn_wanderer();                     /* the dungeon refills over time */
+}
+
+/* Pray to your god. It mends your worst affliction, then ignores you for a
+ * while (pray_timeout); praying again too soon is simply refused. Standing on
+ * an altar, the gods lift curses from your whole pack, not just what you wear. */
+void do_pray(void) __banked
+{
+    if (pray_timeout) {
+        msg("You have prayed too recently.");
+        return;                         /* a refused prayer costs no turn */
+    }
+    if (nutrition < 50) {
+        nutrition = 900;                msg("Your hunger is satisfied.");
+    } else if (php < 5 || (uint16_t)php * 7 < pmaxhp) {
+        php = pmaxhp;                    msg("You feel much better.");
+    } else if (st_poison || st_blind || st_conf) {
+        st_poison = st_blind = st_conf = 0;
+                                        msg("You feel purified.");
+    } else if (pray_uncurse(terrain(hero_x, hero_y) == '_')) {
+                                        msg("A weight lifts from your pack.");
+    } else {
+        if (php < pmaxhp) php++;         msg("You feel full of awe.");
+    }
+    pray_timeout = (uint16_t)(300 + rn2(150));
+    turns++; acted = 1;
 }
 
 #ifdef __ZXNEXT
@@ -726,6 +756,7 @@ void new_game(void) __banked
     heal_timer = 0;
     hunger_state = 0;
     st_conf = st_blind = st_sleep = st_poison = 0;
+    pray_timeout = 0;
     item_reset();
     level_reset_persistence();
     monster_reset_persistence();
