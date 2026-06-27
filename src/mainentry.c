@@ -100,8 +100,9 @@ start_game:
             in_wait_nokey();
             break;
 
-        /* search / wait */
-        case 's':
+        case 's': do_search(); in_wait_nokey(); break;  /* search for nearby traps */
+
+        /* wait a turn */
         case '.':
         case ' ': turns++; acted = 1; msg("You wait."); break;
 

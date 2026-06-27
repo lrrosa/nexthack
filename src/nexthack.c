@@ -189,9 +189,12 @@ static void place_altar(void)
     if (lvl[cy][cx] == '.') lvl[cy][cx] = '_';
 }
 
+static void traps_reset(void);   /* defined with the trap code, below */
+
 void build_level(void) __banked
 {
     el_life = 0;             /* a dust engraving does not survive a level change */
+    traps_reset();           /* sprung-trap set is per visit (level regenerates) */
     gen_level();
     spawn_level_monsters();
     { uint8_t kx, ky; if (shop_keeper_xy(&kx, &ky)) place_shopkeeper(kx, ky); }
@@ -415,7 +418,7 @@ void do_pray(void) __banked
 void draw_help(void) __banked
 {
     print_str(0, 25,
-        "Move: cursor or vi-keys (h j k l + y u b n)    Stairs: > < Enter    Wait: s",
+        "Move: cursor or vi-keys (h j k l + y u b n)   Stairs: > < Enter   s search .wait",
         C_CYAN | C_BRIGHT);
     print_str(0, 26,
         "Cmd: ,get i inv d sell w wield W wear P ring q quaff e eat r read E engr S save",
@@ -442,7 +445,7 @@ void show_help(void) __banked
     print_str(2,  3, "Move: arrow keys, or", C_CYAN | C_BRIGHT);
     print_str(7,  4, "h j k l  y u b n",     C_CYAN | C_BRIGHT);
     print_str(2,  5, "Stairs: > < or Enter", C_CYAN | C_BRIGHT);
-    print_str(2,  6, "Wait: s",              C_CYAN | C_BRIGHT);
+    print_str(2,  6, "s search   . wait",    C_CYAN | C_BRIGHT);
     print_str(2,  8, ", pick up",            C_CYAN | C_BRIGHT);
     print_str(2,  9, "i inventory",          C_CYAN | C_BRIGHT);
     print_str(2, 10, "w wield    W wear",    C_CYAN | C_BRIGHT);
@@ -611,6 +614,31 @@ static int lookable(char c)
            c == '%' || c == '?' || c == '=' || c == '_';
 }
 
+/* Per-visit set of traps that have already been sprung (so they don't re-fire).
+ * A trap cell is rendered '^' once revealed -- by springing OR by searching --
+ * but '^' alone no longer means "safe": only membership here disarms it. The
+ * set is per visit (reset in build_level), because the level itself regenerates
+ * deterministically, re-hiding every trap. 8 slots is plenty for one level;
+ * if it ever overflows the worst case is a trap that can re-fire. */
+#define MAXSPRUNG 8
+static uint16_t sprung[MAXSPRUNG];
+static uint8_t  n_sprung;
+
+static void traps_reset(void) { n_sprung = 0; }
+
+static int is_sprung(uint8_t x, uint8_t y)
+{
+    uint16_t k = (uint16_t)y * MAPW + x;
+    uint8_t i;
+    for (i = 0; i < n_sprung; i++) if (sprung[i] == k) return 1;
+    return 0;
+}
+
+static void add_sprung(uint8_t x, uint8_t y)
+{
+    if (n_sprung < MAXSPRUNG) sprung[n_sprung++] = (uint16_t)y * MAPW + x;
+}
+
 /* Deterministic per-cell trap: a side hash (never rn2, so level generation and
  * persistence stay in sync). From Dlvl 2 on, ~1/47 of floor cells hide one of
  * three traps; it springs the first time you step there. */
@@ -636,6 +664,7 @@ static void spring_trap(int t, uint8_t x, uint8_t y)
         return;
     }
     lvl[y][x] = '^';                     /* the trap is now sprung and visible */
+    add_sprung(x, y);                    /* ...and disarmed for this visit     */
     if (t == 1) {                       /* dart */
         uint8_t d = (uint8_t)(rn2(5) + 2);
         msg("A dart hits you!");
@@ -646,6 +675,26 @@ static void spring_trap(int t, uint8_t x, uint8_t y)
         msg("Sleeping gas!");
         st_sleep = (uint8_t)(st_sleep + rn2(4) + 3);
     }
+}
+
+/* Search the eight cells around the hero, revealing (but not disarming) any
+ * hidden trap as '^'. A revealed trap is NOT added to the sprung set, so it
+ * still fires once if you walk onto it. */
+void do_search(void) __banked
+{
+    int dx, dy;
+    uint8_t found = 0;
+    for (dy = -1; dy <= 1; dy++)
+        for (dx = -1; dx <= 1; dx++) {
+            int x = hero_x + dx, y = hero_y + dy;
+            if (x < 0 || y < 0 || x >= MAPW || y >= MAPH) continue;
+            if (lvl[y][x] == '.' && trap_type((uint8_t)x, (uint8_t)y) >= 0) {
+                lvl[y][x] = '^';
+                found = 1;
+            }
+        }
+    msg(found ? "You find a trap!" : "You search around.");
+    turns++; acted = 1;
 }
 
 void try_move(int dx, int dy) __banked
@@ -687,7 +736,10 @@ void try_move(int dx, int dy) __banked
     hero_y = ny;
     turns++;
     acted = 1;
-    if (dest == '.') {                  /* stepping onto floor -- a hidden trap? */
+    /* Stepping onto floor, or onto a known-but-still-armed trap ('^' that you
+     * found by searching), can spring a hidden trap. A trap already sprung this
+     * visit is inert. */
+    if ((dest == '.' || dest == '^') && !is_sprung((uint8_t)nx, (uint8_t)ny)) {
         int tt = trap_type((uint8_t)nx, (uint8_t)ny);
         if (tt >= 0) { spring_trap(tt, (uint8_t)nx, (uint8_t)ny); return; }
     }
