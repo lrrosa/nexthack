@@ -104,6 +104,48 @@ typedef struct {
 #define INV_BYTES (sizeof(obj_t) * MAXINV)
 static uint8_t inv_count;
 
+/* Items lying loose on the current level's floor -- thrown weapons that you can
+ * walk over and pick back up. They override the deterministic floor resolution
+ * at their cell: the cell is marked ')' so it draws and picks up like any item,
+ * and `och` remembers the terrain under it ('.' floor or '#' corridor) to
+ * restore when it is taken. Per visit only (floor_reset in build_level) -- the
+ * current level is regenerated on entry, so a loose item does not survive
+ * leaving the level. */
+typedef struct { uint8_t x, y, och; obj_t o; } floor_t;
+#define MAXFLOOR 8
+static floor_t floor_obj[MAXFLOOR];
+static uint8_t floor_n;
+
+void floor_reset(void) __banked { floor_n = 0; }
+
+static int floor_find(uint8_t x, uint8_t y)
+{
+    uint8_t i;
+    for (i = 0; i < floor_n; i++)
+        if (floor_obj[i].x == x && floor_obj[i].y == y) return i;
+    return -1;
+}
+
+/* drop object o on (x,y) if it is plain floor/corridor and free; else o is lost */
+static void floor_drop(uint8_t x, uint8_t y, const obj_t *o)
+{
+    char t = lvl[y][x];
+    if ((t != '.' && t != '#') || floor_find(x, y) >= 0 || floor_n >= MAXFLOOR)
+        return;
+    floor_obj[floor_n].x = x; floor_obj[floor_n].y = y;
+    floor_obj[floor_n].och = (uint8_t)t;
+    floor_obj[floor_n].o = *o;
+    floor_n++;
+    lvl[y][x] = ')';                 /* now shows + picks up as a weapon */
+}
+
+static void floor_pick(uint8_t i)    /* remove entry i, restoring its terrain */
+{
+    lvl[floor_obj[i].y][floor_obj[i].x] = (char)floor_obj[i].och;
+    while ((uint8_t)(i + 1) < floor_n) { floor_obj[i] = floor_obj[i + 1]; i++; }
+    floor_n--;
+}
+
 /* ---- gear effects ---- */
 
 /* recompute the combat globals (weapon_dmg, armor_def, ac) from worn gear.
@@ -383,6 +425,8 @@ static uint16_t item_price(const obj_t *o)
 const char *floor_item_desc(void) __banked
 {
     obj_t o;
+    int fi = floor_find((uint8_t)hero_x, (uint8_t)hero_y);
+    if (fi >= 0) return obj_desc(&floor_obj[fi].o);   /* a loose item you threw */
     resolve_floor((uint8_t)hero_x, (uint8_t)hero_y, &o);
     return obj_desc(&o);
 }
@@ -392,9 +436,20 @@ void do_pickup(void) __banked
     char c = terrain(hero_x, hero_y);
     obj_t o;
 
+    int fi;
+
     if (c != '"' && c != ')' && c != '[' && c != '!' &&
         c != '%' && c != '?' && c != '=') {
         msg("Nothing here to pick up.");
+        return;
+    }
+
+    fi = floor_find((uint8_t)hero_x, (uint8_t)hero_y);
+    if (fi >= 0) {                          /* a loose item you threw -- reclaim it */
+        if (!inv_add(&floor_obj[fi].o)) { msg("Your pack is full."); return; }
+        msg2("Got ", obj_desc(&floor_obj[fi].o), ".");
+        sfx_pick();
+        floor_pick((uint8_t)fi);            /* removes it + restores the terrain */
         return;
     }
 
@@ -850,40 +905,53 @@ static int read_dir(int *dx, int *dy)
 }
 
 /* Throw a carried weapon in a chosen direction. It flies in a straight line up
- * to THROW_RANGE cells, passing over the pet, until it strikes the first enemy
- * (damage by the weapon's power) or a wall. Either way the weapon is spent --
- * the floor only stores deterministic items, so a thrown one can't be left to
- * pick back up. */
+ * to THROW_RANGE cells, passing over the pet and the shopkeeper, until it
+ * strikes the first enemy (damage by the weapon's power) or a wall. It then
+ * lands on the floor where it came to rest and can be walked over and picked
+ * back up (floor_drop), unless it stopped on rough terrain. Your wielded weapon
+ * is thrown only after a confirmation, so you don't disarm yourself by mistake. */
 #define THROW_RANGE 8
 void do_throw(void) __banked
 {
     int s = select_item(')', "Throw which weapon?");
     int dx, dy, x, y, r;
     uint8_t dmg, worn;
+    obj_t thrown;
 
     if (s == -1) { msg("You have no weapon to throw."); return; }
     if (s == -2) { msg("Never mind."); return; }
 
+    worn = inv[s].worn;
+    if (worn) {                          /* don't disarm yourself by accident */
+        int k;
+        msg("Throw your wielded weapon?  y/n");
+        in_wait_nokey();
+        k = getkey();
+        if (k != 'y' && k != 'Y') { msg("Never mind."); return; }
+    }
+
     msg("In what direction?");
     if (!read_dir(&dx, &dy)) { msg("Never mind."); return; }
 
-    dmg = (uint8_t)(objtypes[inv[s].otyp].prop
-                    + (inv[s].ench > 0 ? inv[s].ench : 0) + rn2(3));
-    worn = inv[s].worn;
+    thrown = inv[s];                     /* keep a copy: it lands on the floor */
+    thrown.worn = 0;                     /* a weapon on the floor is not wielded */
+    dmg = (uint8_t)(objtypes[thrown.otyp].prop
+                    + (thrown.ench > 0 ? thrown.ench : 0) + rn2(3));
 
     x = hero_x; y = hero_y;
     for (r = 0; r < THROW_RANGE; r++) {
-        int mi;
-        x += dx; y += dy;
-        if (!walkable(terrain(x, y))) break;          /* thuds into a wall */
+        int nx = x + dx, ny = y + dy, mi;
+        if (!walkable(terrain(nx, ny))) break;        /* a wall ahead: stop here */
+        x = nx; y = ny;
         mi = monster_at(x, y);
         if (mi < 0) continue;
         if (mi == pet_idx || m_type[mi] == MON_KEEPER) continue;  /* fly past */
         hit_monster((uint8_t)mi, dmg);
-        break;
+        break;                                         /* lands at the enemy's feet */
     }
     inv_remove((uint8_t)s);
-    if (worn) recompute_gear();      /* you just threw what you were wielding */
+    if (worn) recompute_gear();          /* you just threw what you were wielding */
+    floor_drop((uint8_t)x, (uint8_t)y, &thrown);       /* leave it to be reclaimed */
     sfx_hit();
     acted = 1; turns++;
 }

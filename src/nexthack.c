@@ -231,6 +231,7 @@ void build_level(void) __banked
 {
     el_life = 0;             /* a dust engraving does not survive a level change */
     traps_reset();           /* sprung-trap set is per visit (level regenerates) */
+    floor_reset();           /* loose thrown items don't survive a level change  */
     gen_level();
     spawn_level_monsters();
     { uint8_t kx, ky; if (shop_keeper_xy(&kx, &ky)) place_shopkeeper(kx, ky); }

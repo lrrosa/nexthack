@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 void item_reset(void) __banked;     /* empty inventory and unequip (new game)   */
+void floor_reset(void) __banked;    /* clear loose floor items (per level entry) */
 void do_pickup(void) __banked;      /* pick up the item under the hero          */
 const char *floor_item_desc(void) __banked; /* describe the item under the hero */
 void show_inventory(void) __banked; /* full-screen inventory list (blocks)      */
