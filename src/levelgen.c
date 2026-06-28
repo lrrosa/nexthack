@@ -177,9 +177,30 @@ void rand_floor(uint8_t i, uint8_t *px, uint8_t *py) __banked
     *py = (uint8_t)(r_y[i] + 1 + rn2((uint8_t)(r_h[i] - 2)));
 }
 
+/* A teleport destination: a random interior cell, but in a DIFFERENT room from
+ * the one the hero stands in (when there's a choice), so reading a scroll of
+ * teleportation actually relocates you instead of possibly dumping you back in
+ * the same room -- or, worse, on your own square. A one-room level (e.g. the Big
+ * Room) can only re-roll the cell. Runtime-only (reading a scroll), so the extra
+ * rn2() calls don't touch the deterministic per-depth generation. */
 void level_random_floor(uint8_t *px, uint8_t *py) __banked
 {
-    rand_floor(rn2(rcount), px, py);
+    uint8_t cur = rcount, i, r;
+
+    for (i = 0; i < rcount; i++)        /* which room (if any) is the hero in? */
+        if ((uint8_t)hero_x >= r_x[i] && (uint8_t)hero_x < r_x[i] + r_w[i] &&
+            (uint8_t)hero_y >= r_y[i] && (uint8_t)hero_y < r_y[i] + r_h[i]) {
+            cur = i; break;
+        }
+
+    if (rcount > 1) {
+        do { r = (uint8_t)rn2(rcount); } while (r == cur);   /* a different room */
+        rand_floor(r, px, py);
+    } else {                            /* only one room: just avoid your own cell */
+        uint8_t tries = 0;
+        do { rand_floor(0, px, py); }
+        while (*px == (uint8_t)hero_x && *py == (uint8_t)hero_y && tries++ < 8);
+    }
 }
 
 /* place a trackable floor item (so its pickup can be remembered) */
