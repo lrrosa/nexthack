@@ -18,7 +18,7 @@
 #include "item.h"         /* corrode_worn                                     */
 
 #ifdef __ZXNEXT
-#pragma codeseg PAGE_20_CODE
+#pragma codeseg PAGE_26_CODE   /* bank 13: a third code bank (PAGE_20 filled up) */
 #else
 #pragma codeseg BANK_6   /* the spare 128K bank: the pet AI outgrew BANK_1 */
 #endif
