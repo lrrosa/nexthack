@@ -226,7 +226,7 @@ emulators show garbage for it, so **ship the `.tap`, not the `.sna`**.
 | `s`                       | search the ground for nearby hidden traps |
 | `,`                       | pick up the item under you |
 | `i`                       | show inventory |
-| `d`                       | sell a carried item back to the shop |
+| `d`                       | drop an item on the floor (sells it inside a shop) |
 | `w` / `W`                 | wield weapon / wear armor |
 | `P`                       | put on a ring |
 | `q` / `e` / `r`           | quaff potion / eat food / read scroll |

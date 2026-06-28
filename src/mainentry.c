@@ -78,7 +78,7 @@ start_game:
         case 't': do_throw();       in_wait_nokey(); break;   /* throw a weapon   */
         case 'i': show_inventory(); break;          /* viewing costs no turn */
         case '?': show_help();      break;          /* full key-list screen; no turn */
-        case 'd': do_sell(); in_wait_nokey(); break; /* sell in a shop; no turn */
+        case 'd': do_drop(); in_wait_nokey(); break; /* drop an item (sells in a shop) */
         case 'E':                                   /* engrave Elbereth in the dust */
             el_x = (uint8_t)hero_x; el_y = (uint8_t)hero_y; el_life = 30;
             msg("You engrave Elbereth in the dust.");

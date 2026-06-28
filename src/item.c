@@ -126,17 +126,20 @@ static int floor_find(uint8_t x, uint8_t y)
     return -1;
 }
 
-/* drop object o on (x,y) if it is plain floor/corridor and free; else o is lost */
-static void floor_drop(uint8_t x, uint8_t y, const obj_t *o)
+/* drop object o on (x,y) if it is plain floor/corridor and free; returns 1 if it
+ * came to rest there, 0 if the spot can't hold it (a wall/door/stairs/occupied
+ * cell -- the caller decides whether that means "lost" or "can't drop here"). */
+static int floor_drop(uint8_t x, uint8_t y, const obj_t *o)
 {
     char t = lvl[y][x];
     if ((t != '.' && t != '#') || floor_find(x, y) >= 0 || floor_n >= MAXFLOOR)
-        return;
+        return 0;
     floor_obj[floor_n].x = x; floor_obj[floor_n].y = y;
     floor_obj[floor_n].och = (uint8_t)t;
     floor_obj[floor_n].o = *o;
     floor_n++;
-    lvl[y][x] = ')';                 /* now shows + picks up as a weapon */
+    lvl[y][x] = ')';                 /* now shows + picks up as an item */
+    return 1;
 }
 
 static void floor_pick(uint8_t i)    /* remove entry i, restoring its terrain */
@@ -500,31 +503,34 @@ void do_pickup(void) __banked
  * a lettered list with the sell value; any non-letter key cancels. Costs no
  * turn (a counter transaction), so monsters don't move while you haggle. */
 #ifdef __ZXNEXT
-void do_sell(void) __banked
+void do_drop(void) __banked
 {
     uint8_t i, row;
-    int k, s;
+    int k, s, in_shop = shop_in_room(hero_x, hero_y);
 
-    if (!shop_in_room(hero_x, hero_y)) {
-        msg("Only sell things in a shop.");
+    if (inv_count == 0) {
+        msg(in_shop ? "You have nothing to sell." : "You have nothing to drop.");
         return;
     }
-    if (inv_count == 0) { msg("You have nothing to sell."); return; }
 
     for (row = 0; row <= 21; row++) clear_line(row, C_BLACK);   /* incl. msg row 0 */
-    print_str(2, 2, "Sell which item?   (any other key cancels)", C_WHITE | C_BRIGHT);
+    print_str(2, 2, in_shop ? "Sell which item?   (any other key cancels)"
+                            : "Drop which item?   (any other key cancels)",
+              C_WHITE | C_BRIGHT);
     for (i = 0; i < inv_count; i++) {
         char     cls = objtypes[inv[i].otyp].cls;
-        uint16_t sp  = (uint16_t)(item_price(&inv[i]) / 2u);
         uint8_t  r2  = (uint8_t)(4 + i);
         uint8_t  x;
         puttile(2, r2, tile_for(cls));    /* the item's graphic tile */
         putcell(4, r2, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
         x = print_str(5, r2, " - ", C_WHITE);
         x = print_str(x, r2, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
-        x = print_str(x, r2, "   [", C_CYAN);
-        x = put_uint(x, r2, sp, C_YELLOW | C_BRIGHT);
-        x = print_str(x, r2, " gold]", C_CYAN);
+        if (in_shop) {                    /* the shop pays half the catalogue price */
+            uint16_t sp = (uint16_t)(item_price(&inv[i]) / 2u);
+            x = print_str(x, r2, "   [", C_CYAN);
+            x = put_uint(x, r2, sp, C_YELLOW | C_BRIGHT);
+            x = print_str(x, r2, " gold]", C_CYAN);
+        }
         if (inv[i].worn) {                /* mark what you're currently using */
             const char *w = (cls == ')') ? " (wielded)" :
                             (cls == '[') ? " (worn)"    :
@@ -539,7 +545,7 @@ void do_sell(void) __banked
     s = (k >= 'a' && (uint8_t)(k - 'a') < inv_count) ? (k - 'a') : -1;
     if (s < 0) return;                  /* cancelled; the caller redraws */
 
-    {
+    if (in_shop) {
         uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u);
         if (gold > (uint16_t)(60000u - sp)) gold = 60000u;   /* clamp, 16-bit */
         else                                gold = (uint16_t)(gold + sp);
@@ -547,35 +553,49 @@ void do_sell(void) __banked
         recompute_gear();               /* in case the sold item was worn */
         msg_num("You sell it for ", sp, " gold.");
         sfx_gold();
+    } else {                            /* drop it at your feet, to reclaim later */
+        obj_t o = inv[s];
+        o.worn = 0;
+        if (!floor_drop((uint8_t)hero_x, (uint8_t)hero_y, &o)) {
+            msg("You can't drop it here.");
+            return;
+        }
+        msg2("You drop ", obj_desc(&inv[s]), ".");
+        inv_remove((uint8_t)s);
+        recompute_gear();
+        sfx_pick();
+        acted = 1; turns++;
     }
 }
 #else
-void do_sell(void) __banked
+void do_drop(void) __banked
 {
     uint8_t i, row;
-    int k, s;
+    int k, s, in_shop = shop_in_room(hero_x, hero_y);
 
-    if (!shop_in_room(hero_x, hero_y)) {
-        msg("Only sell things in a shop.");
+    if (inv_count == 0) {
+        msg(in_shop ? "Nothing to sell." : "Nothing to drop.");
         return;
     }
-    if (inv_count == 0) { msg("You have nothing to sell."); return; }
 
     for (row = 0; row <= 23; row++) clear_line(row, C_BLACK);   /* full screen */
     map_dirty = 1;                                              /* restore the map on return */
-    print_str(0, 0, "Sell which item?  (else cancel)", C_WHITE | C_BRIGHT);
+    print_str(0, 0, in_shop ? "Sell which?  (else cancel)"
+                            : "Drop which?  (else cancel)", C_WHITE | C_BRIGHT);
     for (i = 0; i < inv_count && i < 23; i++) {    /* one item per row, rows 1..23 */
         char     cls = objtypes[inv[i].otyp].cls;
-        uint16_t sp  = (uint16_t)(item_price(&inv[i]) / 2u);
         uint8_t  r2  = (uint8_t)(1 + i);
         uint8_t  x;
         puttile(0, r2, tile_for(cls));    /* the item's graphic tile */
         putcell(2, r2, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
         x = print_str(3, r2, " ", C_WHITE);
         x = print_str(x, r2, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
-        x = print_str(x, r2, " ", C_CYAN);
-        x = put_uint(x, r2, sp, C_YELLOW | C_BRIGHT);
-        x = print_str(x, r2, "g", C_CYAN);
+        if (in_shop) {
+            uint16_t sp = (uint16_t)(item_price(&inv[i]) / 2u);
+            x = print_str(x, r2, " ", C_CYAN);
+            x = put_uint(x, r2, sp, C_YELLOW | C_BRIGHT);
+            x = print_str(x, r2, "g", C_CYAN);
+        }
         if (inv[i].worn) print_str(x, r2, "*", C_CYAN | C_BRIGHT);  /* equipped */
     }
 
@@ -587,7 +607,7 @@ void do_sell(void) __banked
     s = (k >= 'a' && (uint8_t)(k - 'a') < inv_count) ? (k - 'a') : -1;
     if (s < 0) return;                  /* cancelled; the caller redraws */
 
-    {
+    if (in_shop) {
         uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u);
         if (gold > (uint16_t)(60000u - sp)) gold = 60000u;   /* clamp, 16-bit */
         else                                gold = (uint16_t)(gold + sp);
@@ -595,6 +615,18 @@ void do_sell(void) __banked
         recompute_gear();               /* in case the sold item was worn */
         msg_num("You sell it for ", sp, " gold.");
         sfx_gold();
+    } else {                            /* drop it at your feet, to reclaim later */
+        obj_t o = inv[s];
+        o.worn = 0;
+        if (!floor_drop((uint8_t)hero_x, (uint8_t)hero_y, &o)) {
+            msg("You can't drop it here.");
+            return;
+        }
+        msg2("You drop ", obj_desc(&inv[s]), ".");
+        inv_remove((uint8_t)s);
+        recompute_gear();
+        sfx_pick();
+        acted = 1; turns++;
     }
 }
 #endif

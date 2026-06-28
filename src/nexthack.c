@@ -411,6 +411,11 @@ void upkeep(void) __banked
         if (php < pmaxhp) php++;
     }
 
+    /* the dog mends between fights too, and can toughen a little (8 -> 12) if
+     * kept alive, so a careful companion is worth keeping rather than doomed */
+    if (have_pet && pet_hp < 12 && (turns & 15) == 0)
+        pet_hp++;
+
     /* transient status effects tick down; poison gnaws a hit point each turn */
     if (st_poison) {
         if (php > 0) php--;
@@ -490,7 +495,7 @@ void show_help(void) __banked
     print_str(2, 12, "q quaff    e eat",     C_CYAN | C_BRIGHT);
     print_str(2, 13, "r read     p pray",    C_CYAN | C_BRIGHT);
     print_str(2, 14, "E engrave Elbereth",   C_CYAN | C_BRIGHT);
-    print_str(2, 15, "d sell     S save",    C_CYAN | C_BRIGHT);
+    print_str(2, 15, "d drop     S save",    C_CYAN | C_BRIGHT);
     print_str(2, 16, "? this help screen",   C_CYAN | C_BRIGHT);
     print_str(4, 18, "Press any key...",     C_WHITE | C_BRIGHT);
     in_wait_nokey();

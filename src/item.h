@@ -24,7 +24,7 @@ void do_eat(void) __banked;         /* eat the first food                       
 void do_puton(void) __banked;       /* put on the first ring                    */
 void do_read(void) __banked;        /* read the first scroll                    */
 void do_throw(void) __banked;       /* throw a weapon in a chosen direction     */
-void do_sell(void) __banked;        /* sell an item to a shopkeeper (in a shop) */
+void do_drop(void) __banked;        /* drop an item on the floor (sells it in a shop) */
 
 void corrode_worn(char cls) __banked; /* acid/rust corrodes the worn item       */
 void altar_sense(void) __banked;      /* an altar reveals carried items' BUC    */
