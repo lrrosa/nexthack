@@ -64,7 +64,7 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   18     /* v1.4.0 save format (+ pray_timeout, FOV_SLOTS 5, pet) */
+#define SAVE_VER   19     /* v1.4.0 save format (pet, throwing, FOV_SLOTS 4) */
 
 struct save_hdr {
     uint16_t magic;
@@ -457,7 +457,7 @@ void draw_help(void) __banked
         "Move: cursor or vi-keys (h j k l + y u b n)   Stairs: > < Enter   s search .wait",
         C_CYAN | C_BRIGHT);
     print_str(0, 26,
-        "Cmd: ,get i inv d sell w wield W wear P ring q quaff e eat r read E engr S save",
+        "Cmd: ,get i inv w wield W wear P ring q quaff e eat r read t throw E engr S save",
         C_CYAN | C_BRIGHT);
 }
 #else
@@ -485,7 +485,7 @@ void show_help(void) __banked
     print_str(2,  8, ", pick up",            C_CYAN | C_BRIGHT);
     print_str(2,  9, "i inventory",          C_CYAN | C_BRIGHT);
     print_str(2, 10, "w wield    W wear",    C_CYAN | C_BRIGHT);
-    print_str(2, 11, "P put on ring",        C_CYAN | C_BRIGHT);
+    print_str(2, 11, "P ring     t throw",   C_CYAN | C_BRIGHT);
     print_str(2, 12, "q quaff    e eat",     C_CYAN | C_BRIGHT);
     print_str(2, 13, "r read     d sell",    C_CYAN | C_BRIGHT);
     print_str(2, 14, "E engrave Elbereth",   C_CYAN | C_BRIGHT);

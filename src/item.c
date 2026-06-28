@@ -17,6 +17,7 @@
 #include "game.h"        /* hero_x/y, php, pmaxhp, weapon_dmg, armor_def, ac */
 #include "platform.h"    /* drawing, messages, getkey, file_*                */
 #include "level.h"       /* terrain, level_take_item, level_random_floor     */
+#include "monster.h"     /* monster_at, hit_monster, pet_idx (do_throw)      */
 #include "rng.h"         /* rn2, world_seed                                  */
 #include "sfx.h"         /* sound effects                                    */
 
@@ -823,6 +824,67 @@ void do_read(void) __banked
         hero_x = tx; hero_y = ty;
         msg("You feel a wrenching sensation.");
     }
+    acted = 1; turns++;
+}
+
+/* read one movement key into a unit direction; 0 if it was not a direction */
+static int read_dir(int *dx, int *dy)
+{
+    int k;
+    in_wait_nokey();
+    k = getkey();
+    in_wait_nokey();
+    *dx = 0; *dy = 0;
+    switch (k) {
+        case 'h': case  8: *dx = -1; break;
+        case 'l': case  9: *dx = +1; break;
+        case 'j': case 10: *dy = +1; break;
+        case 'k': case 11: *dy = -1; break;
+        case 'y': *dx = -1; *dy = -1; break;
+        case 'u': *dx = +1; *dy = -1; break;
+        case 'b': *dx = -1; *dy = +1; break;
+        case 'n': *dx = +1; *dy = +1; break;
+        default: return 0;
+    }
+    return 1;
+}
+
+/* Throw a carried weapon in a chosen direction. It flies in a straight line up
+ * to THROW_RANGE cells, passing over the pet, until it strikes the first enemy
+ * (damage by the weapon's power) or a wall. Either way the weapon is spent --
+ * the floor only stores deterministic items, so a thrown one can't be left to
+ * pick back up. */
+#define THROW_RANGE 8
+void do_throw(void) __banked
+{
+    int s = select_item(')', "Throw which weapon?");
+    int dx, dy, x, y, r;
+    uint8_t dmg, worn;
+
+    if (s == -1) { msg("You have no weapon to throw."); return; }
+    if (s == -2) { msg("Never mind."); return; }
+
+    msg("In what direction?");
+    if (!read_dir(&dx, &dy)) { msg("Never mind."); return; }
+
+    dmg = (uint8_t)(objtypes[inv[s].otyp].prop
+                    + (inv[s].ench > 0 ? inv[s].ench : 0) + rn2(3));
+    worn = inv[s].worn;
+
+    x = hero_x; y = hero_y;
+    for (r = 0; r < THROW_RANGE; r++) {
+        int mi;
+        x += dx; y += dy;
+        if (!walkable(terrain(x, y))) break;          /* thuds into a wall */
+        mi = monster_at(x, y);
+        if (mi < 0) continue;
+        if (mi == pet_idx || m_type[mi] == MON_KEEPER) continue;  /* fly past */
+        hit_monster((uint8_t)mi, dmg);
+        break;
+    }
+    inv_remove((uint8_t)s);
+    if (worn) recompute_gear();      /* you just threw what you were wielding */
+    sfx_hit();
     acted = 1; turns++;
 }
 

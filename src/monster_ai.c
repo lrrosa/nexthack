@@ -136,12 +136,12 @@ static void gain_xp(uint8_t amt)
     }
 }
 
-void attack_monster(uint8_t mi) __banked
+/* Apply dmg to monster mi: kill it (with XP) or wound it, with the matching
+ * "You kill/hit the X" message and sound. Shared by melee (attack_monster) and
+ * thrown weapons (item.c do_throw). Does not consume a turn -- the caller does. */
+void hit_monster(uint8_t mi, uint8_t dmg) __banked
 {
     const MonType *mt = mon_find(m_type[mi]);
-    uint8_t dmg = (uint8_t)(rn2(4) + 1 + weapon_dmg);  /* 1..4 + weapon */
-
-    turns++;
     if (m_hp[mi] <= dmg) {
         m_alive[mi] = 0;
         if (dlvl <= MAXLVL)
@@ -154,6 +154,15 @@ void attack_monster(uint8_t mi) __banked
         msg2("You hit the ", mt->name, ".");
         sfx_hit();
     }
+}
+
+void attack_monster(uint8_t mi) __banked
+{
+    const MonType *mt = mon_find(m_type[mi]);
+    uint8_t dmg = (uint8_t)(rn2(4) + 1 + weapon_dmg);  /* 1..4 + weapon */
+
+    turns++;
+    hit_monster(mi, dmg);
     if (mt->corr && rn2(2))         /* acid eats the weapon you strike it with */
         corrode_worn(')');
 }

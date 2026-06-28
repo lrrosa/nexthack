@@ -75,6 +75,7 @@ start_game:
         case 'q': do_quaff();       in_wait_nokey(); break;   /* set acted/turns */
         case 'e': do_eat();         in_wait_nokey(); break;   /* themselves, so a */
         case 'r': do_read();        in_wait_nokey(); break;   /* cancel costs none */
+        case 't': do_throw();       in_wait_nokey(); break;   /* throw a weapon   */
         case 'i': show_inventory(); break;          /* viewing costs no turn */
         case '?': show_help();      break;          /* key list (128K) ; no turn */
         case 'd': do_sell(); in_wait_nokey(); break; /* sell in a shop; no turn */

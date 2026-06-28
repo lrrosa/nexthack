@@ -57,7 +57,8 @@ void apply_monster_persistence(void) __banked;
 void monster_reset_persistence(void) __banked;
 void monster_save(uint8_t h)        __banked;
 void monster_load(uint8_t h)        __banked;
-void attack_monster(uint8_t mi)     __banked;  /* hero hits monster mi */
+void attack_monster(uint8_t mi)     __banked;  /* hero hits monster mi (melee) */
+void hit_monster(uint8_t mi, uint8_t dmg) __banked; /* apply dmg (melee or thrown) */
 void monsters_turn(void)            __banked;  /* every monster chases + attacks */
 void maybe_spawn_wanderer(void)     __banked;  /* small per-turn spawn chance */
 void place_shopkeeper(uint8_t x, uint8_t y) __banked;  /* add the shop's keeper */
