@@ -741,6 +741,21 @@ void do_search(void) __banked
     turns++; acted = 1;
 }
 
+/* Spring a hidden trap if the hero has just stepped onto (nx,ny) and it hides an
+ * unsprung one. Returns 1 if a trap fired (the caller then returns, since a trap
+ * door may already have rebuilt the level). Shared by an ordinary step and a
+ * place-swap with the pet/keeper -- displacing your dog onto a trap still
+ * triggers it under you. */
+static int maybe_trap(char dest, uint8_t nx, uint8_t ny)
+{
+    int tt;
+    if ((dest != '.' && dest != '^') || is_sprung(nx, ny)) return 0;
+    tt = trap_type(nx, ny);
+    if (tt < 0) return 0;
+    spring_trap(tt, nx, ny);
+    return 1;
+}
+
 void try_move(int dx, int dy) __banked
 {
     int nx, ny;
@@ -769,6 +784,7 @@ void try_move(int dx, int dy) __banked
             m_y[mi] = (uint8_t)hero_y;             /* so you never bump into it  */
             hero_x = nx; hero_y = ny;
             turns++; acted = 1;
+            maybe_trap(dest, (uint8_t)nx, (uint8_t)ny);   /* a trap under it still springs */
             return;
         }
         acted = 1;
@@ -781,12 +797,8 @@ void try_move(int dx, int dy) __banked
     turns++;
     acted = 1;
     /* Stepping onto floor, or onto a known-but-still-armed trap ('^' that you
-     * found by searching), can spring a hidden trap. A trap already sprung this
-     * visit is inert. */
-    if ((dest == '.' || dest == '^') && !is_sprung((uint8_t)nx, (uint8_t)ny)) {
-        int tt = trap_type((uint8_t)nx, (uint8_t)ny);
-        if (tt >= 0) { spring_trap(tt, (uint8_t)nx, (uint8_t)ny); return; }
-    }
+     * found by searching), can spring a hidden trap. */
+    if (maybe_trap(dest, (uint8_t)nx, (uint8_t)ny)) return;
     if (dest == '$') {
         uint16_t amt = (uint16_t)(rn2(20) + 1);
         gold = (uint16_t)(gold + amt);

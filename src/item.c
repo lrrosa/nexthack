@@ -544,6 +544,10 @@ void do_drop(void) __banked
     in_wait_nokey();
     s = (k >= 'a' && (uint8_t)(k - 'a') < inv_count) ? (k - 'a') : -1;
     if (s < 0) return;                  /* cancelled; the caller redraws */
+    if (inv[s].otyp == O_AMULET) {      /* never lose the win item by drop/sale */
+        msg("You dare not part with it!");
+        return;
+    }
 
     if (in_shop) {
         uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u);
@@ -606,6 +610,10 @@ void do_drop(void) __banked
                                          * message to overwrite it) */
     s = (k >= 'a' && (uint8_t)(k - 'a') < inv_count) ? (k - 'a') : -1;
     if (s < 0) return;                  /* cancelled; the caller redraws */
+    if (inv[s].otyp == O_AMULET) {      /* never lose the win item by drop/sale */
+        msg("You dare not part with it!");
+        return;
+    }
 
     if (in_shop) {
         uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u);
