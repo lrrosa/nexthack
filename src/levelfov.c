@@ -35,13 +35,23 @@ extern uint8_t gold_taken[], item_taken[];   /* persistence masks (levelgen.c) *
  * forgets its map (it shows unexplored again if revisited later). The cheap
  * per-level bitmasks (gold/item/monster kills) are still kept for every level. */
 #define FOV_SLOTS 4   /* remember the 4 most recently visited levels' maps.
-                       * (Was 8, then 6, then 5; now 4 to reclaim ~213 B more on
-                       * BOTH targets to fund throwing's message strings. Each slot
-                       * is FOV_BYTES (~210 B) + 3 B of LRU metadata. The next
-                       * reclaim should move fov_pool to Bank 5 instead -- 4 is the
-                       * floor of comfortable exploration memory.) */
+                       * (Was 8, then 6, then 5.) The pool itself is now data-
+                       * banked into Bank 5 (below), so this no longer costs
+                       * resident RAM; 4 slots = 840 B, which is what fits after
+                       * inv on the Next before the sysvars. */
 
-static uint8_t  fov_pool[FOV_SLOTS][FOV_BYTES];  /* resident explored bitmaps   */
+/* The LRU explored bitmaps live in Bank 5 (always mapped at 0x4000-0x7FFF on
+ * both targets), like inv -- so the ~840 B cost no resident BSS. They sit just
+ * past inv: Next 0x5880 (inv 0x5800..0x5878; NextZXOS sysvars at 0x5C00, 56 B
+ * clear) / 128K 0x6880 (inv 0x6800..; BFS scratch far above at 0x7400). FLAT
+ * view -- SDCC rejects pointer-to-array casts -- so index as
+ * fov_pool[(uint16_t)slot*FOV_BYTES + byte]. Save format is unchanged (the same
+ * FOV_SLOTS*FOV_BYTES bytes are written), so no SAVE_VER bump. */
+#ifndef __ZXNEXT
+#define fov_pool ((uint8_t *)0x6880u)
+#else
+#define fov_pool ((uint8_t *)0x5880u)
+#endif
 static uint8_t  slot_lvl[FOV_SLOTS];             /* dlvl in each slot (0 = free) */
 static uint16_t slot_tick[FOV_SLOTS];            /* last-touched time, for LRU   */
 static uint16_t fov_clock;                       /* advances on each level entry */
@@ -75,7 +85,8 @@ static void fov_touch(void)
         if (slot_lvl[i] == 0) { victim = i; break; }
         if (slot_tick[i] < slot_tick[victim]) victim = i;
     }
-    { uint16_t b; for (b = 0; b < FOV_BYTES; b++) fov_pool[victim][b] = 0; }
+    { uint16_t base = (uint16_t)victim * FOV_BYTES, b;
+      for (b = 0; b < FOV_BYTES; b++) fov_pool[base + b] = 0; }
     slot_lvl[victim]  = d;
     slot_tick[victim] = ++fov_clock;
     cur_slot = victim;
@@ -83,7 +94,7 @@ static void fov_touch(void)
 
 static uint8_t *fov_map(void)        /* explored bitmap for the current depth */
 {
-    return fov_pool[cur_slot];
+    return fov_pool + (uint16_t)cur_slot * FOV_BYTES;
 }
 
 /* mark a cell as visible this turn and remembered (seen) */
