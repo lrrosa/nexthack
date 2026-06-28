@@ -51,6 +51,8 @@ int16_t  nutrition = 900;
 uint8_t  st_conf = 0, st_blind = 0, st_sleep = 0, st_poison = 0;
 uint8_t  el_x = 0, el_y = 0, el_life = 0;    /* Elbereth engraving (see game.h) */
 uint16_t pray_timeout = 0;                   /* turns until you may pray again */
+uint8_t  have_pet = 0;                        /* a living dog follows you (see game.h) */
+uint8_t  pet_hp = 0;                          /* the pet's health, carried across levels */
 
 /* hunger/regeneration bookkeeping */
 static uint8_t heal_timer = 0;
@@ -62,7 +64,7 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   17     /* v1.4.0 save format (+ pray_timeout, FOV_SLOTS 5) */
+#define SAVE_VER   18     /* v1.4.0 save format (+ pray_timeout, FOV_SLOTS 5, pet) */
 
 struct save_hdr {
     uint16_t magic;
@@ -81,6 +83,7 @@ struct save_player {
     uint8_t  has_amulet;
     uint8_t  st_conf, st_blind, st_sleep, st_poison;
     uint16_t pray_timeout;
+    uint8_t  have_pet, pet_hp;
 };
 
 /* From here down, all of nexthack.c's CODE is banked into PAGE_22_CODE (mapped
@@ -114,6 +117,7 @@ int save_game(void) __banked
     p.st_conf = st_conf;   p.st_blind = st_blind;
     p.st_sleep = st_sleep; p.st_poison = st_poison;
     p.pray_timeout = pray_timeout;
+    p.have_pet = have_pet; p.pet_hp = pet_hp;
     file_write(h, &p, sizeof p);
 
     item_save(h);
@@ -150,6 +154,7 @@ int load_game(void) __banked
     st_conf = p.st_conf;   st_blind = p.st_blind;
     st_sleep = p.st_sleep; st_poison = p.st_poison;
     pray_timeout = p.pray_timeout;
+    have_pet = p.have_pet; pet_hp = p.pet_hp;
     dead = 0; won = 0;
 
     item_load(h);
@@ -190,6 +195,37 @@ static void place_altar(void)
 }
 
 static void traps_reset(void);   /* defined with the trap code, below */
+
+/* (Re)place the pet next to the hero. Called after the hero's position is set
+ * on every level entry (new game, descend/ascend, trap-door fall, restore), so
+ * the dog always tags along. It takes the tail monster slot (after the random
+ * mobs and any keeper), which the uint8_t mon_dead bitmask never tracks, and is
+ * never persisted -- pet_idx/pet_hp carry it instead. If the hero arrived in a
+ * spot with no free adjacent floor (a tight corridor), the pet sits out this
+ * level and rejoins on the next. (Lives here, not monster_ai.c, to keep that
+ * bank under 16 KB.) */
+void place_pet(void) __banked
+{
+    int dx, dy;
+    pet_idx = -1;
+    if (!have_pet || mcount >= MAXMON) return;
+    for (dy = -1; dy <= 1; dy++)
+        for (dx = -1; dx <= 1; dx++) {
+            int x = hero_x + dx, y = hero_y + dy;
+            char c;
+            if ((dx == 0 && dy == 0) || pet_idx >= 0) continue;
+            if (x < 0 || y < 0 || x >= MAPW || y >= MAPH) continue;
+            c = lvl[y][x];
+            if (c == '|' || c == '-' || c == ' ') continue;   /* need walkable floor */
+            if (monster_at(x, y) >= 0) continue;
+            m_x[mcount] = (uint8_t)x; m_y[mcount] = (uint8_t)y;
+            m_hp[mcount] = pet_hp;
+            m_type[mcount] = 'd';
+            m_alive[mcount] = 1;
+            pet_idx = (int8_t)mcount;
+            mcount++;
+        }
+}
 
 void build_level(void) __banked
 {
@@ -661,6 +697,7 @@ static void spring_trap(int t, uint8_t x, uint8_t y)
         dlvl++;
         build_level();
         hero_x = up_x; hero_y = up_y;
+        place_pet();                     /* the dog scrambles down after you */
         return;
     }
     lvl[y][x] = '^';                     /* the trap is now sprung and visible */
@@ -720,9 +757,9 @@ void try_move(int dx, int dy) __banked
     }
     mi = monster_at(nx, ny);
     if (mi >= 0) {
-        if (m_type[mi] == MON_KEEPER) {            /* swap past, don't attack */
-            m_x[mi] = (uint8_t)hero_x;             /* the keeper steps aside   */
-            m_y[mi] = (uint8_t)hero_y;             /* so it can never trap you */
+        if (m_type[mi] == MON_KEEPER || mi == pet_idx) {  /* swap past, don't attack */
+            m_x[mi] = (uint8_t)hero_x;             /* the keeper/pet steps aside */
+            m_y[mi] = (uint8_t)hero_y;             /* so you never bump into it  */
             hero_x = nx; hero_y = ny;
             turns++; acted = 1;
             return;
@@ -765,6 +802,7 @@ void go_down(void) __banked
         turns++;
         build_level();
         hero_x = up_x; hero_y = up_y;     /* arrive on the new up-stairs */
+        place_pet();                      /* the dog follows you down */
         msg("You descend the stairs.");
         sfx_stairs();
     } else {
@@ -780,6 +818,7 @@ void go_up(void) __banked
             turns++;
             build_level();
             hero_x = dn_x; hero_y = dn_y; /* arrive on the new down-stairs */
+            place_pet();                  /* the dog follows you up */
             msg("You climb up the stairs.");
             sfx_stairs();
         } else if (has_amulet) {
@@ -809,6 +848,7 @@ void new_game(void) __banked
     hunger_state = 0;
     st_conf = st_blind = st_sleep = st_poison = 0;
     pray_timeout = 0;
+    have_pet = 1; pet_hp = 8;     /* you start with a faithful dog */
     item_reset();
     level_reset_persistence();
     monster_reset_persistence();
@@ -816,6 +856,7 @@ void new_game(void) __banked
     rng_seed();                  /* a brand new world */
     build_level();
     hero_x = up_x; hero_y = up_y;
+    place_pet();                 /* the dog starts at your side */
     fov_update(hero_x, hero_y);
 }
 

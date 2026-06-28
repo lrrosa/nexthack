@@ -8,4 +8,4 @@
 #pragma output CRT_ORG_BANK_1 = 0x01C000   ; cold code bank A
 #pragma output CRT_ORG_BANK_3 = 0x03C000   ; cold code bank B
 #pragma output CRT_ORG_BANK_4 = 0x04C000   ; data/SCR bank (title/victory, Phase 2)
-#pragma output CRT_ORG_BANK_6 = 0x06C000   ; spare
+#pragma output CRT_ORG_BANK_6 = 0x06C000   ; cold code bank C (monster_ai: pet AI overflowed BANK_1)

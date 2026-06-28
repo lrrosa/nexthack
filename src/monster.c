@@ -17,6 +17,7 @@ uint8_t m_x[MAXMON], m_y[MAXMON], m_alive[MAXMON];
 uint8_t m_hp[MAXMON];
 char    m_type[MAXMON];
 uint8_t mcount;
+int8_t  pet_idx = -1;     /* the pet's slot this level (see monster.h), -1 = none */
 
 /* ---- monster catalogue (resident; mon_find/pick_mon read it) ---- */
 static const MonType montypes[] = {

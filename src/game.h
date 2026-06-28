@@ -52,4 +52,12 @@ extern uint8_t  el_x, el_y, el_life;
  * upkeep, set by a successful prayer, saved. */
 extern uint16_t pray_timeout;
 
+/* pet: a loyal dog that hunts monsters and follows you between levels. have_pet
+ * is 1 while it lives (cleared only on its death); pet_hp carries its health
+ * across levels (it is re-placed beside you on each new level, not persisted as
+ * a map monster). Both defined in nexthack.c, saved. See pet_idx in monster.h
+ * for the live slot. */
+extern uint8_t  have_pet;
+extern uint8_t  pet_hp;
+
 #endif /* GAME_H */

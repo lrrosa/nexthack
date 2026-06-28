@@ -29,6 +29,7 @@ start_game:
     title_screen();
     if (load_game()) {              /* a saved game was found: resume it */
         build_level();              /* regenerate the saved depth        */
+        place_pet();                /* and bring the dog back to your side */
         fov_update(hero_x, hero_y);
         tm_cls();
         draw_help();
@@ -38,8 +39,10 @@ start_game:
     } else {                        /* no save: start a fresh adventure  */
         item_reset();
         fov_reset();
+        have_pet = 1; pet_hp = 8;   /* the first adventure begins with a dog */
         build_level();
         hero_x = up_x; hero_y = up_y;
+        place_pet();
         fov_update(hero_x, hero_y);
         tm_cls();
         draw_help();

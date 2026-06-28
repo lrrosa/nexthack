@@ -14,12 +14,18 @@
 
 #include <stdint.h>
 
-#define MAXMON 8
+#define MAXMON 9          /* 8 monsters/keeper + 1 reserved tail slot for the pet */
 #define MON_KEEPER '@'   /* the shopkeeper (drawn as the hero tile, stationary) */
 
 extern uint8_t mcount;
 extern uint8_t m_x[], m_y[], m_alive[], m_hp[];
 extern char    m_type[];
+
+/* The pet's live monster slot this level, or -1 if none is placed. Re-derived
+ * every level by place_pet (the pet is never a persisted map monster), so it is
+ * not saved. The pet always sits in the highest occupied slot, which the uint8_t
+ * mon_dead kill-bitmask never tracks (1u<<8 == 0), so it is never marked dead. */
+extern int8_t  pet_idx;
 
 /* ---- monster catalogue (the table lives in monster.c, resident) ---- */
 typedef struct {
@@ -55,5 +61,6 @@ void attack_monster(uint8_t mi)     __banked;  /* hero hits monster mi */
 void monsters_turn(void)            __banked;  /* every monster chases + attacks */
 void maybe_spawn_wanderer(void)     __banked;  /* small per-turn spawn chance */
 void place_shopkeeper(uint8_t x, uint8_t y) __banked;  /* add the shop's keeper */
+void place_pet(void)                __banked;  /* (re)place the pet beside the hero */
 
 #endif /* MONSTER_H */

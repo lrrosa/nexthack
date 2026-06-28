@@ -20,7 +20,7 @@
 #ifdef __ZXNEXT
 #pragma codeseg PAGE_20_CODE
 #else
-#pragma codeseg BANK_1
+#pragma codeseg BANK_6   /* the spare 128K bank: the pet AI outgrew BANK_1 */
 #endif
 
 static uint8_t mon_dead[MAXLVL + 1];     /* bit i: monster i killed */
@@ -67,7 +67,9 @@ void spawn_level_monsters(void) __banked
     int     vr    = level_vault_room();    /* -1 if this level has no vault     */
     uint8_t guards = (vr >= 0) ? 3 : 0;    /* a few tough guards inside it       */
     uint8_t i;
-    if (count > MAXMON) count = MAXMON;
+    /* leave the top slot free for the pet (and keep every random mob in slots
+     * 0..7, which the uint8_t mon_dead kill-bitmask can track). */
+    if (count > MAXMON - 1) count = MAXMON - 1;
     if (guards > count) guards = count;
     mcount = 0;
     for (i = 0; i < count; i++) {
@@ -91,6 +93,8 @@ void place_shopkeeper(uint8_t x, uint8_t y) __banked
     m_alive[mcount] = 1;
     mcount++;
 }
+
+/* place_pet lives in nexthack.c (PAGE_22) to keep this bank under its 16 KB. */
 
 void apply_monster_persistence(void) __banked
 {
@@ -304,26 +308,12 @@ static void compute_dist_map(void)
     }
 }
 
-/* a monster steps to the neighbour closest to the hero (lowest distance) */
-static void mon_step(uint8_t i)
+/* Step one cell down the BFS gradient toward the hero (the lowest-distance free
+ * neighbour). Shared by ordinary monsters and by the pet's "follow" mode. */
+static void step_to_hero(uint8_t i)
 {
-    int ddx, ddy;
-
-    if (m_type[i] == MON_KEEPER) return;   /* the shopkeeper never moves */
-
-    ddx = hero_x - (int)m_x[i];
-    ddy = hero_y - (int)m_y[i];
-    uint8_t bestd;
+    uint8_t bestd = dist[(uint16_t)m_y[i] * MAPW + m_x[i]];   /* our current distance */
     int bestx = -1, besty = -1, dx, dy;
-
-    if (iabs(ddx) <= 1 && iabs(ddy) <= 1) {   /* adjacent -> attack */
-        if (el_life && hero_x == el_x && hero_y == el_y)
-            return;                           /* Elbereth: it dares not strike */
-        monster_hits_player(i);
-        return;
-    }
-
-    bestd = dist[(uint16_t)m_y[i] * MAPW + m_x[i]];   /* our current distance */
     for (dy = -1; dy <= 1; dy++) {
         for (dx = -1; dx <= 1; dx++) {
             int nx = (int)m_x[i] + dx, ny = (int)m_y[i] + dy;
@@ -338,6 +328,72 @@ static void mon_step(uint8_t i)
         }
     }
     if (bestx >= 0) { m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty; }
+}
+
+/* ---- pet AI: bite an adjacent enemy, else heel by the hero ---- */
+
+/* the pet bites enemy ti; the enemy may bite back and the dog can fall */
+static void pet_hits(uint8_t pi, uint8_t ti)
+{
+    const MonType *mt = mon_find(m_type[ti]);
+    uint8_t dmg = (uint8_t)(rn2(4) + 2);     /* 2..5; no hero XP for a pet kill */
+
+    if (m_hp[ti] <= dmg) {
+        m_alive[ti] = 0;
+        if (dlvl <= MAXLVL)
+            mon_dead[dlvl] |= (uint8_t)(1u << ti);
+        msg2("Your dog kills the ", mt->name, "!");
+        sfx_kill();
+        return;
+    }
+    m_hp[ti] = (uint8_t)(m_hp[ti] - dmg);
+    if (rn2(2)) {                            /* the cornered enemy bites back */
+        uint8_t back = (uint8_t)(rn2(mt->dmg) + 1);
+        if (pet_hp <= back) {                /* the dog is slain */
+            m_alive[pi] = 0; pet_idx = -1; have_pet = 0; pet_hp = 0;
+            msg("Your dog dies.");
+        } else {
+            pet_hp = (uint8_t)(pet_hp - back);
+        }
+    }
+}
+
+static void pet_step(uint8_t i)
+{
+    uint8_t cur, j;
+    /* bite the first adjacent enemy (enemies converge on the hero, so the dog
+     * heeling at your side meets them there) */
+    for (j = 0; j < mcount; j++) {
+        if (!m_alive[j] || j == pet_idx || m_type[j] == MON_KEEPER) continue;
+        if (iabs((int)m_x[j] - (int)m_x[i]) <= 1 &&
+            iabs((int)m_y[j] - (int)m_y[i]) <= 1) {
+            pet_hits(i, j);
+            return;
+        }
+    }
+    cur = dist[(uint16_t)m_y[i] * MAPW + m_x[i]];  /* else heel: keep ~2 cells back */
+    if (cur == UNREACH || cur > 2) step_to_hero(i);
+}
+
+/* a monster steps to the neighbour closest to the hero (lowest distance) */
+static void mon_step(uint8_t i)
+{
+    int ddx, ddy;
+
+    if (m_type[i] == MON_KEEPER) return;   /* the shopkeeper never moves */
+    if (i == pet_idx) { pet_step(i); return; }   /* the pet follows its own rules */
+
+    ddx = hero_x - (int)m_x[i];
+    ddy = hero_y - (int)m_y[i];
+
+    if (iabs(ddx) <= 1 && iabs(ddy) <= 1) {   /* adjacent -> attack */
+        if (el_life && hero_x == el_x && hero_y == el_y)
+            return;                           /* Elbereth: it dares not strike */
+        monster_hits_player(i);
+        return;
+    }
+
+    step_to_hero(i);
 }
 
 void monsters_turn(void) __banked
