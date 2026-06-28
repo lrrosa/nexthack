@@ -67,9 +67,11 @@ void spawn_level_monsters(void) __banked
     int     vr    = level_vault_room();    /* -1 if this level has no vault     */
     uint8_t guards = (vr >= 0) ? 3 : 0;    /* a few tough guards inside it       */
     uint8_t i;
-    /* leave the top slot free for the pet (and keep every random mob in slots
-     * 0..7, which the uint8_t mon_dead kill-bitmask can track). */
-    if (count > MAXMON - 1) count = MAXMON - 1;
+    /* Keep every random mob in slots 0..7, which the uint8_t mon_dead kill-
+     * bitmask can track; the two slots above (MAXMON=10) are reserved for the
+     * shopkeeper and the pet, which are never persistence-tracked, so even a
+     * crowded shop level always has room for the dog. */
+    if (count > 8) count = 8;
     if (guards > count) guards = count;
     mcount = 0;
     for (i = 0; i < count; i++) {
@@ -332,7 +334,8 @@ static void step_to_hero(uint8_t i)
             nd = dist[(uint16_t)ny * MAPW + nx];
             if (nd == UNREACH || nd >= bestd) continue;
             if (monster_at(nx, ny) >= 0) continue;   /* don't stack       */
-            if (shop_in_room(nx, ny)) continue;      /* shop is a safe zone */
+            if (i != pet_idx && shop_in_room(nx, ny))
+                continue;                            /* shops are an enemy safe zone -- but your pet follows you in */
             bestd = nd; bestx = nx; besty = ny;
         }
     }

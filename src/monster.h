@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 
-#define MAXMON 9          /* 8 monsters/keeper + 1 reserved tail slot for the pet */
+#define MAXMON 10         /* slots 0-7 random mobs (mon_dead-tracked) + 8 keeper + 9 pet */
 #define MON_KEEPER '@'   /* the shopkeeper (drawn as the hero tile, stationary) */
 
 extern uint8_t mcount;
