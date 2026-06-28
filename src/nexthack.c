@@ -451,14 +451,14 @@ void do_pray(void) __banked
 }
 
 #ifdef __ZXNEXT
+/* The Next shows the key list on the shared '?' screen (show_help), not a
+ * persistent command bar -- the bar could not grow without overflowing PAGE_22
+ * (which pushed the Layer 2 palette out of bank 11 and wrecked the title
+ * colours). draw_help leaves one discreet pointer to '?' on row 24 (below the
+ * status bar, untouched by the per-turn map/status redraws). */
 void draw_help(void) __banked
 {
-    print_str(0, 25,
-        "Move: cursor or vi-keys (h j k l + y u b n)   Stairs: > < Enter   s search .wait",
-        C_CYAN | C_BRIGHT);
-    print_str(0, 26,
-        "Cmd: ,get i inv w wield W wear P ring q quaff e eat r read t throw E engr S save",
-        C_CYAN | C_BRIGHT);
+    print_str(0, 24, "Press  ?  for the keys and command list.", C_CYAN | C_BRIGHT);
 }
 #else
 void draw_help(void) __banked
@@ -469,11 +469,11 @@ void draw_help(void) __banked
 }
 #endif
 
-#ifdef __ZXNEXT
-void show_help(void) __banked { }    /* the help bar is always on screen */
-#else
-/* '?' on the 128K: the key list is not visible during play, so show it on a
- * full screen, then restore the map. */
+/* '?': a full-screen key list, then restore the playfield. ONE implementation
+ * for both targets (the Next had a 2-line command bar before, but its strings
+ * are resident rodata and grew PAGE_22 -- a single '?' screen, 32 columns wide
+ * so it fits the 128K ULA too, is cheaper and keeps the two ports consistent).
+ * On the Next it sits in the top-left; the row-24 pointer leads players to it. */
 void show_help(void) __banked
 {
     tm_cls();
@@ -487,18 +487,19 @@ void show_help(void) __banked
     print_str(2, 10, "w wield    W wear",    C_CYAN | C_BRIGHT);
     print_str(2, 11, "P ring     t throw",   C_CYAN | C_BRIGHT);
     print_str(2, 12, "q quaff    e eat",     C_CYAN | C_BRIGHT);
-    print_str(2, 13, "r read     d sell",    C_CYAN | C_BRIGHT);
+    print_str(2, 13, "r read     p pray",    C_CYAN | C_BRIGHT);
     print_str(2, 14, "E engrave Elbereth",   C_CYAN | C_BRIGHT);
-    print_str(2, 15, "S save     ? help",    C_CYAN | C_BRIGHT);
+    print_str(2, 15, "d sell     S save",    C_CYAN | C_BRIGHT);
+    print_str(2, 16, "? this help screen",   C_CYAN | C_BRIGHT);
     print_str(4, 18, "Press any key...",     C_WHITE | C_BRIGHT);
     in_wait_nokey();
     getkey();
     in_wait_nokey();
     map_dirty = 1;
+    draw_help();            /* Next: redraw the row-24 pointer (no-op on 128K) */
     draw_status();
     draw_map();
 }
-#endif
 
 #ifdef __ZXNEXT
 void draw_status(void) __banked

@@ -77,7 +77,7 @@ start_game:
         case 'r': do_read();        in_wait_nokey(); break;   /* cancel costs none */
         case 't': do_throw();       in_wait_nokey(); break;   /* throw a weapon   */
         case 'i': show_inventory(); break;          /* viewing costs no turn */
-        case '?': show_help();      break;          /* key list (128K) ; no turn */
+        case '?': show_help();      break;          /* full key-list screen; no turn */
         case 'd': do_sell(); in_wait_nokey(); break; /* sell in a shop; no turn */
         case 'E':                                   /* engrave Elbereth in the dust */
             el_x = (uint8_t)hero_x; el_y = (uint8_t)hero_y; el_life = 30;
