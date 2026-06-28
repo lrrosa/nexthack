@@ -48,6 +48,11 @@ code.
   **traps** (trap doors, darts, sleeping gas) lurk in the deeper floors. Scratch
   **Elbereth** (`E`) in the dust to keep monsters at bay; experience levels raise
   your HP.
+- A **loyal pet dog** starts at your side, fights monsters for you and follows you
+  through the dungeon. **Throw** (`t`) a weapon down a corridor for a ranged
+  attack — it lands on the floor to be reclaimed — **search** (`s`) the ground for
+  hidden traps, and **pray** (`p`) to your god to haul you out of trouble (best at
+  an altar).
 - **Items and equipment** — weapons, armour, potions, food, scrolls and rings,
   each with its own enchantment, erosion and **blessed/uncursed/cursed** state;
   potions and scrolls start **unidentified**. Wield/wear the best you carry,
@@ -97,8 +102,8 @@ same minus the Layer 2 images.
 | `levelgen.c` | B | procedural generation, special levels, gold/item persistence |
 | `levelfov.c` | B | field of view (fog of war) and save/restore |
 | `monster.c` / `.h` | R | monster arrays, per-monster lookups and the bestiary |
-| `monster_ai.c` | B | chase pathing (BFS), combat, spawning, kill persistence |
-| `item.c` / `.h` | B | inventory and items (pick up, wield/wear/quaff/eat/read/put-on) |
+| `monster_ai.c` | B | chase pathing (BFS), combat, spawning, kill persistence, the pet |
+| `item.c` / `.h` | B | inventory and items (pick up, wield/wear/quaff/eat/read/put-on, throw) |
 | `sfx.c` / `.h` | B | beeper sound effects |
 | `nexthack.c` / `.h` | B | game-state globals (resident data), rendering, turn step, level orchestration, save/restore, screens |
 | `game.h` | — | shared player/run state used across modules |
@@ -217,15 +222,19 @@ emulators show garbage for it, so **ship the `.tap`, not the `.sna`**.
 | cursor keys / `h j k l`   | move ◄ ▼ ▲ ► (hold to keep moving) |
 | `y` `u` `b` `n`           | move diagonally |
 | `>` `<` or `Enter`        | stairs down / up |
-| `s` or `.`                | wait / search |
+| `.` or Space              | wait a turn |
+| `s`                       | search the ground for nearby hidden traps |
 | `,`                       | pick up the item under you |
 | `i`                       | show inventory |
 | `d`                       | sell a carried item back to the shop |
 | `w` / `W`                 | wield weapon / wear armor |
 | `P`                       | put on a ring |
 | `q` / `e` / `r`           | quaff potion / eat food / read scroll |
+| `t`                       | throw a weapon in a direction |
+| `p`                       | pray to your god |
 | `E`                       | engrave Elbereth in the dust (wards off monsters) |
 | `S`                       | save game and quit to the title |
+| `?`                       | show the full command list |
 
 Walk into a monster to attack it; walk over gold to pick it up.
 

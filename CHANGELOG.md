@@ -8,6 +8,33 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.4.0] — 2026-06-28
+
+### Added
+- **A pet dog** — every game now starts you with a loyal dog. It heels at your
+  side, bites adjacent monsters (and can be wounded or killed fighting them), and
+  follows you up and down stairs, into shops and all. Walk into it to swap
+  places, not attack.
+- **Throwing** (`t`) — the first ranged attack. Pick a weapon and a direction and
+  it flies down the line until it strikes the first monster or thuds into a wall;
+  it then lies on the floor where it lands, so you can walk over and pick it back
+  up. Throwing your wielded weapon asks for confirmation first.
+- **Prayer** (`p`) — call on your god to fix your worst trouble (cure starvation,
+  heal a critical wound, lift poison/blindness/confusion, or uncurse an item),
+  with a cooldown between prayers. Pray while standing on an **altar** to lift the
+  curses from everything you carry.
+- **Search** (`s`) — search the cells around you to reveal hidden traps as `^`. A
+  revealed trap still springs if you step on it, so mark it and step around.
+- A **`?` help screen** listing every command, on both targets.
+
+### Changed
+- The Next build dropped its always-on two-line command bar for the shared `?`
+  help screen (with a one-line pointer to it under the status bar), so the
+  command list can grow without crowding the map. The `s` and `.` keys are now
+  distinct — search vs. wait.
+- Reclaimed the resident RAM the new features needed: moved the fog-of-war pool
+  into Bank 5 and gave each target a third code bank for the monster AI.
+
 ## [1.3.0] — 2026-06-24
 
 ### Added
