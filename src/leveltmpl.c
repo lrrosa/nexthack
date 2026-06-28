@@ -13,13 +13,18 @@
 
 extern uint8_t r_x[], r_y[], r_w[], r_h[];   /* room rects (defined in levelgen.c) */
 
+/* On the Next, this module (loader + ~8.6 KB of template const, read together)
+ * lives in PAGE_26_CODE (bank 13, with monster_ai) -- NOT PAGE_22, whose 16 KB
+ * would overflow into bank 12 and push the Layer 2 palettes (title_pal/
+ * victory_pal) out of bank 11, corrupting the title/victory colours (the
+ * streaming code reads the palette in place with bank 11 mapped). */
 #ifdef __ZXNEXT
-#pragma codeseg PAGE_22_CODE
+#pragma codeseg PAGE_26_CODE
 #else
 #pragma codeseg BANK_3
 #endif
 #ifdef __ZXNEXT
-#pragma constseg PAGE_22_CODE
+#pragma constseg PAGE_26_CODE
 #else
 #pragma constseg BANK_3
 #endif
