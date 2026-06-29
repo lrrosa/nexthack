@@ -109,6 +109,19 @@ static void light(int x, int y)
     fov_map()[idx >> 3] |= bit;
 }
 
+/* set a run of n consecutive bits from bit index `start` in bitmap bm. Lighting
+ * a room row this way -- whole bytes at a time -- instead of one light() per cell
+ * is ~10x fewer writes, which is what made a big lit room crawl on the 3.5 MHz
+ * 128K. MAPW (80) is a multiple of 8, so every row starts byte-aligned and a run
+ * never spills into another row. */
+static void set_run(uint8_t *bm, uint16_t start, uint16_t n)
+{
+    uint16_t end = start + n;
+    while ((start & 7) && start < end) { bm[start >> 3] |= (uint8_t)(1u << (start & 7)); start++; }
+    while (start + 8 <= end)           { bm[start >> 3]  = 0xFF;                          start += 8; }
+    while (start < end)                { bm[start >> 3] |= (uint8_t)(1u << (start & 7)); start++; }
+}
+
 static int in_room(uint8_t r, int x, int y)
 {
     return x >= r_x[r] && x < r_x[r] + r_w[r] &&
@@ -158,12 +171,22 @@ void fov_update(int hx, int hy) __banked
         for (dx = -1; dx <= 1; dx++)
             light(hx + dx, hy + dy);
 
-    /* if standing in a room, the whole room is lit */
+    /* if standing in a room, the whole room is lit -- by a bit-run per row (whole
+     * bytes at a time) rather than a light() per cell. Same bits set, ~10x fewer
+     * writes; on the 3.5 MHz 128K this was the per-move cost in a big lit room. */
     if (hero_room >= 0) {
-        uint8_t rr = (uint8_t)hero_room, xx, yy;
-        for (yy = r_y[rr]; yy < r_y[rr] + r_h[rr]; yy++)
-            for (xx = r_x[rr]; xx < r_x[rr] + r_w[rr]; xx++)
-                light(xx, yy);
+        uint8_t rr = (uint8_t)hero_room, yy;
+        uint8_t x0 = r_x[rr];
+        uint8_t xw = r_w[rr];
+        uint8_t ymax = (uint8_t)(r_y[rr] + r_h[rr]);
+        uint8_t *fm = fov_map();
+        if ((uint16_t)x0 + xw > MAPW) xw = (uint8_t)(MAPW - x0);   /* clamp to map */
+        if (ymax > MAPH) ymax = MAPH;
+        for (yy = r_y[rr]; yy < ymax; yy++) {
+            uint16_t start = (uint16_t)yy * MAPW + x0;
+            set_run(vis_now, start, xw);
+            set_run(fm, start, xw);
+        }
     }
 
     /* line of sight down corridors: cast rays until a wall blocks them, so
