@@ -8,6 +8,25 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.4.1] — 2026-06-28
+
+A polish pass over the 1.4.0 features.
+
+### Changed
+- Your **pet dog now heals slowly** over time (up to 12 HP), so a careful
+  companion can be kept alive instead of inevitably wearing down.
+- **`d` now drops** an item onto the floor (to be picked back up later), as well
+  as selling it when you're inside a shop.
+
+### Fixed
+- A **scroll of teleportation** now always moves you to a *different* room — it
+  could land you back in the same room, or even on your own square.
+- Displacing your **pet onto a hidden trap** now springs it.
+- You can no longer **drop or sell the Amulet of Yendor** (which could leave you
+  able to "win" without carrying it).
+- Several messages that overran the 128K's 32-column line are shortened, and a
+  latent buffer overflow in the item-description code is fixed.
+
 ## [1.4.0] — 2026-06-28
 
 ### Added
