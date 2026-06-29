@@ -232,8 +232,9 @@ static void monster_hits_player(uint8_t i)
 #define UNREACH 255
 #ifndef __ZXNEXT
 /* +zx (3.5 MHz) only: cap the BFS this far from the hero, and skip it unless a
- * live monster is within MON_WAKE. The Next (28 MHz, whole 80-wide map visible)
- * keeps the original unbounded chase, so distant on-screen monsters still path. */
+ * live ENEMY is within MON_WAKE. The dog heels greedily without the flood, and
+ * wakes it for itself only when a wall boxes the greedy step (see monsters_turn).
+ * The Next (28 MHz, whole 80-wide map visible) keeps the unbounded chase. */
 #define MAXDIST  30
 #define MON_WAKE 22
 #endif
@@ -388,6 +389,40 @@ static void pet_step(uint8_t i)
     if (cur == UNREACH || cur > 2) step_to_hero(i);
 }
 
+#ifndef __ZXNEXT
+/* +zx: heel the dog toward the hero WITHOUT the BFS. When no enemy is near we
+ * skip compute_dist_map entirely (its flood over a big room is the 3.5 MHz
+ * movement bottleneck), so the pet can't read the distance gradient -- it steps
+ * greedily by line of sight instead. Open rooms (where speed actually matters)
+ * route fine; in a corridor tangle the dog may briefly lag, then rejoins once an
+ * enemy wakes the real chase, or on the next level (place_pet). */
+static uint8_t pet_heel_greedy(uint8_t i)   /* 1 = heeled/stepped, 0 = boxed in */
+{
+    int hx = hero_x, hy = hero_y;
+    int dh = iabs(hx - (int)m_x[i]), dv = iabs(hy - (int)m_y[i]);
+    int bestc, dx, dy, bestx = -1, besty = -1;
+    if (dh <= 2 && dv <= 2) return 1;           /* already at heel: nothing to do */
+    bestc = (dh > dv) ? dh : dv;                /* current Chebyshev distance     */
+    for (dy = -1; dy <= 1; dy++) {
+        for (dx = -1; dx <= 1; dx++) {
+            int nx = (int)m_x[i] + dx, ny = (int)m_y[i] + dy, a, b, c;
+            char t;
+            if (dx == 0 && dy == 0) continue;
+            if (nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH) continue;
+            t = lvl[ny][nx];
+            if (t == '|' || t == '-' || t == ' ') continue;   /* wall/rock     */
+            if (nx == hx && ny == hy) continue;               /* not onto hero */
+            if (monster_at(nx, ny) >= 0) continue;            /* don't stack    */
+            a = iabs(hx - nx); b = iabs(hy - ny);
+            c = (a > b) ? a : b;
+            if (c < bestc) { bestc = c; bestx = nx; besty = ny; }
+        }
+    }
+    if (bestx >= 0) { m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty; return 1; }
+    return 0;                          /* boxed in: caller floods once and routes */
+}
+#endif
+
 /* a monster steps to the neighbour closest to the hero (lowest distance) */
 static void mon_step(uint8_t i)
 {
@@ -414,14 +449,29 @@ void monsters_turn(void) __banked
 {
     uint8_t i;
 #ifndef __ZXNEXT
-    /* +zx: skip the whole pass when every live monster is far off-screen */
+    /* +zx: skip the whole chase when no ENEMY is near. The pet (always at your
+     * heel) and the stationary shopkeeper must NOT count here -- otherwise the
+     * BFS would flood every single turn, which is exactly what made big rooms
+     * crawl once the dog arrived (v1.4.0). With no enemy awake we only heel the
+     * dog, greedily, and skip compute_dist_map. */
     uint8_t awake = 0;
     for (i = 0; i < mcount; i++) {
-        if (!m_alive[i]) continue;
+        if (!m_alive[i] || i == pet_idx || m_type[i] == MON_KEEPER) continue;
         if (iabs((int)m_x[i] - hero_x) <= MON_WAKE &&
             iabs((int)m_y[i] - hero_y) <= MON_WAKE) { awake = 1; break; }
     }
-    if (!awake) return;
+    if (!awake) {
+        /* no enemy near: heel the dog by sight, no flood. Only when a wall boxes
+         * the greedy step (a bend or doorway it can't round straight to you) do we
+         * flood -- once, routing just the dog. An open room never blocks, so it
+         * never pays; a corridor's flood is small. This keeps the dog ~2 cells back
+         * everywhere instead of letting the gap grow turn by turn through bends. */
+        if (pet_idx < 0 || !m_alive[(uint8_t)pet_idx]) return;
+        if (pet_heel_greedy((uint8_t)pet_idx)) return;
+        compute_dist_map();
+        pet_step((uint8_t)pet_idx);
+        return;
+    }
 #endif
     compute_dist_map();
     for (i = 0; i < mcount; i++) {
