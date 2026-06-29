@@ -60,8 +60,9 @@
 #define T_HOMUNCULUS  158  /* small imp; its bite puts you to sleep         */
 #define T_WRAITH      159  /* pale wraith; drains your life force           */
 #define T_ALTAR       160  /* a stone altar; step on it to reveal item BUC  */
+#define T_WAND        161  /* a wand (zappable magic item, class '/')        */
 
-#define NTILES   33      /* T_ROCK..T_ALTAR: the graphic tiles */
+#define NTILES   34      /* T_ROCK..T_WAND: the graphic tiles */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT

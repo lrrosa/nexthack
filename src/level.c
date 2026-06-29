@@ -47,6 +47,7 @@ uint8_t tile_for(char c)
     case '!': return T_POTION;
     case '?': return T_SCROLL;
     case '=': return T_RING;
+    case '/': return T_WAND;
     case '"': return T_AMULET;
     default:  return T_ROCK;
     }

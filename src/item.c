@@ -17,7 +17,8 @@
 #include "game.h"        /* hero_x/y, php, pmaxhp, weapon_dmg, armor_def, ac */
 #include "platform.h"    /* drawing, messages, getkey, file_*                */
 #include "level.h"       /* terrain, level_take_item, level_random_floor     */
-#include "monster.h"     /* monster_at, hit_monster, pet_idx (do_throw)      */
+#include "monster.h"     /* monster_at, hit_monster, m_sleep, pet_idx        */
+#include "nexthack.h"    /* build_level (wand of digging descends a level)   */
 #include "rng.h"         /* rn2, world_seed                                  */
 #include "sfx.h"         /* sound effects                                    */
 
@@ -43,6 +44,7 @@ enum {
     O_PROTECT,                                 /* '=' ring    */
     O_FOOD,                                    /* '%' food    */
     O_AMULET,                                  /* '"' amulet  */
+    O_WSTRIKE, O_WCOLD, O_WSLEEP, O_WTELE, O_WDIG,   /* '/' wands (zap with z) */
     NUMOBJ
 };
 
@@ -73,7 +75,14 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '?',  0,   60,  1, "scroll of teleportation" },
     { '=',  1,  150,  3, "ring of protection" },
     { '%',  0,   10,  1, "food ration" },
-    { '"',  0,    0, 50, "the Amulet of Yendor" }
+    { '"',  0,    0, 50, "the Amulet of Yendor" },
+    /* wands: prop is unused (the effect is by type); zapped with 'z', charges
+     * live in obj_t.ench. */
+    { '/',  0,  150,  2, "wand of striking" },
+    { '/',  0,  200,  4, "wand of cold" },
+    { '/',  0,  175,  3, "wand of sleep" },
+    { '/',  0,  200,  5, "wand of teleportation" },
+    { '/',  0,  150,  6, "wand of digging" }
 };
 
 typedef struct {
@@ -255,6 +264,11 @@ static const char *obj_desc(const obj_t *o)
     }
     s = item_name(o->otyp);     /* true name if identified, else appearance */
     while (*s) *p++ = *s++;
+    if (t->cls == '/') {        /* a wand shows its remaining charges: " (N)" */
+        *p++ = ' '; *p++ = '(';
+        *p++ = (char)('0' + (o->ench % 10));
+        *p++ = ')';
+    }
     *p = 0;
     return buf;
 }
@@ -412,6 +426,8 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
         if (roll < depth)                o->ench = 1;
         if (roll < (uint8_t)(depth / 3)) o->ench = 2;
     }
+    if (c == '/')                            /* a wand arrives with 3..7 charges */
+        o->ench = (int8_t)(3 + ((h >> 5) % 5u));
     if (c == ')' || c == '[' || c == '=') {   /* equipment may be blessed or cursed */
         uint8_t r = (uint8_t)((h >> 11) & 7);  /* 5/8 uncursed, 2/8 cursed, 1/8 blessed */
         o->buc = (r < 5) ? BUC_UNC : (r < 7) ? BUC_CURSE : BUC_BLESS;
@@ -444,7 +460,7 @@ void do_pickup(void) __banked
     int fi;
 
     if (c != '"' && c != ')' && c != '[' && c != '!' &&
-        c != '%' && c != '?' && c != '=') {
+        c != '%' && c != '?' && c != '=' && c != '/') {
         msg("Nothing here to pick up.");
         return;
     }
@@ -995,6 +1011,66 @@ void do_throw(void) __banked
     if (worn) recompute_gear();          /* you just threw what you were wielding */
     floor_drop((uint8_t)x, (uint8_t)y, &thrown);       /* leave it to be reclaimed */
     sfx_hit();
+    acted = 1; turns++;
+}
+
+/* Zap a wand. Digging bores straight down (you drop a level); the others fire a
+ * bolt in a chosen direction that flies up to ZAP_RANGE cells, over the pet and
+ * the shopkeeper, and acts on the monster(s) it meets: striking damages the
+ * first, cold chills every monster in the line, sleep dozes the first, and
+ * teleportation whisks the first away. Each zap spends a charge (obj_t.ench). */
+#define ZAP_RANGE 9
+void do_zap(void) __banked
+{
+    int s = select_item('/', "Zap which wand?");
+    int dx, dy, x, y, r, hit = 0;
+    uint8_t ot;
+
+    if (s == -1) { msg("You have no wand to zap."); return; }
+    if (s == -2) { msg("Never mind."); return; }
+    if (inv[s].ench <= 0) { msg("The wand has no charge."); return; }
+    ot = inv[s].otyp;
+
+    if (ot == O_WDIG) {                  /* digging needs no aim -- it goes down */
+        inv[s].ench--;
+        acted = 1; turns++;
+        if (dlvl >= DLVL_AMULET) { msg("The floor here resists digging."); return; }
+        msg("You dig a hole and drop through!");
+        sfx_stairs();
+        dlvl++;
+        build_level();
+        hero_x = up_x; hero_y = up_y;
+        place_pet();
+        return;
+    }
+
+    msg("In what direction?");
+    if (!read_dir(&dx, &dy)) { msg("Never mind."); return; }
+    inv[s].ench--;                       /* a real zap spends a charge */
+    sfx_magic();
+
+    x = hero_x; y = hero_y;
+    for (r = 0; r < ZAP_RANGE; r++) {
+        int mi;
+        x += dx; y += dy;
+        if (!walkable(terrain(x, y))) break;             /* a wall stops the bolt */
+        mi = monster_at(x, y);
+        if (mi < 0) continue;
+        if (mi == pet_idx || m_type[mi] == MON_KEEPER) continue;  /* spare dog/keeper */
+        hit = 1;
+        if (ot == O_WSTRIKE) { hit_monster((uint8_t)mi, (uint8_t)(rn2(8) + 3)); break; }
+        if (ot == O_WCOLD)   { hit_monster((uint8_t)mi, (uint8_t)(rn2(6) + 2)); continue; }
+        if (ot == O_WSLEEP)  { m_sleep[mi] = (uint8_t)(rn2(10) + 8);
+                               msg2("The ", mon_name(m_type[mi]), " falls asleep."); break; }
+        /* O_WTELE: whisk the monster to a random spot, off your back */
+        { uint8_t tx, ty, t = 0;
+          do { rand_floor((uint8_t)rn2(rcount), &tx, &ty); }
+          while (tx == (uint8_t)hero_x && ty == (uint8_t)hero_y && t++ < 8);
+          m_x[mi] = tx; m_y[mi] = ty;
+          msg2("The ", mon_name(m_type[mi]), " vanishes!"); }
+        break;
+    }
+    if (!hit) msg("The bolt fizzles out.");
     acted = 1; turns++;
 }
 

@@ -19,6 +19,7 @@
 
 extern uint8_t mcount;
 extern uint8_t m_x[], m_y[], m_alive[], m_hp[];
+extern uint8_t m_sleep[];    /* >0 = asleep this many turns (wand of sleep) */
 extern char    m_type[];
 
 /* The pet's live monster slot this level, or -1 if none is placed. Re-derived

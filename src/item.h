@@ -24,6 +24,7 @@ void do_eat(void) __banked;         /* eat the first food                       
 void do_puton(void) __banked;       /* put on the first ring                    */
 void do_read(void) __banked;        /* read the first scroll                    */
 void do_throw(void) __banked;       /* throw a weapon in a chosen direction     */
+void do_zap(void) __banked;         /* zap a wand (magic, ranged)               */
 void do_drop(void) __banked;        /* drop an item on the floor (sells it in a shop) */
 
 void corrode_worn(char cls) __banked; /* acid/rust corrodes the worn item       */

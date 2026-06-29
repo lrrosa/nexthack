@@ -74,6 +74,7 @@ void spawn_level_monsters(void) __banked
     if (count > 8) count = 8;
     if (guards > count) guards = count;
     mcount = 0;
+    { uint8_t k; for (k = 0; k < MAXMON; k++) m_sleep[k] = 0; }   /* none asleep yet */
     for (i = 0; i < count; i++) {
         if (i < guards) spawn_guard((uint8_t)vr);   /* low slots -> persistence-tracked */
         else            spawn_monster(pick_mon());
@@ -393,6 +394,7 @@ static void mon_step(uint8_t i)
     int ddx, ddy;
 
     if (m_type[i] == MON_KEEPER) return;   /* the shopkeeper never moves */
+    if (m_sleep[i]) { m_sleep[i]--; return; }    /* asleep (wand of sleep): no turn */
     if (i == pet_idx) { pet_step(i); return; }   /* the pet follows its own rules */
 
     ddx = hero_x - (int)m_x[i];
@@ -473,5 +475,6 @@ void maybe_spawn_wanderer(void) __banked
     m_hp[slot]   = (uint8_t)(mt->hp + dlvl / 2);
     m_type[slot] = type;
     m_alive[slot] = 1;
+    m_sleep[slot] = 0;          /* a fresh wanderer is awake */
     if (slot == mcount) mcount++;
 }

@@ -64,7 +64,7 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   19     /* v1.4.0 save format (pet, throwing, FOV_SLOTS 4) */
+#define SAVE_VER   20     /* v1.5.0: wands (new '/' loot shifts the gen RNG) */
 
 struct save_hdr {
     uint16_t magic;
@@ -496,7 +496,7 @@ void show_help(void) __banked
     print_str(2, 13, "r read     p pray",    C_CYAN | C_BRIGHT);
     print_str(2, 14, "E engrave Elbereth",   C_CYAN | C_BRIGHT);
     print_str(2, 15, "d drop     S save",    C_CYAN | C_BRIGHT);
-    print_str(2, 16, "? this help screen",   C_CYAN | C_BRIGHT);
+    print_str(2, 16, "z zap      ? help",    C_CYAN | C_BRIGHT);
     print_str(4, 18, "Press any key...",     C_WHITE | C_BRIGHT);
     in_wait_nokey();
     getkey();
@@ -640,7 +640,7 @@ static void describe(char dest, int moved)
     case '>': msg("There is a staircase down here."); break;
     case '<': msg("There is a staircase up here.");   break;
     case '"': msg("The Amulet of Yendor! (,get)"); break;
-    case ')': case '[': case '!': case '%': case '?': case '=':
+    case ')': case '[': case '!': case '%': case '?': case '=': case '/':
         msg2(floor_item_desc(),
              shop_in_room(hero_x, hero_y) ? " (,buy)" : " (,get)", "");
         break;
@@ -654,7 +654,7 @@ static int lookable(char c)
 {
     return c == '>' || c == '<' || c == '"' ||
            c == ')' || c == '[' || c == '!' ||
-           c == '%' || c == '?' || c == '=' || c == '_';
+           c == '%' || c == '?' || c == '=' || c == '/' || c == '_';
 }
 
 /* Per-visit set of traps that have already been sprung (so they don't re-fire).

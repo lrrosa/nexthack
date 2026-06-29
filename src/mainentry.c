@@ -76,6 +76,7 @@ start_game:
         case 'e': do_eat();         in_wait_nokey(); break;   /* themselves, so a */
         case 'r': do_read();        in_wait_nokey(); break;   /* cancel costs none */
         case 't': do_throw();       in_wait_nokey(); break;   /* throw a weapon   */
+        case 'z': do_zap();         in_wait_nokey(); break;   /* zap a wand       */
         case 'i': show_inventory(); break;          /* viewing costs no turn */
         case '?': show_help();      break;          /* full key-list screen; no turn */
         case 'd': do_drop(); in_wait_nokey(); break; /* drop an item (sells in a shop) */
