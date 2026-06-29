@@ -232,7 +232,9 @@ static const char *item_name(uint8_t otyp)
  * "+2 long sword" or "rusty chain mail". Returns a shared static buffer. */
 static const char *obj_desc(const obj_t *o)
 {
-    static char buf[32];
+    static char buf[40];   /* must hold the longest combo, e.g. "blessed corroded
+                            * +2 leather armor" (33) + NUL -- the 32-col displays
+                            * clip it, but the buffer must not be overrun */
     const objtype_t *t = &objtypes[o->otyp];
     char *p = buf;
     const char *s;
@@ -564,7 +566,7 @@ void do_drop(void) __banked
             msg("You can't drop it here.");
             return;
         }
-        msg2("You drop ", obj_desc(&inv[s]), ".");
+        msg("You drop it.");          /* name-free: it's the item you just chose */
         inv_remove((uint8_t)s);
         recompute_gear();
         sfx_pick();
@@ -630,7 +632,7 @@ void do_drop(void) __banked
             msg("You can't drop it here.");
             return;
         }
-        msg2("You drop ", obj_desc(&inv[s]), ".");
+        msg("You drop it.");          /* name-free: it's the item you just chose */
         inv_remove((uint8_t)s);
         recompute_gear();
         sfx_pick();
@@ -864,7 +866,7 @@ void do_quaff(void) __banked
     } else if (ot == O_BLINDNESS) {
         st_blind = (uint8_t)(st_blind + rn2(40) + 30);
         map_dirty = 1;                      /* redraw: the world goes dark */
-        msg("A cloak of darkness falls around you.");
+        msg("Darkness falls around you.");
     } else {                                /* healing / extra healing */
         uint8_t heal = (uint8_t)(rn2(6) + objtypes[ot].prop);
         if (ot == O_EXHEAL) {

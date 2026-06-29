@@ -81,7 +81,7 @@ start_game:
         case 'd': do_drop(); in_wait_nokey(); break; /* drop an item (sells in a shop) */
         case 'E':                                   /* engrave Elbereth in the dust */
             el_x = (uint8_t)hero_x; el_y = (uint8_t)hero_y; el_life = 30;
-            msg("You engrave Elbereth in the dust.");
+            msg("You engrave Elbereth.");
             turns++; acted = 1; in_wait_nokey(); break;
         case 'p': do_pray(); in_wait_nokey(); break;  /* pray to your god */
 

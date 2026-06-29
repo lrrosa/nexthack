@@ -206,7 +206,7 @@ static void monster_hits_player(uint8_t i)
             if (gold > 0) {
                 gold = (uint16_t)(gold >> 1);   /* grabs about half of it... */
                 m_alive[i] = 0;                 /* ...then vanishes with the loot */
-                msg2("The ", mt->name, " grabs your gold and vanishes!");
+                msg2("The ", mt->name, " steals your gold!");
             }
             break;
         case ATK_SLEEP:
