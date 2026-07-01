@@ -8,6 +8,32 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.5.0] — 2026-07-01
+
+### Added
+- **Wands** (`z`) — a new class of item (`/`) that zaps magic and carries a
+  handful of charges. Five kinds turn up as you descend:
+  - **striking** — a bolt that hammers the first monster in its path;
+  - **cold** — a ray that freezes *every* monster along the line;
+  - **sleep** — drops the first monster it hits into a doze;
+  - **teleportation** — whisks the first monster away elsewhere on the level;
+  - **digging** — bores straight down through the floor, dropping you to the
+    next level (no aiming needed).
+
+  Aim a beam in any of the eight directions; it flies over your pet and the
+  shopkeeper before it acts, and each zap spends one charge.
+
+### Changed
+- **Big rooms on the ZX Spectrum 128K are now fluid.** Moving inside a large lit
+  chamber used to lag a second or two per step; the 128K now repaints only what
+  actually moved and lets monsters chase you by line of sight, so even a crowded
+  cavern keeps up with the keyboard. (The Next was already fast.)
+
+### Note
+- Saved games from 1.4.x will **not** load in 1.5.0 — the new wand loot shifts
+  dungeon generation, so the save format and the world both change. Finish any
+  game in progress before upgrading.
+
 ## [1.4.1] — 2026-06-28
 
 A polish pass over the 1.4.0 features.
