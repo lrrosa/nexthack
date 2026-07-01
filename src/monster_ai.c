@@ -372,19 +372,23 @@ static void pet_hits(uint8_t pi, uint8_t ti)
     }
 }
 
-static void pet_step(uint8_t i)
+/* the dog bites the first adjacent enemy (enemies converge on the hero, so the
+ * dog heeling at your side meets them there); 1 if it bit, else 0 */
+static uint8_t pet_bite_adjacent(uint8_t i)
 {
-    uint8_t cur, j;
-    /* bite the first adjacent enemy (enemies converge on the hero, so the dog
-     * heeling at your side meets them there) */
+    uint8_t j;
     for (j = 0; j < mcount; j++) {
         if (!m_alive[j] || j == pet_idx || m_type[j] == MON_KEEPER) continue;
         if (iabs((int)m_x[j] - (int)m_x[i]) <= 1 &&
-            iabs((int)m_y[j] - (int)m_y[i]) <= 1) {
-            pet_hits(i, j);
-            return;
-        }
+            iabs((int)m_y[j] - (int)m_y[i]) <= 1) { pet_hits(i, j); return 1; }
     }
+    return 0;
+}
+
+static void pet_step(uint8_t i)
+{
+    uint8_t cur;
+    if (pet_bite_adjacent(i)) return;
     cur = dist[(uint16_t)m_y[i] * MAPW + m_x[i]];  /* else heel: keep ~2 cells back */
     if (cur == UNREACH || cur > 2) step_to_hero(i);
 }
@@ -420,6 +424,42 @@ static uint8_t pet_heel_greedy(uint8_t i)   /* 1 = heeled/stepped, 0 = boxed in 
     }
     if (bestx >= 0) { m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty; return 1; }
     return 0;                          /* boxed in: caller floods once and routes */
+}
+
+/* +zx: an enemy chases the hero greedily by line of sight (no BFS). In the open
+ * room where it matters for speed this always finds a closer cell, so the flood
+ * never runs -- that flood over a big room is why a single visible monster lagged
+ * the whole room. Returns 0 only when a wall boxes every closer step, leaving the
+ * BFS to route it (corridor floods are small). The caller handles adjacency. */
+static uint8_t enemy_chase_greedy(uint8_t i)
+{
+    int hx = hero_x, hy = hero_y;
+    int dh = iabs(hx - (int)m_x[i]), dv = iabs(hy - (int)m_y[i]);
+    int curc = (dh > dv) ? dh : dv;                /* must beat this Chebyshev */
+    int bestc = 0, bestm = 0, dx, dy, bestx = -1, besty = -1;
+    for (dy = -1; dy <= 1; dy++) {
+        for (dx = -1; dx <= 1; dx++) {
+            int nx = (int)m_x[i] + dx, ny = (int)m_y[i] + dy, a, b, c, m;
+            char t;
+            if (dx == 0 && dy == 0) continue;
+            if (nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH) continue;
+            t = lvl[ny][nx];
+            if (t == '|' || t == '-' || t == ' ') continue;   /* wall/rock         */
+            if (nx == hx && ny == hy) continue;               /* attack is separate */
+            if (shop_in_room(nx, ny)) continue;               /* shops are a safe zone */
+            if (monster_at(nx, ny) >= 0) continue;            /* don't stack         */
+            a = iabs(hx - nx); b = iabs(hy - ny);
+            c = (a > b) ? a : b;
+            if (c >= curc) continue;                          /* must get closer    */
+            m = a + b;            /* Manhattan tiebreak: among equal Chebyshev, the
+                                   * straighter step -- else it drifts diagonally   */
+            if (bestx < 0 || c < bestc || (c == bestc && m < bestm)) {
+                bestc = c; bestm = m; bestx = nx; besty = ny;
+            }
+        }
+    }
+    if (bestx >= 0) { m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty; return 1; }
+    return 0;
 }
 #endif
 
@@ -472,6 +512,40 @@ void monsters_turn(void) __banked
         pet_step((uint8_t)pet_idx);
         return;
     }
+    /* an enemy IS near: every monster chases GREEDILY by line of sight (no flood).
+     * The BFS runs only for any that a wall boxes in -- an open room never blocks,
+     * so a single visible monster no longer floods the whole big room each turn,
+     * which is what made it lag. */
+    {
+        uint16_t blocked = 0;
+        for (i = 0; i < mcount; i++) {
+            if (!m_alive[i] || m_type[i] == MON_KEEPER) continue;
+            if (m_sleep[i]) { m_sleep[i]--; continue; }
+            if (i == (uint8_t)pet_idx) {
+                if (pet_bite_adjacent(i)) continue;
+                if (!pet_heel_greedy(i)) blocked |= (uint16_t)(1u << i);
+                continue;
+            }
+            if (iabs((int)m_x[i] - hero_x) > MON_WAKE ||
+                iabs((int)m_y[i] - hero_y) > MON_WAKE) continue;   /* still dormant */
+            if (iabs(hero_x - (int)m_x[i]) <= 1 && iabs(hero_y - (int)m_y[i]) <= 1) {
+                if (el_life && hero_x == el_x && hero_y == el_y) continue;  /* Elbereth */
+                monster_hits_player(i);
+                if (dead) return;
+                continue;
+            }
+            if (!enemy_chase_greedy(i)) blocked |= (uint16_t)(1u << i);
+        }
+        if (blocked) {                          /* route only the wall-boxed ones */
+            compute_dist_map();
+            for (i = 0; i < mcount; i++) {
+                if (!(blocked & (uint16_t)(1u << i)) || !m_alive[i]) continue;
+                if (i == (uint8_t)pet_idx) pet_step(i);
+                else                       step_to_hero(i);
+            }
+        }
+    }
+    return;
 #endif
     compute_dist_map();
     for (i = 0; i < mcount; i++) {
