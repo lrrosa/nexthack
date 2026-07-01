@@ -294,26 +294,64 @@ void draw_map(void) __banked
 #define VIEW_EDGE   6
 #define VIEW_SHADOW ((uint8_t *)0x6000u)
 static uint8_t vx_origin;
+
+/* draw_map render state, shared with its per-cell helpers (set each call). */
+static const uint8_t *dm_seen, *dm_vis;
+static uint8_t dm_shop, dm_sx, dm_sy, dm_sx1, dm_sy1;
+/* what draw_map put on screen last turn, so the fast path can erase the hero and
+ * monsters it drew and repaint only the cells that moved. 255 = "nothing here". */
+static uint8_t  prev_hx = 255, prev_hy = 255;
+static uint8_t  prev_mx[MAXMON], prev_my[MAXMON];
+static uint16_t prev_vis_sum = 0xFFFF;
+static uint8_t  mon_bm[(MAPH * TM_W + 7) / 8];   /* viewport cells a monster covers */
+
+/* write one viewport cell ONLY if it differs from the shadow (write-once diff). */
+static void dm_paint(uint8_t mapx, uint8_t mapy, uint8_t vx, uint8_t t, uint8_t attr)
+{
+    uint8_t *shad = VIEW_SHADOW, sc;
+    uint16_t si;
+    if (mapx < vx || mapx >= (uint8_t)(vx + TM_W) || mapy >= MAPH) return;
+    sc = (uint8_t)(mapx - vx);
+    si = (uint16_t)(((uint16_t)mapy * TM_W + sc) << 1);
+    if (shad[si] != t || shad[si + 1] != attr) {
+        puttile_attr(sc, (uint8_t)(OY + mapy), t, attr);
+        shad[si] = t; shad[si + 1] = attr;
+    }
+}
+
+/* paint a cell's TERRAIN (the pass-1 non-hero logic) -- used by the fast path to
+ * erase the cell where the hero or a monster was. Uses the dm_* state above. */
+static void dm_terrain(uint8_t mapx, uint8_t mapy, uint8_t vx)
+{
+    uint16_t idx  = (uint16_t)mapy * MAPW + mapx;
+    uint8_t  byte = (uint8_t)(idx >> 3), mask = (uint8_t)(1u << (idx & 7)), t, attr;
+    if (!(dm_seen[byte] & mask)) { t = T_ROCK; attr = 0; }
+    else {
+        t = tile_for(lvl[mapy][mapx]);
+        if (dm_shop && t == T_WALL &&
+            mapx >= dm_sx && mapx <= dm_sx1 && mapy >= dm_sy && mapy <= dm_sy1) t = T_SHOPWALL;
+        attr = (dm_vis[byte] & mask) ? (uint8_t)(udg_ink[t - T_ROCK] | 0x40)
+                                     : udg_ink[t - T_ROCK];
+    }
+    dm_paint(mapx, mapy, vx, t, attr);
+}
+
 void draw_map(void) __banked
 {
-    const uint8_t *seen = fov_bitmap();   /* explored bitmap        */
-    const uint8_t *vis  = vis_bitmap();   /* visible-this-turn map  */
     uint8_t *shad = VIEW_SHADOW;
-    uint8_t sc, x, y, t, attr, vx, full;
-    int mi, hsc, nvx;
-    /* the shop room's bounds (read once), so its walls render in warm bricks */
+    uint8_t sc, x, y, t, attr, vx, full, i;
+    int hsc, nvx;
     uint8_t sx, sy, sw, sh, sx1 = 0, sy1 = 0;
     int has_shop = shop_rect(&sx, &sy, &sw, &sh);
     if (has_shop) { sx1 = (uint8_t)(sx + sw - 1); sy1 = (uint8_t)(sy + sh - 1); }
+    dm_seen = fov_bitmap(); dm_vis = vis_bitmap();
+    dm_shop = (uint8_t)has_shop; dm_sx = sx; dm_sy = sy; dm_sx1 = sx1; dm_sy1 = sy1;
 
     /* keep the viewport origin unless the hero left the central band (or a full
-     * redraw is already pending), then recenter on the hero. A change forces a
-     * full redraw; otherwise only changed cells are written (diff vs shad[]). */
+     * redraw is pending), then recenter -- a change forces a full redraw. */
     full = map_dirty;
-    if (map_dirty) {
-        nvx = hero_x - TM_W / 2;
-        map_dirty = 0;
-    } else {
+    if (map_dirty) { nvx = hero_x - TM_W / 2; map_dirty = 0; }
+    else {
         hsc = hero_x - (int)vx_origin;
         nvx = (hsc >= VIEW_EDGE && hsc <= TM_W - 1 - VIEW_EDGE)
               ? (int)vx_origin : hero_x - TM_W / 2;
@@ -323,37 +361,114 @@ void draw_map(void) __banked
     if ((uint8_t)nvx != vx_origin) { vx_origin = (uint8_t)nvx; full = 1; }
     vx = vx_origin;
 
-    for (y = 0; y < MAPH; y++) {
-        uint16_t idx = (uint16_t)y * MAPW + vx;
-        for (sc = 0; sc < TM_W; sc++, idx++) {
-            uint8_t byte = (uint8_t)(idx >> 3);
-            uint8_t mask = (uint8_t)(1u << (idx & 7));
-            uint16_t si;
-            x = (uint8_t)(vx + sc);
-            if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) {
-                t = T_HERO;
-                attr = (uint8_t)(udg_ink[T_HERO - T_ROCK] | 0x40);
-            } else if (!(seen[byte] & mask)) {
-                t = T_ROCK; attr = 0;             /* never seen -> black  */
-            } else if (vis[byte] & mask) {        /* in sight -> bright   */
-                mi = monster_at(x, y);
-                t = (mi >= 0) ? mon_tile(m_type[mi]) : tile_for(lvl[y][x]);
-                if (has_shop && t == T_WALL &&
-                    x >= sx && x <= sx1 && y >= sy && y <= sy1) t = T_SHOPWALL;
-                attr = (uint8_t)(udg_ink[t - T_ROCK] | 0x40);
-            } else {                              /* remembered -> dim    */
-                t = tile_for(lvl[y][x]);
-                if (has_shop && t == T_WALL &&
-                    x >= sx && x <= sx1 && y >= sy && y <= sy1) t = T_SHOPWALL;
-                attr = udg_ink[t - T_ROCK];       /* BRIGHT off = dimmed  */
+    if (!full && fov_vis_sum == prev_vis_sum) {
+        /* FAST PATH: the viewport and the visible set are unchanged -- you moved
+         * within a lit room. Repaint ONLY the hero and the monsters (erase where
+         * each was, draw where each is) instead of all MAPH*TM_W cells. This is
+         * what makes a big lit room move fluidly on the 3.5 MHz 128K. */
+        /* Erase the hero's old cell ONLY if it moved; the redraw below is a
+         * no-op via the shadow diff when nothing changed. Erasing+redrawing an
+         * unmoved cell every turn is what made a stationary dog flicker. */
+        if (prev_hx != 255 &&
+            (prev_hx != (uint8_t)hero_x || prev_hy != (uint8_t)hero_y))
+            dm_terrain(prev_hx, prev_hy, vx);
+        dm_paint((uint8_t)hero_x, (uint8_t)hero_y, vx, T_HERO,
+                 (uint8_t)(udg_ink[T_HERO - T_ROCK] | 0x40));
+        for (i = 0; i < MAXMON; i++) {
+            uint8_t cmx = 255, cmy = 255;   /* this turn's drawn cell, or 255 = none */
+            if (i < mcount && m_alive[i] && m_y[i] < MAPH &&
+                m_x[i] >= vx && m_x[i] < (uint8_t)(vx + TM_W) &&
+                !(m_x[i] == (uint8_t)hero_x && m_y[i] == (uint8_t)hero_y)) {
+                uint16_t midx = (uint16_t)m_y[i] * MAPW + m_x[i];
+                if (dm_vis[midx >> 3] & (1u << (midx & 7))) { cmx = m_x[i]; cmy = m_y[i]; }
             }
-            si = (uint16_t)(((uint16_t)y * TM_W + sc) << 1);
-            if (full || shad[si] != t || shad[si + 1] != attr) {
-                puttile_attr(sc, (uint8_t)(OY + y), t, attr);
-                shad[si] = t; shad[si + 1] = attr;
+            if (prev_mx[i] != 255 && (prev_mx[i] != cmx || prev_my[i] != cmy))
+                dm_terrain(prev_mx[i], prev_my[i], vx);   /* erase only where it left */
+            if (cmx != 255) {
+                t = mon_tile(m_type[i]);
+                dm_paint(cmx, cmy, vx, t, (uint8_t)(udg_ink[t - T_ROCK] | 0x40));
+            }
+        }
+    } else {
+        /* FULL redraw (level entry, scroll, or the FOV changed). Draw the MONSTERS
+         * FIRST (and mark their cells), then terrain skipping those cells. Drawing
+         * a monster's new cell before the terrain pass erases its old cell means a
+         * moving monster is never briefly absent -- that gap was the corridor
+         * flicker. (Terrain under it stays correct: when it moves on, its old cell
+         * is no longer marked, so the terrain pass repaints floor there.) */
+        { uint16_t bz; for (bz = 0; bz < sizeof mon_bm; bz++) mon_bm[bz] = 0; }
+        for (i = 0; i < mcount; i++) {
+            uint16_t midx, vb;
+            uint8_t mt;
+            if (!m_alive[i] || m_y[i] >= MAPH) continue;
+            if (m_x[i] < vx || m_x[i] >= (uint8_t)(vx + TM_W)) continue;
+            if (m_x[i] == (uint8_t)hero_x && m_y[i] == (uint8_t)hero_y) continue;
+            midx = (uint16_t)m_y[i] * MAPW + m_x[i];
+            if (!(dm_vis[midx >> 3] & (1u << (midx & 7)))) continue;
+            vb = (uint16_t)m_y[i] * TM_W + (uint16_t)(m_x[i] - vx);
+            mon_bm[vb >> 3] |= (uint8_t)(1u << (vb & 7));
+            mt = mon_tile(m_type[i]);
+            dm_paint(m_x[i], m_y[i], vx, mt, (uint8_t)(udg_ink[mt - T_ROCK] | 0x40));
+        }
+        /* erase where each monster was drawn last turn (unless a monster is there
+         * now) RIGHT AWAY -- not in the slow terrain pass below -- so the old cell
+         * doesn't linger as a ghost while the terrain pass grinds toward it. */
+        for (i = 0; i < mcount; i++) {
+            uint8_t px = prev_mx[i], py = prev_my[i];
+            uint16_t pvb;
+            if (px == 255 || px < vx || px >= (uint8_t)(vx + TM_W) || py >= MAPH) continue;
+            if (px == (uint8_t)hero_x && py == (uint8_t)hero_y) continue;  /* hero is here now */
+            pvb = (uint16_t)py * TM_W + (uint16_t)(px - vx);
+            if (mon_bm[pvb >> 3] & (1u << (pvb & 7))) continue;   /* a monster is here now */
+            dm_terrain(px, py, vx);
+        }
+        for (y = 0; y < MAPH; y++) {
+            uint16_t idx = (uint16_t)y * MAPW + vx;
+            uint16_t si  = (uint16_t)((uint16_t)y * TM_W) << 1;
+            uint16_t vb  = (uint16_t)y * TM_W;
+            const char *lrow = lvl[y];
+            for (sc = 0; sc < TM_W; sc++, idx++, si += 2, vb++) {
+                uint8_t byte, mask;
+                if (mon_bm[vb >> 3] & (1u << (vb & 7))) continue;   /* a monster is here */
+                byte = (uint8_t)(idx >> 3);
+                mask = (uint8_t)(1u << (idx & 7));
+                x = (uint8_t)(vx + sc);
+                if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) {
+                    t = T_HERO;
+                    attr = (uint8_t)(udg_ink[T_HERO - T_ROCK] | 0x40);
+                } else if (!(dm_seen[byte] & mask)) {
+                    t = T_ROCK; attr = 0;
+                } else {
+                    t = tile_for(lrow[x]);
+                    if (has_shop && t == T_WALL &&
+                        x >= sx && x <= sx1 && y >= sy && y <= sy1) t = T_SHOPWALL;
+                    attr = (dm_vis[byte] & mask)
+                           ? (uint8_t)(udg_ink[t - T_ROCK] | 0x40)
+                           : udg_ink[t - T_ROCK];
+                }
+                if (full || shad[si] != t || shad[si + 1] != attr) {
+                    puttile_attr(sc, (uint8_t)(OY + y), t, attr);
+                    shad[si] = t; shad[si + 1] = attr;
+                }
             }
         }
     }
+
+    /* remember what is on screen now, for next turn's fast path: each monster's
+     * DRAWN cell (255 = not drawn), so next turn erases exactly where it left. */
+    prev_hx = (uint8_t)hero_x; prev_hy = (uint8_t)hero_y;
+    for (i = 0; i < MAXMON; i++) {
+        uint8_t dr = 0;
+        if (i < mcount && m_alive[i] && m_y[i] < MAPH &&
+            m_x[i] >= vx && m_x[i] < (uint8_t)(vx + TM_W) &&
+            !(m_x[i] == (uint8_t)hero_x && m_y[i] == (uint8_t)hero_y)) {
+            uint16_t midx = (uint16_t)m_y[i] * MAPW + m_x[i];
+            if (dm_vis[midx >> 3] & (1u << (midx & 7))) dr = 1;
+        }
+        if (dr) { prev_mx[i] = m_x[i]; prev_my[i] = m_y[i]; }
+        else      prev_mx[i] = 255;
+    }
+    prev_vis_sum = fov_vis_sum;
 }
 #endif
 
