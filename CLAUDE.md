@@ -20,16 +20,23 @@ budget). The old pinned `..\z88dk` (v23854) lacks it and can no longer build thi
 source. Build/run are scripts run from this folder:
 
 ```bat
-build.bat            REM builds the whole game -> nexthack.nex (+ nexthack.map)
+build.bat            REM builds the whole Next game -> nexthack.nex (+ nexthack.map)
 build.bat foo.c      REM builds a single .c file -> foo.nex
-run.bat              REM runs nexthack.nex in CSpect (no SD; can't test save)
-run.bat foo.nex      REM runs a specific .nex
-run-sd.bat           REM deploys into zxnext.sd and boots NextZXOS (tests save)
+run-next.bat         REM runs nexthack.nex in ZEsarUX (Next; esxDOS auto-mounted, so 'S' save works)
+run-next.bat foo.nex REM runs a specific .nex
+run-zx128.bat        REM runs nexthack128.tap in ZEsarUX (128K; Enter at the boot menu = Tape Loader)
 ```
 ```powershell
-.\build.ps1          # incremental + parallel build -> nexthack.nex (preferred)
+.\build.ps1          # incremental + parallel Next build -> nexthack.nex (preferred)
 .\build.ps1 -Clean   # force a full rebuild
+.\build-zx128.ps1    # builds the ZX 128K target -> nexthack128.tap (+ .sna, but the .sna is dead)
 ```
+
+**Both targets run in ZEsarUX** (`..\ZEsarUX`, ZRCP on TCP :10000) -- CSpect and
+the SD-image dance are gone. The 128K MUST be the **`.tap`**: appmake's `.sna`
+boots the resident title but crashes on the first banked call (it doesn't carry
+the code-banked RAM banks). ZEsarUX auto-mounts esxDOS onto the .nex's folder, so
+save/restore works with no SD image (the old `run-sd.bat`, now removed).
 
 `build.bat` sets `ZCCCFG`/`PATH` (to `..\z88dk-latest`) and invokes one zcc pass:
 
@@ -48,16 +55,15 @@ When adding a new `.c` module, put it in `src/`, add it to the `SRCS`/`$srcs`
 list in **both** `build.bat` and `build.ps1`, and decide resident vs banked
 (see Memory budget).
 
-There are no automated tests. Verification is manual: build, then run in CSpect and
-observe. The build agent cannot see the emulator window, so behaviour is confirmed
-by the human running `run.bat`.
+There are no automated tests. Verification is manual: build, then run in ZEsarUX
+and observe. The build agent **can** drive ZEsarUX itself over ZRCP (read memory,
+inject keys — see the `zesarux-zrcp-debugging` memory) to verify most behaviour;
+the human confirms the wall-clock *feel* (which ZRCP's CPU-pausing reads distort).
 
 ### Gotchas that waste time
-- **`run.bat`'s `-mmc` must point at a non-existent `.img`** (it does). Point it at a
-  real folder and CSpect mounts it as an SD root, finds no NextZXOS, and drops to
-  48K BASIC instead of autoloading the `.nex`. "Booted to BASIC" almost always means
-  this, or an invalid `.nex`, or a startup crash (see memory budget below).
-- CSpect 3.x has a **built-in Next ROM**, so no system ROM/SD image is needed.
+- **128K: load the `.tap`, never the `.sna`.** The `.sna` boots the resident title
+  then crashes on the first banked call. And at the 128K boot menu press ENTER
+  (Tape Loader) to `LOAD ""` the tape.
 - SDCC's `warning 110 ... "EVELYN the modified DOG"` is a **harmless** peephole-optimizer
   message; ignore it.
 - SDCC `int` is **16-bit**. Watch for overflow; `long` works but is slow.
@@ -213,9 +219,9 @@ tilemap.
   (`item.c`), and the per-depth `gold_taken`/`item_taken`/`mon_dead` masks plus the
   `fov_pool` LRU fog-of-war (`level.c`/`monster.c`).
 - File I/O lives in the **platform layer** (`file_*` in `platform.c`, wrapping
-  esxDOS `esx_f_*`). It needs a mounted writable filesystem, which `run.bat` does
-  **not** give — use **`run-sd.bat`** (copies the `.nex` into `..\CSpect\zxnext.sd`
-  with `hdfmonkey`, boots NextZXOS; run the `.nex` from the Browser).
+  esxDOS `esx_f_*`). It needs a mounted writable filesystem, which **`run-next.bat`**
+  gives for free: ZEsarUX auto-mounts esxDOS onto the .nex's folder, so `S` saves to
+  `nexthack.sav` there and the next boot restores it. (No SD image / `hdfmonkey`.)
 - Memory budget: the cheap per-level masks scale to all 50 levels (`MAXLVL =
   DLVL_AMULET`, ~3 bytes/level), but the fog-of-war does **not** — it is a fixed
   `FOV_SLOTS`-entry LRU pool, so RAM is independent of dungeon depth. esxDOS itself

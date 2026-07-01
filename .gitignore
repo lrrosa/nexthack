@@ -15,8 +15,7 @@
 # appmake generated loaders (.bat) — keep our own scripts
 *.bat
 !build.bat
-!run.bat
-!run-sd.bat
+!run-next.bat
 !run-zx128.bat
 
 # raw extensionless binaries produced by zcc

@@ -166,35 +166,17 @@ are dropped. Banking comes from `zpragma-zx128.inc` (the `CRT_ORG_BANK_N`
 far-bank ORGs); `tools/png2scr.py` regenerates the title/victory SCRs from the
 PNG art.
 
-## Run on CSpect
+## Run the Next build
 
-CSpect 3.x boots with a built-in Next ROM, so **no system ROM or SD card image is
-required**.
-
-```bat
-run.bat              REM runs nexthack.nex on CSpect
-```
-
-> Note: `run.bat` passes `-mmc` a non-existent `.img` path on purpose. Pointing
-> `-mmc` at a real folder makes CSpect mount it as the SD root, find no NextZXOS,
-> and drop into 48K BASIC instead of autoloading the `.nex`.
-
-### Testing save/restore
-
-`S` saves to the SD card, so it needs a mounted, writable filesystem — which the
-plain `run.bat` (no SD) does not provide. Use `run-sd.bat`, which copies
-`nexthack.nex` into the NextZXOS SD image (`..\CSpect\zxnext.sd`) with `hdfmonkey`
-and boots from it; then run `/nexthack.nex` from the NextZXOS Browser.
+Both targets run in the **ZEsarUX** emulator (kept one dir up, in `..\ZEsarUX`).
 
 ```bat
-build.bat            REM build first
-run-sd.bat           REM deploy into the SD image and boot NextZXOS
+run-next.bat         REM runs nexthack.nex in ZEsarUX (Next)
 ```
 
-Alternatively, the **ZEsarUX** emulator auto-mounts esxDOS onto the folder that
-holds the `.nex`, so save/restore works directly against the host directory — no
-SD image or `hdfmonkey` needed. Load `nexthack.nex` in ZEsarUX and play; `S` then
-writes `nexthack.sav` beside it, to be reloaded automatically on the next boot.
+ZEsarUX auto-mounts esxDOS onto the folder holding the `.nex`, so **save/restore
+works directly**: in game, `S` writes `nexthack.sav` beside the `.nex` and the
+next boot reloads it — no SD card image or `hdfmonkey` needed.
 
 ## Run the ZX Spectrum 128K build
 
@@ -205,15 +187,17 @@ via `0x7FFD`, then a small boot stub sets the interrupt mode before starting —
 it does not depend on esxDOS just to run.
 
 ```bat
-run-zx128.bat        REM dev convenience: boots nexthack128.sna in ZEsarUX (--machine 128k)
+run-zx128.bat        REM dev convenience: boots nexthack128.tap in ZEsarUX (--machine 128k)
 ```
 
 `run-zx128.bat` launches **ZEsarUX** (sibling `..\ZEsarUX\`) for quick local
-testing. Save/restore on the 128K needs an **esxDOS/DivMMC** interface, which the
-game probes for at startup: with one, `S` writes `nexthack.sav` and it reloads on
-the next boot; without one the game runs normally but cannot save. The build also
-emits a `nexthack128.sna`, but that is only for ZEsarUX's quick-load — accurate
-emulators show garbage for it, so **ship the `.tap`, not the `.sna`**.
+testing; at the 128K boot menu press Enter (Tape Loader) to load the tape.
+Save/restore on the 128K needs an **esxDOS/DivMMC** interface, which the game
+probes for at startup: with one, `S` writes `nexthack.sav` and it reloads on the
+next boot; without one the game runs normally but cannot save. The build also
+emits a `nexthack128.sna`, but it is **dead** — it boots the resident title then
+crashes on the first banked call (it doesn't carry the code-banked RAM banks),
+in ZEsarUX too. **Run and ship the `.tap`, not the `.sna`.**
 
 ## Controls
 
