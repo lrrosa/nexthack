@@ -191,7 +191,9 @@ run-zx128.bat        REM dev convenience: boots nexthack128.tap in ZEsarUX (--ma
 ```
 
 `run-zx128.bat` launches **ZEsarUX** (sibling `..\ZEsarUX\`) for quick local
-testing; at the 128K boot menu press Enter (Tape Loader) to load the tape.
+testing; it inserts the tape with `--tape`, so ZEsarUX auto-loads it straight to
+the title (no boot-menu key). It also passes `--noconfigfile` so the shared
+ZEsarUX config can't force the Next machine over the 128K.
 Save/restore on the 128K needs an **esxDOS/DivMMC** interface, which the game
 probes for at startup: with one, `S` writes `nexthack.sav` and it reloads on the
 next boot; without one the game runs normally but cannot save. The build also

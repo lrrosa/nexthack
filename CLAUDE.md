@@ -24,7 +24,7 @@ build.bat            REM builds the whole Next game -> nexthack.nex (+ nexthack.
 build.bat foo.c      REM builds a single .c file -> foo.nex
 run-next.bat         REM runs nexthack.nex in ZEsarUX (Next; esxDOS auto-mounted, so 'S' save works)
 run-next.bat foo.nex REM runs a specific .nex
-run-zx128.bat        REM runs nexthack128.tap in ZEsarUX (128K; Enter at the boot menu = Tape Loader)
+run-zx128.bat        REM runs nexthack128.tap in ZEsarUX (128K; auto-loads the tape)
 ```
 ```powershell
 .\build.ps1          # incremental + parallel Next build -> nexthack.nex (preferred)
@@ -62,8 +62,9 @@ the human confirms the wall-clock *feel* (which ZRCP's CPU-pausing reads distort
 
 ### Gotchas that waste time
 - **128K: load the `.tap`, never the `.sna`.** The `.sna` boots the resident title
-  then crashes on the first banked call. And at the 128K boot menu press ENTER
-  (Tape Loader) to `LOAD ""` the tape.
+  then crashes on the first banked call. `run-zx128.bat` needs `--noconfigfile` or
+  the shared `.zesaruxrc` (left by `run-next.bat`) forces the Next machine and
+  reloads the last `.nex` over the tape (see the `zesarux-zrcp-debugging` memory).
 - SDCC's `warning 110 ... "EVELYN the modified DOG"` is a **harmless** peephole-optimizer
   message; ignore it.
 - SDCC `int` is **16-bit**. Watch for overflow; `long` works but is slow.

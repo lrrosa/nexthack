@@ -23,8 +23,8 @@ REM  save ('S') still works, writing nexthack.sav beside the .tap.
 REM  (Do NOT add --enable-divmmc-paging: it maps the DivMMC ROM over
 REM  the tape loader and the game never boots.)
 REM
-REM  At the 128K boot menu, press ENTER (Tape Loader) to LOAD "" the
-REM  tape; the game then autostarts.
+REM  ZEsarUX auto-loads the inserted tape (its default with no config),
+REM  so there's no 128K-menu Enter to press -- it boots to the title.
 REM
 REM  Usage:  run-zx128.bat            (runs nexthack128.tap)
 REM          run-zx128.bat my.tap
