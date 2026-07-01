@@ -4,7 +4,7 @@ A from-scratch NetHack-style roguelike built with **Z88DK** (the `zsdcc`/SDCC C
 compiler). **One codebase builds two targets:**
 
 - the **ZX Spectrum Next** ([+zxn](https://www.specnext.com/)) — hardware tilemap,
-  full-colour 8×8 tiles, Layer 2 title/victory art; tested on **CSpect**;
+  full-colour 8×8 tiles, Layer 2 title/victory art; tested on **ZEsarUX**;
 - the plain **ZX Spectrum 128K** (+zx) — ULA display, 1-bit UDG tiles, an
   edge-scrolling 32-column viewport over the 80-wide map, and attribute-clash SCR
   loading screens; tested on **ZEsarUX**.
@@ -58,7 +58,8 @@ code.
   potions and scrolls start **unidentified**. Wield/wear the best you carry,
   quaff/eat/read, watch acid blobs corrode your gear, beware cursed items that
   won't come off — and step onto an **altar** (`_`) to reveal the blessings on
-  what you carry.
+  what you carry. **Wands** (`z`) zap magic in a chosen direction — a striking
+  bolt, a freezing ray, sleep or teleport-away — or dig straight down a level.
 - **Shops** with priced goods and a shopkeeper to buy from and sell to, plus
   **special levels** — the cavernous Big Room, guarded **treasure vaults** (gold
   and superior gear behind tough monsters), and **hand-drawn maps** like a
@@ -101,6 +102,7 @@ same minus the Layer 2 images.
 | `level.c` / `.h` | R | terrain buffer and the per-cell leaves (terrain / walkable / tile lookup) |
 | `levelgen.c` | B | procedural generation, special levels, gold/item persistence |
 | `levelfov.c` | B | field of view (fog of war) and save/restore |
+| `leveltmpl.c` | B | loader for the hand-drawn special-level templates |
 | `monster.c` / `.h` | R | monster arrays, per-monster lookups and the bestiary |
 | `monster_ai.c` | B | chase pathing (BFS), combat, spawning, kill persistence, the pet |
 | `item.c` / `.h` | B | inventory and items (pick up, wield/wear/quaff/eat/read/put-on, throw) |
@@ -119,7 +121,7 @@ z88dk (the `__banked` trampoline, build v24836+):
 <parent>/
 ├─ nexthack/        ← this repository
 ├─ z88dk-latest/    ← z88dk SDK, nightly v24836+  (https://github.com/z88dk/z88dk)
-└─ CSpect/          ← the CSpect emulator         (https://mdf200.itch.io/cspect)
+└─ ZEsarUX/         ← the ZEsarUX emulator        (https://github.com/chernandezba/zesarux)
 ```
 
 With that layout in place, `build.ps1` is the preferred build — incremental and
@@ -143,7 +145,7 @@ Equivalent direct invocation of the full build:
 ```bat
 set ZCCCFG=..\z88dk-latest\lib\config\
 set PATH=..\z88dk-latest\bin;%PATH%
-zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startup=1 -pragma-include:zpragma.inc -m src/mainentry.c src/nexthack.c src/platform.c src/platform_init.c src/rng.c src/level.c src/levelgen.c src/levelfov.c src/monster.c src/monster_ai.c src/item.c src/sfx.c src/titlegfx0.c src/titlegfx1.c src/titlegfx2.c src/titlepal.c -o nexthack -create-app
+zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startup=1 -pragma-include:zpragma.inc -m src/mainentry.c src/nexthack.c src/platform.c src/platform_init.c src/rng.c src/level.c src/levelgen.c src/levelfov.c src/monster.c src/monster_ai.c src/item.c src/sfx.c src/leveltmpl.c src/titlegfx0.c src/titlegfx1.c src/titlegfx2.c src/titlepal.c src/victorygfx0.c src/victorygfx1.c src/victorygfx2.c src/victorypal.c -o nexthack -create-app
 ```
 
 The banking layout is configured by `zpragma.inc` (stack at `0xBFF0`, banking
@@ -217,6 +219,7 @@ in ZEsarUX too. **Run and ship the `.tap`, not the `.sna`.**
 | `P`                       | put on a ring |
 | `q` / `e` / `r`           | quaff potion / eat food / read scroll |
 | `t`                       | throw a weapon in a direction |
+| `z`                       | zap a wand (strike, freeze, sleep, teleport, or dig down) |
 | `p`                       | pray to your god |
 | `E`                       | engrave Elbereth in the dust (wards off monsters) |
 | `S`                       | save game and quit to the title |
@@ -237,7 +240,7 @@ from the roguelike tradition):
 - **Terrain:** floor (`.`), corridor (`#`), wall (`-` `|`), door (`+`),
   stairs up/down (`<` `>`), altar (`_`), a sprung trap (`^`)
 - **Items:** gold (`$`), weapon (`)`), armor (`[`), potion (`!`), food (`%`),
-  scroll (`?`), ring (`=`), the Amulet of Yendor (`"`)
+  scroll (`?`), ring (`=`), wand (`/`), the Amulet of Yendor (`"`)
 - **Creatures:** hero and shopkeeper (`@`), rat (`r`), bat (`B`), acid blob (`a`),
   kobold (`k`), dog (`d`), snake (`S`), orc (`o`), zombie (`Z`), leprechaun (`l`),
   yellow light (`y`), homunculus (`i`), wraith (`W`)
@@ -266,7 +269,6 @@ from the roguelike tradition):
 - ZX Spectrum Next — Sprites: <https://www.specnext.com/sprites/>
 - NetHack: <https://www.nethack.org/>
 - z88dk: <https://github.com/z88dk/z88dk>
-- CSpect emulator: <https://mdf200.itch.io/cspect>
 - ZEsarUX emulator: <https://github.com/chernandezba/zesarux>
 
 ## License
