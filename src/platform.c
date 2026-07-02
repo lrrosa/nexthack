@@ -228,3 +228,49 @@ int getkey(void)
     } while (k == 0);
     return k;
 }
+
+/* getkey with typematic repeat, for the turn loop. A fresh press acts at once;
+ * a key still held since the last returned press repeats only after RPT_FIRST
+ * frames, then every RPT_NEXT (the 50 Hz FRAMES sysvar -- wall clock on both
+ * the 3.5 MHz 128K and the 28 MHz Next). Needed because in_pause() returns AT
+ * ONCE while any key is down, so nothing ever throttled a held key: once the
+ * per-turn work got fast, a ~120 ms human tap fired 2-3 moves and you couldn't
+ * stop on the cell you wanted. Tap = exactly one step; hold = one step, a
+ * beat, then a steady walk. Release at any point re-arms the instant path. */
+#define RPT_FIRST 13            /* frames before the first repeat  (~260 ms) */
+#define RPT_NEXT   4            /* frames between repeats after it  (~80 ms) */
+#ifdef __ZXNEXT
+#define RPT_GUARD 800           /* the bare .nex runs with interrupts off, so
+                                 * FRAMES never ticks: the poll loop IS the
+                                 * timer. One in_inkey poll ~= 700 T; 800 polls
+                                 * at 28 MHz ~= 20 ms, one nominal frame. */
+#else
+#define RPT_GUARD 4000          /* FRAMES ticks (IM1 ROM ISR): the guard is
+                                 * only a backstop against a stall */
+#endif
+
+int getkey_rpt(void)
+{
+    static int last = 0;
+    static uint8_t rpt = 0;
+    volatile uint8_t *fr = (volatile uint8_t *)23672;   /* FRAMES lsb, 50 Hz */
+    int k = in_inkey();
+    if (k != 0 && k == last) {          /* still held since the last return */
+        uint8_t n = rpt ? RPT_NEXT : RPT_FIRST;
+        while (n--) {
+            uint8_t  f = *fr;
+            uint16_t guard = RPT_GUARD;
+            while (*fr == f && --guard) {
+                k = in_inkey();
+                if (k != last) goto changed;   /* released or rolled mid-wait */
+            }
+        }
+        rpt = 1;                        /* held through the delay: repeat */
+        return last;
+    }
+changed:
+    if (k == 0)                         /* nothing down: block for a fresh key */
+        do { k = in_inkey(); } while (k == 0);
+    last = k; rpt = 0;                  /* fresh (or different) key: act at once */
+    return k;
+}

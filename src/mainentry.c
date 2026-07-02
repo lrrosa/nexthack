@@ -54,7 +54,7 @@ start_game:
     for (;;) {
         acted = 0;
         if (st_sleep) { acted = 1; turns++; }   /* asleep/paralysed: forfeit the turn */
-        else k = getkey();
+        else k = getkey_rpt();  /* typematic: a tap is one step, a hold walks */
 
         if (!st_sleep) switch (k) {
         /* movement: cursor keys + NetHack vi-keys (hjkl + yubn diagonals) */
@@ -154,14 +154,8 @@ start_game:
             in_wait_nokey();
         }
 
-#ifdef __ZXNEXT
-        in_pause(40);   /* throttle continuous (held-key) movement */
-#else
-        in_pause(6);    /* 128K: light throttle (was 40). Below ~6 ms the per-
-                         * turn work -- mainly the monster-chase BFS -- is the
-                         * floor anyway, so further cuts saturate. in_pause(0)
-                         * is avoided: the lib's msec countdown underflows to a
-                         * ~65 s pause. */
-#endif
+        /* No tail in_pause: it returned AT ONCE while any key was down (the
+         * lib samples the keyboard and exits early), so it never throttled a
+         * held key -- getkey_rpt's typematic delay is the real pacing now. */
     }
 }

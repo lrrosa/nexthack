@@ -259,9 +259,13 @@ tilemap.
   guarded enqueues — do not size it to `MAPW*MAPH` (see memory budget).
 
 ### Turn loop & input (`nexthack.c main`)
-- Loop: read key → act → if the action took a turn, `upkeep()` (hunger/regen) then
-  `monsters_turn()` → recompute FOV → redraw → handle death → `in_pause(40)` to
-  throttle held-key movement.
+- Loop: read key (`getkey_rpt`) → act → if the action took a turn, `upkeep()`
+  (hunger/regen) then `monsters_turn()` → recompute FOV → redraw → handle death.
+- Held keys pace via **typematic repeat** in `getkey_rpt` (`platform.c`): a tap is
+  exactly one step, a hold repeats after ~260 ms then every ~80 ms. Do NOT try to
+  throttle with `in_pause` — it returns immediately while any key is down. The 128K
+  times by the FRAMES sysvar; the bare `.nex` runs with interrupts off (FRAMES
+  dead), so there the bounded poll loop itself is the ~20 ms clock (`RPT_GUARD`).
 - Movement: cursor keys **and** vi-keys (`hjkl`+`yubn`). Commands are NetHack-style
   single letters (`,` `i` `w` `W` `P` `q` `e` `r` `S`, `>`/`<`/Enter for stairs). Uppercase
   is **not** folded to lowercase (so `w` wield vs `W` wear are distinct).

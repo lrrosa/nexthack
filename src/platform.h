@@ -105,6 +105,9 @@ void msg_num(const char *a, uint16_t n, const char *c);
 
 /* keyboard: returns the key currently held (does not wait for release) */
 int getkey(void);
+/* getkey with typematic repeat: a fresh press acts at once, a held key repeats
+ * after a beat -- the turn loop's read, so a tap is exactly one step */
+int getkey_rpt(void);
 
 /* ---- save-file I/O via NextZXOS/esxDOS ---- */
 #define FILE_ERR 0xFF                        /* handle returned on failure */
