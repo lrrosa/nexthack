@@ -40,6 +40,9 @@ uint8_t  has_amulet = 0;
 uint8_t  won = 0;
 uint8_t  acted = 0;
 uint8_t  map_dirty = 1;   /* +zx renderer flag (unused on Next) */
+uint8_t  map_flush = 0;   /* +zx: skip draw_map's fast path once (a cell changed
+                           * at a distance: a throw landed, search revealed a
+                           * trap, a mapping scroll) WITHOUT recentring the view */
 uint8_t  weapon_dmg = 0;
 uint8_t  armor_def = 0;
 uint8_t  ac = 10;
@@ -361,7 +364,7 @@ void draw_map(void) __banked
     if ((uint8_t)nvx != vx_origin) { vx_origin = (uint8_t)nvx; full = 1; }
     vx = vx_origin;
 
-    if (!full && fov_vis_sum == prev_vis_sum) {
+    if (!full && !map_flush && fov_vis_sum == prev_vis_sum) {
         /* FAST PATH: the viewport and the visible set are unchanged -- you moved
          * within a lit room. Repaint ONLY the hero and the monsters (erase where
          * each was, draw where each is) instead of all MAPH*TM_W cells. This is
@@ -382,8 +385,14 @@ void draw_map(void) __banked
                 uint16_t midx = (uint16_t)m_y[i] * MAPW + m_x[i];
                 if (dm_vis[midx >> 3] & (1u << (midx & 7))) { cmx = m_x[i]; cmy = m_y[i]; }
             }
-            if (prev_mx[i] != 255 && (prev_mx[i] != cmx || prev_my[i] != cmy))
-                dm_terrain(prev_mx[i], prev_my[i], vx);   /* erase only where it left */
+            /* erase only where it left -- but never the hero's cell: swapping with
+             * the pet puts its old cell UNDER the just-drawn hero (terrain there
+             * would wipe the hero for a turn). Monster-vs-monster can't collide:
+             * the AI moves in the same ascending order, so a cell vacated this
+             * turn is only entered by a HIGHER slot, drawn after this erase. */
+            if (prev_mx[i] != 255 && (prev_mx[i] != cmx || prev_my[i] != cmy) &&
+                !(prev_mx[i] == (uint8_t)hero_x && prev_my[i] == (uint8_t)hero_y))
+                dm_terrain(prev_mx[i], prev_my[i], vx);
             if (cmx != 255) {
                 t = mon_tile(m_type[i]);
                 dm_paint(cmx, cmy, vx, t, (uint8_t)(udg_ink[t - T_ROCK] | 0x40));
@@ -469,6 +478,7 @@ void draw_map(void) __banked
         else      prev_mx[i] = 255;
     }
     prev_vis_sum = fov_vis_sum;
+    map_flush = 0;                    /* the distant change (if any) is on screen */
 }
 #endif
 
@@ -852,6 +862,7 @@ void do_search(void) __banked
                 found = 1;
             }
         }
+    if (found) map_flush = 1;   /* +zx: the revealed '^' isn't the hero's cell */
     msg(found ? "You find a trap!" : "You search around.");
     turns++; acted = 1;
 }

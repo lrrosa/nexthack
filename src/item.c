@@ -148,6 +148,7 @@ static int floor_drop(uint8_t x, uint8_t y, const obj_t *o)
     floor_obj[floor_n].o = *o;
     floor_n++;
     lvl[y][x] = ')';                 /* now shows + picks up as an item */
+    map_flush = 1;                   /* +zx: a thrown weapon lands cells away */
     return 1;
 }
 
@@ -930,6 +931,7 @@ void do_read(void) __banked
     sfx_magic();
     if (ot == O_MAPPING) {
         fov_reveal();
+        map_flush = 1;   /* +zx: seen-bits changed but vis didn't -- show the map */
         msg("The level map fills your mind!");
     } else {                            /* O_TELEPORT */
         uint8_t tx, ty;
