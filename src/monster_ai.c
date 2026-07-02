@@ -413,13 +413,14 @@ static uint8_t pet_heel_greedy(uint8_t i)   /* 1 = heeled/stepped, 0 = boxed in 
             char t;
             if (dx == 0 && dy == 0) continue;
             if (nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH) continue;
+            a = iabs(hx - nx); b = iabs(hy - ny);   /* distance filter FIRST (cheap) */
+            c = (a > b) ? a : b;
+            if (c >= bestc) continue;
             t = lvl[ny][nx];
             if (t == '|' || t == '-' || t == ' ') continue;   /* wall/rock     */
             if (nx == hx && ny == hy) continue;               /* not onto hero */
             if (monster_at(nx, ny) >= 0) continue;            /* don't stack    */
-            a = iabs(hx - nx); b = iabs(hy - ny);
-            c = (a > b) ? a : b;
-            if (c < bestc) { bestc = c; bestx = nx; besty = ny; }
+            bestc = c; bestx = nx; besty = ny;
         }
     }
     if (bestx >= 0) { m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty; return 1; }
@@ -443,19 +444,21 @@ static uint8_t enemy_chase_greedy(uint8_t i)
             char t;
             if (dx == 0 && dy == 0) continue;
             if (nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH) continue;
-            t = lvl[ny][nx];
-            if (t == '|' || t == '-' || t == ' ') continue;   /* wall/rock         */
-            if (nx == hx && ny == hy) continue;               /* attack is separate */
-            if (shop_in_room(nx, ny)) continue;               /* shops are a safe zone */
-            if (monster_at(nx, ny) >= 0) continue;            /* don't stack         */
+            /* distance filters FIRST: they reject most neighbours for a couple of
+             * adds, so the pricier probes below run for ~2 real candidates, not 8 */
             a = iabs(hx - nx); b = iabs(hy - ny);
             c = (a > b) ? a : b;
             if (c >= curc) continue;                          /* must get closer    */
             m = a + b;            /* Manhattan tiebreak: among equal Chebyshev, the
                                    * straighter step -- else it drifts diagonally   */
-            if (bestx < 0 || c < bestc || (c == bestc && m < bestm)) {
-                bestc = c; bestm = m; bestx = nx; besty = ny;
-            }
+            if (bestx >= 0 && (c > bestc || (c == bestc && m >= bestm)))
+                continue;                                     /* not better anyway  */
+            t = lvl[ny][nx];
+            if (t == '|' || t == '-' || t == ' ') continue;   /* wall/rock         */
+            if (nx == hx && ny == hy) continue;               /* attack is separate */
+            if (shop_in_room(nx, ny)) continue;               /* shops are a safe zone */
+            if (monster_at(nx, ny) >= 0) continue;            /* don't stack         */
+            bestc = c; bestm = m; bestx = nx; besty = ny;
         }
     }
     if (bestx >= 0) { m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty; return 1; }
