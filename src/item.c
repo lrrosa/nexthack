@@ -147,7 +147,9 @@ static int floor_drop(uint8_t x, uint8_t y, const obj_t *o)
     floor_obj[floor_n].och = (uint8_t)t;
     floor_obj[floor_n].o = *o;
     floor_n++;
-    lvl[y][x] = ')';                 /* now shows + picks up as an item */
+    lvl[y][x] = (char)objtypes[o->otyp].cls;   /* shows as its OWN class: a dropped
+                                     * potion is '!' on the map, not a ')' -- the
+                                     * tile must match what floor_pick returns */
     map_flush = 1;                   /* +zx: a thrown weapon lands cells away */
     return 1;
 }
