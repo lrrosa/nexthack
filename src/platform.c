@@ -237,14 +237,19 @@ int getkey(void)
  * per-turn work got fast, a ~120 ms human tap fired 2-3 moves and you couldn't
  * stop on the cell you wanted. Tap = exactly one step; hold = one step, a
  * beat, then a steady walk. Release at any point re-arms the instant path. */
-#define RPT_FIRST 13            /* frames before the first repeat  (~260 ms) */
-#define RPT_NEXT   4            /* frames between repeats after it  (~80 ms) */
 #ifdef __ZXNEXT
-#define RPT_GUARD 800           /* the bare .nex runs with interrupts off, so
+#define RPT_FIRST 10            /* ~200 ms before the first repeat: the Next is
+                                 * the snappy machine, keep the beat short */
+#define RPT_NEXT   4            /* ~80 ms between repeats after it */
+#define RPT_GUARD 370           /* the bare .nex runs with interrupts off, so
                                  * FRAMES never ticks: the poll loop IS the
-                                 * timer. One in_inkey poll ~= 700 T; 800 polls
-                                 * at 28 MHz ~= 20 ms, one nominal frame. */
+                                 * timer. One poll iteration ~= 1500 T (zxn
+                                 * in_inkey scans the extended matrix), so 370
+                                 * polls at 28 MHz ~= 20 ms, one nominal frame
+                                 * -- calibrated from a measured 1.2 s hold. */
 #else
+#define RPT_FIRST 13            /* ~260 ms before the first repeat  */
+#define RPT_NEXT   4            /* ~80 ms between repeats after it  */
 #define RPT_GUARD 4000          /* FRAMES ticks (IM1 ROM ISR): the guard is
                                  * only a backstop against a stall */
 #endif
