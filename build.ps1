@@ -62,6 +62,15 @@ $objs = $srcs | ForEach-Object { "src/$_.o" }
 $sw.Stop()
 
 if (Test-Path nexthack.nex) {
+    # A banked page section can silently overflow its 16 KB window: the linker
+    # emits it anyway and the tail is lost when the bank is loaded (the 128K
+    # shipped a template-level crash exactly this way). Refuse oversized pages.
+    $fat = Get-ChildItem "nexthack_PAGE_*.bin" -ErrorAction SilentlyContinue |
+           Where-Object { $_.Length -gt 16384 }
+    if ($fat) {
+        $fat | ForEach-Object { "PAGE OVERFLOW: $($_.Name) is $($_.Length) bytes (16384 max)" }
+        throw "Build aborted: a banked page overflowed its 16 KB window."
+    }
     $code = (Select-String -Path nexthack.map -Pattern '__CODE_END_tail\s+=\s+\$([0-9A-Fa-f]+)').Matches[0].Groups[1].Value
     $bss  = (Select-String -Path nexthack.map -Pattern '__BSS_END_tail\s+=\s+\$([0-9A-Fa-f]+)').Matches[0].Groups[1].Value
     "OK: nexthack.nex built in {0:N1}s.  resident __CODE_END=`${1}  __BSS_END=`${2}" -f $sw.Elapsed.TotalSeconds, $code, $bss

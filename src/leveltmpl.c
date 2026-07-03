@@ -17,16 +17,22 @@ extern uint8_t r_x[], r_y[], r_w[], r_h[];   /* room rects (defined in levelgen.
  * lives in PAGE_26_CODE (bank 13, with monster_ai) -- NOT PAGE_22, whose 16 KB
  * would overflow into bank 12 and push the Layer 2 palettes (title_pal/
  * victory_pal) out of bank 11, corrupting the title/victory colours (the
- * streaming code reads the palette in place with bank 11 mapped). */
+ * streaming code reads the palette in place with bank 11 mapped).
+ * On the 128K it lives in BANK_6 (with monster_ai) for the same reason: it
+ * used to share BANK_3 with nexthack.c's code, and as that code grew the
+ * combined section silently overflowed 16 KB -- neither the linker nor the
+ * tape packer errors -- so the loaded bank was truncated at its 16 KB edge
+ * and the clipped template data crashed the machine on entering any template
+ * level (mktap128.py now refuses an oversized bank). */
 #ifdef __ZXNEXT
 #pragma codeseg PAGE_26_CODE
 #else
-#pragma codeseg BANK_3
+#pragma codeseg BANK_6
 #endif
 #ifdef __ZXNEXT
 #pragma constseg PAGE_26_CODE
 #else
-#pragma constseg BANK_3
+#pragma constseg BANK_6
 #endif
 #include "leveltmpl_data.h"   /* NTMPL, tmpl_map, tmpl_nroom, tmpl_room (const) */
 

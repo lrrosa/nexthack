@@ -21,6 +21,7 @@
 #   python tools/mktap128.py        (run from the repo root, after the link)
 
 import os
+import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CODE = 0x8000          # resident load address
@@ -106,6 +107,13 @@ def main():
     tap += header(3, "nexthack", len(code), CODE) + block(0xFF, code)
     for fname, name, _ in BANKS:
         data = open(os.path.join(ROOT, fname), "rb").read()
+        if len(data) > 16384:
+            # The linker happily emits an ORG'd bank section past its 16 KB
+            # window and LOAD "" CODE at 0xC000 truncates it at 0xFFFF -- the
+            # clipped tail (v1.5.0: template data) crashes at runtime. Refuse.
+            sys.exit("mktap128: %s is %d bytes -- overflows its 16 KB bank by %d! "
+                     "Move a module to a roomier BANK_n." %
+                     (fname, len(data), len(data) - 16384))
         tap += header(3, name, len(data), BANKW) + block(0xFF, data)
     tap += header(3, "boot", len(STUB), STUB_ADDR) + block(0xFF, STUB)
 
