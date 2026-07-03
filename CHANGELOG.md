@@ -8,6 +8,31 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.5.1] — 2026-07-03
+
+A hotfix + polish pass over 1.5.0. Saved games from 1.5.0 still load.
+
+### Fixed
+- **ZX Spectrum 128K: entering a hand-drawn special level crashed the machine
+  to BASIC.** A code bank had silently outgrown its 16 KB, and the tape loader
+  truncated it — clipping the template data. The 1.5.0 `.tap` is affected on
+  roughly one in nine depths below 2; **128K players should update.** (The
+  build now refuses to pack an oversized bank, so this cannot ship again.)
+- A **dropped item now lies on the floor as itself** — a dropped potion showed
+  the weapon tile (the map char was hard-coded to `)`), which made it look
+  like some unrelated item from your pack.
+- **Traps no longer generate inside shops** (a trap door mid-shopping was
+  possible), matching NetHack's rule.
+
+### Changed
+- **Held-key movement now paces like a keyboard** (typematic repeat): a tap is
+  exactly one step, and holding a direction walks steadily after a short
+  beat. Fast turns used to fire 2-3 steps per tap, making it hard to stop on
+  the cell you meant.
+- **128K: walking corridors is now as fluid as walking inside rooms** — a
+  corridor step repaints only the handful of cells the light touched, not the
+  whole viewport.
+
 ## [1.5.0] — 2026-07-01
 
 ### Added
