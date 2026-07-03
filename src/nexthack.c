@@ -307,6 +307,12 @@ static uint8_t  prev_hx = 255, prev_hy = 255;
 static uint8_t  prev_mx[MAXMON], prev_my[MAXMON];
 static uint16_t prev_vis_sum = 0xFFFF;
 static uint8_t  mon_bm[(MAPH * TM_W + 7) / 8];   /* viewport cells a monster covers */
+/* copy of the vis bitmap the screen was LAST PAINTED with, for the mid path's
+ * XOR (210 B). In Bank 5's free gap after fov_pool (0x6880+840=0x6BC8), clear
+ * of the BFS scratch at 0x7400. Synced only when a path repaints by vis (mid/
+ * full), so it always mirrors the screen -- a vis-hash collision that leaves
+ * stale cells self-repairs on the next mid pass. */
+#define PREV_VIS ((uint8_t *)0x6C00u)
 
 /* write one viewport cell ONLY if it differs from the shadow (write-once diff). */
 static void dm_paint(uint8_t mapx, uint8_t mapy, uint8_t vx, uint8_t t, uint8_t attr)
@@ -343,6 +349,7 @@ void draw_map(void) __banked
 {
     uint8_t *shad = VIEW_SHADOW;
     uint8_t sc, x, y, t, attr, vx, full, i;
+    uint8_t pv_sync = 0;    /* repainted by vis (mid/full): resync PREV_VIS */
     int hsc, nvx;
     uint8_t sx, sy, sw, sh, sx1 = 0, sy1 = 0;
     int has_shop = shop_rect(&sx, &sy, &sw, &sh);
@@ -364,11 +371,30 @@ void draw_map(void) __banked
     if ((uint8_t)nvx != vx_origin) { vx_origin = (uint8_t)nvx; full = 1; }
     vx = vx_origin;
 
-    if (!full && !map_flush && fov_vis_sum == prev_vis_sum) {
-        /* FAST PATH: the viewport and the visible set are unchanged -- you moved
-         * within a lit room. Repaint ONLY the hero and the monsters (erase where
-         * each was, draw where each is) instead of all MAPH*TM_W cells. This is
-         * what makes a big lit room move fluidly on the 3.5 MHz 128K. */
+    if (!full && !map_flush) {
+        /* FAST/MID PATH: the viewport didn't move and no cell changed content.
+         * If the visible set is unchanged (moving within a lit room) only the
+         * entities below repaint. If it CHANGED (a corridor step reveals/hides
+         * cells) first repaint exactly the cells whose visibility bit flipped:
+         * XOR the vis bitmap against a copy of the one the screen was last
+         * painted with (PREV_VIS, Bank 5). A corridor step flips ~10-30 cells,
+         * so this replaces the old all-672-cell sweep that made corridor walking
+         * visibly heavier than room walking. MAPW is 80, so each map row is
+         * exactly 10 bitmap bytes -- no division anywhere. */
+        if (fov_vis_sum != prev_vis_sum) {
+            uint8_t *pv = PREV_VIS;
+            uint8_t yy, bb, d, bit;
+            uint16_t bidx = 0;
+            pv_sync = 1;
+            for (yy = 0; yy < MAPH; yy++)
+                for (bb = 0; bb < MAPW / 8; bb++, bidx++) {
+                    d = (uint8_t)(dm_vis[bidx] ^ pv[bidx]);
+                    if (!d) continue;
+                    for (bit = 0; bit < 8; bit++)
+                        if (d & (uint8_t)(1u << bit))
+                            dm_terrain((uint8_t)((bb << 3) + bit), yy, vx);
+                }
+        }
         /* Erase the hero's old cell ONLY if it moved; the redraw below is a
          * no-op via the shadow diff when nothing changed. Erasing+redrawing an
          * unmoved cell every turn is what made a stationary dog flicker. */
@@ -405,6 +431,7 @@ void draw_map(void) __banked
          * moving monster is never briefly absent -- that gap was the corridor
          * flicker. (Terrain under it stays correct: when it moves on, its old cell
          * is no longer marked, so the terrain pass repaints floor there.) */
+        pv_sync = 1;
         { uint16_t bz; for (bz = 0; bz < sizeof mon_bm; bz++) mon_bm[bz] = 0; }
         for (i = 0; i < mcount; i++) {
             uint16_t midx, vb;
@@ -479,6 +506,11 @@ void draw_map(void) __banked
     }
     prev_vis_sum = fov_vis_sum;
     map_flush = 0;                    /* the distant change (if any) is on screen */
+    if (pv_sync) {                    /* PREV_VIS mirrors what is on screen now */
+        uint8_t *pv = PREV_VIS;
+        uint16_t b2;
+        for (b2 = 0; b2 < (uint16_t)(MAPH * (MAPW / 8)); b2++) pv[b2] = dm_vis[b2];
+    }
 }
 #endif
 
