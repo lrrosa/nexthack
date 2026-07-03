@@ -847,6 +847,10 @@ static int trap_type(uint8_t x, uint8_t y)
 {
     uint16_t h;
     if (dlvl < 2) return -1;
+    if (shop_in_room(x, y)) return -1;  /* NetHack rule: no traps inside a shop
+                                         * (a trap door mid-shopping is cruel).
+                                         * Pure rect test -- no RNG, so the
+                                         * deterministic gen stays in sync. */
     h = (uint16_t)(world_seed * 31u + (uint16_t)dlvl * 2179u
                    + (uint16_t)x * 71u + (uint16_t)y * 131u);
     if ((h % 47u) != 0) return -1;
