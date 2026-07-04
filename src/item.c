@@ -40,7 +40,7 @@ enum {
     O_DAGGER, O_SHORTSW, O_MACE, O_LONGSW,     /* ')' weapons */
     O_LEATHER, O_RINGMAIL, O_CHAIN, O_PLATE,   /* '[' armour  */
     O_HEAL, O_EXHEAL, O_CONFUSION, O_SLEEPING, O_BLINDNESS,  /* '!' potions */
-    O_MAPPING, O_TELEPORT,                     /* '?' scrolls */
+    O_MAPPING, O_TELEPORT, O_IDENTIFY,         /* '?' scrolls */
     O_PROTECT,                                 /* '=' ring    */
     O_FOOD,                                    /* '%' food    */
     O_AMULET,                                  /* '"' amulet  */
@@ -75,6 +75,7 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '!',  0,   30,  4, "potion of blindness" },
     { '?',  0,   40,  1, "scroll of magic mapping" },
     { '?',  0,   60,  1, "scroll of teleportation" },
+    { '?',  0,   40,  2, "scroll of identify" },
     { '=',  1,  150,  3, "ring of protection" },
     { '%',  0,   10,  1, "food ration" },
     { '"',  0,    0, 50, "the Amulet of Yendor" },
@@ -235,10 +236,11 @@ static const char *const pot_appear[] = {
     "ruby potion", "blue potion", "fizzy potion", "smoky potion", "cloudy potion"
 };
 static const char *const scr_appear[] = {
-    "scroll labeled XYZZY", "scroll labeled ELBERETH"
+    "scroll labeled XYZZY", "scroll labeled ELBERETH",
+    "scroll labeled KIRJE"
 };
 #define NPOT 5
-#define NSCR 2
+#define NSCR 3
 
 static uint8_t id_known[(NUMOBJ + 7) / 8];   /* one "identified?" bit per otyp */
 static uint8_t id_is(uint8_t otyp)  { return (id_known[otyp >> 3] >> (otyp & 7)) & 1u; }
@@ -1025,6 +1027,15 @@ void do_read(void) __banked
         fov_reveal();
         map_flush = 1;   /* +zx: seen-bits changed but vis didn't -- show the map */
         msg("The level map fills your mind!");
+    } else if (ot == O_IDENTIFY) {
+        /* NetHack's blessed identify, simplified for the Z80: the whole pack.
+         * Every carried type is learned and every BUC state revealed. */
+        uint8_t i;
+        for (i = 0; i < inv_count; i++) {
+            id_set(inv[i].otyp);
+            inv[i].buc |= BUC_KNOWN;
+        }
+        msg("You feel knowledgeable!");
     } else {                            /* O_TELEPORT */
         uint8_t tx, ty;
         level_random_floor(&tx, &ty);

@@ -35,8 +35,8 @@ typedef struct {
 #define K_LEATHER 4
 #define K_RINGML  5
 #define K_HEAL    8
-#define K_FOOD    16
-#define K_WSTRIKE 18
+#define K_FOOD    17      /* +1: O_IDENTIFY joined the scroll block */
+#define K_WSTRIKE 19
 #define K_EQ      0x80
 #define K_NONE    0xFF
 
