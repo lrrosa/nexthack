@@ -63,8 +63,9 @@
 #define T_WAND        161  /* a wand (zappable magic item, class '/')        */
 #define T_FEYE        162  /* floating eye: hit it and its gaze freezes you  */
 #define T_BOOK        163  /* a spellbook (class '&': 'r' learns, 'Z' casts) */
+#define T_FOUNTAIN    164  /* a fountain ('{'): 'q' on it to drink or dip     */
 
-#define NTILES   36      /* T_ROCK..T_BOOK: the graphic tiles */
+#define NTILES   37      /* T_ROCK..T_FOUNTAIN: the graphic tiles */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT

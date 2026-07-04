@@ -50,6 +50,7 @@ enum {
                     * mindep 255 = never generated as loot, only dropped */
     O_BFORCE, O_BHEAL, O_BSLEEP, O_BTELE,      /* '&' spellbooks ('r' learns,
                     * 'Z' casts; prop = the spell index in spells.c) */
+    O_EXCALIBUR,   /* ')' the Lady's gift; mindep 255 = only from a fountain */
     NUMOBJ
 };
 
@@ -94,7 +95,8 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '&',  0,  100,  2, "spellbook of force bolt" },
     { '&',  1,  120,  3, "spellbook of healing" },
     { '&',  2,  150,  4, "spellbook of sleep" },
-    { '&',  3,  180,  6, "spellbook of teleportation" }
+    { '&',  3,  180,  6, "spellbook of teleportation" },
+    { ')',  8,  400, 255, "Excalibur" }   /* only from a fountain (mindep 255) */
 };
 
 typedef struct {
@@ -928,11 +930,76 @@ static int select_item(char cls, const char *prompt)
 }
 #endif
 
+/* Drink from the fountain the hero stands on. A worthy blade may draw
+ * Excalibur from the depths (NetHack's dip, folded into the quaff); else the
+ * water blesses or curses at random. Sets acted/turns itself. */
+static void quaff_fountain(void)
+{
+    uint8_t i;
+    acted = 1; turns++;
+
+    /* the Lady of the Lake: a Valkyrie of level 5+ wielding a plain long sword
+     * may draw Excalibur (once -- the sword becomes the artifact) */
+    if (pclass == 0 && xlvl >= 5) {
+        for (i = 0; i < inv_count; i++) {
+            if (inv[i].worn && inv[i].otyp == O_LONGSW) {
+                if (rn2(3) == 0) {
+                    inv[i].otyp = O_EXCALIBUR;
+                    inv[i].buc = BUC_BLESS | BUC_KNOWN;
+                    inv[i].ero = 0;
+                    id_set(O_EXCALIBUR);
+                    recompute_gear();
+                    msg("From the murky depths, a hand reaches up: Excalibur!");
+                    return;
+                }
+                break;
+            }
+        }
+    }
+
+    switch (rn2(6)) {
+    case 0: case 1:                      /* cool, clear water */
+        php = (uint8_t)(php + rn2(5) + 2);
+        if (php > pmaxhp) php = pmaxhp;
+        msg("The water is cool and refreshing.");
+        break;
+    case 2:                              /* murky water */
+        if (intrinsics & INTR_POISON_RES) { msg("This water tastes stale."); }
+        else { st_poison = (uint8_t)(st_poison + rn2(4) + 3);
+               msg("Yecch!  This water is contaminated."); }
+        break;
+    case 3:                              /* coins glinting at the bottom */
+        { uint16_t amt = (uint16_t)(rn2(30) + 5);
+          gold = (uint16_t)(gold + amt);
+          msg_num("You scoop up ", amt, " gold pieces."); }
+        break;
+    case 4:                              /* the fountain dries up */
+        lvl[hero_y][hero_x] = '.';
+        map_flush = 1;                   /* +zx: the '{' cell changed */
+        msg("The fountain dries up!");
+        break;
+    default:
+        msg("The water tastes flat.");
+        break;
+    }
+}
+
 void do_quaff(void) __banked
 {
-    int s = select_item('!', "Drink which potion?");
+    int s;
     uint8_t ot;
 
+    if (lvl[hero_y][hero_x] == '{') {    /* standing on a fountain: drink it? */
+        int k;
+        msg("Drink from the fountain? y/n");
+        in_wait_nokey();
+        k = getkey();
+        in_wait_nokey();
+        if (k == 'y' || k == 'Y') { quaff_fountain(); return; }
+        /* else fall through to drinking a carried potion */
+    }
+
+    s = select_item('!', "Drink which potion?");
     if (s == -1) { msg("You have no potions to drink."); return; }
     if (s == -2) { msg("Never mind."); return; }
     ot = inv[s].otyp;

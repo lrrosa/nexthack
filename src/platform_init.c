@@ -134,7 +134,11 @@ const uint8_t gfx[NTILES][64] = {
   { /* T_BOOK (spellbook: red covers, white page edges, gold clasp) */
     0,0,0,0,0,0,0,0, 0,8,8,8,8,8,8,0, 8,4,4,4,4,4,8,13,
     8,4,4,4,4,4,8,13, 8,4,4,4,4,4,8,13, 8,4,4,4,4,4,8,13,
-    0,8,8,8,8,8,8,0, 0,0,0,0,0,0,0,0 }
+    0,8,8,8,8,8,8,0, 0,0,0,0,0,0,0,0 },
+  { /* T_FOUNTAIN (grey basin brimming with cyan water) */
+    0,0,0,0,0,0,0,0, 0,0,12,12,12,12,0,0, 0,12,5,12,5,12,5,0,
+    0,12,12,5,12,5,12,0, 2,12,12,12,12,12,12,2, 2,2,12,12,12,12,2,2,
+    0,2,2,2,2,2,2,0, 0,0,0,0,0,0,0,0 }
 };
 
 static void pack_tile(uint8_t tilenum, const uint8_t *px)
@@ -267,7 +271,8 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x00,0x7E,0x7E,0x3C,0x3C,0x3C,0x7E,0x00 }, /* ALTAR (slab on pedestal) */
     { 0x06,0x06,0x0C,0x18,0x30,0x60,0xC0,0x80 }, /* WAND  (diagonal stick)   */
     { 0x3C,0x42,0x99,0xBD,0xBD,0x99,0x42,0x3C }, /* FEYE  (lidless eye)      */
-    { 0x00,0x7C,0x7E,0x46,0x46,0x7E,0x7C,0x00 }  /* BOOK  (closed covers)    */
+    { 0x00,0x7C,0x7E,0x46,0x46,0x7E,0x7C,0x00 }, /* BOOK  (closed covers)    */
+    { 0x00,0x3C,0x5A,0x7E,0x7E,0x3C,0x18,0x3C }  /* FOUNTAIN (basin of water)*/
 };
 
 /* Copy the hand-drawn tiles into udg_bitmap[] (Bank 5, see platform.h) that the

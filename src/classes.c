@@ -32,6 +32,7 @@ typedef struct {
 /* otyps from item.c's catalogue enum (kept in sync by hand -- item.c owns it) */
 #define K_DAGGER  0
 #define K_SHORTSW 1
+#define K_LONGSW  3
 #define K_LEATHER 4
 #define K_RINGML  5
 #define K_HEAL    8
@@ -46,7 +47,7 @@ typedef struct {
  * follow NetHack's flavour scaled to our numbers. */
 static const class_t classes[NCLASS] = {
     /* name        St Dx Co In Wi Ch   hp pw  kit                                        $ */
-    { "Valkyrie", {17,12,16, 8,10, 8}, 16, 1, {K_SHORTSW|K_EQ, K_RINGML|K_EQ,  K_NONE},   0 },
+    { "Valkyrie", {17,12,16, 8,10, 8}, 16, 1, {K_LONGSW|K_EQ,  K_RINGML|K_EQ,  K_NONE},   0 },
     { "Wizard",   { 8,11,10,16,14,10}, 10, 6, {K_DAGGER |K_EQ, K_BFORCE,       K_HEAL},   0 },
     { "Rogue",    {11,16,12,10, 8, 8}, 12, 2, {K_DAGGER |K_EQ, K_LEATHER|K_EQ, K_NONE},  60 },
     { "Tourist",  {10,11,12,10, 8,14}, 12, 2, {K_FOOD,         K_FOOD,         K_HEAL}, 120 },

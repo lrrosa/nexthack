@@ -235,6 +235,23 @@ static void place_altar(void)
     if (lvl[cy][cx] == '.') lvl[cy][cx] = '_';
 }
 
+/* Some levels have a fountain, chosen the same rn2-free way as the altar (a
+ * different hash constant, so the two rarely land together and never overwrite
+ * -- both guard on '.'). Roughly one level in four from depth 2 down. */
+static void place_fountain(void)
+{
+    uint16_t h;
+    uint8_t room, cx, cy;
+
+    if (rcount == 0 || dlvl < 2) return;
+    h = (uint16_t)(world_seed * 3u + (uint16_t)dlvl * 0x2C9Fu);
+    if ((h % 4u) != 0) return;
+    room = (uint8_t)((h >> 4) % rcount);
+    cx = (uint8_t)(r_x[room] + r_w[room] / 2);
+    cy = (uint8_t)(r_y[room] + r_h[room] / 2);
+    if (lvl[cy][cx] == '.') lvl[cy][cx] = '{';
+}
+
 static void traps_reset(void);   /* defined with the trap code, below */
 
 /* (Re)place the pet next to the hero. Called after the hero's position is set
@@ -281,6 +298,8 @@ void build_level(void) __banked
     apply_monster_persistence();
     apply_item_persistence();
     place_altar();       /* a deterministic altar on some levels (no RNG) */
+    place_fountain();    /* ...and a fountain on some (guards on '.', so it
+                          * never overwrites the altar) */
     map_dirty = 1;       /* +zx: next draw_map recenters (no-op on Next) */
     /* note: FOV memory is per depth and persists across visits, so it is NOT
      * reset here - only on a new game (see new_game / main). */
@@ -904,6 +923,7 @@ static void describe(char dest, int moved)
              shop_in_room(hero_x, hero_y) ? " (,buy)" : " (,get)", "");
         break;
     case '_': msg("There is an altar here.");         break;
+    case '{': msg("There is a fountain here. (q to drink)"); break;
     default:  msg("");                                break;
     }
 }
@@ -913,7 +933,8 @@ static int lookable(char c)
 {
     return c == '>' || c == '<' || c == '"' ||
            c == ')' || c == '[' || c == '!' ||
-           c == '%' || c == '?' || c == '=' || c == '/' || c == '&' || c == '_';
+           c == '%' || c == '?' || c == '=' || c == '/' || c == '&' ||
+           c == '_' || c == '{';
 }
 
 /* Per-visit set of traps that have already been sprung (so they don't re-fire).

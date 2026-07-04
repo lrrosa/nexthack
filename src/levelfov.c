@@ -14,7 +14,8 @@
 #include "game.h"         /* dlvl, MAXLVL          */
 
 #ifdef __ZXNEXT
-#pragma codeseg PAGE_20_CODE
+#pragma codeseg PAGE_26_CODE   /* moved off PAGE_20 (bank 10 filled up as item.c
+                                * grew); shares bank 13 with leveltmpl/monster_ai */
 #else
 #pragma codeseg BANK_4   /* moved out of BANK_1 when item.c's growth filled it
                           * (BANK_4 holds the SCR screens with ~2.5 KB spare) */
