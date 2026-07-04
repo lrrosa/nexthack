@@ -61,8 +61,9 @@
 #define T_WRAITH      159  /* pale wraith; drains your life force           */
 #define T_ALTAR       160  /* a stone altar; step on it to reveal item BUC  */
 #define T_WAND        161  /* a wand (zappable magic item, class '/')        */
+#define T_FEYE        162  /* floating eye: hit it and its gaze freezes you  */
 
-#define NTILES   34      /* T_ROCK..T_WAND: the graphic tiles */
+#define NTILES   35      /* T_ROCK..T_FEYE: the graphic tiles */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT

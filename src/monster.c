@@ -35,6 +35,10 @@ static const MonType montypes[] = {
     { 'y',  6, 3, 4, 5, T_YELLOWLIGHT, 0, ATK_BLIND,  "yellow light" },
     { 'i',  9, 4, 5, 6, T_HOMUNCULUS,  0, ATK_SLEEP,  "homunculus"   },
     { 'W', 12, 5, 7, 8, T_WRAITH,      0, ATK_DRAIN,  "wraith"       },
+    /* the floating eye neither chases nor bites (monster_ai skips its turn)
+     * -- but strike it with your eyes open and its gaze freezes you. Its
+     * corpse grants telepathy (item.c eat_corpse): the NetHack classic. */
+    { 'e',  8, 1, 4, 5, T_FEYE,        0, ATK_NONE,   "floating eye" },
     /* the shopkeeper: drawn as '@' (reuses T_HERO), placed only in shops, never
      * randomly spawned (pick_mon skips it), and stationary (monster_ai mon_step). */
     { MON_KEEPER, 30, 0, 0, 1, T_KEEPER, 0, ATK_NONE, "shopkeeper" }
