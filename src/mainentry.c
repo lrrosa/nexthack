@@ -16,6 +16,7 @@
 #include "monster.h"
 #include "item.h"
 #include "sfx.h"
+#include "classes.h"
 #include "nexthack.h"
 
 void main(void)
@@ -37,7 +38,9 @@ start_game:
         draw_map();
         msg("Game restored.  Welcome back!");
     } else {                        /* no save: start a fresh adventure  */
+        pick_class();               /* who are you? (fills the sheet, hp, pw) */
         item_reset();
+        give_kit();                 /* the class's starting gear + purse */
         fov_reset();
         have_pet = 1; pet_hp = 8;   /* the first adventure begins with a dog */
         build_level();

@@ -24,6 +24,7 @@
 #include "monster.h"
 #include "item.h"
 #include "sfx.h"
+#include "classes.h"
 #ifndef __ZXNEXT
 #include "scr.h"
 #endif
@@ -677,7 +678,9 @@ void show_help(void) __banked
     print_str(2, 16, "z zap      ? help",    C_CYAN | C_BRIGHT);
     {   /* the character sheet -- the 32-col 128K status bar has no room for
          * it, so both targets show it here */
-        uint8_t x = print_str(2, 18, "St:", C_GREEN | C_BRIGHT);
+        uint8_t x = print_str(2, 17, class_name(), C_YELLOW | C_BRIGHT);
+        (void)x;
+        x = print_str(2, 18, "St:", C_GREEN | C_BRIGHT);
         x = put_uint(x, 18, at_str, C_GREEN | C_BRIGHT);
         x = print_str(x, 18, " Dx:", C_GREEN | C_BRIGHT);
         x = put_uint(x, 18, at_dex, C_GREEN | C_BRIGHT);
@@ -708,7 +711,10 @@ void draw_status(void) __banked
 
     /* Each status cell is written exactly once (no clear-then-fill) so the
      * status bar does not flicker as values change. */
-    x = print_str(0, 22, "Player the Tourist    St:", C_GREEN | C_BRIGHT);
+    x = print_str(0, 22, "Player the ", C_GREEN | C_BRIGHT);
+    x = print_str(x, 22, class_name(), C_GREEN | C_BRIGHT);  /* same bank */
+    while (x < 22) putcell(x++, 22, ' ', C_GREEN);
+    x = print_str(x, 22, "St:", C_GREEN | C_BRIGHT);
     x = put_uint(x, 22, at_str, C_GREEN | C_BRIGHT);
     x = print_str(x, 22, " Dx:", C_GREEN | C_BRIGHT);
     x = put_uint(x, 22, at_dex, C_GREEN | C_BRIGHT);
@@ -1079,12 +1085,11 @@ void new_game(void) __banked
     hunger_state = 0;
     st_conf = st_blind = st_sleep = st_poison = 0;
     pray_timeout = 0;
-    at_str = 14; at_dex = 11; at_con = 14;   /* the Tourist sheet (the class */
-    at_int = 10; at_wis = 8;  at_cha = 10;   /* picker will overwrite these) */
-    pclass = 0; intrinsics = 0;
-    pw = 2; pmaxpw = 2;
+    intrinsics = 0;
+    pick_class();                 /* who are you? (fills the sheet, hp, pw) */
     have_pet = 1; pet_hp = 8;     /* you start with a faithful dog */
     item_reset();
+    give_kit();                   /* the class's starting gear + purse */
     level_reset_persistence();
     monster_reset_persistence();
     fov_reset();                 /* forget exploration of the old world */

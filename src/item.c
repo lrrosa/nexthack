@@ -352,6 +352,19 @@ static int inv_add(const obj_t *o)
     return 1;
 }
 
+/* Hand the hero a starting item (the class kit): a plain uncursed object of
+ * the given type, optionally pre-equipped. A wand arrives with 4 charges. */
+void give_item(uint8_t otyp, uint8_t worn) __banked
+{
+    obj_t o;
+    o.otyp = otyp;
+    o.ench = (int8_t)(objtypes[otyp].cls == '/' ? 4 : 0);
+    o.ero  = 0;
+    o.worn = worn;
+    o.buc  = BUC_UNC;
+    if (inv_add(&o) && worn) recompute_gear();
+}
+
 static void inv_remove(uint8_t s)
 {
     while ((uint8_t)(s + 1) < inv_count) { inv[s] = inv[s + 1]; s++; }

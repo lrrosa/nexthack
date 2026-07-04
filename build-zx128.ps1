@@ -24,7 +24,7 @@ if (-not (Test-Path $obj)) { New-Item -ItemType Directory $obj | Out-Null }
 
 # Source modules (drop the 8 Next Layer 2 image modules). banked_call.asm is the
 # vendored 0x7FFD trampoline.
-$csrcs = 'mainentry','nexthack','platform','platform_init','rng','level','levelgen','levelfov','monster','monster_ai','item','sfx','leveltmpl','scr','title_scr','victory_scr'
+$csrcs = 'mainentry','nexthack','platform','platform_init','rng','level','levelgen','levelfov','monster','monster_ai','item','sfx','leveltmpl','classes','scr','title_scr','victory_scr'
 $asrcs = 'banked_call','esxdetect','puttile_asm'
 $cflags = @('+zx','-clib=sdcc_iy','-SO3','--max-allocs-per-node200000','-pragma-include:zpragma-zx128.inc')
 
