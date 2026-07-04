@@ -470,6 +470,18 @@ void draw_map(void) __banked
          * flicker. (Terrain under it stays correct: when it moves on, its old cell
          * is no longer marked, so the terrain pass repaints floor there.) */
         pv_sync = 1;
+        if (full) {
+            /* A forced full redraw means the screen may hold ANYTHING -- the
+             * inventory/help overlay that just closed wrote text straight to
+             * the ULA without touching this shadow. dm_paint trusts the shadow
+             * to skip "unchanged" cells, so a stale entry left an overlay
+             * letter sitting on an unmoved monster (the corrupted-dog bug: the
+             * terrain sweep force-writes on full, but the monster/erase passes
+             * go through dm_paint's diff). Invalidate the whole shadow so
+             * every diff misses exactly once. */
+            uint16_t bz;
+            for (bz = 0; bz < (uint16_t)(MAPH * TM_W) * 2; bz++) shad[bz] = 0xFF;
+        }
         { uint16_t bz; for (bz = 0; bz < sizeof mon_bm; bz++) mon_bm[bz] = 0; }
         for (i = 0; i < mcount; i++) {
             uint16_t midx, vb;
