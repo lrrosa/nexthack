@@ -18,10 +18,17 @@ REM  title then CRASHES on the first banked call (it doesn't carry
 REM  the code-banked layout into the RAM banks); only the .tap's
 REM  bank-paging loader sets the banks up.
 REM
-REM  esxdos-root-dir + diviface-ram-size mirror the config so 128K
-REM  save ('S') still works, writing nexthack.sav beside the .tap.
-REM  (Do NOT add --enable-divmmc-paging: it maps the DivMMC ROM over
-REM  the tape loader and the game never boots.)
+REM  Save ('S') works through ZEsarUX's esxDOS TRAPS handler:
+REM  --enable-esxdos-handler serves the esxDOS API from the host dir
+REM  (esxdos-root-dir), and --enable-divmmc-ports satisfies it without
+REM  the automapper. The game detects this via its guarded API probe
+REM  (esxdetect.asm): the 0xE3 hardware probe fails here (no paging
+REM  emulation), then the RST 8 probe finds the handler.
+REM  (Do NOT use --enable-divmmc-paging or --enable-divmmc: the
+REM  automapper hijacks the boot and the tape loader never runs.)
+REM  Emulator quirk: the handler doesn't implement F_UNLINK, so the
+REM  save is NOT deleted after a restore here (it is on real esxDOS)
+REM  -- convenient for testing, but not the anti-save-scum behaviour.
 REM
 REM  ZEsarUX auto-loads the inserted tape (its default with no config),
 REM  so there's no 128K-menu Enter to press -- it boots to the title.
@@ -34,4 +41,4 @@ SET ZES_DIR=%~dp0..\ZEsarUX
 IF "%~1"=="" (SET TAP=%~dp0nexthack128.tap) ELSE (SET TAP=%~1)
 
 CD /D "%ZES_DIR%"
-zesarux.exe --noconfigfile --machine 128k --esxdos-root-dir "%~dp0." --diviface-ram-size 128 --tape "%TAP%" --enable-remoteprotocol --nowelcomemessage --quickexit
+zesarux.exe --noconfigfile --machine 128k --enable-divmmc-ports --enable-esxdos-handler --esxdos-root-dir "%~dp0." --diviface-ram-size 128 --tape "%TAP%" --enable-remoteprotocol --nowelcomemessage --quickexit
