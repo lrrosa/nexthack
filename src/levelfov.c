@@ -16,7 +16,8 @@
 #ifdef __ZXNEXT
 #pragma codeseg PAGE_20_CODE
 #else
-#pragma codeseg BANK_1
+#pragma codeseg BANK_4   /* moved out of BANK_1 when item.c's growth filled it
+                          * (BANK_4 holds the SCR screens with ~2.5 KB spare) */
 #endif
 
 extern uint8_t r_x[], r_y[], r_w[], r_h[];   /* room rects (levelgen.c) */

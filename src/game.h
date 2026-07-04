@@ -43,7 +43,9 @@ extern uint8_t  xlvl;         /* experience level                         */
 extern uint8_t  at_str, at_dex, at_con, at_int, at_wis, at_cha;
 extern uint8_t  pclass;       /* class index (nexthack.c class table)     */
 extern uint8_t  intrinsics;   /* INTR_* bit flags, learned from corpses   */
-extern uint8_t  pw, pmaxpw;   /* spell power (real data behind Pw: now)   */
+extern uint8_t  pw, pmaxpw;   /* spell power (spent by 'Z', regen in upkeep) */
+extern uint8_t  known_spells; /* bit per learned spell (spells.c indexes)  */
+extern uint16_t max_dlvl;     /* deepest depth reached (the score screen)  */
 #define INTR_POISON_RES 0x01  /* poison no longer drains you              */
 #define INTR_SLEEP_RES  0x02  /* sleep attacks and gas traps do nothing   */
 #define INTR_TELEPATHY  0x04  /* sense monsters while blind               */

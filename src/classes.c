@@ -37,6 +37,7 @@ typedef struct {
 #define K_HEAL    8
 #define K_FOOD    17      /* +1: O_IDENTIFY joined the scroll block */
 #define K_WSTRIKE 19
+#define K_BFORCE  25      /* spellbook of force bolt (after O_CORPSE 24) */
 #define K_EQ      0x80
 #define K_NONE    0xFF
 
@@ -46,7 +47,7 @@ typedef struct {
 static const class_t classes[NCLASS] = {
     /* name        St Dx Co In Wi Ch   hp pw  kit                                        $ */
     { "Valkyrie", {17,12,16, 8,10, 8}, 16, 1, {K_SHORTSW|K_EQ, K_RINGML|K_EQ,  K_NONE},   0 },
-    { "Wizard",   { 8,11,10,16,14,10}, 10, 6, {K_DAGGER |K_EQ, K_WSTRIKE,      K_HEAL},   0 },
+    { "Wizard",   { 8,11,10,16,14,10}, 10, 6, {K_DAGGER |K_EQ, K_BFORCE,       K_HEAL},   0 },
     { "Rogue",    {11,16,12,10, 8, 8}, 12, 2, {K_DAGGER |K_EQ, K_LEATHER|K_EQ, K_NONE},  60 },
     { "Tourist",  {10,11,12,10, 8,14}, 12, 2, {K_FOOD,         K_FOOD,         K_HEAL}, 120 },
 };

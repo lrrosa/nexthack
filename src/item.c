@@ -18,6 +18,7 @@
 #include "platform.h"    /* drawing, messages, getkey, file_*                */
 #include "level.h"       /* terrain, level_take_item, level_random_floor     */
 #include "monster.h"     /* monster_at, hit_monster, m_sleep, pet_idx        */
+#include "spells.h"      /* learn_spell ('r' on a spellbook)                 */
 #include "nexthack.h"    /* build_level (wand of digging descends a level)   */
 #include "rng.h"         /* rn2, world_seed                                  */
 #include "sfx.h"         /* sound effects                                    */
@@ -47,6 +48,8 @@ enum {
     O_WSTRIKE, O_WCOLD, O_WSLEEP, O_WTELE, O_WDIG,   /* '/' wands (zap with z) */
     O_CORPSE,      /* '%' a slain monster's remains (its char rides in ench);
                     * mindep 255 = never generated as loot, only dropped */
+    O_BFORCE, O_BHEAL, O_BSLEEP, O_BTELE,      /* '&' spellbooks ('r' learns,
+                    * 'Z' casts; prop = the spell index in spells.c) */
     NUMOBJ
 };
 
@@ -86,7 +89,12 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '/',  0,  175,  3, "wand of sleep" },
     { '/',  0,  200,  5, "wand of teleportation" },
     { '/',  0,  150,  6, "wand of digging" },
-    { '%',  0,    2, 255, "corpse" }   /* never generated (mindep 255) */
+    { '%',  0,    2, 255, "corpse" },  /* never generated (mindep 255) */
+    /* spellbooks: prop = the spell index (spells.c). Read to learn, Z casts. */
+    { '&',  0,  100,  2, "spellbook of force bolt" },
+    { '&',  1,  120,  3, "spellbook of healing" },
+    { '&',  2,  150,  4, "spellbook of sleep" },
+    { '&',  3,  180,  6, "spellbook of teleportation" }
 };
 
 typedef struct {
@@ -499,7 +507,7 @@ void do_pickup(void) __banked
     int fi;
 
     if (c != '"' && c != ')' && c != '[' && c != '!' &&
-        c != '%' && c != '?' && c != '=' && c != '/') {
+        c != '%' && c != '?' && c != '=' && c != '/' && c != '&') {
         msg("Nothing here to pick up.");
         return;
     }
@@ -832,6 +840,14 @@ void do_puton(void) __banked
     sfx_magic();
 }
 
+/* does inventory item i match the command's class?  'r' reads both scrolls
+ * ('?') and spellbooks ('&'), NetHack-style. */
+static uint8_t cls_match(uint8_t i, char cls)
+{
+    char c = objtypes[inv[i].otyp].cls;
+    return (uint8_t)(c == cls || (cls == '?' && c == '&'));
+}
+
 /* Pick an item of class cls. Returns its index, -1 if you have none, or -2 if
  * you cancelled. With a single type present it picks it silently; only when two
  * *different* types are carried does it pop a letter menu (NetHack-style). */
@@ -843,7 +859,7 @@ static int select_item(char cls, const char *prompt)
     int k;
 
     for (i = 0; i < inv_count; i++) {
-        if (objtypes[inv[i].otyp].cls != cls) continue;
+        if (!cls_match(i, cls)) continue;
         if (first < 0) first = i;
         else if (inv[i].otyp != inv[first].otyp) multi = 1;
     }
@@ -855,7 +871,7 @@ static int select_item(char cls, const char *prompt)
     row = 4;
     for (i = 0; i < inv_count; i++) {
         uint8_t x;
-        if (objtypes[inv[i].otyp].cls != cls) continue;
+        if (!cls_match(i, cls)) continue;
         putcell(2, row, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
         x = print_str(3, row, " - ", C_WHITE);
         print_str(x, row, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
@@ -868,7 +884,7 @@ static int select_item(char cls, const char *prompt)
     k = getkey();
     in_wait_nokey();
     if (k >= 'a' && (uint8_t)(k - 'a') < inv_count &&
-        objtypes[inv[k - 'a'].otyp].cls == cls)
+        cls_match((uint8_t)(k - 'a'), cls))
         return k - 'a';
     return -2;
 }
@@ -880,7 +896,7 @@ static int select_item(char cls, const char *prompt)
     int k;
 
     for (i = 0; i < inv_count; i++) {
-        if (objtypes[inv[i].otyp].cls != cls) continue;
+        if (!cls_match(i, cls)) continue;
         if (first < 0) first = i;
         else if (inv[i].otyp != inv[first].otyp) multi = 1;
     }
@@ -893,7 +909,7 @@ static int select_item(char cls, const char *prompt)
     row = 2;
     for (i = 0; i < inv_count; i++) {
         uint8_t x;
-        if (objtypes[inv[i].otyp].cls != cls) continue;
+        if (!cls_match(i, cls)) continue;
         putcell(0, row, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
         x = print_str(1, row, " ", C_WHITE);
         print_str(x, row, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
@@ -906,7 +922,7 @@ static int select_item(char cls, const char *prompt)
     k = getkey();
     in_wait_nokey();
     if (k >= 'a' && (uint8_t)(k - 'a') < inv_count &&
-        objtypes[inv[k - 'a'].otyp].cls == cls)
+        cls_match((uint8_t)(k - 'a'), cls))
         return k - 'a';
     return -2;
 }
@@ -1020,6 +1036,11 @@ void do_read(void) __banked
     if (s == -1) { msg("You have nothing to read."); return; }
     if (s == -2) { msg("Never mind."); return; }
     ot = inv[s].otyp;
+    if (objtypes[ot].cls == '&') {      /* a spellbook: study it (it survives) */
+        learn_spell(objtypes[ot].prop);
+        acted = 1; turns++;
+        return;
+    }
     id_set(ot);                 /* reading it identifies the type */
     inv_remove((uint8_t)s);
     sfx_magic();

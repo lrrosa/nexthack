@@ -138,9 +138,14 @@ static void gain_xp(uint8_t amt)
         uint8_t gain = (uint8_t)(rn2(4) + 2 +
                                  (at_con >= 14 ? 1 : 0)); /* 2..5 max HP,
                                                            * +1 if hardy */
+        uint8_t pwg = (uint8_t)(at_int >= 14 ? 2 : 1);    /* the mind grows too */
         xlvl++;
         pmaxhp = (uint8_t)(pmaxhp + gain);
         php = (uint8_t)(php + gain);
+        if (pmaxpw < 30) {
+            pmaxpw = (uint8_t)(pmaxpw + pwg);
+            pw = (uint8_t)(pw + pwg);
+        }
         msg("Welcome to a new level!");
         sfx_levelup();
     }

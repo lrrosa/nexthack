@@ -272,7 +272,7 @@ static void pick_keeper_cell(uint8_t r)
 
 static void stock_shop(uint8_t r)
 {
-    static const char SHOPCLS[7] = { ')', '[', '!', '?', '=', '%', '/' };
+    static const char SHOPCLS[8] = { ')', '[', '!', '?', '=', '%', '/', '&' };
     uint8_t xx, yy;
     for (yy = (uint8_t)(r_y[r] + 1); yy + 1 < r_y[r] + r_h[r] && icount < 8; yy++)
         for (xx = (uint8_t)(r_x[r] + 1); xx + 1 < r_x[r] + r_w[r] && icount < 8; xx++) {
@@ -282,7 +282,7 @@ static void stock_shop(uint8_t r)
             h = (uint16_t)(world_seed + (uint16_t)dlvl * 2657u
                            + (uint16_t)xx * 131u + (uint16_t)yy * 1009u);
             if (h & 1) continue;                       /* leave ~half as aisle */
-            lvl[yy][xx] = SHOPCLS[h % 7u];
+            lvl[yy][xx] = SHOPCLS[h % 8u];
             i_x[icount] = xx; i_y[icount] = yy; icount++;
         }
 }
@@ -523,6 +523,7 @@ void gen_level(void) __banked
             if (rn2(2))    place_item('?');     /* scroll */
             if (dlvl >= 3 && rn2(2)) place_item('=');   /* ring */
             if (dlvl >= 2 && rn2(3) == 0) place_item('/');  /* wand */
+            if (dlvl >= 2 && rn2(4) == 0) place_item('&');  /* spellbook (rare) */
         }
     }
 

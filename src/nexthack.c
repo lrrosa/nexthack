@@ -58,6 +58,8 @@ uint8_t  at_int = 10, at_wis = 8,  at_cha = 10;
 uint8_t  pclass = 0;
 uint8_t  intrinsics = 0;
 uint8_t  pw = 2, pmaxpw = 2;
+uint8_t  known_spells = 0;
+uint16_t max_dlvl = 1;
 
 /* transient status effects (see game.h): per-turn countdowns, 0 = inactive */
 uint8_t  st_conf = 0, st_blind = 0, st_sleep = 0, st_poison = 0;
@@ -68,6 +70,7 @@ uint8_t  pet_hp = 0;                          /* the pet's health, carried acros
 
 /* hunger/regeneration bookkeeping */
 static uint8_t heal_timer = 0;
+static uint8_t pw_timer = 0;   /* spell power regeneration (see upkeep) */
 static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 /* ============================================================
@@ -76,8 +79,8 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   21     /* v1.6.0: the character sheet (attributes, class,
-                           * intrinsics, spell power) joins the player block */
+#define SAVE_VER   22     /* v1.7.0: spellbooks (known_spells, max_dlvl join
+                           * the player block; '&' loot shifts the gen RNG) */
 
 struct save_hdr {
     uint16_t magic;
@@ -99,6 +102,8 @@ struct save_player {
     uint8_t  have_pet, pet_hp;
     uint8_t  at_str, at_dex, at_con, at_int, at_wis, at_cha;
     uint8_t  pclass, intrinsics, pw, pmaxpw;
+    uint8_t  known_spells;
+    uint16_t max_dlvl;
 };
 
 /* From here down, all of nexthack.c's CODE is banked into PAGE_22_CODE (mapped
@@ -146,6 +151,8 @@ int save_game(void) __banked
     p.at_int = at_int; p.at_wis = at_wis; p.at_cha = at_cha;
     p.pclass = pclass; p.intrinsics = intrinsics;
     p.pw = pw; p.pmaxpw = pmaxpw;
+    p.known_spells = known_spells;
+    p.max_dlvl = max_dlvl;
     file_write(h, &p, sizeof p);
 
     item_save(h);
@@ -187,6 +194,8 @@ int load_game(void) __banked
     at_int = p.at_int; at_wis = p.at_wis; at_cha = p.at_cha;
     pclass = p.pclass; intrinsics = p.intrinsics;
     pw = p.pw; pmaxpw = p.pmaxpw;
+    known_spells = p.known_spells;
+    max_dlvl = p.max_dlvl;
     dead = 0; won = 0;
 
     item_load(h);
@@ -261,6 +270,7 @@ void place_pet(void) __banked
 
 void build_level(void) __banked
 {
+    if (dlvl > max_dlvl) max_dlvl = dlvl;   /* deepest point, for the score */
     el_life = 0;             /* a dust engraving does not survive a level change */
     traps_reset();           /* sprung-trap set is per visit (level regenerates) */
     floor_reset();           /* loose thrown items don't survive a level change  */
@@ -619,6 +629,11 @@ void upkeep(void) __banked
                                                  * constitution mends faster */
         if (php < pmaxhp) php++;
     }
+    if (pw < pmaxpw && ++pw_timer >= (uint8_t)(at_wis >= 14 ? 12 : 18)) {
+        pw_timer = 0;                           /* power trickles back; wisdom
+                                                 * quickens the flow */
+        pw++;
+    }
 
     /* the dog mends between fights too, and can toughen a little (8 -> 12) if
      * kept alive, so a careful companion is worth keeping rather than doomed */
@@ -705,7 +720,7 @@ void show_help(void) __banked
     print_str(2, 13, "r read     p pray",    C_CYAN | C_BRIGHT);
     print_str(2, 14, "E engrave Elbereth",   C_CYAN | C_BRIGHT);
     print_str(2, 15, "d drop     S save",    C_CYAN | C_BRIGHT);
-    print_str(2, 16, "z zap      ? help",    C_CYAN | C_BRIGHT);
+    print_str(2, 16, "z zap  Z cast  ? help", C_CYAN | C_BRIGHT);
     {   /* the character sheet -- the 32-col 128K status bar has no room for
          * it, so both targets show it here */
         uint8_t x = print_str(2, 17, class_name(), C_YELLOW | C_BRIGHT);
@@ -884,6 +899,7 @@ static void describe(char dest, int moved)
     case '<': msg("There is a staircase up here.");   break;
     case '"': msg("The Amulet of Yendor! (,get)"); break;
     case ')': case '[': case '!': case '%': case '?': case '=': case '/':
+    case '&':
         msg2(floor_item_desc(),
              shop_in_room(hero_x, hero_y) ? " (,buy)" : " (,get)", "");
         break;
@@ -897,7 +913,7 @@ static int lookable(char c)
 {
     return c == '>' || c == '<' || c == '"' ||
            c == ')' || c == '[' || c == '!' ||
-           c == '%' || c == '?' || c == '=' || c == '/' || c == '_';
+           c == '%' || c == '?' || c == '=' || c == '/' || c == '&' || c == '_';
 }
 
 /* Per-visit set of traps that have already been sprung (so they don't re-fire).
@@ -1120,6 +1136,8 @@ void new_game(void) __banked
     st_conf = st_blind = st_sleep = st_poison = 0;
     pray_timeout = 0;
     intrinsics = 0;
+    known_spells = 0;
+    max_dlvl = 1;
     pick_class();                 /* who are you? (fills the sheet, hp, pw) */
     have_pet = 1; pet_hp = 8;     /* you start with a faithful dog */
     item_reset();

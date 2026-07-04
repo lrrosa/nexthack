@@ -62,8 +62,9 @@
 #define T_ALTAR       160  /* a stone altar; step on it to reveal item BUC  */
 #define T_WAND        161  /* a wand (zappable magic item, class '/')        */
 #define T_FEYE        162  /* floating eye: hit it and its gaze freezes you  */
+#define T_BOOK        163  /* a spellbook (class '&': 'r' learns, 'Z' casts) */
 
-#define NTILES   35      /* T_ROCK..T_FEYE: the graphic tiles */
+#define NTILES   36      /* T_ROCK..T_BOOK: the graphic tiles */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT
