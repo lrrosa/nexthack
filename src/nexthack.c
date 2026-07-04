@@ -447,13 +447,15 @@ void draw_map(void) __banked
                 if ((dm_vis[midx >> 3] & (1u << (midx & 7))) || mon_sensed())
                     { cmx = m_x[i]; cmy = m_y[i]; }
             }
-            /* erase only where it left -- but never the hero's cell: swapping with
-             * the pet puts its old cell UNDER the just-drawn hero (terrain there
-             * would wipe the hero for a turn). Monster-vs-monster can't collide:
-             * the AI moves in the same ascending order, so a cell vacated this
-             * turn is only entered by a HIGHER slot, drawn after this erase. */
+            /* erase only where it left -- but never a cell someone occupies NOW:
+             * the hero (a pet swap puts its old cell under the just-drawn hero)
+             * or another monster (the pet<->keeper swap moves a LOWER slot onto
+             * the pet's old cell, so ascending draw order no longer guarantees
+             * the enterer is drawn after this erase). The occupant is visible
+             * whenever this path runs, so it is (re)drawn this same frame. */
             if (prev_mx[i] != 255 && (prev_mx[i] != cmx || prev_my[i] != cmy) &&
-                !(prev_mx[i] == (uint8_t)hero_x && prev_my[i] == (uint8_t)hero_y))
+                !(prev_mx[i] == (uint8_t)hero_x && prev_my[i] == (uint8_t)hero_y) &&
+                monster_at(prev_mx[i], prev_my[i]) < 0)
                 dm_terrain(prev_mx[i], prev_my[i], vx);
             if (cmx != 255) {
                 t = mon_tile(m_type[i]);

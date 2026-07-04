@@ -362,13 +362,22 @@ static void step_to_hero(uint8_t i)
             if (nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH) continue;
             nd = dist[(uint16_t)ny * MAPW + nx];
             if (nd == UNREACH || nd >= bestd) continue;
-            if (monster_at(nx, ny) >= 0) continue;   /* don't stack       */
+            {   /* don't stack -- except the pet, which DISPLACES the keeper
+                 * (a swapped keeper parked on the door would seal the shop) */
+                int mj = monster_at(nx, ny);
+                if (mj >= 0 &&
+                    !(i == pet_idx && m_type[mj] == MON_KEEPER)) continue;
+            }
             if (i != pet_idx && shop_in_room(nx, ny))
                 continue;                            /* shops are an enemy safe zone -- but your pet follows you in */
             bestd = nd; bestx = nx; besty = ny;
         }
     }
-    if (bestx >= 0) { m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty; }
+    if (bestx >= 0) {
+        int mj = monster_at(bestx, besty);
+        if (mj >= 0) { m_x[mj] = m_x[i]; m_y[mj] = m_y[i]; } /* keeper steps aside */
+        m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty;
+    }
 }
 
 /* ---- pet AI: bite an adjacent enemy, else heel by the hero ---- */
@@ -434,11 +443,23 @@ static uint8_t pet_heel_greedy(uint8_t i)   /* 1 = heeled/stepped, 0 = boxed in 
     int hx = hero_x, hy = hero_y;
     int dh = iabs(hx - (int)m_x[i]), dv = iabs(hy - (int)m_y[i]);
     int bestc, dx, dy, bestx = -1, besty = -1;
-    if (dh <= 2 && dv <= 2) return 1;           /* already at heel: nothing to do */
+    if (dh <= 2 && dv <= 2) {
+        /* nominally at heel -- but Chebyshev ignores WALLS: parked one wall
+         * away (dog inside the shop, hero just outside its second door) the
+         * dog believed it was beside you forever. Heel only counts when we
+         * are adjacent or the one step toward you is open floor; otherwise
+         * fall through -- the greedy finds nothing strictly closer, returns
+         * 0, and the caller's BFS routes us around through the door. */
+        char t;
+        if (dh <= 1 && dv <= 1) return 1;
+        t = lvl[(int)m_y[i] + ((hy > (int)m_y[i]) - (hy < (int)m_y[i]))]
+               [(int)m_x[i] + ((hx > (int)m_x[i]) - (hx < (int)m_x[i]))];
+        if (t != '|' && t != '-' && t != ' ') return 1;
+    }
     bestc = (dh > dv) ? dh : dv;                /* current Chebyshev distance     */
     for (dy = -1; dy <= 1; dy++) {
         for (dx = -1; dx <= 1; dx++) {
-            int nx = (int)m_x[i] + dx, ny = (int)m_y[i] + dy, a, b, c;
+            int nx = (int)m_x[i] + dx, ny = (int)m_y[i] + dy, a, b, c, mj;
             char t;
             if (dx == 0 && dy == 0) continue;
             if (nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH) continue;
@@ -448,11 +469,20 @@ static uint8_t pet_heel_greedy(uint8_t i)   /* 1 = heeled/stepped, 0 = boxed in 
             t = lvl[ny][nx];
             if (t == '|' || t == '-' || t == ' ') continue;   /* wall/rock     */
             if (nx == hx && ny == hy) continue;               /* not onto hero */
-            if (monster_at(nx, ny) >= 0) continue;            /* don't stack    */
+            mj = monster_at(nx, ny);
+            if (mj >= 0 && m_type[mj] != MON_KEEPER) continue; /* don't stack --
+                                 * but the pet DISPLACES the keeper (below):
+                                 * a swapped keeper parked on the shop door
+                                 * would seal the dog in or out forever */
             bestc = c; bestx = nx; besty = ny;
         }
     }
-    if (bestx >= 0) { m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty; return 1; }
+    if (bestx >= 0) {
+        int mj = monster_at(bestx, besty);
+        if (mj >= 0) { m_x[mj] = m_x[i]; m_y[mj] = m_y[i]; }  /* keeper steps aside */
+        m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty;
+        return 1;
+    }
     return 0;                          /* boxed in: caller floods once and routes */
 }
 
