@@ -923,7 +923,7 @@ static void describe(char dest, int moved)
              shop_in_room(hero_x, hero_y) ? " (,buy)" : " (,get)", "");
         break;
     case '_': msg("There is an altar here.");         break;
-    case '{': msg("There is a fountain here. (q to drink)"); break;
+    case '{': msg("There is a fountain here.");       break;
     default:  msg("");                                break;
     }
 }
@@ -1216,30 +1216,29 @@ void score_screen(uint8_t victory) __banked
         if (h != FILE_ERR) { file_write(h, &hi, sizeof hi); file_close(h); }
     }
 
+    /* every line kept within 32 columns so the 128K bar doesn't clip it */
     tm_cls();
-    print_str(6, 2, victory ? "You escaped with the Amulet!"
+    print_str(2, 2, victory ? "You escaped with the Amulet!"
                             : "Here lies the adventurer.", C_WHITE | C_BRIGHT);
-    x = print_str(4, 5, "A level-", C_CYAN | C_BRIGHT);
+    x = print_str(2, 5, "A level-", C_CYAN | C_BRIGHT);
     x = put_uint(x, 5, xlvl, C_CYAN | C_BRIGHT);
     x = print_str(x, 5, " ", C_CYAN | C_BRIGHT);
     print_str(x, 5, class_name(), C_CYAN | C_BRIGHT);       /* same bank */
-    x = print_str(4, 6, "reached Dlvl ", C_CYAN | C_BRIGHT);
-    x = put_uint(x, 6, max_dlvl, C_CYAN | C_BRIGHT);
-    x = print_str(x, 6, " in ", C_CYAN | C_BRIGHT);
-    x = put_uint(x, 6, turns, C_CYAN | C_BRIGHT);
-    print_str(x, 6, " turns", C_CYAN | C_BRIGHT);
-    x = print_str(4, 7, "with ", C_CYAN | C_BRIGHT);
+    x = print_str(2, 6, "Reached Dlvl ", C_CYAN | C_BRIGHT);
+    put_uint(x, 6, max_dlvl, C_CYAN | C_BRIGHT);
+    x = put_uint(2, 7, turns, C_CYAN | C_BRIGHT);
+    x = print_str(x, 7, " turns, ", C_CYAN | C_BRIGHT);
     x = put_uint(x, 7, gold, C_CYAN | C_BRIGHT);
     print_str(x, 7, " gold", C_CYAN | C_BRIGHT);
 
-    x = print_str(4, 9, "Score: ", C_WHITE | C_BRIGHT);
+    x = print_str(2, 9, "Score: ", C_WHITE | C_BRIGHT);
     put_uint(x, 9, sc, C_WHITE | C_BRIGHT);
-    if (rec) print_str(4, 10, "A new record!", C_YELLOW | C_BRIGHT);
+    if (rec) print_str(2, 10, "A new record!", C_YELLOW | C_BRIGHT);
     else {
-        x = print_str(4, 10, "Best: ", C_GREEN | C_BRIGHT);
+        x = print_str(2, 10, "Best: ", C_GREEN | C_BRIGHT);
         put_uint(x, 10, hi.score, C_GREEN | C_BRIGHT);
     }
-    print_str(4, 13, "Press Enter.", C_WHITE | C_BRIGHT);
+    print_str(2, 13, "Press Enter.", C_WHITE | C_BRIGHT);
     in_wait_nokey();
     do { k = getkey(); } while (k != 13);
     in_wait_nokey();

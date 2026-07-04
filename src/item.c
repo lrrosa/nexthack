@@ -949,7 +949,7 @@ static void quaff_fountain(void)
                     inv[i].ero = 0;
                     id_set(O_EXCALIBUR);
                     recompute_gear();
-                    msg("From the murky depths, a hand reaches up: Excalibur!");
+                    msg("A hand offers up Excalibur!");
                     return;
                 }
                 break;
@@ -961,12 +961,12 @@ static void quaff_fountain(void)
     case 0: case 1:                      /* cool, clear water */
         php = (uint8_t)(php + rn2(5) + 2);
         if (php > pmaxhp) php = pmaxhp;
-        msg("The water is cool and refreshing.");
+        msg("The water is cool and clear.");
         break;
     case 2:                              /* murky water */
         if (intrinsics & INTR_POISON_RES) { msg("This water tastes stale."); }
         else { st_poison = (uint8_t)(st_poison + rn2(4) + 3);
-               msg("Yecch!  This water is contaminated."); }
+               msg("Yecch!  Foul, murky water."); }
         break;
     case 3:                              /* coins glinting at the bottom */
         { uint16_t amt = (uint16_t)(rn2(30) + 5);

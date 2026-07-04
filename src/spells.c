@@ -98,7 +98,7 @@ static void spell_ray(uint8_t sp, int dx, int dy)
         }
         return;
     }
-    msg("The spell fizzles into the dark.");
+    msg("The spell fizzles out.");
 }
 
 /* 'Z': pick a known spell (full-screen menu), spend Pw, cast it. A cancel or
