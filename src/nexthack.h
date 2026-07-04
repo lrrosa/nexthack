@@ -19,6 +19,7 @@ int  save_game(void)      __banked;
 void build_level(void)    __banked;
 void new_game(void)       __banked;
 void victory_screen(void) __banked;
+void score_screen(uint8_t victory) __banked;  /* death/win summary + hi-score */
 void draw_help(void)      __banked;
 void show_help(void)      __banked;   /* '?' key screen (128K); no-op on the Next */
 void draw_status(void)    __banked;

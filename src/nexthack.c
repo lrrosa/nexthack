@@ -1174,6 +1174,79 @@ void new_game(void) __banked
 }
 
 /* ============================================================
+ * Score screen (shown on death or victory) + a persisted high score
+ * ============================================================ */
+
+#define HI_NAME  "nexthack.hi"
+#define HI_MAGIC 0x4948u      /* 'H','I' */
+
+struct hiscore { uint16_t magic, score, depth; uint8_t pclass, won; };
+
+/* the run's score: gold, plus depth/experience, plus big bonuses for the
+ * Amulet and for surfacing with it (a win). uint16, plenty for a Z80 run. */
+static uint16_t run_score(uint8_t victory)
+{
+    uint16_t s = gold;
+    s = (uint16_t)(s + max_dlvl * 50u + xp);
+    if (has_amulet) s = (uint16_t)(s + 1000u);
+    if (victory)    s = (uint16_t)(s + 2000u);
+    return s;
+}
+
+/* A full-screen summary of the finished run + the best score so far, updated
+ * in place if beaten. Shared by both targets (plain text). Dismissed with
+ * Enter. */
+void score_screen(uint8_t victory) __banked
+{
+    struct hiscore hi;
+    uint16_t sc = run_score(victory);
+    uint8_t  h, x, rec = 0;
+    int k;
+
+    /* read the old record (absent/garbage file -> zero) */
+    h = file_open(HI_NAME);
+    if (h != FILE_ERR) { file_read(h, &hi, sizeof hi); file_close(h); }
+    if (h == FILE_ERR || hi.magic != HI_MAGIC) {
+        hi.magic = HI_MAGIC; hi.score = 0; hi.depth = 1; hi.pclass = 0; hi.won = 0;
+    }
+    if (sc > hi.score) {                 /* a new record: keep it */
+        hi.score = sc; hi.depth = max_dlvl; hi.pclass = pclass; hi.won = victory;
+        rec = 1;
+        h = file_create(HI_NAME);
+        if (h != FILE_ERR) { file_write(h, &hi, sizeof hi); file_close(h); }
+    }
+
+    tm_cls();
+    print_str(6, 2, victory ? "You escaped with the Amulet!"
+                            : "Here lies the adventurer.", C_WHITE | C_BRIGHT);
+    x = print_str(4, 5, "A level-", C_CYAN | C_BRIGHT);
+    x = put_uint(x, 5, xlvl, C_CYAN | C_BRIGHT);
+    x = print_str(x, 5, " ", C_CYAN | C_BRIGHT);
+    print_str(x, 5, class_name(), C_CYAN | C_BRIGHT);       /* same bank */
+    x = print_str(4, 6, "reached Dlvl ", C_CYAN | C_BRIGHT);
+    x = put_uint(x, 6, max_dlvl, C_CYAN | C_BRIGHT);
+    x = print_str(x, 6, " in ", C_CYAN | C_BRIGHT);
+    x = put_uint(x, 6, turns, C_CYAN | C_BRIGHT);
+    print_str(x, 6, " turns", C_CYAN | C_BRIGHT);
+    x = print_str(4, 7, "with ", C_CYAN | C_BRIGHT);
+    x = put_uint(x, 7, gold, C_CYAN | C_BRIGHT);
+    print_str(x, 7, " gold", C_CYAN | C_BRIGHT);
+
+    x = print_str(4, 9, "Score: ", C_WHITE | C_BRIGHT);
+    put_uint(x, 9, sc, C_WHITE | C_BRIGHT);
+    if (rec) print_str(4, 10, "A new record!", C_YELLOW | C_BRIGHT);
+    else {
+        x = print_str(4, 10, "Best: ", C_GREEN | C_BRIGHT);
+        put_uint(x, 10, hi.score, C_GREEN | C_BRIGHT);
+    }
+    print_str(4, 13, "Press Enter.", C_WHITE | C_BRIGHT);
+    in_wait_nokey();
+    do { k = getkey(); } while (k != 13);
+    in_wait_nokey();
+    map_dirty = 1;
+}
+
+/* ============================================================
  * Title screen and main loop
  * ============================================================ */
 

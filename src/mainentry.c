@@ -140,6 +140,7 @@ start_game:
 
         if (won) {
             victory_screen();
+            score_screen(1);
             new_game();
             tm_cls();
             draw_help();
@@ -149,10 +150,12 @@ start_game:
             in_wait_nokey();
         } else if (dead) {
             sfx_die();
-            msg("You die...  Enter to restart.");
+            msg("You die...");
             in_wait_nokey();
-            do { k = getkey(); } while (k != 13);
+            score_screen(0);
             new_game();
+            tm_cls();
+            draw_help();
             draw_status();
             draw_map();
             msg("You feel better.  New game!");
