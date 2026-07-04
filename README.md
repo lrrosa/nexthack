@@ -36,6 +36,10 @@ code.
 
 ## Features
 
+- **Four classes** — every game asks *who are you?* The Valkyrie fights, the
+  Wizard zaps, the Rogue dodges, the Tourist haggles — each with its own
+  attributes (which really matter: St hits harder, Dx lands blows, Co mends,
+  Ch bargains in shops), starting gear and purse.
 - A **50-level dungeon**, generated procedurally and **deterministically**: each
   depth regenerates identically from its own seed, while the changes you make
   (gold taken, monsters killed, items picked up) are remembered across revisits.
@@ -43,11 +47,14 @@ code.
   around you, and explored-but-unseen terrain is drawn dimmed from memory.
 - **Turn-based combat** against a depth-scaled bestiary (rats, bats, kobolds,
   dogs, snakes, orcs, zombies, acid blobs, leprechauns, yellow lights, homunculi,
-  wraiths…) that chases you with BFS pathfinding. Many bite with a **special
-  attack** — poison, blindness, sleep, gold theft, life-drain — and hidden
-  **traps** (trap doors, darts, sleeping gas) lurk in the deeper floors. Scratch
-  **Elbereth** (`E`) in the dust to keep monsters at bay; experience levels raise
-  your HP.
+  wraiths, floating eyes…) that chases you with BFS pathfinding. Many bite with a
+  **special attack** — poison, blindness, sleep, gold theft, life-drain — and
+  never melee a floating eye with your eyes open. Hidden **traps** (trap doors,
+  darts, sleeping gas) lurk in the deeper floors. Scratch **Elbereth** (`E`) in
+  the dust to keep monsters at bay; experience levels raise your HP.
+- **Corpses: you are what you eat** — slain monsters may leave one, and the
+  right flesh teaches the body something: poison resistance, sleep resistance,
+  or a floating eye's **telepathy** (sense every monster while blind).
 - A **loyal pet dog** starts at your side, fights monsters for you and follows you
   through the dungeon. **Throw** (`t`) a weapon down a corridor for a ranged
   attack — it lands on the floor to be reclaimed — **search** (`s`) the ground for
@@ -243,7 +250,7 @@ from the roguelike tradition):
   scroll (`?`), ring (`=`), wand (`/`), the Amulet of Yendor (`"`)
 - **Creatures:** hero and shopkeeper (`@`), rat (`r`), bat (`B`), acid blob (`a`),
   kobold (`k`), dog (`d`), snake (`S`), orc (`o`), zombie (`Z`), leprechaun (`l`),
-  yellow light (`y`), homunculus (`i`), wraith (`W`)
+  yellow light (`y`), homunculus (`i`), wraith (`W`), floating eye (`e`)
 
 ## Technical notes
 

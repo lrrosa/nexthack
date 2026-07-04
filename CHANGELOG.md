@@ -8,6 +8,46 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.6.0] — 2026-07-04
+
+The NetHack-identity release: who you are finally matters.
+
+### Added
+- **Classes** — every new game asks *who are you?* Four ways into the dungeon:
+  - **Valkyrie**: St 17, 16 HP, short sword and ring mail. Hits hard, mends
+    fast, haggles badly.
+  - **Wizard**: In 16, 10 HP, 6 Pw; a dagger, a charged wand of striking and a
+    healing potion.
+  - **Rogue**: Dx 16, 12 HP, dagger, leather armor and 60 gold. Almost never
+    misses.
+  - **Tourist**: Ch 14, 12 HP, two food rations, a potion and 120 gold. Eats
+    well, pays less in shops, fights like a tourist.
+- **Attributes have real effects** — the status bar's numbers are no longer
+  decoration: Dexterity decides whether a swing lands ("You miss the rat."),
+  Strength adds melee damage, Constitution speeds regeneration and level-up
+  HP, and Charisma haggles shop prices up or down.
+- **Corpses** — slain monsters may leave one, and *you are what you eat*:
+  poisonous flesh can grant **poison resistance** (or poison you), a
+  homunculus can grant **sleep resistance**, and a floating eye's corpse
+  grants **telepathy** — sense every monster on the level while blind.
+- **The floating eye** — a blue lidless orb from depth 5 that neither chases
+  nor bites. Strike it in melee with your eyes open, though, and its gaze
+  **freezes you** while everything else closes in. Blind heroes are immune.
+- **Scroll of identify** — reading it names every carried item and reveals
+  each one's blessed/cursed state.
+
+### Fixed
+- **Your dog no longer gets stuck in shops.** Two bugs: the 128K dog could
+  "heel" at your side *through a shop wall*, and the shopkeeper — displaced
+  when you walk past him — could end up parked on the door cell forever,
+  sealing the shop. The pet now displaces the shopkeeper, as pets displace
+  peacefuls in NetHack.
+
+### Note
+- Saved games from 1.5.x will **not** load — the character sheet joins the
+  save and the new items shift world generation. Finish any run in progress
+  before upgrading.
+
 ## [1.5.1] — 2026-07-03
 
 A hotfix + polish pass over 1.5.0. Saved games from 1.5.0 still load.
