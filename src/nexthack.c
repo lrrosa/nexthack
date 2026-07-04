@@ -107,9 +107,18 @@ struct save_player {
  * static helpers (hunger_*, describe) are reached by in-page calls. */
 #ifdef __ZXNEXT
 #pragma codeseg PAGE_22_CODE
+#pragma constseg PAGE_22_CODE
 #else
 #pragma codeseg BANK_3
+#pragma constseg BANK_3
 #endif
+/* constseg banks this file's RODATA -- every message/label literal -- next to
+ * its code (~1.5 KB off the resident half, the lever that paid for corpses).
+ * Safe because every literal is CONSUMED while this bank is mapped: msg/
+ * print_str copy to the screen during the call (resident callees don't remap),
+ * and the only string pointers that leave the file (hunger_label to
+ * draw_status) stay same-bank. Do NOT pass this file's literals as arguments
+ * to another bank's __banked function -- the trampoline swaps this bank out. */
 
 /* Write seed + player + each module's state. Returns 1 on success. */
 int save_game(void) __banked
@@ -271,6 +280,10 @@ void build_level(void) __banked
  * Rendering
  * ============================================================ */
 
+/* telepathy: while blind you sense every monster on the level (the floating
+ * eye's gift) -- both renderers draw monsters through this despite no vision */
+#define mon_sensed() (st_blind && (intrinsics & INTR_TELEPATHY))
+
 #ifdef __ZXNEXT
 void draw_map(void) __banked
 {
@@ -296,6 +309,8 @@ void draw_map(void) __banked
             attr = 0;
             if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) {
                 t = T_HERO;
+            } else if (mon_sensed() && (mi = monster_at(x, y)) >= 0) {
+                t = mon_tile(m_type[mi]);         /* sensed by telepathy  */
             } else if (!(seen[byte] & mask)) {
                 t = T_ROCK;                       /* never seen -> dark   */
             } else if (vis[byte] & mask) {        /* in sight -> full     */
@@ -429,7 +444,8 @@ void draw_map(void) __banked
                 m_x[i] >= vx && m_x[i] < (uint8_t)(vx + TM_W) &&
                 !(m_x[i] == (uint8_t)hero_x && m_y[i] == (uint8_t)hero_y)) {
                 uint16_t midx = (uint16_t)m_y[i] * MAPW + m_x[i];
-                if (dm_vis[midx >> 3] & (1u << (midx & 7))) { cmx = m_x[i]; cmy = m_y[i]; }
+                if ((dm_vis[midx >> 3] & (1u << (midx & 7))) || mon_sensed())
+                    { cmx = m_x[i]; cmy = m_y[i]; }
             }
             /* erase only where it left -- but never the hero's cell: swapping with
              * the pet puts its old cell UNDER the just-drawn hero (terrain there
@@ -460,7 +476,7 @@ void draw_map(void) __banked
             if (m_x[i] < vx || m_x[i] >= (uint8_t)(vx + TM_W)) continue;
             if (m_x[i] == (uint8_t)hero_x && m_y[i] == (uint8_t)hero_y) continue;
             midx = (uint16_t)m_y[i] * MAPW + m_x[i];
-            if (!(dm_vis[midx >> 3] & (1u << (midx & 7)))) continue;
+            if (!(dm_vis[midx >> 3] & (1u << (midx & 7))) && !mon_sensed()) continue;
             vb = (uint16_t)m_y[i] * TM_W + (uint16_t)(m_x[i] - vx);
             mon_bm[vb >> 3] |= (uint8_t)(1u << (vb & 7));
             mt = mon_tile(m_type[i]);
@@ -519,7 +535,7 @@ void draw_map(void) __banked
             m_x[i] >= vx && m_x[i] < (uint8_t)(vx + TM_W) &&
             !(m_x[i] == (uint8_t)hero_x && m_y[i] == (uint8_t)hero_y)) {
             uint16_t midx = (uint16_t)m_y[i] * MAPW + m_x[i];
-            if (dm_vis[midx >> 3] & (1u << (midx & 7))) dr = 1;
+            if ((dm_vis[midx >> 3] & (1u << (midx & 7))) || mon_sensed()) dr = 1;
         }
         if (dr) { prev_mx[i] = m_x[i]; prev_my[i] = m_y[i]; }
         else      prev_mx[i] = 255;
@@ -933,8 +949,12 @@ static void spring_trap(int t, uint8_t x, uint8_t y)
         if (php <= d) { php = 0; dead = 1; }
         else        php = (uint8_t)(php - d);
     } else {                            /* sleeping gas */
-        msg("Sleeping gas!");
-        st_sleep = (uint8_t)(st_sleep + rn2(4) + 3);
+        if (intrinsics & INTR_SLEEP_RES) {
+            msg("A whiff of gas.  You yawn.");
+        } else {
+            msg("Sleeping gas!");
+            st_sleep = (uint8_t)(st_sleep + rn2(4) + 3);
+        }
     }
 }
 

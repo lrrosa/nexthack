@@ -18,10 +18,13 @@
 /* Banked module (cold, event-driven). play() is static -> reached by in-page
  * calls from the sfx_* wrappers; bit_beepfx_di and the BEEPFX_* tables are
  * resident, so the banked code calls/reads them directly. */
+/* Moved to nexthack.c's bank when item.c's growth filled PAGE_20/BANK_1: all
+ * sfx_* entries are __banked, so cross-bank callers were already paying the
+ * trampoline -- the move costs nothing. */
 #ifdef __ZXNEXT
-#pragma codeseg PAGE_20_CODE
+#pragma codeseg PAGE_22_CODE
 #else
-#pragma codeseg BANK_1
+#pragma codeseg BANK_3
 #endif
 
 static void play(void *fx)

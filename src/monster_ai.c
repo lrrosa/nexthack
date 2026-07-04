@@ -19,9 +19,14 @@
 
 #ifdef __ZXNEXT
 #pragma codeseg PAGE_26_CODE   /* bank 13: a third code bank (PAGE_20 filled up) */
+#pragma constseg PAGE_26_CODE
 #else
 #pragma codeseg BANK_6   /* the spare 128K bank: the pet AI outgrew BANK_1 */
+#pragma constseg BANK_6
 #endif
+/* constseg: this file's message literals live in its own bank (consumed by
+ * msg/msg2 while it is mapped), not the tight resident half. Don't pass them
+ * into another bank's __banked functions. */
 
 static uint8_t mon_dead[MAXLVL + 1];     /* bit i: monster i killed */
 
@@ -151,6 +156,8 @@ void hit_monster(uint8_t mi, uint8_t dmg) __banked
         m_alive[mi] = 0;
         if (dlvl <= MAXLVL)
             mon_dead[dlvl] |= (uint8_t)(1u << mi);   /* remember the kill */
+        if (m_type[mi] != MON_KEEPER && rn2(2))      /* it may leave a corpse */
+            corpse_drop(m_x[mi], m_y[mi], m_type[mi]);
         msg2("You kill the ", mt->name, "!");
         sfx_kill();
         gain_xp(mt->xp);
@@ -179,6 +186,13 @@ void attack_monster(uint8_t mi) __banked
     hit_monster(mi, dmg);
     if (mt->corr && rn2(2))         /* acid eats the weapon you strike it with */
         corrode_worn(')');
+    if (mt->ch == 'e' && !st_blind) {
+        /* you met the floating eye's gaze mid-swing -- the classic freeze.
+         * A blind hero can't meet it (and telepathy makes blind-fighting
+         * eyes the NetHack-approved trick). */
+        st_sleep = (uint8_t)(st_sleep + rn2(5) + 2);
+        msg("You are frozen by its gaze!");
+    }
 }
 
 /* ---- monster turn: chase the hero, attack when adjacent ---- */
@@ -207,6 +221,7 @@ static void monster_hits_player(uint8_t i)
             corrode_worn('[');
         switch (mt->atk) {          /* special on-hit effects (status-effect layer) */
         case ATK_POISON:
+            if (intrinsics & INTR_POISON_RES) break;   /* immune flesh */
             if (rn2(2)) { st_poison = (uint8_t)(st_poison + rn2(4) + 3);
                           msg("You feel poisoned!"); }
             break;
@@ -222,6 +237,7 @@ static void monster_hits_player(uint8_t i)
             }
             break;
         case ATK_SLEEP:
+            if (intrinsics & INTR_SLEEP_RES) break;    /* wide awake */
             if (rn2(3) == 0) { st_sleep = (uint8_t)(st_sleep + rn2(4) + 3);
                                msg("You are put to sleep!"); }
             break;
@@ -367,6 +383,8 @@ static void pet_hits(uint8_t pi, uint8_t ti)
         m_alive[ti] = 0;
         if (dlvl <= MAXLVL)
             mon_dead[dlvl] |= (uint8_t)(1u << ti);
+        if (rn2(2))                        /* the dog's kill may leave a corpse */
+            corpse_drop(m_x[ti], m_y[ti], m_type[ti]);
         msg2("Your dog kills the ", mt->name, "!");
         sfx_kill();
         return;
@@ -483,6 +501,7 @@ static void mon_step(uint8_t i)
     int ddx, ddy;
 
     if (m_type[i] == MON_KEEPER) return;   /* the shopkeeper never moves */
+    if (m_type[i] == 'e') return;          /* the floating eye just floats */
     if (m_sleep[i]) { m_sleep[i]--; return; }    /* asleep (wand of sleep): no turn */
     if (i == pet_idx) { pet_step(i); return; }   /* the pet follows its own rules */
 
@@ -534,6 +553,7 @@ void monsters_turn(void) __banked
         uint16_t blocked = 0;
         for (i = 0; i < mcount; i++) {
             if (!m_alive[i] || m_type[i] == MON_KEEPER) continue;
+            if (m_type[i] == 'e') continue;   /* the floating eye just floats */
             if (m_sleep[i]) { m_sleep[i]--; continue; }
             if (i == (uint8_t)pet_idx) {
                 if (pet_bite_adjacent(i)) continue;

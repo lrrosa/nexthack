@@ -45,6 +45,8 @@ enum {
     O_FOOD,                                    /* '%' food    */
     O_AMULET,                                  /* '"' amulet  */
     O_WSTRIKE, O_WCOLD, O_WSLEEP, O_WTELE, O_WDIG,   /* '/' wands (zap with z) */
+    O_CORPSE,      /* '%' a slain monster's remains (its char rides in ench);
+                    * mindep 255 = never generated as loot, only dropped */
     NUMOBJ
 };
 
@@ -82,7 +84,8 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '/',  0,  200,  4, "wand of cold" },
     { '/',  0,  175,  3, "wand of sleep" },
     { '/',  0,  200,  5, "wand of teleportation" },
-    { '/',  0,  150,  6, "wand of digging" }
+    { '/',  0,  150,  6, "wand of digging" },
+    { '%',  0,    2, 255, "corpse" }   /* never generated (mindep 255) */
 };
 
 typedef struct {
@@ -159,6 +162,18 @@ static void floor_pick(uint8_t i)    /* remove entry i, restoring its terrain */
     lvl[floor_obj[i].y][floor_obj[i].x] = (char)floor_obj[i].och;
     while ((uint8_t)(i + 1) < floor_n) { floor_obj[i] = floor_obj[i + 1]; i++; }
     floor_n--;
+}
+
+/* A slain monster may leave its corpse where it fell: a '%' floor item whose
+ * ench carries the monster's char. floor_drop validates the cell (plain
+ * floor/corridor, list not full) -- when it can't rest there, no corpse. */
+void corpse_drop(uint8_t x, uint8_t y, char mch) __banked
+{
+    obj_t o;
+    o.otyp = O_CORPSE;
+    o.ench = (int8_t)mch;
+    o.ero = 0; o.worn = 0; o.buc = BUC_UNC;
+    floor_drop(x, y, &o);
 }
 
 /* ---- gear effects ---- */
@@ -265,7 +280,13 @@ static const char *obj_desc(const obj_t *o)
         *p++ = (char)('0' + (o->ench % 10));
         *p++ = ' ';
     }
-    s = item_name(o->otyp);     /* true name if identified, else appearance */
+    if (o->otyp == O_CORPSE) {          /* named for the fallen: "rat corpse" */
+        s = mon_name((char)o->ench);
+        while (*s) *p++ = *s++;
+        s = " corpse";
+    } else {
+        s = item_name(o->otyp); /* true name if identified, else appearance */
+    }
     while (*s) *p++ = *s++;
     if (t->cls == '/') {        /* a wand shows its remaining charges: " (N)" */
         *p++ = ' '; *p++ = '(';
@@ -901,8 +922,12 @@ void do_quaff(void) __banked
         st_conf = (uint8_t)(st_conf + rn2(15) + 15);
         msg("Huh?  What?  Where am I?");
     } else if (ot == O_SLEEPING) {
-        st_sleep = (uint8_t)(st_sleep + rn2(8) + 5);
-        msg("You suddenly fall asleep!");
+        if (intrinsics & INTR_SLEEP_RES) {
+            msg("You yawn.");           /* sleep resistance shrugs it off */
+        } else {
+            st_sleep = (uint8_t)(st_sleep + rn2(8) + 5);
+            msg("You suddenly fall asleep!");
+        }
     } else if (ot == O_BLINDNESS) {
         st_blind = (uint8_t)(st_blind + rn2(40) + 30);
         map_dirty = 1;                      /* redraw: the world goes dark */
@@ -924,6 +949,42 @@ void do_quaff(void) __banked
     acted = 1; turns++;
 }
 
+/* "You are what you eat": a corpse feeds less than a ration but some flesh
+ * teaches the body something -- or punishes it. The NetHack classics. */
+static void eat_corpse(char mch)
+{
+    if (mch == 'S' || mch == 'k') {              /* poisonous flesh */
+        if (intrinsics & INTR_POISON_RES)
+            msg("Ecch.  No harm done.");
+        else if (rn2(3) == 0) {
+            intrinsics |= INTR_POISON_RES;
+            msg("You feel healthy!");
+        } else {
+            st_poison = (uint8_t)(st_poison + 8);
+            msg("Ecch - that was poisonous!");
+        }
+    } else if (mch == 'i') {                     /* homunculus: sleepy flesh */
+        if (intrinsics & INTR_SLEEP_RES)
+            msg("You eat.  Chewy.");
+        else if (rn2(2)) {
+            intrinsics |= INTR_SLEEP_RES;
+            msg("You feel wide awake!");
+        } else {
+            st_sleep = (uint8_t)(st_sleep + rn2(4) + 3);
+            msg("You doze off...");
+        }
+    } else if (mch == 'e') {                     /* floating eye: the classic */
+        intrinsics |= INTR_TELEPATHY;
+        map_dirty = 1;               /* if already blind, sense them at once */
+        msg("You feel a strange awareness!");
+    } else if (mch == 'a') {                     /* acid blob: burns going down */
+        if (php > 2) php = (uint8_t)(php - 2);
+        msg("Acrid!  It burns.");
+    } else {
+        msg("You eat.  Not bad.");
+    }
+}
+
 void do_eat(void) __banked
 {
     int s = select_item('%', "Eat what?");
@@ -933,10 +994,18 @@ void do_eat(void) __banked
         msg("You are too full to eat now.");
         return;
     }
-    nutrition += 800;
-    if (nutrition > 1500) nutrition = 1500;
-    inv_remove((uint8_t)s);
-    msg("You eat.  Delicious!");
+    if (inv[s].otyp == O_CORPSE) {
+        char mch = (char)inv[s].ench;
+        inv_remove((uint8_t)s);
+        nutrition += 250;                    /* lean fare next to a ration */
+        if (nutrition > 1500) nutrition = 1500;
+        eat_corpse(mch);
+    } else {
+        nutrition += 800;
+        if (nutrition > 1500) nutrition = 1500;
+        inv_remove((uint8_t)s);
+        msg("You eat.  Delicious!");
+    }
     sfx_eat();
     acted = 1; turns++;
 }
