@@ -130,7 +130,9 @@ static void gain_xp(uint8_t amt)
 {
     xp = (uint16_t)(xp + amt);
     while (xlvl < 30 && xp >= (uint16_t)xlvl * 20) {
-        uint8_t gain = (uint8_t)(rn2(4) + 2);   /* 2..5 max-HP boost */
+        uint8_t gain = (uint8_t)(rn2(4) + 2 +
+                                 (at_con >= 14 ? 1 : 0)); /* 2..5 max HP,
+                                                           * +1 if hardy */
         xlvl++;
         pmaxhp = (uint8_t)(pmaxhp + gain);
         php = (uint8_t)(php + gain);
@@ -162,9 +164,18 @@ void hit_monster(uint8_t mi, uint8_t dmg) __banked
 void attack_monster(uint8_t mi) __banked
 {
     const MonType *mt = mon_find(m_type[mi]);
-    uint8_t dmg = (uint8_t)(rn2(4) + 1 + weapon_dmg);  /* 1..4 + weapon */
+    uint8_t dmg;
 
     turns++;
+    /* Dexterity decides whether the swing lands at all (Dx 11 = 85%, 16+ =
+     * always) -- the whiffed turn still passes, as in NetHack. */
+    if (rn2(20) >= (uint8_t)(12 + (at_dex >> 1))) {
+        msg2("You miss the ", mon_name(m_type[mi]), ".");
+        return;
+    }
+    dmg = (uint8_t)(rn2(4) + 1 + weapon_dmg);   /* 1..4 + weapon */
+    if (at_str >= 17)      dmg = (uint8_t)(dmg + 2);   /* strength bonus */
+    else if (at_str >= 14) dmg++;
     hit_monster(mi, dmg);
     if (mt->corr && rn2(2))         /* acid eats the weapon you strike it with */
         corrode_worn(')');

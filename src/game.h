@@ -36,6 +36,18 @@ extern uint8_t  ac;           /* displayed armour class                   */
 extern uint16_t xp;           /* experience points                        */
 extern uint8_t  xlvl;         /* experience level                         */
 
+/* the character sheet (the NetHack-identity batch). Attributes have real
+ * effects: St = melee damage bonus, Dx = to-hit, Co = level-up HP + regen
+ * speed, Ch = shop prices (In/Wi wait for spellcasting). Defined in
+ * nexthack.c; set by the class at new_game; saved. */
+extern uint8_t  at_str, at_dex, at_con, at_int, at_wis, at_cha;
+extern uint8_t  pclass;       /* class index (nexthack.c class table)     */
+extern uint8_t  intrinsics;   /* INTR_* bit flags, learned from corpses   */
+extern uint8_t  pw, pmaxpw;   /* spell power (real data behind Pw: now)   */
+#define INTR_POISON_RES 0x01  /* poison no longer drains you              */
+#define INTR_SLEEP_RES  0x02  /* sleep attacks and gas traps do nothing   */
+#define INTR_TELEPATHY  0x04  /* sense monsters while blind               */
+
 /* transient status effects (per-turn countdowns; 0 = inactive). Defined in
  * nexthack.c, ticked in upkeep(). The foundation other systems hook into --
  * potions set them now; monsters and traps will later. */

@@ -50,6 +50,14 @@ uint16_t xp = 0;
 uint8_t  xlvl = 1;
 int16_t  nutrition = 900;
 
+/* the character sheet (see game.h). Defaults = the Tourist, matching the old
+ * fixed status line; the class picker overwrites these at new_game. */
+uint8_t  at_str = 14, at_dex = 11, at_con = 14;
+uint8_t  at_int = 10, at_wis = 8,  at_cha = 10;
+uint8_t  pclass = 0;
+uint8_t  intrinsics = 0;
+uint8_t  pw = 2, pmaxpw = 2;
+
 /* transient status effects (see game.h): per-turn countdowns, 0 = inactive */
 uint8_t  st_conf = 0, st_blind = 0, st_sleep = 0, st_poison = 0;
 uint8_t  el_x = 0, el_y = 0, el_life = 0;    /* Elbereth engraving (see game.h) */
@@ -67,7 +75,8 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   20     /* v1.5.0: wands (new '/' loot shifts the gen RNG) */
+#define SAVE_VER   21     /* v1.6.0: the character sheet (attributes, class,
+                           * intrinsics, spell power) joins the player block */
 
 struct save_hdr {
     uint16_t magic;
@@ -87,6 +96,8 @@ struct save_player {
     uint8_t  st_conf, st_blind, st_sleep, st_poison;
     uint16_t pray_timeout;
     uint8_t  have_pet, pet_hp;
+    uint8_t  at_str, at_dex, at_con, at_int, at_wis, at_cha;
+    uint8_t  pclass, intrinsics, pw, pmaxpw;
 };
 
 /* From here down, all of nexthack.c's CODE is banked into PAGE_22_CODE (mapped
@@ -121,6 +132,10 @@ int save_game(void) __banked
     p.st_sleep = st_sleep; p.st_poison = st_poison;
     p.pray_timeout = pray_timeout;
     p.have_pet = have_pet; p.pet_hp = pet_hp;
+    p.at_str = at_str; p.at_dex = at_dex; p.at_con = at_con;
+    p.at_int = at_int; p.at_wis = at_wis; p.at_cha = at_cha;
+    p.pclass = pclass; p.intrinsics = intrinsics;
+    p.pw = pw; p.pmaxpw = pmaxpw;
     file_write(h, &p, sizeof p);
 
     item_save(h);
@@ -158,6 +173,10 @@ int load_game(void) __banked
     st_sleep = p.st_sleep; st_poison = p.st_poison;
     pray_timeout = p.pray_timeout;
     have_pet = p.have_pet; pet_hp = p.pet_hp;
+    at_str = p.at_str; at_dex = p.at_dex; at_con = p.at_con;
+    at_int = p.at_int; at_wis = p.at_wis; at_cha = p.at_cha;
+    pclass = p.pclass; intrinsics = p.intrinsics;
+    pw = p.pw; pmaxpw = p.pmaxpw;
     dead = 0; won = 0;
 
     item_load(h);
@@ -563,8 +582,10 @@ void upkeep(void) __banked
             php--;
             if (php == 0) dead = 1;
         }
-    } else if (++heal_timer >= 20) {            /* slow regeneration */
-        heal_timer = 0;
+    } else if (++heal_timer >= (uint8_t)(at_con >= 16 ? 14 :
+                                         at_con >= 13 ? 17 : 20)) {
+        heal_timer = 0;                         /* slow regeneration -- a hardy
+                                                 * constitution mends faster */
         if (php < pmaxhp) php++;
     }
 
@@ -654,7 +675,22 @@ void show_help(void) __banked
     print_str(2, 14, "E engrave Elbereth",   C_CYAN | C_BRIGHT);
     print_str(2, 15, "d drop     S save",    C_CYAN | C_BRIGHT);
     print_str(2, 16, "z zap      ? help",    C_CYAN | C_BRIGHT);
-    print_str(4, 18, "Press any key...",     C_WHITE | C_BRIGHT);
+    {   /* the character sheet -- the 32-col 128K status bar has no room for
+         * it, so both targets show it here */
+        uint8_t x = print_str(2, 18, "St:", C_GREEN | C_BRIGHT);
+        x = put_uint(x, 18, at_str, C_GREEN | C_BRIGHT);
+        x = print_str(x, 18, " Dx:", C_GREEN | C_BRIGHT);
+        x = put_uint(x, 18, at_dex, C_GREEN | C_BRIGHT);
+        x = print_str(x, 18, " Co:", C_GREEN | C_BRIGHT);
+        x = put_uint(x, 18, at_con, C_GREEN | C_BRIGHT);
+        x = print_str(x, 18, " In:", C_GREEN | C_BRIGHT);
+        x = put_uint(x, 18, at_int, C_GREEN | C_BRIGHT);
+        x = print_str(x, 18, " Wi:", C_GREEN | C_BRIGHT);
+        x = put_uint(x, 18, at_wis, C_GREEN | C_BRIGHT);
+        x = print_str(x, 18, " Ch:", C_GREEN | C_BRIGHT);
+        put_uint(x, 18, at_cha, C_GREEN | C_BRIGHT);
+    }
+    print_str(4, 20, "Press any key...",     C_WHITE | C_BRIGHT);
     in_wait_nokey();
     getkey();
     in_wait_nokey();
@@ -672,10 +708,20 @@ void draw_status(void) __banked
 
     /* Each status cell is written exactly once (no clear-then-fill) so the
      * status bar does not flicker as values change. */
-    print_str(0, 22,
-        "Player the Tourist      St:14 Dx:11 Co:14 In:10 Wi:8 Ch:10   Lawful",
-        C_GREEN | C_BRIGHT);
-    putcell(67, 22, ' ', C_GREEN);
+    x = print_str(0, 22, "Player the Tourist    St:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 22, at_str, C_GREEN | C_BRIGHT);
+    x = print_str(x, 22, " Dx:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 22, at_dex, C_GREEN | C_BRIGHT);
+    x = print_str(x, 22, " Co:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 22, at_con, C_GREEN | C_BRIGHT);
+    x = print_str(x, 22, " In:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 22, at_int, C_GREEN | C_BRIGHT);
+    x = print_str(x, 22, " Wi:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 22, at_wis, C_GREEN | C_BRIGHT);
+    x = print_str(x, 22, " Ch:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 22, at_cha, C_GREEN | C_BRIGHT);
+    x = print_str(x, 22, "  Lawful", C_GREEN | C_BRIGHT);
+    while (x < 68) putcell(x++, 22, ' ', C_GREEN);
     x = print_str(68, 22, h, hunger_color());      /* hunger state at the tail */
     while (x < 80) putcell(x++, 22, ' ', C_GREEN);
 
@@ -689,7 +735,11 @@ void draw_status(void) __banked
     x = put_uint(x, 23, php, C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "(", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, pmaxhp, C_GREEN | C_BRIGHT);
-    x = print_str(x, 23, ")  Pw:2(2)  AC:", C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, ")  Pw:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, pw, C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, "(", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, pmaxpw, C_GREEN | C_BRIGHT);
+    x = print_str(x, 23, ")  AC:", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, ac, C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "  Xp:", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, xlvl, C_GREEN | C_BRIGHT);
@@ -1029,6 +1079,10 @@ void new_game(void) __banked
     hunger_state = 0;
     st_conf = st_blind = st_sleep = st_poison = 0;
     pray_timeout = 0;
+    at_str = 14; at_dex = 11; at_con = 14;   /* the Tourist sheet (the class */
+    at_int = 10; at_wis = 8;  at_cha = 10;   /* picker will overwrite these) */
+    pclass = 0; intrinsics = 0;
+    pw = 2; pmaxpw = 2;
     have_pet = 1; pet_hp = 8;     /* you start with a faithful dog */
     item_reset();
     level_reset_persistence();

@@ -486,6 +486,14 @@ void do_pickup(void) __banked
         uint16_t price = item_price(&o);
         uint8_t  x;
         int      k;
+        {   /* charisma haggling, NetHack-style: a plain face (Ch 10) pays a
+             * small premium, a winning one bargains a real discount */
+            uint8_t chx = at_cha;
+            if (chx < 6)  chx = 6;
+            if (chx > 16) chx = 16;
+            price = (uint16_t)(price * (uint16_t)(31 - chx) / 20u);
+            if (price == 0) price = 1;
+        }
         if (gold < price) {
             msg_num("Too dear (", price, "g).");
             return;
