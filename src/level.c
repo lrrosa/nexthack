@@ -11,10 +11,23 @@
 
 #include "level.h"
 #include "platform.h"     /* T_* tile numbers */
+#include "game.h"         /* dlvl */
+#include "rng.h"          /* world_seed */
 
 char    lvl[MAPH][MAPW];
 uint8_t rcount;
 uint8_t up_x, up_y, dn_x, dn_y;
+
+/* An altar's alignment (0 Lawful / 1 Neutral / 2 Chaotic) -- a pure hash of the
+ * world seed, depth and cell, so it is the same every visit and never touches
+ * the RNG stream (level generation stays in sync). Resident so both banks
+ * (item.c's sacrifice, nexthack.c's describe/status) call it directly. */
+uint8_t altar_align(uint8_t x, uint8_t y)
+{
+    uint16_t h = (uint16_t)(world_seed + (uint16_t)dlvl * 0x61C9u
+                            + (uint16_t)x * 13u + (uint16_t)y * 7u);
+    return (uint8_t)(h % 3u);
+}
 
 char terrain(int x, int y)
 {

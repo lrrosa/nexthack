@@ -27,6 +27,7 @@ typedef struct {
     uint8_t hp, pw;
     uint8_t kit[3];         /* otyp | 0x80 = start equipped; 0xFF = empty */
     uint8_t gold;
+    uint8_t align;          /* 0 Lawful / 1 Neutral / 2 Chaotic */
 } class_t;
 
 /* otyps from item.c's catalogue enum (kept in sync by hand -- item.c owns it) */
@@ -46,11 +47,11 @@ typedef struct {
  * Rogue dodges, the Tourist haggles (and eats well). HP/Pw and the sheet
  * follow NetHack's flavour scaled to our numbers. */
 static const class_t classes[NCLASS] = {
-    /* name        St Dx Co In Wi Ch   hp pw  kit                                        $ */
-    { "Valkyrie", {17,12,16, 8,10, 8}, 16, 1, {K_LONGSW|K_EQ,  K_RINGML|K_EQ,  K_NONE},   0 },
-    { "Wizard",   { 8,11,10,16,14,10}, 10, 6, {K_DAGGER |K_EQ, K_BFORCE,       K_HEAL},   0 },
-    { "Rogue",    {11,16,12,10, 8, 8}, 12, 2, {K_DAGGER |K_EQ, K_LEATHER|K_EQ, K_NONE},  60 },
-    { "Tourist",  {10,11,12,10, 8,14}, 12, 2, {K_FOOD,         K_FOOD,         K_HEAL}, 120 },
+    /* name        St Dx Co In Wi Ch   hp pw  kit                                        $   align */
+    { "Valkyrie", {17,12,16, 8,10, 8}, 16, 1, {K_LONGSW|K_EQ,  K_RINGML|K_EQ,  K_NONE},   0, 0 },
+    { "Wizard",   { 8,11,10,16,14,10}, 10, 6, {K_DAGGER |K_EQ, K_BFORCE,       K_HEAL},   0, 1 },
+    { "Rogue",    {11,16,12,10, 8, 8}, 12, 2, {K_DAGGER |K_EQ, K_LEATHER|K_EQ, K_NONE},  60, 2 },
+    { "Tourist",  {10,11,12,10, 8,14}, 12, 2, {K_FOOD,         K_FOOD,         K_HEAL}, 120, 1 },
 };
 
 /* Ask who the player is (a full-screen menu at new-game time) and fill the
@@ -83,6 +84,7 @@ void pick_class(void) __banked
     at_cha = classes[pclass].at[5];
     php = pmaxhp = classes[pclass].hp;
     pw  = pmaxpw = classes[pclass].pw;
+    alignment = classes[pclass].align;
     map_dirty = 1;                  /* the menu drew over everything */
 }
 

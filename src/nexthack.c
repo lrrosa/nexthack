@@ -60,6 +60,7 @@ uint8_t  intrinsics = 0;
 uint8_t  pw = 2, pmaxpw = 2;
 uint8_t  known_spells = 0;
 uint16_t max_dlvl = 1;
+uint8_t  alignment = 0;      /* 0 Lawful / 1 Neutral / 2 Chaotic (set by class) */
 
 /* transient status effects (see game.h): per-turn countdowns, 0 = inactive */
 uint8_t  st_conf = 0, st_blind = 0, st_sleep = 0, st_poison = 0;
@@ -79,8 +80,8 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   22     /* v1.7.0: spellbooks (known_spells, max_dlvl join
-                           * the player block; '&' loot shifts the gen RNG) */
+#define SAVE_VER   23     /* v1.8.0: alignment joins the player block (altar
+                           * sacrifice / divinity) */
 
 struct save_hdr {
     uint16_t magic;
@@ -104,6 +105,7 @@ struct save_player {
     uint8_t  pclass, intrinsics, pw, pmaxpw;
     uint8_t  known_spells;
     uint16_t max_dlvl;
+    uint8_t  alignment;
 };
 
 /* From here down, all of nexthack.c's CODE is banked into PAGE_22_CODE (mapped
@@ -153,6 +155,7 @@ int save_game(void) __banked
     p.pw = pw; p.pmaxpw = pmaxpw;
     p.known_spells = known_spells;
     p.max_dlvl = max_dlvl;
+    p.alignment = alignment;
     file_write(h, &p, sizeof p);
 
     item_save(h);
@@ -196,6 +199,7 @@ int load_game(void) __banked
     pw = p.pw; pmaxpw = p.pmaxpw;
     known_spells = p.known_spells;
     max_dlvl = p.max_dlvl;
+    alignment = p.alignment;
     dead = 0; won = 0;
 
     item_load(h);
@@ -718,6 +722,14 @@ void draw_help(void) __banked
 }
 #endif
 
+/* Alignment name (0 Lawful / 1 Neutral / 2 Chaotic). Static: every caller
+ * (status, help, describe) is in this file's bank and copies it to the screen
+ * while that bank is mapped, so the constseg'd literal never crosses a bank. */
+static const char *align_name(uint8_t a)
+{
+    return a == 0 ? "Lawful" : a == 1 ? "Neutral" : "Chaotic";
+}
+
 /* '?': a full-screen key list, then restore the playfield. ONE implementation
  * for both targets (the Next had a 2-line command bar before, but its strings
  * are resident rodata and grew PAGE_22 -- a single '?' screen, 32 columns wide
@@ -756,6 +768,7 @@ void show_help(void) __banked
         x = put_uint(x, 18, at_wis, C_GREEN | C_BRIGHT);
         x = print_str(x, 18, " Ch:", C_GREEN | C_BRIGHT);
         put_uint(x, 18, at_cha, C_GREEN | C_BRIGHT);
+        print_str(2, 19, align_name(alignment), C_CYAN | C_BRIGHT);
     }
     print_str(4, 20, "Press any key...",     C_WHITE | C_BRIGHT);
     in_wait_nokey();
@@ -790,7 +803,8 @@ void draw_status(void) __banked
     x = put_uint(x, 22, at_wis, C_GREEN | C_BRIGHT);
     x = print_str(x, 22, " Ch:", C_GREEN | C_BRIGHT);
     x = put_uint(x, 22, at_cha, C_GREEN | C_BRIGHT);
-    x = print_str(x, 22, "  Lawful", C_GREEN | C_BRIGHT);
+    x = print_str(x, 22, "  ", C_GREEN | C_BRIGHT);
+    x = print_str(x, 22, align_name(alignment), C_GREEN | C_BRIGHT);
     while (x < 68) putcell(x++, 22, ' ', C_GREEN);
     x = print_str(68, 22, h, hunger_color());      /* hunger state at the tail */
     while (x < 80) putcell(x++, 22, ' ', C_GREEN);
@@ -922,7 +936,9 @@ static void describe(char dest, int moved)
         msg2(floor_item_desc(),
              shop_in_room(hero_x, hero_y) ? " (,buy)" : " (,get)", "");
         break;
-    case '_': msg("There is an altar here.");         break;
+    case '_': msg2("A ",
+                   align_name(altar_align((uint8_t)hero_x, (uint8_t)hero_y)),
+                   " altar. (d to offer)");           break;
     case '{': msg("There is a fountain here.");       break;
     default:  msg("");                                break;
     }

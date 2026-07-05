@@ -404,6 +404,59 @@ static void inv_remove(uint8_t s)
     inv_count--;
 }
 
+/* Offer the corpse in inventory slot s on the altar the hero stands on: the
+ * NetHack #offer, folded into `d` (drop) since we have no extended commands.
+ * The god's mood scales with how well the altar's alignment matches yours;
+ * pleased, it grants a boon. Sets acted/turns; consumes the corpse. */
+static void sacrifice(uint8_t s)
+{
+    uint8_t aa = altar_align((uint8_t)hero_x, (uint8_t)hero_y);
+    /* 2 = co-aligned, 1 = a neutral party, 0 = crossed */
+    uint8_t favour = (aa == alignment) ? 2 : (aa == 1 || alignment == 1) ? 1 : 0;
+
+    inv_remove(s);                  /* the corpse is consumed on the altar */
+    acted = 1; turns++;
+    sfx_magic();
+
+    if (favour == 0 && rn2(2)) {    /* a crossed altar may spurn the offering */
+        msg("Your offering is spurned!");
+        if (php > 2) php = (uint8_t)(php - 2);
+        return;
+    }
+
+    /* the god is pleased -- a boon, richer on a co-aligned altar */
+    switch (rn2((uint8_t)(favour >= 2 ? 5 : 4))) {
+    case 0: {                       /* lift every curse you carry */
+        uint8_t n = pray_uncurse(1);
+        msg(n ? "You feel your burdens lift." : "You feel watched over.");
+        break; }
+    case 1: {                       /* bless + sharpen the wielded weapon */
+        uint8_t i;
+        for (i = 0; i < inv_count; i++)
+            if (inv[i].worn && objtypes[inv[i].otyp].cls == ')') {
+                inv[i].buc = BUC_BLESS | BUC_KNOWN;
+                if (inv[i].ench < 5) inv[i].ench++;
+                inv[i].ero = 0;
+                recompute_gear();
+                break;
+            }
+        msg("Your weapon gleams blue.");
+        break; }
+    case 2:                         /* mend body and spirit */
+        php = pmaxhp; pw = pmaxpw;
+        msg("A warm glow restores you.");
+        break;
+    case 3:                         /* toughen the body */
+        if (pmaxhp < 250) { pmaxhp = (uint8_t)(pmaxhp + 3); php = pmaxhp; }
+        msg("You feel more robust.");
+        break;
+    default:                        /* co-aligned bonus: deepen the spirit */
+        if (pmaxpw < 60) { pmaxpw = (uint8_t)(pmaxpw + 2); pw = pmaxpw; }
+        msg("Your spirit deepens.");
+        break;
+    }
+}
+
 void item_reset(void) __banked
 {
     uint8_t i;
@@ -623,6 +676,10 @@ void do_drop(void) __banked
         msg("You dare not part with it!");
         return;
     }
+    if (inv[s].otyp == O_CORPSE && terrain(hero_x, hero_y) == '_') {
+        sacrifice((uint8_t)s);          /* a corpse on an altar is an offering */
+        return;
+    }
 
     if (in_shop) {
         uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u);
@@ -687,6 +744,10 @@ void do_drop(void) __banked
     if (s < 0) return;                  /* cancelled; the caller redraws */
     if (inv[s].otyp == O_AMULET) {      /* never lose the win item by drop/sale */
         msg("You dare not part with it!");
+        return;
+    }
+    if (inv[s].otyp == O_CORPSE && terrain(hero_x, hero_y) == '_') {
+        sacrifice((uint8_t)s);          /* a corpse on an altar is an offering */
         return;
     }
 
