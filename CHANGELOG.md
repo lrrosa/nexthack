@@ -8,6 +8,39 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.7.0] — 2026-07-04
+
+The arcane release: spellbooks, fountains, and a score to beat.
+
+### Added
+- **Spellbooks and spellcasting.** A new class of item (`&`); **read** (`r`)
+  one to learn its spell, then **cast** (`Z`) from a menu that spends spell
+  power (Pw): a **force bolt**, **healing**, a **sleep** ray, or
+  **teleportation**. Casting can fizzle if your mind is weak, so the Wizard
+  (who starts with the spellbook of force bolt) rarely fails where a Valkyrie
+  often would. Pw is real now — it regenerates over time (faster with Wisdom)
+  and grows as you level up.
+- **Fountains** (`{`) dot the deeper floors. Drink from one (`q`) for cool
+  water, foul water, a handful of coins, or a fountain that dries up — and a
+  Valkyrie of experience level 5 or more, wielding a long sword, may have the
+  Lady of the Lake hand up **Excalibur**. (The Valkyrie now starts with a long
+  sword, as in NetHack, to make that reachable.)
+- **A score screen** on death or victory: who you were, how deep you reached,
+  your turns, gold and a final score — weighed against the best run so far,
+  which persists between games.
+
+### Fixed
+- **ZX Spectrum 128K: `S` save now works under ZEsarUX.** The game detects the
+  emulator's esxDOS handler through a new guarded probe, and `run-zx128.bat`
+  enables it. (A machine with no esxDOS still runs; it just can't save.)
+- **Opening the inventory or help no longer leaves a stray letter on a
+  monster** when the screen redraws.
+
+### Note
+- Saved games from 1.6.x will **not** load — the character sheet grew and the
+  new items shift world generation. Finish any run in progress before
+  upgrading.
+
 ## [1.6.0] — 2026-07-04
 
 The NetHack-identity release: who you are finally matters.

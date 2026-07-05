@@ -67,6 +67,10 @@ code.
   won't come off — and step onto an **altar** (`_`) to reveal the blessings on
   what you carry. **Wands** (`z`) zap magic in a chosen direction — a striking
   bolt, a freezing ray, sleep or teleport-away — or dig straight down a level.
+- **Spells and fountains** — read a **spellbook** (`&`) to learn its spell, then
+  **cast** (`Z`) from your **spell power** (Pw): force bolt, healing, sleep, or
+  teleport. **Fountains** (`{`) reward a thirsty adventurer with clear water,
+  foul water or coins — and a worthy Valkyrie may draw **Excalibur** from one.
 - **Shops** with priced goods and a shopkeeper to buy from and sell to, plus
   **special levels** — the cavernous Big Room, guarded **treasure vaults** (gold
   and superior gear behind tough monsters), and **hand-drawn maps** like a
@@ -113,6 +117,8 @@ same minus the Layer 2 images.
 | `monster.c` / `.h` | R | monster arrays, per-monster lookups and the bestiary |
 | `monster_ai.c` | B | chase pathing (BFS), combat, spawning, kill persistence, the pet |
 | `item.c` / `.h` | B | inventory and items (pick up, wield/wear/quaff/eat/read/put-on, throw) |
+| `classes.c` / `.h` | B | the class picker and starting kits |
+| `spells.c` / `.h` | B | spellbooks and spellcasting |
 | `sfx.c` / `.h` | B | beeper sound effects |
 | `nexthack.c` / `.h` | B | game-state globals (resident data), rendering, turn step, level orchestration, save/restore, screens |
 | `game.h` | — | shared player/run state used across modules |
@@ -227,6 +233,7 @@ in ZEsarUX too. **Run and ship the `.tap`, not the `.sna`.**
 | `q` / `e` / `r`           | quaff potion / eat food / read scroll |
 | `t`                       | throw a weapon in a direction |
 | `z`                       | zap a wand (strike, freeze, sleep, teleport, or dig down) |
+| `Z`                       | cast a known spell (spends Pw) |
 | `p`                       | pray to your god |
 | `E`                       | engrave Elbereth in the dust (wards off monsters) |
 | `S`                       | save game and quit to the title |
@@ -245,9 +252,9 @@ the entities they depict (the symbol in parentheses is the internal map code, ke
 from the roguelike tradition):
 
 - **Terrain:** floor (`.`), corridor (`#`), wall (`-` `|`), door (`+`),
-  stairs up/down (`<` `>`), altar (`_`), a sprung trap (`^`)
+  stairs up/down (`<` `>`), altar (`_`), fountain (`{`), a sprung trap (`^`)
 - **Items:** gold (`$`), weapon (`)`), armor (`[`), potion (`!`), food (`%`),
-  scroll (`?`), ring (`=`), wand (`/`), the Amulet of Yendor (`"`)
+  scroll (`?`), ring (`=`), wand (`/`), spellbook (`&`), the Amulet of Yendor (`"`)
 - **Creatures:** hero and shopkeeper (`@`), rat (`r`), bat (`B`), acid blob (`a`),
   kobold (`k`), dog (`d`), snake (`S`), orc (`o`), zombie (`Z`), leprechaun (`l`),
   yellow light (`y`), homunculus (`i`), wraith (`W`), floating eye (`e`)
