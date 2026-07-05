@@ -239,9 +239,11 @@ int getkey(void)
  * stop on the cell you wanted. Tap = exactly one step; hold = one step, a
  * beat, then a steady walk. Release at any point re-arms the instant path. */
 #ifdef __ZXNEXT
-#define RPT_FIRST 10            /* ~200 ms before the first repeat: the Next is
-                                 * the snappy machine, keep the beat short */
-#define RPT_NEXT   4            /* ~80 ms between repeats after it */
+#define RPT_FIRST 10            /* ~200 ms before the first repeat: long enough
+                                 * that a human tap stays exactly one step */
+#define RPT_NEXT   2            /* ~50 ms between repeats: the held walk on the
+                                 * 28 MHz Next -- brisk without the pre-typematic
+                                 * runaway (raw turn ~40 ms = 25 cells/s) */
 #define RPT_GUARD 370           /* the bare .nex runs with interrupts off, so
                                  * FRAMES never ticks: the poll loop IS the
                                  * timer. One poll iteration ~= 1500 T (zxn
@@ -261,22 +263,28 @@ int getkey_rpt(void)
     static uint8_t rpt = 0;
     volatile uint8_t *fr = (volatile uint8_t *)23672;   /* FRAMES lsb, 50 Hz */
     int k = in_inkey();
-    if (k != 0 && k == last) {          /* still held since the last return */
+    if (k != 0 && k == last) {          /* the same key is still held */
         uint8_t n = rpt ? RPT_NEXT : RPT_FIRST;
         while (n--) {
             uint8_t  f = *fr;
             uint16_t guard = RPT_GUARD;
             while (*fr == f && --guard) {
-                k = in_inkey();
-                if (k != last) goto changed;   /* released or rolled mid-wait */
+                int kk = in_inkey();
+                if (kk != 0 && kk != last) {   /* rolled to a NEW key: act now */
+                    last = kk; rpt = 0; return kk;
+                }
+                /* a momentary 0 is NOT a release -- one keyboard scan can miss
+                 * a held key (matrix / debounce). Ignoring it is the fix for
+                 * the crawl: treating it as a release reset rpt, so every step
+                 * restarted at the long RPT_FIRST delay instead of RPT_NEXT. */
             }
         }
-        rpt = 1;                        /* held through the delay: repeat */
-        return last;
+        /* still down? require two 0s in a row before believing a release, so a
+         * single missed scan can't drop us back to the slow first-repeat beat */
+        if (in_inkey() != 0 || in_inkey() != 0) { rpt = 1; return last; }
     }
-changed:
-    if (k == 0)                         /* nothing down: block for a fresh key */
-        do { k = in_inkey(); } while (k == 0);
-    last = k; rpt = 0;                  /* fresh (or different) key: act at once */
+    last = 0; rpt = 0;
+    do { k = in_inkey(); } while (k == 0);   /* block for a fresh press */
+    last = k;
     return k;
 }
