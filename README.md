@@ -86,6 +86,9 @@ code.
 - Hunger and slow HP regeneration, beeper sound effects, and **save & quit** to
   the SD card, NetHack-style (reloaded once on the next boot, then deleted — no
   save-scumming).
+- **Death and glory** — a score screen on death or victory sums up your run
+  (class, depth reached, turns, gold) and weighs it against the **best run so
+  far**, which persists on disk between games.
 - The goal: retrieve the **Amulet of Yendor** from the bottom of the dungeon —
   past the **high priest** who guards it — and climb back out alive.
 
@@ -166,11 +169,11 @@ Equivalent direct invocation of the full build:
 ```bat
 set ZCCCFG=..\z88dk-latest\lib\config\
 set PATH=..\z88dk-latest\bin;%PATH%
-zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startup=1 -pragma-include:zpragma.inc -m src/mainentry.c src/nexthack.c src/platform.c src/platform_init.c src/rng.c src/level.c src/levelgen.c src/levelfov.c src/monster.c src/monster_ai.c src/item.c src/sfx.c src/leveltmpl.c src/titlegfx0.c src/titlegfx1.c src/titlegfx2.c src/titlepal.c src/victorygfx0.c src/victorygfx1.c src/victorygfx2.c src/victorypal.c -o nexthack -create-app
+zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startup=1 -pragma-include:zpragma.inc -m src/mainentry.c src/nexthack.c src/platform.c src/platform_init.c src/rng.c src/level.c src/levelgen.c src/levelfov.c src/monster.c src/monster_ai.c src/item.c src/sfx.c src/leveltmpl.c src/classes.c src/spells.c src/titlegfx0.c src/titlegfx1.c src/titlegfx2.c src/titlepal.c src/victorygfx0.c src/victorygfx1.c src/victorygfx2.c src/victorypal.c -o nexthack -create-app
 ```
 
 The banking layout is configured by `zpragma.inc` (stack at `0xBFF0`, banking
-segment 3) and `mmap.inc` (the `PAGE_20_CODE`/`PAGE_22_CODE` page ORGs).
+segment 3) and `mmap.inc` (the `PAGE_20`/`PAGE_22`/`PAGE_26` code-page ORGs).
 
 ### Building the ZX Spectrum 128K target
 
@@ -183,9 +186,10 @@ The plain 128K build uses the classic `+zx` target with manual 16 KB bank paging
 ```
 
 It compiles the same modules (taking their `#else` 128K code paths) plus the ULA
-SCR screens (`scr.c`, `title_scr.c`, `victory_scr.c`) and the vendored `0x7FFD`
-banking trampoline (`banked_call.asm`); the 96 KB of Next Layer 2 image modules
-are dropped. Banking comes from `zpragma-zx128.inc` (the `CRT_ORG_BANK_N`
+SCR screens (`scr.c`, `title_scr.c`, `victory_scr.c`), the vendored `0x7FFD`
+banking trampoline (`banked_call.asm`), the esxDOS-detection probe
+(`esxdetect.asm`) and the hand-written ULA blits (`puttile_asm.asm`); the 96 KB
+of Next Layer 2 image modules are dropped. Banking comes from `zpragma-zx128.inc` (the `CRT_ORG_BANK_N`
 far-bank ORGs); `tools/png2scr.py` regenerates the title/victory SCRs from the
 PNG art.
 
@@ -235,7 +239,7 @@ in ZEsarUX too. **Run and ship the `.tap`, not the `.sna`.**
 | `s`                       | search the ground for nearby hidden traps |
 | `,`                       | pick up the item under you |
 | `i`                       | show inventory |
-| `d`                       | drop an item on the floor (sells it inside a shop) |
+| `d`                       | drop an item (sells it in a shop; offers a corpse on an altar) |
 | `w` / `W`                 | wield weapon / wear armor |
 | `P`                       | put on a ring |
 | `q` / `e` / `r`           | quaff potion / eat food / read scroll |
@@ -265,7 +269,8 @@ from the roguelike tradition):
   scroll (`?`), ring (`=`), wand (`/`), spellbook (`&`), the Amulet of Yendor (`"`)
 - **Creatures:** hero and shopkeeper (`@`), rat (`r`), bat (`B`), acid blob (`a`),
   kobold (`k`), dog (`d`), snake (`S`), orc (`o`), zombie (`Z`), leprechaun (`l`),
-  yellow light (`y`), homunculus (`i`), wraith (`W`), floating eye (`e`)
+  yellow light (`y`), homunculus (`i`), wraith (`W`), floating eye (`e`),
+  troll (`T`), vampire (`V`), dragon (`D`), the high priest (`M`)
 
 ## Technical notes
 
@@ -279,9 +284,11 @@ from the roguelike tradition):
   must be audited for overflow.
 - **Memory / code banking**: the engine outgrew the 64 KB the Z80 sees at once, so
   it is **code-banked** — a resident half (hot code + all data + stack in
-  `0x8000-0xBFF0`) plus cold code in two 16 KB pages swapped into the `0xC000` window
-  by z88dk's `__banked` trampoline. The BFS scratch arrays live in Bank 5's free tail.
-  This freed ~19 KB for new code; the resident *data* budget stays tight.
+  `0x8000-0xBFF0`) plus cold code in three 16 KB pages swapped into the `0xC000`
+  window by z88dk's `__banked` trampoline. The BFS scratch arrays live in Bank 5's
+  free tail. The resident half — where every module's *data* and string literals
+  land by default — is the tightest budget; read-once tables and message strings
+  are const-banked next to the code that reads them to stay under it.
 
 ## References
 
@@ -307,4 +314,3 @@ contains no NetHack source code and is **not affiliated with or endorsed by** th
 NetHack DevTeam; "NetHack" is mentioned only to credit the inspiration. Because the
 codebase shares no code with NetHack, NetHack's own licence (the NGPL) does not
 apply to it, leaving us free to license NextHack under the GPLv3.
-```
