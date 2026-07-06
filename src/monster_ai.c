@@ -180,8 +180,9 @@ void attack_monster(uint8_t mi) __banked
 
     turns++;
     /* Dexterity decides whether the swing lands at all (Dx 11 = 85%, 16+ =
-     * always) -- the whiffed turn still passes, as in NetHack. */
-    if (rn2(20) >= (uint8_t)(12 + (at_dex >> 1))) {
+     * always) -- the whiffed turn still passes, as in NetHack. Luck leans on
+     * the die: pleased gods steady your hand, spurned ones shake it. */
+    if (rn2(20) >= (uint8_t)(12 + (at_dex >> 1) + (luck >> 1))) {
         msg2("You miss the ", mon_name(m_type[mi]), ".");
         return;
     }

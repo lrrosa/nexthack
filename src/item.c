@@ -155,7 +155,8 @@ static int floor_find(uint8_t x, uint8_t y)
 static int floor_drop(uint8_t x, uint8_t y, const obj_t *o)
 {
     char t = lvl[y][x];
-    if ((t != '.' && t != '#') || floor_find(x, y) >= 0 || floor_n >= MAXFLOOR)
+    if ((t != '.' && t != '#' && t != '_')   /* items may rest on an altar */
+        || floor_find(x, y) >= 0 || floor_n >= MAXFLOOR)
         return 0;
     floor_obj[floor_n].x = x; floor_obj[floor_n].y = y;
     floor_obj[floor_n].och = (uint8_t)t;
@@ -421,10 +422,12 @@ static void sacrifice(uint8_t s)
     if (favour == 0 && rn2(2)) {    /* a crossed altar may spurn the offering */
         msg("Your offering is spurned!");
         if (php > 2) php = (uint8_t)(php - 2);
+        if (luck > -5) luck--;      /* and the insult is remembered */
         return;
     }
 
     /* the god is pleased -- a boon, richer on a co-aligned altar */
+    if (luck < 5) luck++;
     switch (rn2((uint8_t)(favour >= 2 ? 5 : 4))) {
     case 0: {                       /* lift every curse you carry */
         uint8_t n = pray_uncurse(1);
@@ -455,6 +458,41 @@ static void sacrifice(uint8_t s)
         msg("Your spirit deepens.");
         break;
     }
+}
+
+/* Drop slot s at the hero's feet -- the shared tail of both do_drop menus.
+ * On an altar the gods appraise the gift: the flash reveals its BUC state,
+ * and a potion takes the altar's own touch -- blessed on a co-aligned altar,
+ * cursed on a crossed one (the poor man's holy water). */
+static void drop_at_feet(uint8_t s)
+{
+    obj_t o = inv[s];
+    uint8_t altar = (uint8_t)(terrain(hero_x, hero_y) == '_');
+    o.worn = 0;
+    if (altar) {
+        uint8_t aa = altar_align((uint8_t)hero_x, (uint8_t)hero_y);
+        if (objtypes[o.otyp].cls == '!') {
+            if (aa == alignment)                o.buc = BUC_BLESS;
+            else if (aa != 1 && alignment != 1) o.buc = BUC_CURSE;
+        }
+        o.buc |= BUC_KNOWN;
+    }
+    if (!floor_drop((uint8_t)hero_x, (uint8_t)hero_y, &o)) {
+        msg("You can't drop it here.");
+        return;
+    }
+    if (altar) {
+        uint8_t st = (uint8_t)(o.buc & 3);
+        msg(st == BUC_BLESS ? "It flashes blue!" :
+            st == BUC_CURSE ? "A black flash!" : "No flash.");
+        sfx_magic();
+    } else {
+        msg("You drop it.");          /* name-free: it's the item you just chose */
+        sfx_pick();
+    }
+    inv_remove(s);
+    recompute_gear();
+    acted = 1; turns++;
 }
 
 void item_reset(void) __banked
@@ -689,18 +727,8 @@ void do_drop(void) __banked
         recompute_gear();               /* in case the sold item was worn */
         msg_num("You sell it for ", sp, " gold.");
         sfx_gold();
-    } else {                            /* drop it at your feet, to reclaim later */
-        obj_t o = inv[s];
-        o.worn = 0;
-        if (!floor_drop((uint8_t)hero_x, (uint8_t)hero_y, &o)) {
-            msg("You can't drop it here.");
-            return;
-        }
-        msg("You drop it.");          /* name-free: it's the item you just chose */
-        inv_remove((uint8_t)s);
-        recompute_gear();
-        sfx_pick();
-        acted = 1; turns++;
+    } else {
+        drop_at_feet((uint8_t)s);       /* at your feet -- or onto an altar */
     }
 }
 #else
@@ -759,18 +787,8 @@ void do_drop(void) __banked
         recompute_gear();               /* in case the sold item was worn */
         msg_num("You sell it for ", sp, " gold.");
         sfx_gold();
-    } else {                            /* drop it at your feet, to reclaim later */
-        obj_t o = inv[s];
-        o.worn = 0;
-        if (!floor_drop((uint8_t)hero_x, (uint8_t)hero_y, &o)) {
-            msg("You can't drop it here.");
-            return;
-        }
-        msg("You drop it.");          /* name-free: it's the item you just chose */
-        inv_remove((uint8_t)s);
-        recompute_gear();
-        sfx_pick();
-        acted = 1; turns++;
+    } else {
+        drop_at_feet((uint8_t)s);       /* at your feet -- or onto an altar */
     }
 }
 #endif

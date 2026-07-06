@@ -61,6 +61,7 @@ uint8_t  pw = 2, pmaxpw = 2;
 uint8_t  known_spells = 0;
 uint16_t max_dlvl = 1;
 uint8_t  alignment = 0;      /* 0 Lawful / 1 Neutral / 2 Chaotic (set by class) */
+int8_t   luck = 0;           /* hidden fortune, -5..+5 (see game.h) */
 
 /* transient status effects (see game.h): per-turn countdowns, 0 = inactive */
 uint8_t  st_conf = 0, st_blind = 0, st_sleep = 0, st_poison = 0;
@@ -80,8 +81,8 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   23     /* v1.8.0: alignment joins the player block (altar
-                           * sacrifice / divinity) */
+#define SAVE_VER   24     /* v1.8.0: alignment + luck join the player block
+                           * (altar sacrifice / divinity) */
 
 struct save_hdr {
     uint16_t magic;
@@ -106,6 +107,7 @@ struct save_player {
     uint8_t  known_spells;
     uint16_t max_dlvl;
     uint8_t  alignment;
+    int8_t   luck;
 };
 
 /* From here down, all of nexthack.c's CODE is banked into PAGE_22_CODE (mapped
@@ -156,6 +158,7 @@ int save_game(void) __banked
     p.known_spells = known_spells;
     p.max_dlvl = max_dlvl;
     p.alignment = alignment;
+    p.luck = luck;
     file_write(h, &p, sizeof p);
 
     item_save(h);
@@ -200,6 +203,7 @@ int load_game(void) __banked
     known_spells = p.known_spells;
     max_dlvl = p.max_dlvl;
     alignment = p.alignment;
+    luck = p.luck;
     dead = 0; won = 0;
 
     item_load(h);
@@ -686,6 +690,12 @@ void do_pray(void) __banked
     if (pray_timeout) {
         msg("You have prayed too recently.");
         return;                         /* a refused prayer costs no turn */
+    }
+    if (luck < 0) {                     /* the gods remember your affronts */
+        msg("You feel forsaken.");
+        pray_timeout = 100;             /* and they take their time forgiving */
+        turns++; acted = 1;
+        return;
     }
     if (nutrition < 50) {
         nutrition = 900;                msg("Your hunger is satisfied.");
@@ -1175,6 +1185,7 @@ void new_game(void) __banked
     intrinsics = 0;
     known_spells = 0;
     max_dlvl = 1;
+    luck = 0;
     pick_class();                 /* who are you? (fills the sheet, hp, pw) */
     have_pet = 1; pet_hp = 8;     /* you start with a faithful dog */
     item_reset();
