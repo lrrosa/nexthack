@@ -66,6 +66,20 @@ static void spawn_guard(uint8_t room)
     mcount++;
 }
 
+/* The Amulet's keeper: a lone high priest posted ON the Amulet's cell (the
+ * would-be down-stairs of DLVL_AMULET, chosen without RNG, so the level's
+ * deterministic spawns are untouched). Slot 0, so the mon_dead bitmask
+ * remembers the kill: slay it once and the Sanctum stays yours. */
+static void spawn_guardian(void)
+{
+    const MonType *mt = mon_find('M');
+    m_x[mcount] = dn_x; m_y[mcount] = dn_y;
+    m_hp[mcount] = mt->hp;              /* no depth bonus: already the apex */
+    m_type[mcount] = 'M';
+    m_alive[mcount] = 1;
+    mcount++;
+}
+
 void spawn_level_monsters(void) __banked
 {
     uint8_t count = (uint8_t)(2 + dlvl);   /* more monsters the deeper you go */
@@ -80,6 +94,10 @@ void spawn_level_monsters(void) __banked
     if (guards > count) guards = count;
     mcount = 0;
     { uint8_t k; for (k = 0; k < MAXMON; k++) m_sleep[k] = 0; }   /* none asleep yet */
+    if (dlvl == DLVL_AMULET) {          /* the Amulet's keeper takes slot 0 */
+        spawn_guardian();
+        if (count > 7) count = 7;       /* randoms stay in tracked slots 1-7 */
+    }
     for (i = 0; i < count; i++) {
         if (i < guards) spawn_guard((uint8_t)vr);   /* low slots -> persistence-tracked */
         else            spawn_monster(pick_mon());

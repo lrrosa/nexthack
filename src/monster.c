@@ -46,6 +46,10 @@ static const MonType montypes[] = {
     { 'T', 18, 6, 10, 12, T_TROLL,   0, ATK_NONE,  "troll"   },
     { 'V', 20, 6, 12, 16, T_VAMPIRE, 0, ATK_DRAIN, "vampire" },
     { 'D', 28, 8, 20, 22, T_DRAGON,  0, ATK_NONE,  "dragon"  },
+    /* the Amulet's keeper: posted on the Amulet cell of DLVL_AMULET by
+     * spawn_level_monsters (slot 0, kill remembered by mon_dead bit 0).
+     * mindepth 255 keeps it out of every random pool. */
+    { 'M', 45, 9, 40, 255, T_PRIEST, 0, ATK_NONE, "high priest" },
     /* the shopkeeper: drawn as '@' (reuses T_HERO), placed only in shops, never
      * randomly spawned (pick_mon skips it), and stationary (monster_ai mon_step). */
     { MON_KEEPER, 30, 0, 0, 1, T_KEEPER, 0, ATK_NONE, "shopkeeper" }

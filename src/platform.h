@@ -67,8 +67,9 @@
 #define T_TROLL       165  /* hulking regenerator of the deeper levels       */
 #define T_VAMPIRE     166  /* caped drainer of life (the wraith's big kin)   */
 #define T_DRAGON      167  /* the deep dungeon's apex: hits like a furnace   */
+#define T_PRIEST      168  /* the high priest guarding the Amulet (Dlvl 50)  */
 
-#define NTILES   40      /* T_ROCK..T_DRAGON: the graphic tiles */
+#define NTILES   41      /* T_ROCK..T_PRIEST: the graphic tiles */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT

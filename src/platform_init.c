@@ -147,7 +147,10 @@ const uint8_t gfx[NTILES][64] = {
     1,1,8,1,1,8,1,1, 0,1,1,1,1,1,1,0, 0,1,1,0,0,1,1,0, 0,1,0,0,0,0,1,0 },
   { /* T_DRAGON (red dragon on the wing: yellow eyes, orange membranes) */
     0,0,0,8,8,0,0,0, 0,0,8,13,13,8,0,0, 8,0,8,8,8,8,0,8, 8,8,8,8,8,8,8,8,
-    8,14,8,8,8,8,14,8, 0,0,8,8,8,8,0,0, 0,0,0,8,8,0,0,0, 0,0,0,0,8,0,0,0 }
+    8,14,8,8,8,8,14,8, 0,0,8,8,8,8,0,0, 0,0,0,8,8,0,0,0, 0,0,0,0,8,0,0,0 },
+  { /* T_PRIEST (the Amulet's keeper: gold mitre, red eyes, sashed red robe) */
+    0,0,0,13,13,0,0,0, 0,0,13,13,13,13,0,0, 0,0,15,8,8,15,0,0, 0,0,15,15,15,15,0,0,
+    0,8,8,8,8,8,8,0, 8,8,8,13,13,8,8,8, 0,8,8,8,8,8,8,0, 0,8,8,0,0,8,8,0 }
 };
 
 static void pack_tile(uint8_t tilenum, const uint8_t *px)
@@ -284,7 +287,8 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x00,0x7E,0x42,0x7E,0x3C,0x18,0x18,0x7E }, /* FOUNTAIN (basin on a stem)*/
     { 0x3C,0x5A,0xFF,0xDB,0x3C,0x3C,0x24,0x66 }, /* TROLL   (hulking brute)  */
     { 0x3C,0x5A,0x18,0x7E,0xFF,0xDB,0x99,0x81 }, /* VAMPIRE (spread cape)    */
-    { 0x18,0x99,0xDB,0xFF,0x7E,0x3C,0x18,0x08 }  /* DRAGON  (on the wing)    */
+    { 0x18,0x99,0xDB,0xFF,0x7E,0x3C,0x18,0x08 }, /* DRAGON  (on the wing)    */
+    { 0x18,0x3C,0x24,0x3C,0x7E,0xFF,0xFF,0x66 }  /* PRIEST  (mitred, robed)  */
 };
 
 /* Copy the hand-drawn tiles into udg_bitmap[] (Bank 5, see platform.h) that the

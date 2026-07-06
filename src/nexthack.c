@@ -1137,7 +1137,10 @@ void go_down(void) __banked
         build_level();
         hero_x = up_x; hero_y = up_y;     /* arrive on the new up-stairs */
         place_pet();                      /* the dog follows you down */
-        msg("You descend the stairs.");
+        if (dlvl == DLVL_AMULET && !has_amulet)
+            msg("A terrible presence dwells here.");   /* the Amulet's keeper */
+        else
+            msg("You descend the stairs.");
         sfx_stairs();
     } else {
         msg("You can't go down here.");
