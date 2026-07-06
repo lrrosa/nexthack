@@ -557,6 +557,12 @@ static void mon_step(uint8_t i)
 void monsters_turn(void) __banked
 {
     uint8_t i;
+    /* trolls knit their wounds shut as they come for you (cap = spawn HP) */
+    for (i = 0; i < mcount; i++)
+        if (m_alive[i] && m_type[i] == 'T') {
+            uint8_t cap = (uint8_t)(mon_find('T')->hp + dlvl / 2);
+            if (m_hp[i] < cap) m_hp[i]++;
+        }
 #ifndef __ZXNEXT
     /* +zx: skip the whole chase when no ENEMY is near. The pet (always at your
      * heel) and the stationary shopkeeper must NOT count here -- otherwise the

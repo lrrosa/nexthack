@@ -1144,6 +1144,9 @@ static void eat_corpse(char mch)
     } else if (mch == 'a') {                     /* acid blob: burns going down */
         if (php > 2) php = (uint8_t)(php - 2);
         msg("Acrid!  It burns.");
+    } else if (mch == 'D') {                     /* dragon flesh hardens the blood */
+        intrinsics |= INTR_POISON_RES;
+        msg("You feel healthy!");
     } else {
         msg("You eat.  Not bad.");
     }

@@ -64,8 +64,11 @@
 #define T_FEYE        162  /* floating eye: hit it and its gaze freezes you  */
 #define T_BOOK        163  /* a spellbook (class '&': 'r' learns, 'Z' casts) */
 #define T_FOUNTAIN    164  /* a fountain ('{'): 'q' on it to drink or dip     */
+#define T_TROLL       165  /* hulking regenerator of the deeper levels       */
+#define T_VAMPIRE     166  /* caped drainer of life (the wraith's big kin)   */
+#define T_DRAGON      167  /* the deep dungeon's apex: hits like a furnace   */
 
-#define NTILES   37      /* T_ROCK..T_FOUNTAIN: the graphic tiles */
+#define NTILES   40      /* T_ROCK..T_DRAGON: the graphic tiles */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT

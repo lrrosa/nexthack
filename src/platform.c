@@ -76,9 +76,11 @@ const uint8_t udg_ink[NTILES] = {
     /* KOBOLD ORC    SNAKE  BAT    ZOMBIE SCROLL RING   AMULET ACIDBLOB */
        6,     4,     4,     1,     4,     7,     6,     6,     4,  /* bat: blue */
     /* SHOPWALL KEEPER  LEPRECHAUN YELLOWLIGHT TRAP HOMUNCULUS WRAITH ALTAR WAND FEYE BOOK FOUNTAIN */
-       6,       3,          4,          6,        2,      2,        7,     7,    5,   1,   2,   5
+       6,       3,          4,          6,        2,      2,        7,     7,    5,   1,   2,   5,
+    /* TROLL  VAMPIRE  DRAGON */
+       4,     7,       2
     /* keeper magenta; leprechaun green; yellow light yellow; trap+imp red; wraith+altar white;
-     * wand cyan; eye blue; book red; fountain cyan */
+     * wand cyan; eye blue; book red; fountain cyan; troll green; vampire white; dragon red */
 };
 
 /* The three ULA cell blits -- putcell (ROM-font text), puttile (a UDG tile

@@ -39,6 +39,13 @@ static const MonType montypes[] = {
      * -- but strike it with your eyes open and its gaze freezes you. Its
      * corpse grants telepathy (item.c eat_corpse): the NetHack classic. */
     { 'e',  8, 1, 4, 5, T_FEYE,        0, ATK_NONE,   "floating eye" },
+    /* the deep roster: real threats for Dlvl 12+, where the shallow types
+     * only recycled with inflated HP. The troll knits its wounds shut every
+     * turn (monsters_turn); the vampire drains like its lesser kin the
+     * wraith; the dragon is the apex -- its numbers ARE its identity. */
+    { 'T', 18, 6, 10, 12, T_TROLL,   0, ATK_NONE,  "troll"   },
+    { 'V', 20, 6, 12, 16, T_VAMPIRE, 0, ATK_DRAIN, "vampire" },
+    { 'D', 28, 8, 20, 22, T_DRAGON,  0, ATK_NONE,  "dragon"  },
     /* the shopkeeper: drawn as '@' (reuses T_HERO), placed only in shops, never
      * randomly spawned (pick_mon skips it), and stationary (monster_ai mon_step). */
     { MON_KEEPER, 30, 0, 0, 1, T_KEEPER, 0, ATK_NONE, "shopkeeper" }
