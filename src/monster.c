@@ -82,8 +82,11 @@ char pick_mon(void)
 {
     char pool[NMON];
     uint8_t n = 0, i;
+    /* the ascent is a gauntlet: with the Amulet in your pack the dungeon
+     * sends its deep servants after you no matter how near the surface */
+    uint16_t d = has_amulet ? (uint16_t)(dlvl + 15) : dlvl;
     for (i = 0; i < NMON; i++)
-        if (montypes[i].ch != MON_KEEPER && montypes[i].mindepth <= dlvl)
+        if (montypes[i].ch != MON_KEEPER && montypes[i].mindepth <= d)
             pool[n++] = montypes[i].ch;
     return n ? pool[rn2(n)] : 'r';
 }

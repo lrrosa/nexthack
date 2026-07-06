@@ -691,6 +691,11 @@ void do_pray(void) __banked
         msg("You have prayed too recently.");
         return;                         /* a refused prayer costs no turn */
     }
+    if (has_amulet) {                   /* Moloch owns the air down here */
+        msg("Moloch drowns out your prayer!");
+        turns++; acted = 1;
+        return;
+    }
     if (luck < 0) {                     /* the gods remember your affronts */
         msg("You feel forsaken.");
         pray_timeout = 100;             /* and they take their time forgiving */
