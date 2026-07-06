@@ -39,7 +39,8 @@ code.
 - **Four classes** — every game asks *who are you?* The Valkyrie fights, the
   Wizard zaps, the Rogue dodges, the Tourist haggles — each with its own
   attributes (which really matter: St hits harder, Dx lands blows, Co mends,
-  Ch bargains in shops), starting gear and purse.
+  Ch bargains in shops), starting gear, purse and **alignment** (Lawful,
+  Neutral or Chaotic — the god your offerings answer to).
 - A **50-level dungeon**, generated procedurally and **deterministically**: each
   depth regenerates identically from its own seed, while the changes you make
   (gold taken, monsters killed, items picked up) are remembered across revisits.
@@ -47,7 +48,9 @@ code.
   around you, and explored-but-unseen terrain is drawn dimmed from memory.
 - **Turn-based combat** against a depth-scaled bestiary (rats, bats, kobolds,
   dogs, snakes, orcs, zombies, acid blobs, leprechauns, yellow lights, homunculi,
-  wraiths, floating eyes…) that chases you with BFS pathfinding. Many bite with a
+  wraiths, floating eyes — and deeper down, **trolls** that knit their wounds
+  shut, life-draining **vampires** and the apex **dragon**) that chases you with
+  BFS pathfinding. Many bite with a
   **special attack** — poison, blindness, sleep, gold theft, life-drain — and
   never melee a floating eye with your eyes open. Hidden **traps** (trap doors,
   darts, sleeping gas) lurk in the deeper floors. Scratch **Elbereth** (`E`) in
@@ -64,9 +67,14 @@ code.
   each with its own enchantment, erosion and **blessed/uncursed/cursed** state;
   potions and scrolls start **unidentified**. Wield/wear the best you carry,
   quaff/eat/read, watch acid blobs corrode your gear, beware cursed items that
-  won't come off — and step onto an **altar** (`_`) to reveal the blessings on
-  what you carry. **Wands** (`z`) zap magic in a chosen direction — a striking
+  won't come off. **Wands** (`z`) zap magic in a chosen direction — a striking
   bolt, a freezing ray, sleep or teleport-away — or dig straight down a level.
+- **Altars and divinity** — step onto an **altar** (`_`) to reveal the
+  blessings on what you carry; drop an item on one and a flash names it, a
+  potion taking the altar's own touch (holy water — or worse, on an altar of a
+  crossed god). **Offer a corpse** (`d`) to a co-aligned god for real boons,
+  and mind your hidden **luck**: pleased gods steady your sword arm, spurned
+  ones stop hearing your prayers.
 - **Spells and fountains** — read a **spellbook** (`&`) to learn its spell, then
   **cast** (`Z`) from your **spell power** (Pw): force bolt, healing, sleep, or
   teleport. **Fountains** (`{`) reward a thirsty adventurer with clear water,
@@ -78,8 +86,8 @@ code.
 - Hunger and slow HP regeneration, beeper sound effects, and **save & quit** to
   the SD card, NetHack-style (reloaded once on the next boot, then deleted — no
   save-scumming).
-- The goal: retrieve the **Amulet of Yendor** from the bottom of the dungeon and
-  climb back out alive.
+- The goal: retrieve the **Amulet of Yendor** from the bottom of the dungeon —
+  past the **high priest** who guards it — and climb back out alive.
 
 ![NextHack gameplay: a procedurally generated dungeon level drawn in colour 8×8 tiles, with the status and command bars below the map.](docs/gameplay.png)
 

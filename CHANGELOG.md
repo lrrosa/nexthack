@@ -8,6 +8,42 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.8.0] — 2026-07-05
+
+The divine release: your god is watching — and the deep dungeon bites back.
+
+### Added
+- **Alignment and sacrifice.** Every class now serves a god — the Valkyrie is
+  Lawful, the Wizard and Tourist Neutral, the Rogue Chaotic — and every altar
+  (`_`) has an alignment of its own (shown when you stand on one). **Drop a
+  corpse on an altar to offer it** (`d`): a co-aligned god always accepts, and
+  grants the richer boons; a crossed one may spurn the gift. Boons: your curses
+  lifted, your weapon blessed and sharpened, body and spirit restored, or a
+  lasting gain to max HP or max Pw.
+- **Luck.** A hidden fortune the gods adjust: pleased offerings raise it,
+  spurned ones lower it. It quietly sways your swings — and a god ignores the
+  prayers of the forsaken, so stay in favour.
+- **Altars appraise gifts.** Drop anything on an altar and a flash names it:
+  blue for blessed, black for cursed, none for plain. A **potion** takes the
+  altar's own touch — blessed on a co-aligned altar, *cursed* on a crossed one
+  — the poor man's holy water. (Items can now rest on altars, thrown weapons
+  included.)
+- **The deep roster.** Depths past 12 no longer recycle the shallow bestiary
+  with inflated HP: the **troll** knits its wounds shut every turn you fight
+  it, the **vampire** drains your life force, and the **dragon** (Dlvl 22+) is
+  the apex predator — though its corpse hardens your blood against poison.
+- **The Sanctum has a keeper.** A **high priest** — the hardest hitter in the
+  game — stands on the Amulet of Yendor itself. *"A terrible presence dwells
+  here."* Slay it once and the Sanctum stays yours.
+
+### Changed
+- **Holding a direction on the Next walks noticeably faster** (a tap is still
+  exactly one step), and a held walk no longer stutters mid-stride.
+
+### Note
+- Saved games from 1.7.x will **not** load — the player block grew (alignment,
+  luck). Finish any run in progress before upgrading.
+
 ## [1.7.0] — 2026-07-04
 
 The arcane release: spellbooks, fountains, and a score to beat.
