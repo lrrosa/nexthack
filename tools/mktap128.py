@@ -110,7 +110,7 @@ def main():
         if len(data) > 16384:
             # The linker happily emits an ORG'd bank section past its 16 KB
             # window and LOAD "" CODE at 0xC000 truncates it at 0xFFFF -- the
-            # clipped tail (v1.5.0: template data) crashes at runtime. Refuse.
+            # clipped tail (v0.5.0: template data) crashes at runtime. Refuse.
             sys.exit("mktap128: %s is %d bytes -- overflows its 16 KB bank by %d! "
                      "Move a module to a roomier BANK_n." %
                      (fname, len(data), len(data) - 16384))

@@ -81,7 +81,7 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   24     /* v1.8.0: alignment + luck join the player block
+#define SAVE_VER   24     /* v0.8.0: alignment + luck join the player block
                            * (altar sacrifice / divinity) */
 
 struct save_hdr {

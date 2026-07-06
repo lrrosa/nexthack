@@ -585,7 +585,7 @@ void monsters_turn(void) __banked
     /* +zx: skip the whole chase when no ENEMY is near. The pet (always at your
      * heel) and the stationary shopkeeper must NOT count here -- otherwise the
      * BFS would flood every single turn, which is exactly what made big rooms
-     * crawl once the dog arrived (v1.4.0). With no enemy awake we only heel the
+     * crawl once the dog arrived (v0.4.0). With no enemy awake we only heel the
      * dog, greedily, and skip compute_dist_map. */
     uint8_t awake = 0;
     for (i = 0; i < mcount; i++) {

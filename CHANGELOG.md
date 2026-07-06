@@ -8,7 +8,7 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
-## [1.8.0] — 2026-07-05
+## [0.8.0] — 2026-07-05
 
 The divine release: your god is watching — and the deep dungeon bites back.
 
@@ -41,10 +41,10 @@ The divine release: your god is watching — and the deep dungeon bites back.
   exactly one step), and a held walk no longer stutters mid-stride.
 
 ### Note
-- Saved games from 1.7.x will **not** load — the player block grew (alignment,
+- Saved games from 0.7.x will **not** load — the player block grew (alignment,
   luck). Finish any run in progress before upgrading.
 
-## [1.7.0] — 2026-07-04
+## [0.7.0] — 2026-07-04
 
 The arcane release: spellbooks, fountains, and a score to beat.
 
@@ -73,11 +73,11 @@ The arcane release: spellbooks, fountains, and a score to beat.
   monster** when the screen redraws.
 
 ### Note
-- Saved games from 1.6.x will **not** load — the character sheet grew and the
+- Saved games from 0.6.x will **not** load — the character sheet grew and the
   new items shift world generation. Finish any run in progress before
   upgrading.
 
-## [1.6.0] — 2026-07-04
+## [0.6.0] — 2026-07-04
 
 The NetHack-identity release: who you are finally matters.
 
@@ -113,18 +113,18 @@ The NetHack-identity release: who you are finally matters.
   peacefuls in NetHack.
 
 ### Note
-- Saved games from 1.5.x will **not** load — the character sheet joins the
+- Saved games from 0.5.x will **not** load — the character sheet joins the
   save and the new items shift world generation. Finish any run in progress
   before upgrading.
 
-## [1.5.1] — 2026-07-03
+## [0.5.1] — 2026-07-03
 
-A hotfix + polish pass over 1.5.0. Saved games from 1.5.0 still load.
+A hotfix + polish pass over 0.5.0. Saved games from 0.5.0 still load.
 
 ### Fixed
 - **ZX Spectrum 128K: entering a hand-drawn special level crashed the machine
   to BASIC.** A code bank had silently outgrown its 16 KB, and the tape loader
-  truncated it — clipping the template data. The 1.5.0 `.tap` is affected on
+  truncated it — clipping the template data. The 0.5.0 `.tap` is affected on
   roughly one in nine depths below 2; **128K players should update.** (The
   build now refuses to pack an oversized bank, so this cannot ship again.)
 - A **dropped item now lies on the floor as itself** — a dropped potion showed
@@ -142,7 +142,7 @@ A hotfix + polish pass over 1.5.0. Saved games from 1.5.0 still load.
   corridor step repaints only the handful of cells the light touched, not the
   whole viewport.
 
-## [1.5.0] — 2026-07-01
+## [0.5.0] — 2026-07-01
 
 ### Added
 - **Wands** (`z`) — a new class of item (`/`) that zaps magic and carries a
@@ -164,13 +164,13 @@ A hotfix + polish pass over 1.5.0. Saved games from 1.5.0 still load.
   cavern keeps up with the keyboard. (The Next was already fast.)
 
 ### Note
-- Saved games from 1.4.x will **not** load in 1.5.0 — the new wand loot shifts
+- Saved games from 0.4.x will **not** load in 0.5.0 — the new wand loot shifts
   dungeon generation, so the save format and the world both change. Finish any
   game in progress before upgrading.
 
-## [1.4.1] — 2026-06-28
+## [0.4.1] — 2026-06-28
 
-A polish pass over the 1.4.0 features.
+A polish pass over the 0.4.0 features.
 
 ### Changed
 - Your **pet dog now heals slowly** over time (up to 12 HP), so a careful
@@ -187,7 +187,7 @@ A polish pass over the 1.4.0 features.
 - Several messages that overran the 128K's 32-column line are shortened, and a
   latent buffer overflow in the item-description code is fixed.
 
-## [1.4.0] — 2026-06-28
+## [0.4.0] — 2026-06-28
 
 ### Added
 - **A pet dog** — every game now starts you with a loyal dog. It heels at your
@@ -214,7 +214,7 @@ A polish pass over the 1.4.0 features.
 - Reclaimed the resident RAM the new features needed: moved the fog-of-war pool
   into Bank 5 and gave each target a third code bank for the monster AI.
 
-## [1.3.0] — 2026-06-24
+## [0.3.0] — 2026-06-24
 
 ### Added
 - Two deeper monsters: the **homunculus** (`i`, Dlvl 6+) whose bite can put you
@@ -232,7 +232,7 @@ A polish pass over the 1.4.0 features.
 ### Fixed
 - The altar message now fits the 128K's 32-column display (it was truncated).
 
-## [1.2.0] — 2026-06-22
+## [0.2.0] — 2026-06-22
 
 ### Added
 - **Status effects** — confusion, blindness, sleep/paralysis and poison, shown
@@ -251,7 +251,7 @@ A polish pass over the 1.4.0 features.
 ### Changed
 - Save format changed; saves from earlier versions are not compatible.
 
-## [1.1.1] — 2026-06-21
+## [0.1.1] — 2026-06-21
 
 ### Changed
 - ZX Spectrum 128K performance pass (no gameplay change; the Next build is
@@ -260,7 +260,7 @@ A polish pass over the 1.4.0 features.
   monster-chase distance map, and a lighter held-key throttle (`in_pause`
   40 → 6 ms).
 
-## [1.1.0] — 2026-06-20
+## [0.1.0] — 2026-06-20
 
 ### Added
 - **ZX Spectrum 128K** target — ULA display, hand-drawn 1-bit map tiles, an
@@ -271,16 +271,16 @@ A polish pass over the 1.4.0 features.
 ### Changed
 - Refreshed ZX Spectrum Next title-screen art.
 
-## [1.0.1] — 2026-06-15
+## [0.0.1] — 2026-06-15
 
 ### Changed
 - Shops, polished from playtesting: the shopkeeper greets you, shop walls are
   warm tan/brown brick and the keeper has his own orange-robed tile; buying asks
   for confirmation first; shops never hold a staircase and now stock ~4–8 items;
   bumping a wall re-announces the item you stand on.
-- Save format changed (shop generation); v1.0.0 saves are not compatible.
+- Save format changed (shop generation); v0.0.0 saves are not compatible.
 
-## [1.0.0] — 2026-06-15
+## [0.0.0] — 2026-06-15
 
 First public release — a from-scratch, NetHack-inspired roguelike for the
 ZX Spectrum Next, written in C with z88dk.
@@ -301,9 +301,9 @@ ZX Spectrum Next, written in C with z88dk.
   and Layer 2 **title and victory screens**.
 - The goal: bring the **Amulet of Yendor** up from the bottom of the dungeon.
 
-[1.3.0]: https://github.com/lrrosa/nexthack/releases/tag/v1.3.0
-[1.2.0]: https://github.com/lrrosa/nexthack/releases/tag/v1.2.0
-[1.1.1]: https://github.com/lrrosa/nexthack/releases/tag/v1.1.1
-[1.1.0]: https://github.com/lrrosa/nexthack/releases/tag/v1.1.0
-[1.0.1]: https://github.com/lrrosa/nexthack/releases/tag/v1.0.1
-[1.0.0]: https://github.com/lrrosa/nexthack/releases/tag/v1.0.0
+[0.3.0]: https://github.com/lrrosa/nexthack/releases/tag/v0.3.0
+[0.2.0]: https://github.com/lrrosa/nexthack/releases/tag/v0.2.0
+[0.1.1]: https://github.com/lrrosa/nexthack/releases/tag/v0.1.1
+[0.1.0]: https://github.com/lrrosa/nexthack/releases/tag/v0.1.0
+[0.0.1]: https://github.com/lrrosa/nexthack/releases/tag/v0.0.1
+[0.0.0]: https://github.com/lrrosa/nexthack/releases/tag/v0.0.0
