@@ -582,6 +582,44 @@ static void mon_step(uint8_t i)
     step_to_hero(i);
 }
 
+/* A dragon with a clear straight line to the hero (range 6, same row or
+ * column, no wall/door/monster between) may breathe fire instead of stepping:
+ * rn2(8)+5, half-soaked by armour. 1 = it breathed (its turn is spent). */
+static uint8_t dragon_breath(uint8_t i)
+{
+    int dx, dy, sx, sy;
+    if (m_type[i] != 'D') return 0;
+    dx = hero_x - (int)m_x[i];
+    dy = hero_y - (int)m_y[i];
+    if (iabs(dx) <= 1 && iabs(dy) <= 1) return 0;   /* adjacent: bite instead */
+    if (dx != 0 && dy != 0) return 0;               /* straight lines only    */
+    if (iabs(dx + dy) > 6) return 0;                /* out of range           */
+    if (rn2(2)) return 0;                           /* it inhales...          */
+    sx = dx ? (dx > 0 ? 1 : -1) : 0;
+    sy = dy ? (dy > 0 ? 1 : -1) : 0;
+    {   int x = (int)m_x[i] + sx, y = (int)m_y[i] + sy;
+        while (x != hero_x || y != hero_y) {
+            char c = terrain(x, y);
+            if (!walkable(c) || c == '+') return 0; /* walls and doors block  */
+            if (monster_at(x, y) >= 0) return 0;    /* something shields you  */
+            x += sx; y += sy;
+        }
+    }
+    {   uint8_t dmg  = (uint8_t)(rn2(8) + 5);
+        uint8_t soak = (uint8_t)(armor_def >> 1);   /* armour half-shields it */
+        dmg = (dmg > soak) ? (uint8_t)(dmg - soak) : 1;
+        sfx_hurt();
+        if (php <= dmg) {
+            php = 0; dead = 1;
+            msg("The dragon's fire engulfs you!");
+        } else {
+            php = (uint8_t)(php - dmg);
+            msg("The dragon breathes fire!");
+        }
+    }
+    return 1;
+}
+
 /* A hidden mimic ('x') holds its pose until the hero steps next to the "item";
  * then it sheds the disguise and acts at once. 1 = still hidden, skip it. */
 static uint8_t mimic_hidden(uint8_t i)
@@ -653,6 +691,10 @@ void monsters_turn(void) __banked
                 if (dead) return;
                 continue;
             }
+            if (dragon_breath(i)) {           /* fire outranges Elbereth */
+                if (dead) return;
+                continue;
+            }
             if (!enemy_chase_greedy(i)) blocked |= (uint16_t)(1u << i);
         }
         if (blocked) {                          /* route only the wall-boxed ones */
@@ -670,6 +712,10 @@ void monsters_turn(void) __banked
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i]) continue;
         if (mimic_hidden(i)) continue;    /* posing as an item */
+        if (dragon_breath(i)) {           /* fire outranges Elbereth */
+            if (dead) return;
+            continue;
+        }
         mon_step(i);
         if (dead) return;
     }
