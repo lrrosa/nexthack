@@ -175,6 +175,7 @@ static void gain_xp(uint8_t amt)
 void hit_monster(uint8_t mi, uint8_t dmg) __banked
 {
     const MonType *mt = mon_find(m_type[mi]);
+    if (m_type[mi] == 'x') m_type[mi] = 'm';   /* struck bait drops the disguise */
     if (m_hp[mi] <= dmg) {
         m_alive[mi] = 0;
         if (dlvl <= MAXLVL)
@@ -449,6 +450,7 @@ static uint8_t pet_bite_adjacent(uint8_t i)
     uint8_t j;
     for (j = 0; j < mcount; j++) {
         if (!m_alive[j] || j == pet_idx || m_type[j] == MON_KEEPER) continue;
+        if (m_type[j] == 'x') continue;    /* the dog can't smell a hidden mimic */
         if (iabs((int)m_x[j] - (int)m_x[i]) <= 1 &&
             iabs((int)m_y[j] - (int)m_y[i]) <= 1) { pet_hits(i, j); return 1; }
     }
@@ -580,6 +582,19 @@ static void mon_step(uint8_t i)
     step_to_hero(i);
 }
 
+/* A hidden mimic ('x') holds its pose until the hero steps next to the "item";
+ * then it sheds the disguise and acts at once. 1 = still hidden, skip it. */
+static uint8_t mimic_hidden(uint8_t i)
+{
+    if (m_type[i] != 'x') return 0;
+    if (iabs((int)m_x[i] - hero_x) <= 1 && iabs((int)m_y[i] - hero_y) <= 1) {
+        m_type[i] = 'm';
+        msg("The mimic reveals itself!");
+        return 0;
+    }
+    return 1;
+}
+
 void monsters_turn(void) __banked
 {
     uint8_t i;
@@ -598,6 +613,7 @@ void monsters_turn(void) __banked
     uint8_t awake = 0;
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i] || i == pet_idx || m_type[i] == MON_KEEPER) continue;
+        if (m_type[i] == 'x') continue;    /* a posing mimic wakes nothing */
         if (iabs((int)m_x[i] - hero_x) <= MON_WAKE &&
             iabs((int)m_y[i] - hero_y) <= MON_WAKE) { awake = 1; break; }
     }
@@ -622,6 +638,7 @@ void monsters_turn(void) __banked
         for (i = 0; i < mcount; i++) {
             if (!m_alive[i] || m_type[i] == MON_KEEPER) continue;
             if (m_type[i] == 'e') continue;   /* the floating eye just floats */
+            if (mimic_hidden(i)) continue;    /* posing as an item */
             if (m_sleep[i]) { m_sleep[i]--; continue; }
             if (i == (uint8_t)pet_idx) {
                 if (pet_bite_adjacent(i)) continue;
@@ -652,6 +669,7 @@ void monsters_turn(void) __banked
     compute_dist_map();
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i]) continue;
+        if (mimic_hidden(i)) continue;    /* posing as an item */
         mon_step(i);
         if (dead) return;
     }

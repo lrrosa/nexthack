@@ -46,6 +46,12 @@ static const MonType montypes[] = {
     { 'T', 18, 6, 10, 12, T_TROLL,   0, ATK_NONE,  "troll"   },
     { 'V', 20, 6, 12, 16, T_VAMPIRE, 0, ATK_DRAIN, "vampire" },
     { 'D', 28, 8, 20, 22, T_DRAGON,  0, ATK_NONE,  "dragon"  },
+    /* the mimic spawns as 'x' -- catalogued with the POTION tile, so every
+     * renderer draws the bait for free. Any damage or the hero stepping
+     * adjacent flips m_type to 'm' (monster_ai), the revealed form. Same
+     * name in both rows, so kill/hit messages never spoil nor lie. */
+    { 'x', 14, 5, 8, 6,   T_POTION, 0, ATK_NONE,  "mimic"   },
+    { 'm', 14, 5, 8, 255, T_MIMIC,  0, ATK_NONE,  "mimic"   },
     /* the Amulet's keeper: posted on the Amulet cell of DLVL_AMULET by
      * spawn_level_monsters (slot 0, kill remembered by mon_dead bit 0).
      * mindepth 255 keeps it out of every random pool. */
