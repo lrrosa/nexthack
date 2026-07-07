@@ -69,6 +69,7 @@ uint8_t  el_x = 0, el_y = 0, el_life = 0;    /* Elbereth engraving (see game.h) 
 uint16_t pray_timeout = 0;                   /* turns until you may pray again */
 uint8_t  have_pet = 0;                        /* a living dog follows you (see game.h) */
 uint8_t  pet_hp = 0;                          /* the pet's health, carried across levels */
+uint8_t  pet_kills = 0;                       /* its lifetime kills (growth; see game.h) */
 
 /* hunger/regeneration bookkeeping */
 static uint8_t heal_timer = 0;
@@ -81,8 +82,8 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   24     /* v0.8.0: alignment + luck join the player block
-                           * (altar sacrifice / divinity) */
+#define SAVE_VER   25     /* v0.9.0: pet_kills joins the player block (the
+                           * dog grows with its kill count) */
 
 struct save_hdr {
     uint16_t magic;
@@ -101,7 +102,7 @@ struct save_player {
     uint8_t  has_amulet;
     uint8_t  st_conf, st_blind, st_sleep, st_poison;
     uint16_t pray_timeout;
-    uint8_t  have_pet, pet_hp;
+    uint8_t  have_pet, pet_hp, pet_kills;
     uint8_t  at_str, at_dex, at_con, at_int, at_wis, at_cha;
     uint8_t  pclass, intrinsics, pw, pmaxpw;
     uint8_t  known_spells;
@@ -150,7 +151,7 @@ int save_game(void) __banked
     p.st_conf = st_conf;   p.st_blind = st_blind;
     p.st_sleep = st_sleep; p.st_poison = st_poison;
     p.pray_timeout = pray_timeout;
-    p.have_pet = have_pet; p.pet_hp = pet_hp;
+    p.have_pet = have_pet; p.pet_hp = pet_hp; p.pet_kills = pet_kills;
     p.at_str = at_str; p.at_dex = at_dex; p.at_con = at_con;
     p.at_int = at_int; p.at_wis = at_wis; p.at_cha = at_cha;
     p.pclass = pclass; p.intrinsics = intrinsics;
@@ -195,7 +196,7 @@ int load_game(void) __banked
     st_conf = p.st_conf;   st_blind = p.st_blind;
     st_sleep = p.st_sleep; st_poison = p.st_poison;
     pray_timeout = p.pray_timeout;
-    have_pet = p.have_pet; pet_hp = p.pet_hp;
+    have_pet = p.have_pet; pet_hp = p.pet_hp; pet_kills = p.pet_kills;
     at_str = p.at_str; at_dex = p.at_dex; at_con = p.at_con;
     at_int = p.at_int; at_wis = p.at_wis; at_cha = p.at_cha;
     pclass = p.pclass; intrinsics = p.intrinsics;
@@ -664,7 +665,8 @@ void upkeep(void) __banked
 
     /* the dog mends between fights too, and can toughen a little (8 -> 12) if
      * kept alive, so a careful companion is worth keeping rather than doomed */
-    if (have_pet && pet_hp < 12 && (turns & 15) == 0)
+    if (have_pet && (turns & 15) == 0 &&      /* regen cap grows with the dog */
+        pet_hp < (uint8_t)(12 + (pet_kills >= 12 ? 12 : pet_kills >= 4 ? 6 : 0)))
         pet_hp++;
 
     /* transient status effects tick down; poison gnaws a hit point each turn */
@@ -1195,7 +1197,7 @@ void new_game(void) __banked
     max_dlvl = 1;
     luck = 0;
     pick_class();                 /* who are you? (fills the sheet, hp, pw) */
-    have_pet = 1; pet_hp = 8;     /* you start with a faithful dog */
+    have_pet = 1; pet_hp = 8; pet_kills = 0;  /* you start with a faithful puppy */
     item_reset();
     give_kit();                   /* the class's starting gear + purse */
     level_reset_persistence();

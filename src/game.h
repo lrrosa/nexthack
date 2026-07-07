@@ -79,5 +79,8 @@ extern uint16_t pray_timeout;
  * for the live slot. */
 extern uint8_t  have_pet;
 extern uint8_t  pet_hp;
+extern uint8_t  pet_kills;  /* lifetime kills: the dog grows at 4 and at 12
+                             * (+2 bite and +6 HP/cap per size; see pet_hits
+                             * and the upkeep regen cap) */
 
 #endif /* GAME_H */

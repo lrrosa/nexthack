@@ -410,7 +410,10 @@ static void step_to_hero(uint8_t i)
 static void pet_hits(uint8_t pi, uint8_t ti)
 {
     const MonType *mt = mon_find(m_type[ti]);
-    uint8_t dmg = (uint8_t)(rn2(4) + 2);     /* 2..5; no hero XP for a pet kill */
+    /* 2..5, +2 per size the dog has grown (4 and 12 lifetime kills --
+     * the regen cap in upkeep() grows on the same thresholds) */
+    uint8_t dmg = (uint8_t)(rn2(4) + 2 +
+                            (pet_kills >= 12 ? 4 : pet_kills >= 4 ? 2 : 0));
 
     if (m_hp[ti] <= dmg) {
         m_alive[ti] = 0;
@@ -420,6 +423,11 @@ static void pet_hits(uint8_t pi, uint8_t ti)
             corpse_drop(m_x[ti], m_y[ti], m_type[ti]);
         msg2("Your dog kills the ", mt->name, "!");
         sfx_kill();
+        if (pet_kills < 250) pet_kills++;  /* no hero XP -- the DOG grows */
+        if (pet_kills == 4 || pet_kills == 12) {
+            pet_hp = (uint8_t)(pet_hp + 6);    /* filling out heals it too */
+            msg("Your dog grows bigger!");
+        }
         return;
     }
     m_hp[ti] = (uint8_t)(m_hp[ti] - dmg);
