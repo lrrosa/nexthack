@@ -169,6 +169,16 @@ static void gain_xp(uint8_t amt)
     }
 }
 
+/* One whole experience level, bottled: the potion of gain level (item.c).
+ * Jumps xp to the current threshold and lets gain_xp's shared loop do the
+ * bump, so the level-up rules live in exactly one place. */
+void level_up(void) __banked
+{
+    if (xlvl >= 30) return;
+    xp = (uint16_t)((uint16_t)xlvl * 20);
+    gain_xp(0);
+}
+
 /* Apply dmg to monster mi: kill it (with XP) or wound it, with the matching
  * "You kill/hit the X" message and sound. Shared by melee (attack_monster) and
  * thrown weapons (item.c do_throw). Does not consume a turn -- the caller does. */

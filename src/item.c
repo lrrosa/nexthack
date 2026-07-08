@@ -61,6 +61,11 @@ enum {
     O_BFORCE, O_BHEAL, O_BSLEEP, O_BTELE,      /* '&' spellbooks ('r' learns,
                     * 'Z' casts; prop = the spell index in spells.c) */
     O_EXCALIBUR,   /* ')' the Lady's gift; mindep 255 = only from a fountain */
+    /* the v0.10 arsenal -- APPENDED so no earlier index shifts (classes.c's
+     * kit numbers and saved otyps stay valid) */
+    O_ENCHW, O_ENCHA, O_RMCURSE,               /* '?' scrolls */
+    O_GAINLVL,                                 /* '!' potion  */
+    O_REGEN,                                   /* '=' ring    */
     NUMOBJ
 };
 
@@ -106,7 +111,13 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '&',  1,  120,  3, "spellbook of healing" },
     { '&',  2,  150,  4, "spellbook of sleep" },
     { '&',  3,  180,  6, "spellbook of teleportation" },
-    { ')',  8,  400, 255, "Excalibur" }   /* only from a fountain (mindep 255) */
+    { ')',  8,  400, 255, "Excalibur" },  /* only from a fountain (mindep 255) */
+    /* the v0.10 arsenal (appended; see the enum note) */
+    { '?',  0,  100,  3, "scroll of enchant weapon" },
+    { '?',  0,  100,  4, "scroll of enchant armor" },
+    { '?',  0,   80,  3, "scroll of remove curse" },
+    { '!',  0,   80,  5, "potion of gain level" },
+    { '=',  0,  200,  6, "ring of regeneration" }
 };
 
 typedef struct {
@@ -207,6 +218,7 @@ static void recompute_gear(void)
     uint8_t i, base_ac = 10, redux = 0;
 
     weapon_dmg = 0;
+    regen_ring = 0;         /* re-derived from what is worn (never saved) */
     for (i = 0; i < inv_count; i++) {
         const objtype_t *t;
         int eff;
@@ -224,6 +236,8 @@ static void recompute_gear(void)
         } else if (t->cls == '=') {
             if ((uint8_t)eff <= base_ac) base_ac -= (uint8_t)eff;
             redux += (uint8_t)eff;
+            if (inv[i].otyp == O_REGEN)
+                regen_ring = 1;         /* upkeep() mends twice as fast */
         }
     }
     ac = base_ac;
@@ -254,14 +268,16 @@ void corrode_worn(char cls) __banked
  * on world_seed, so it needs no storage and is stable across save/restore;
  * id_known records which types you have since learned. */
 static const char *const pot_appear[] = {
-    "ruby potion", "blue potion", "fizzy potion", "smoky potion", "cloudy potion"
+    "ruby potion", "blue potion", "fizzy potion", "smoky potion", "cloudy potion",
+    "murky potion"
 };
 static const char *const scr_appear[] = {
     "scroll labeled XYZZY", "scroll labeled ELBERETH",
-    "scroll labeled KIRJE"
+    "scroll labeled KIRJE", "scroll labeled VAS CORP",
+    "scroll labeled ANDOVA", "scroll labeled ZELGO MER"
 };
-#define NPOT 5
-#define NSCR 3
+#define NPOT (sizeof pot_appear / sizeof pot_appear[0])   /* 6 */
+#define NSCR (sizeof scr_appear / sizeof scr_appear[0])   /* 6 */
 
 static uint8_t id_known[(NUMOBJ + 7) / 8];   /* one "identified?" bit per otyp */
 static uint8_t id_is(uint8_t otyp)  { return (id_known[otyp >> 3] >> (otyp & 7)) & 1u; }
@@ -272,8 +288,17 @@ static const char *item_name(uint8_t otyp)
 {
     char cls = objtypes[otyp].cls;
     if (!id_is(otyp)) {
-        if (cls == '!') return pot_appear[(uint8_t)(otyp - O_HEAL + (world_seed % NPOT)) % NPOT];
-        if (cls == '?') return scr_appear[(uint8_t)(otyp - O_MAPPING + (world_seed % NSCR)) % NSCR];
+        /* per-class ordinal: the appended arsenal types sit past their class
+         * block, so map them onto the next pool slots (keeps looks unique) */
+        if (cls == '!') {
+            uint8_t o = (otyp == O_GAINLVL) ? 5 : (uint8_t)(otyp - O_HEAL);
+            return pot_appear[(uint8_t)(o + (world_seed % NPOT)) % NPOT];
+        }
+        if (cls == '?') {
+            uint8_t o = (otyp >= O_ENCHW) ? (uint8_t)(3 + otyp - O_ENCHW)
+                                          : (uint8_t)(otyp - O_MAPPING);
+            return scr_appear[(uint8_t)(o + (world_seed % NSCR)) % NSCR];
+        }
     }
     return objtypes[otyp].name;
 }
@@ -1106,6 +1131,9 @@ void do_quaff(void) __banked
         st_blind = (uint8_t)(st_blind + rn2(40) + 30);
         map_dirty = 1;                      /* redraw: the world goes dark */
         msg("Darkness falls around you.");
+    } else if (ot == O_GAINLVL) {
+        msg("You feel more experienced!");
+        level_up();     /* monster_ai owns the XP curve ("Welcome to...") */
     } else {                                /* healing / extra healing */
         uint8_t heal = (uint8_t)(rn2(6) + objtypes[ot].prop);
         if (ot == O_EXHEAL) {
@@ -1216,11 +1244,28 @@ void do_read(void) __banked
             inv[i].buc |= BUC_KNOWN;
         }
         msg("You feel knowledgeable!");
-    } else {                            /* O_TELEPORT */
+    } else if (ot == O_TELEPORT) {
         uint8_t tx, ty;
         level_random_floor(&tx, &ty);
         hero_x = tx; hero_y = ty;
         msg("You feel a wrenching sensation.");
+    } else if (ot == O_ENCHW || ot == O_ENCHA) {
+        /* sharpen the wielded weapon / temper the worn armour (+1, derust) */
+        char cls = (ot == O_ENCHW) ? ')' : '[';
+        uint8_t i, hit = 0;
+        for (i = 0; i < inv_count; i++)
+            if (inv[i].worn && objtypes[inv[i].otyp].cls == cls) {
+                if (inv[i].ench < 5) inv[i].ench++;
+                inv[i].ero = 0;
+                recompute_gear();
+                hit = 1;
+                break;
+            }
+        if (ot == O_ENCHW) msg(hit ? "Your weapon glows blue!"   : "Your hands itch.");
+        else               msg(hit ? "Your armor glows silver!"  : "Your skin itches.");
+    } else {                            /* O_RMCURSE */
+        msg(pray_uncurse(1) ? "Your burdens are lifted."
+                            : "Nothing happens.");
     }
     acted = 1; turns++;
 }

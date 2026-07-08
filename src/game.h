@@ -33,6 +33,9 @@ extern int16_t  nutrition; /* hunger: drops each turn, food refills it    */
 extern uint8_t  weapon_dmg;   /* extra melee damage from a wielded weapon */
 extern uint8_t  armor_def;    /* damage reduction from worn armor         */
 extern uint8_t  ac;           /* displayed armour class                   */
+extern uint8_t  regen_ring;   /* wearing the ring of regeneration: upkeep
+                               * mends HP twice as fast (recomputed from
+                               * the worn set by recompute_gear, not saved) */
 extern uint16_t xp;           /* experience points                        */
 extern uint8_t  xlvl;         /* experience level                         */
 

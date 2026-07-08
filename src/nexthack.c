@@ -47,6 +47,7 @@ uint8_t  map_flush = 0;   /* +zx: skip draw_map's fast path once (a cell changed
 uint8_t  weapon_dmg = 0;
 uint8_t  armor_def = 0;
 uint8_t  ac = 10;
+uint8_t  regen_ring = 0;     /* worn ring of regeneration (see game.h) */
 uint16_t xp = 0;
 uint8_t  xlvl = 1;
 int16_t  nutrition = 900;
@@ -82,8 +83,8 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   25     /* v0.9.0: pet_kills joins the player block (the
-                           * dog grows with its kill count) */
+#define SAVE_VER   26     /* v0.10.0: the arsenal grew the catalogue, so
+                           * id_known (sized by NUMOBJ) changed size */
 
 struct save_hdr {
     uint16_t magic;
@@ -651,11 +652,15 @@ void upkeep(void) __banked
             php--;
             if (php == 0) dead = 1;
         }
-    } else if (++heal_timer >= (uint8_t)(at_con >= 16 ? 14 :
-                                         at_con >= 13 ? 17 : 20)) {
-        heal_timer = 0;                         /* slow regeneration -- a hardy
+    } else {
+        uint8_t hr = (uint8_t)(at_con >= 16 ? 14 :
+                               at_con >= 13 ? 17 : 20);
+        if (regen_ring) hr >>= 1;               /* the ring mends twice as fast */
+        if (++heal_timer >= hr) {
+            heal_timer = 0;                     /* slow regeneration -- a hardy
                                                  * constitution mends faster */
-        if (php < pmaxhp) php++;
+            if (php < pmaxhp) php++;
+        }
     }
     if (pw < pmaxpw && ++pw_timer >= (uint8_t)(at_wis >= 14 ? 12 : 18)) {
         pw_timer = 0;                           /* power trickles back; wisdom
