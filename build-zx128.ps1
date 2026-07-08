@@ -16,8 +16,8 @@ $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 Set-Location $root
 
-$env:ZCCCFG = (Join-Path $root '..\z88dk-latest\lib\config\')
-$env:PATH   = (Join-Path $root '..\z88dk-latest\bin') + ';' + $env:PATH
+$env:ZCCCFG = (Join-Path $root '..\z88dk\lib\config\')
+$env:PATH   = (Join-Path $root '..\z88dk\bin') + ';' + $env:PATH
 
 $obj = Join-Path $root 'obj-zx128'
 if (-not (Test-Path $obj)) { New-Item -ItemType Directory $obj | Out-Null }

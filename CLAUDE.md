@@ -13,11 +13,13 @@ phase. Start a session from this folder so this file is auto-loaded.
 
 ## Build & run
 
-The z88dk SDK and CSpect live one directory up (`..\z88dk-latest`, `..\CSpect`);
-they are not in this repo. **The build needs the nightly z88dk** (`..\z88dk-latest`,
-v24836+) for its `__banked` trampoline — the game is **code-banked** (see Memory
-budget). The old pinned `..\z88dk` (v23854) lacks it and can no longer build this
-source. Build/run are scripts run from this folder:
+The z88dk SDK and the ZEsarUX emulator live one directory up (`..\z88dk`,
+`..\ZEsarUX`); they are not in this repo. **The build needs a nightly z88dk**
+(`..\z88dk`, the v2.5-dev line, 2026-07 or newer; zsdcc base SDCC 4.5.0) for
+its `__banked` trampoline — the game is **code-banked** (see Memory budget).
+Verified: a nightly swap-in rebuilds clean with identical resident sizes (small
+codegen drift in the banked pages is normal). Build/run are scripts run from
+this folder:
 
 ```bat
 build.bat            REM builds the whole Next game -> nexthack.nex (+ nexthack.map)
@@ -38,7 +40,7 @@ boots the resident title but crashes on the first banked call (it doesn't carry
 the code-banked RAM banks). ZEsarUX auto-mounts esxDOS onto the .nex's folder, so
 save/restore works with no SD image (the old `run-sd.bat`, now removed).
 
-`build.bat` sets `ZCCCFG`/`PATH` (to `..\z88dk-latest`) and invokes one zcc pass:
+`build.bat` sets `ZCCCFG`/`PATH` (to `..\z88dk`) and invokes one zcc pass:
 
 ```
 zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startup=1 -pragma-include:zpragma.inc -m <srcs> -o nexthack -create-app

@@ -8,7 +8,7 @@ REM cold code in PAGE_20/PAGE_22 (the 0xC000 window). That needs the nightly
 REM z88dk (__banked trampoline) and the banking pragmas (zpragma.inc/mmap.inc).
 REM build.ps1 is the faster incremental+parallel equivalent; prefer it.
 
-SET Z88DK_DIR=%~dp0..\z88dk-latest
+SET Z88DK_DIR=%~dp0..\z88dk
 SET ZCCCFG=%Z88DK_DIR%\lib\config\
 SET PATH=%Z88DK_DIR%\bin;%PATH%
 

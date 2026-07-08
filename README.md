@@ -150,7 +150,7 @@ z88dk (the `__banked` trampoline, build v24836+):
 ```
 <parent>/
 ├─ nexthack/        ← this repository
-├─ z88dk-latest/    ← z88dk SDK, nightly v24836+  (https://github.com/z88dk/z88dk)
+├─ z88dk/           ← z88dk SDK, a recent nightly (https://github.com/z88dk/z88dk)
 └─ ZEsarUX/         ← the ZEsarUX emulator        (https://github.com/chernandezba/zesarux)
 ```
 
@@ -173,8 +173,8 @@ build.bat foo.c      REM builds a single .c file             -> foo.nex
 Equivalent direct invocation of the full build:
 
 ```bat
-set ZCCCFG=..\z88dk-latest\lib\config\
-set PATH=..\z88dk-latest\bin;%PATH%
+set ZCCCFG=..\z88dk\lib\config\
+set PATH=..\z88dk\bin;%PATH%
 zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startup=1 -pragma-include:zpragma.inc -m src/mainentry.c src/nexthack.c src/platform.c src/platform_init.c src/rng.c src/level.c src/levelgen.c src/levelfov.c src/monster.c src/monster_ai.c src/item.c src/sfx.c src/leveltmpl.c src/classes.c src/spells.c src/titlegfx0.c src/titlegfx1.c src/titlegfx2.c src/titlepal.c src/victorygfx0.c src/victorygfx1.c src/victorygfx2.c src/victorypal.c -o nexthack -create-app
 ```
 

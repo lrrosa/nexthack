@@ -15,8 +15,8 @@ $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 Set-Location $root
 
-$env:ZCCCFG = (Join-Path $root '..\z88dk-latest\lib\config\')
-$env:PATH   = (Join-Path $root '..\z88dk-latest\bin') + ';' + $env:PATH
+$env:ZCCCFG = (Join-Path $root '..\z88dk\lib\config\')
+$env:PATH   = (Join-Path $root '..\z88dk\bin') + ';' + $env:PATH
 $zcccfg = $env:ZCCCFG   # captured for the parallel runspaces ($using:)
 $zpath  = $env:PATH
 
