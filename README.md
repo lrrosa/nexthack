@@ -49,8 +49,9 @@ code.
 - **Turn-based combat** against a depth-scaled bestiary (rats, bats, kobolds,
   dogs, snakes, orcs, zombies, acid blobs, leprechauns, yellow lights, homunculi,
   wraiths, floating eyes — and deeper down, **trolls** that knit their wounds
-  shut, life-draining **vampires** and the apex **dragon**) that chases you with
-  BFS pathfinding. Many bite with a
+  shut, life-draining **vampires**, **mimics** posing as items on the floor,
+  and the apex **dragon**, which **breathes fire** down a clear corridor) that
+  chases you with BFS pathfinding. Many bite with a
   **special attack** — poison, blindness, sleep, gold theft, life-drain — and
   never melee a floating eye with your eyes open. Hidden **traps** (trap doors,
   darts, sleeping gas) lurk in the deeper floors. Scratch **Elbereth** (`E`) in
@@ -58,8 +59,9 @@ code.
 - **Corpses: you are what you eat** — slain monsters may leave one, and the
   right flesh teaches the body something: poison resistance, sleep resistance,
   or a floating eye's **telepathy** (sense every monster while blind).
-- A **loyal pet dog** starts at your side, fights monsters for you and follows you
-  through the dungeon. **Throw** (`t`) a weapon down a corridor for a ranged
+- A **loyal pet dog** starts at your side, fights monsters for you, follows you
+  through the dungeon — and **grows with its kills**, biting harder and taking
+  more punishment. **Throw** (`t`) a weapon down a corridor for a ranged
   attack — it lands on the floor to be reclaimed — **search** (`s`) the ground for
   hidden traps, and **pray** (`p`) to your god to haul you out of trouble (best at
   an altar).
@@ -67,8 +69,11 @@ code.
   each with its own enchantment, erosion and **blessed/uncursed/cursed** state;
   potions and scrolls start **unidentified**. Wield/wear the best you carry,
   quaff/eat/read, watch acid blobs corrode your gear, beware cursed items that
-  won't come off. **Wands** (`z`) zap magic in a chosen direction — a striking
-  bolt, a freezing ray, sleep or teleport-away — or dig straight down a level.
+  won't come off — then **enchant your gear** with the right scroll, **lift
+  your curses** with another, bottle a whole **experience level**, or wear the
+  **ring of regeneration** and mend twice as fast. **Wands** (`z`) zap magic
+  in a chosen direction — a striking bolt, a freezing ray, sleep or
+  teleport-away — or dig straight down a level.
 - **Altars and divinity** — step onto an **altar** (`_`) to reveal the
   blessings on what you carry; drop an item on one and a flash names it, a
   potion taking the altar's own touch (holy water — or worse, on an altar of a
@@ -90,7 +95,8 @@ code.
   (class, depth reached, turns, gold) and weighs it against the **best run so
   far**, which persists on disk between games.
 - The goal: retrieve the **Amulet of Yendor** from the bottom of the dungeon —
-  past the **high priest** who guards it — and climb back out alive.
+  past the **high priest** who guards it — and climb back out alive, through
+  everything **Moloch** sends up after you (and he no longer takes your calls).
 
 ![NextHack gameplay: a procedurally generated dungeon level drawn in colour 8×8 tiles, with the status and command bars below the map.](docs/gameplay.png)
 
@@ -173,7 +179,8 @@ zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startu
 ```
 
 The banking layout is configured by `zpragma.inc` (stack at `0xBFF0`, banking
-segment 3) and `mmap.inc` (the `PAGE_20`/`PAGE_22`/`PAGE_26` code-page ORGs).
+segment 3) and `mmap.inc` (the `PAGE_20`/`PAGE_22`/`PAGE_26`/`PAGE_28`
+code-page ORGs).
 
 ### Building the ZX Spectrum 128K target
 
@@ -270,7 +277,8 @@ from the roguelike tradition):
 - **Creatures:** hero and shopkeeper (`@`), rat (`r`), bat (`B`), acid blob (`a`),
   kobold (`k`), dog (`d`), snake (`S`), orc (`o`), zombie (`Z`), leprechaun (`l`),
   yellow light (`y`), homunculus (`i`), wraith (`W`), floating eye (`e`),
-  troll (`T`), vampire (`V`), dragon (`D`), the high priest (`M`)
+  troll (`T`), vampire (`V`), dragon (`D`), mimic (`m` — hidden ones wear an
+  item's tile), the high priest (`M`)
 
 ## Technical notes
 
@@ -284,7 +292,7 @@ from the roguelike tradition):
   must be audited for overflow.
 - **Memory / code banking**: the engine outgrew the 64 KB the Z80 sees at once, so
   it is **code-banked** — a resident half (hot code + all data + stack in
-  `0x8000-0xBFF0`) plus cold code in three 16 KB pages swapped into the `0xC000`
+  `0x8000-0xBFF0`) plus cold code in four 16 KB pages swapped into the `0xC000`
   window by z88dk's `__banked` trampoline. The BFS scratch arrays live in Bank 5's
   free tail. The resident half — where every module's *data* and string literals
   land by default — is the tightest budget; read-once tables and message strings

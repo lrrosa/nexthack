@@ -8,7 +8,7 @@ SECTION PAGE_22_CODE
 SECTION PAGE_26_CODE
     ORG 0x1AC000
 ; PAGE_28_CODE is bank 14 (free): item.c's own bank -- its code PLUS its
-; const-banked catalogue/strings (the v0.10 reclaim) outgrew PAGE_20.
+; const-banked catalogue/strings (the v0.9 reclaim) outgrew PAGE_20.
 SECTION PAGE_28_CODE
     ORG 0x1CC000
 ; The Layer 2 title image (titlegfx0/1/2.c) goes in banks 16/17/18 via z88dk's

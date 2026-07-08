@@ -23,14 +23,14 @@
 #include "rng.h"         /* rn2, world_seed                                  */
 #include "sfx.h"         /* sound effects                                    */
 
-/* item.c is a BANKED (cold) module -- all its code lives in PAGE_20_CODE,
- * mapped into the 0xC000 window on demand. Public entry points are __banked
- * (see item.h); the static helpers below are reached only by in-page calls,
- * so they stay plain. Banked code may only touch RESIDENT data.
+/* item.c is a BANKED (cold) module with a bank of its OWN (it outgrew
+ * PAGE_20), mapped into the 0xC000 window on demand. Public entry points are
+ * __banked (see item.h); the static helpers below are reached only by in-page
+ * calls, so they stay plain. Banked code may only touch RESIDENT data.
  *
  * constseg: the object catalogue (objtypes[] with its name strings, the
  * appearance pools) and every message literal live in THIS bank, not the
- * tight resident half (~0.9 KB reclaimed). Safe because nothing outside
+ * tight resident half (~3.2 KB reclaimed). Safe because nothing outside
  * item.c reads them (audited: no external objtypes/name consumers), and
  * in-file consumers hand them only to RESIDENT callees (msg/print_str),
  * which run with this bank still mapped. Do not pass them into another
@@ -61,7 +61,7 @@ enum {
     O_BFORCE, O_BHEAL, O_BSLEEP, O_BTELE,      /* '&' spellbooks ('r' learns,
                     * 'Z' casts; prop = the spell index in spells.c) */
     O_EXCALIBUR,   /* ')' the Lady's gift; mindep 255 = only from a fountain */
-    /* the v0.10 arsenal -- APPENDED so no earlier index shifts (classes.c's
+    /* the v0.9 arsenal -- APPENDED so no earlier index shifts (classes.c's
      * kit numbers and saved otyps stay valid) */
     O_ENCHW, O_ENCHA, O_RMCURSE,               /* '?' scrolls */
     O_GAINLVL,                                 /* '!' potion  */
@@ -112,7 +112,7 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '&',  2,  150,  4, "spellbook of sleep" },
     { '&',  3,  180,  6, "spellbook of teleportation" },
     { ')',  8,  400, 255, "Excalibur" },  /* only from a fountain (mindep 255) */
-    /* the v0.10 arsenal (appended; see the enum note) */
+    /* the v0.9 arsenal (appended; see the enum note) */
     { '?',  0,  100,  3, "scroll of enchant weapon" },
     { '?',  0,  100,  4, "scroll of enchant armor" },
     { '?',  0,   80,  3, "scroll of remove curse" },

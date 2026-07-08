@@ -83,7 +83,7 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   26     /* v0.10.0: the arsenal grew the catalogue, so
+#define SAVE_VER   26     /* v0.9.0: the arsenal grew the catalogue, so
                            * id_known (sized by NUMOBJ) changed size */
 
 struct save_hdr {

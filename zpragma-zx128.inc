@@ -6,7 +6,7 @@
 #pragma output REGISTER_SP = 0xBFF0        ; stack just below the 0xC000 paging window
 
 #pragma output CRT_ORG_BANK_0 = 0x00C000   ; item.c's own bank: code + const-banked
-                                           ; catalogue/strings (the v0.10 reclaim)
+                                           ; catalogue/strings (the v0.9 reclaim)
 #pragma output CRT_ORG_BANK_1 = 0x01C000   ; cold code bank A
 #pragma output CRT_ORG_BANK_3 = 0x03C000   ; cold code bank B
 #pragma output CRT_ORG_BANK_4 = 0x04C000   ; data/SCR bank (title/victory, Phase 2)

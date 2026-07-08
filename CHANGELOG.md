@@ -8,6 +8,42 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [0.9.0] — 2026-07-08
+
+The gauntlet release: the dungeon fights back — and hands you a bigger arsenal.
+
+### Added
+- **The ascent is a gauntlet.** With the Amulet in your pack the dungeon sends
+  its deep servants after you no matter how near the surface — wraiths and
+  trolls chase you to the daylight instead of rats — and **Moloch drowns out
+  your prayers** entirely. (Wanderers already spawned ~3× faster on the
+  ascent; now they have teeth.)
+- **The mimic.** From depth 6 the dungeon baits its floors: that "potion" may
+  be a monster wearing the potion's tile. Step next to it or strike it and it
+  sheds the disguise as a toothy chest that bites back the same turn — and
+  your dog cannot smell a posing mimic.
+- **Dragons breathe fire** down a clear straight line (range 6). Walls, doors
+  and creatures block the blast — your own dog can shield you — armour soaks
+  half, and fire outranges Elbereth. At depth 22+ corridors suddenly matter.
+- **Your puppy grows.** At 4 and at 12 lifetime kills the dog gains a size:
+  a harder bite, +6 HP on the spot, and a deeper regeneration cap.
+- **New scrolls** — **enchant weapon** and **enchant armor** (+1 and shine
+  the rust off the piece in use) and **remove curse** (lifts the whole pack).
+- **Potion of gain level** — one whole experience level, bottled.
+- **Ring of regeneration** — worn, you mend twice as fast.
+- The unidentified looks grew with the catalogue: six potion colours and six
+  scroll labels, all unique within a game.
+
+### Changed
+- **~3 KB of RAM reclaimed on both targets.** The item catalogue and all its
+  texts moved into a memory bank of their own (the Next gains bank 14; the
+  128K tape adds a fifth code block to its loader). Invisible in play — it is
+  the room the next features will breathe in.
+
+### Note
+- Saved games from 0.8.x will **not** load — the catalogue and the pet's
+  record grew. Finish any run in progress before upgrading.
+
 ## [0.8.0] — 2026-07-05
 
 The divine release: your god is watching — and the deep dungeon bites back.
