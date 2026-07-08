@@ -36,7 +36,8 @@ STUB_ADDR = 0x5B00     # 23296: printer buffer -- free, survives the loads
 STUB = bytes([0xF3, 0xED, 0x56, 0x3E, 0x3F, 0xED, 0x47, 0xC3, 0x00, 0x80])
 
 CODE_BIN = "nexthack128_CODE.bin"
-BANKS = [("nexthack128_BANK_1.bin", "bank1", 1),
+BANKS = [("nexthack128_BANK_0.bin", "bank0", 0),   # item.c + consts (v0.10 reclaim)
+         ("nexthack128_BANK_1.bin", "bank1", 1),
          ("nexthack128_BANK_3.bin", "bank3", 3),
          ("nexthack128_BANK_4.bin", "bank4", 4),
          ("nexthack128_BANK_6.bin", "bank6", 6)]   # monster_ai (spare bank)

@@ -26,11 +26,21 @@
 /* item.c is a BANKED (cold) module -- all its code lives in PAGE_20_CODE,
  * mapped into the 0xC000 window on demand. Public entry points are __banked
  * (see item.h); the static helpers below are reached only by in-page calls,
- * so they stay plain. Banked code may only touch RESIDENT data. */
+ * so they stay plain. Banked code may only touch RESIDENT data.
+ *
+ * constseg: the object catalogue (objtypes[] with its name strings, the
+ * appearance pools) and every message literal live in THIS bank, not the
+ * tight resident half (~0.9 KB reclaimed). Safe because nothing outside
+ * item.c reads them (audited: no external objtypes/name consumers), and
+ * in-file consumers hand them only to RESIDENT callees (msg/print_str),
+ * which run with this bank still mapped. Do not pass them into another
+ * bank's __banked functions. */
 #ifdef __ZXNEXT
-#pragma codeseg PAGE_20_CODE
+#pragma codeseg PAGE_28_CODE   /* bank 14: item.c's own bank -- code + consts */
+#pragma constseg PAGE_28_CODE
 #else
-#pragma codeseg BANK_1
+#pragma codeseg BANK_0         /* the 128K's spare uncontended bank */
+#pragma constseg BANK_0
 #endif
 
 #define MAXINV 24
