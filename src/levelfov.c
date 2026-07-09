@@ -36,23 +36,25 @@ extern uint8_t gold_taken[], item_taken[];   /* persistence masks (levelgen.c) *
  * recently visited FOV_SLOTS levels stay resident. A level evicted from the pool
  * forgets its map (it shows unexplored again if revisited later). The cheap
  * per-level bitmasks (gold/item/monster kills) are still kept for every level. */
-#define FOV_SLOTS 4   /* remember the 4 most recently visited levels' maps.
-                       * (Was 8, then 6, then 5.) The pool itself is now data-
-                       * banked into Bank 5 (below), so this no longer costs
-                       * resident RAM; 4 slots = 840 B, which is what fits after
-                       * inv on the Next before the sysvars. */
+#define FOV_SLOTS 12  /* remember the 12 most recently visited levels' maps
+                       * (was 4 in the resident-pressure era; the v0.9 item.c
+                       * reclaim bought the room back). 12 slots = 2520 B; the
+                       * pool is in the save, so growing this bumps SAVE_VER. */
 
-/* The LRU explored bitmaps live in Bank 5 (always mapped at 0x4000-0x7FFF on
- * both targets), like inv -- so the ~840 B cost no resident BSS. They sit just
- * past inv: Next 0x5880 (inv 0x5800..0x5878; NextZXOS sysvars at 0x5C00, 56 B
- * clear) / 128K 0x6880 (inv 0x6800..; BFS scratch far above at 0x7400). FLAT
- * view -- SDCC rejects pointer-to-array casts -- so index as
- * fov_pool[(uint16_t)slot*FOV_BYTES + byte]. Save format is unchanged (the same
- * FOV_SLOTS*FOV_BYTES bytes are written), so no SAVE_VER bump. */
+/* Where the LRU explored bitmaps live differs per target:
+ *  - 128K: data-banked in Bank 5 (always mapped at 0x4000-0x7FFF) at 0x68A0,
+ *    just past the 26-slot inv (0x6800..0x6882); 12 slots end at 0x7278,
+ *    safely below the BFS scratch at 0x7400 -- zero resident cost. FLAT view
+ *    (SDCC rejects pointer-to-array casts): index as
+ *    fov_pool[(uint16_t)slot*FOV_BYTES + byte].
+ *  - Next: Bank 5's tail is full (tiles+inv below the 0x5C00 sysvars, tilemap
+ *    at 0x6000, BFS at 0x7400), so the grown pool lives in resident BSS --
+ *    the item.c reclaim is what pays for it. */
 #ifndef __ZXNEXT
-#define fov_pool ((uint8_t *)0x6880u)
+#define fov_pool ((uint8_t *)0x68A0u)
 #else
-#define fov_pool ((uint8_t *)0x5880u)
+static uint8_t fov_pool_buf[(uint16_t)FOV_SLOTS * FOV_BYTES];
+#define fov_pool fov_pool_buf
 #endif
 static uint8_t  slot_lvl[FOV_SLOTS];             /* dlvl in each slot (0 = free) */
 static uint16_t slot_tick[FOV_SLOTS];            /* last-touched time, for LRU   */

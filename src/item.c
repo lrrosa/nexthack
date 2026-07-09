@@ -43,7 +43,7 @@
 #pragma constseg BANK_0
 #endif
 
-#define MAXINV 24
+#define MAXINV 26      /* one per menu letter a..z (the hard cap) */
 
 /* ---- object catalogue (like montypes[]) ---- */
 
@@ -842,10 +842,10 @@ void show_inventory(void) __banked
     if (inv_count == 0) {
         print_str(4, 4, "Your pack is empty.", C_WHITE);
     } else {
-        for (i = 0; i < inv_count; i++) {       /* two columns of 12 */
+        for (i = 0; i < inv_count; i++) {       /* two columns of 13 */
             char cls = objtypes[inv[i].otyp].cls;
-            uint8_t row = (uint8_t)(4 + (i % 12));
-            uint8_t cx  = (uint8_t)(i < 12 ? 2 : 42);
+            uint8_t row = (uint8_t)(4 + (i % 13));
+            uint8_t cx  = (uint8_t)(i < 13 ? 2 : 42);
             uint8_t x;
             puttile(cx, row, tile_for(cls));    /* the item's graphic tile */
             putcell((uint8_t)(cx + 2), row, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
