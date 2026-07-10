@@ -162,7 +162,63 @@ typedef struct { uint8_t x, y, och; obj_t o; } floor_t;
 static floor_t floor_obj[MAXFLOOR];
 static uint8_t floor_n;
 
-void floor_reset(void) __banked { floor_n = 0; }
+/* ---- persistent floor stashes (v0.10) ----
+ * Dropped and thrown items used to vanish on a level change. Now an LRU pool
+ * remembers the floor of the STASH_SLOTS most recently left levels (keyed by
+ * dlvl, like the fog-of-war pool): floor_reset() banks the outgoing level's
+ * floor_obj[] on entry to build_level, and floor_restore() (called at its
+ * end, once the terrain is final) re-lays the incoming level's stash --
+ * deterministic regeneration guarantees each item's cell still matches its
+ * remembered och. The pool is saved (item_save), so stashes survive S. */
+#define STASH_SLOTS 8
+typedef struct { uint8_t lvl, n; uint16_t tick; floor_t it[MAXFLOOR]; } stash_t;
+static stash_t  stash[STASH_SLOTS];   /* ~544 B resident BSS (the reclaim pays) */
+static uint16_t stash_clock;
+static uint8_t  stash_prev;           /* dlvl whose floor sits in floor_obj[] */
+
+static void stash_store(void)
+{
+    uint8_t i, v = STASH_SLOTS, free_ = STASH_SLOTS;
+    if (stash_prev == 0) return;      /* nothing banked yet (boot / new game) */
+    for (i = 0; i < STASH_SLOTS; i++) {
+        if (stash[i].lvl == stash_prev) { v = i; break; }
+        if (stash[i].lvl == 0 && free_ == STASH_SLOTS) free_ = i;
+    }
+    if (v == STASH_SLOTS) v = (free_ != STASH_SLOTS) ? free_ : 0;
+    if (v == 0 && free_ == STASH_SLOTS && stash[0].lvl != stash_prev) {
+        for (i = 1; i < STASH_SLOTS; i++)          /* evict the oldest */
+            if (stash[i].tick < stash[v].tick) v = i;
+    }
+    if (floor_n == 0) {               /* an empty floor frees the slot */
+        if (stash[v].lvl == stash_prev) stash[v].lvl = 0;
+        return;
+    }
+    stash[v].lvl  = stash_prev;
+    stash[v].n    = floor_n;
+    stash[v].tick = ++stash_clock;
+    for (i = 0; i < floor_n; i++) stash[v].it[i] = floor_obj[i];
+}
+
+void floor_reset(void) __banked { stash_store(); floor_n = 0; }
+
+/* re-lay the incoming level's stash; terrain must be final (end of build_level) */
+void floor_restore(void) __banked
+{
+    uint8_t i, k;
+    floor_n = 0;
+    for (i = 0; i < STASH_SLOTS; i++)
+        if (stash[i].lvl != 0 && stash[i].lvl == (uint8_t)dlvl) {
+            floor_n = stash[i].n;
+            for (k = 0; k < floor_n; k++) {
+                floor_obj[k] = stash[i].it[k];
+                lvl[floor_obj[k].y][floor_obj[k].x] =
+                    (char)objtypes[floor_obj[k].o.otyp].cls;
+            }
+            stash[i].tick = ++stash_clock;
+            break;
+        }
+    stash_prev = (uint8_t)dlvl;
+}
 
 static int floor_find(uint8_t x, uint8_t y)
 {
@@ -549,6 +605,9 @@ void item_reset(void) __banked
     inv_count = 0;
     weapon_dmg = 0;
     for (i = 0; i < sizeof id_known; i++) id_known[i] = 0;   /* nothing learned yet */
+    for (i = 0; i < STASH_SLOTS; i++) stash[i].lvl = 0;      /* no stashes yet */
+    stash_clock = 0;
+    stash_prev = 0;
     recompute_gear();
 }
 
@@ -1429,9 +1488,12 @@ void do_zap(void) __banked
 
 void item_save(uint8_t h) __banked
 {
+    stash_store();                    /* bank the current floor first */
     file_write(h, inv, INV_BYTES);
     file_write(h, &inv_count, 1);
     file_write(h, id_known, sizeof id_known);
+    file_write(h, stash, sizeof stash);
+    file_write(h, &stash_clock, 2);
 }
 
 void item_load(uint8_t h) __banked
@@ -1439,5 +1501,9 @@ void item_load(uint8_t h) __banked
     file_read(h, inv, INV_BYTES);
     file_read(h, &inv_count, 1);
     file_read(h, id_known, sizeof id_known);
+    file_read(h, stash, sizeof stash);
+    file_read(h, &stash_clock, 2);
+    stash_prev = 0;     /* boot floor is empty: the coming build_level's
+                         * store must not clobber the loaded stash */
     recompute_gear();
 }

@@ -315,6 +315,7 @@ void build_level(void) __banked
     place_altar();       /* a deterministic altar on some levels (no RNG) */
     place_fountain();    /* ...and a fountain on some (guards on '.', so it
                           * never overwrites the altar) */
+    floor_restore();     /* re-lay this level's dropped-item stash (item.c) */
     map_dirty = 1;       /* +zx: next draw_map recenters (no-op on Next) */
     /* note: FOV memory is per depth and persists across visits, so it is NOT
      * reset here - only on a new game (see new_game / main). */

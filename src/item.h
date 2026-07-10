@@ -16,6 +16,7 @@ void item_reset(void) __banked;     /* empty inventory and unequip (new game)   
 int8_t eff_luck(void) __banked;     /* luck + 2 while the luckstone is carried */
 void give_item(uint8_t otyp, uint8_t worn) __banked; /* class kit: add one item  */
 void floor_reset(void) __banked;    /* clear loose floor items (per level entry) */
+void floor_restore(void) __banked;  /* re-lay this level's stash (end of build) */
 void do_pickup(void) __banked;      /* pick up the item under the hero          */
 const char *floor_item_desc(void) __banked; /* describe the item under the hero */
 void show_inventory(void) __banked; /* full-screen inventory list (blocks)      */
