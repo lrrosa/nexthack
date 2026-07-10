@@ -69,8 +69,12 @@
 #define T_DRAGON      167  /* the deep dungeon's apex: hits like a furnace   */
 #define T_PRIEST      168  /* the high priest guarding the Amulet (Dlvl 50)  */
 #define T_MIMIC       169  /* a revealed mimic (hidden ones wear T_POTION)   */
+#define T_MINEHOLE    170  /* the mine entrance 'v' on MINES_ENTR_DLVL        */
+#define T_GNOME       171  /* mines native: small and quick                   */
+#define T_DWARF       172  /* mines native: bearded, hits like his pick       */
+#define T_LUCKSTONE   173  /* the mines' prize ('*' at the bottom)            */
 
-#define NTILES   42      /* T_ROCK..T_MIMIC: the graphic tiles */
+#define NTILES   46      /* T_ROCK..T_LUCKSTONE: the graphic tiles */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT

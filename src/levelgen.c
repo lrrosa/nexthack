@@ -338,7 +338,7 @@ enum { SP_NONE = 0, SP_BIGROOM, SP_TEMPLATE };
 static uint8_t special_kind(uint16_t d)
 {
     uint16_t th;
-    if (d == DLVL_AMULET) return SP_NONE;
+    if (d == DLVL_AMULET || IN_MINES(d)) return SP_NONE;
     if (d >= 2 && (d % 11u) == 0) return SP_BIGROOM;
     th = (uint16_t)(world_seed * 3331u + (uint16_t)d * 5779u + 23u);
     th ^= (uint16_t)(th << 7);
@@ -464,6 +464,16 @@ void gen_level(void) __banked
         dn_x = x; dn_y = y;
     }
 
+    /* The mine entrance: a dark hole in the floor, always on this one level.
+     * Placed with the normal rn2 stream, so it is deterministic per seed. */
+    if (dlvl == MINES_ENTR_DLVL) {
+        uint8_t r, x, y;
+        do { r = (uint8_t)rn2(rcount); rand_floor(r, &x, &y); }
+        while (lvl[y][x] != '.');
+        lvl[y][x] = 'v';
+        mn_x = x; mn_y = y;
+    }
+
     /* loot: a sealed treasure vault on a few deep levels (takes precedence),
      * else a shop on ~1/3 of levels (depth >= 2), else scattered items. Both the
      * vault and shop decisions use side hashes (no rn2), so non-special levels
@@ -475,7 +485,7 @@ void gen_level(void) __banked
         uint16_t vh = (uint16_t)(world_seed * 2179u + (uint16_t)dlvl * 6863u + 7u);
         vh ^= (uint16_t)(vh << 7);
         vh ^= (uint16_t)(vh >> 9);
-        if (dlvl >= 4 && dlvl != DLVL_AMULET && (vh % 7u) == 0) {
+        if (dlvl >= 4 && dlvl != DLVL_AMULET && !IN_MINES(dlvl) && (vh % 7u) == 0) {
             uint8_t k;
             for (k = 0; k < SECT_ROWS; k++) {
                 uint8_t r = (uint8_t)((((uint8_t)(vh >> 4) + k) % SECT_ROWS)
@@ -494,7 +504,7 @@ void gen_level(void) __banked
         uint16_t sh = (uint16_t)(world_seed * 1009u + (uint16_t)dlvl * 2657u + 13u);
         sh ^= (uint16_t)(sh << 7);
         sh ^= (uint16_t)(sh >> 9);
-        if (dlvl >= 2 && dlvl != DLVL_AMULET && (sh % 3u) == 0) {
+        if (dlvl >= 2 && dlvl != DLVL_AMULET && !IN_MINES(dlvl) && (sh % 3u) == 0) {
             uint8_t tries = 0;
             shop_room = (int8_t)((sh >> 5) % rcount);
             /* the shop must miss the stairs (a staircase in a shop is odd) and be
@@ -503,6 +513,8 @@ void gen_level(void) __banked
             while (tries < rcount &&
                    (cell_in_room((uint8_t)shop_room, up_x, up_y) ||
                     cell_in_room((uint8_t)shop_room, dn_x, dn_y) ||
+                    (dlvl == MINES_ENTR_DLVL &&
+                     cell_in_room((uint8_t)shop_room, mn_x, mn_y)) ||
                     r_w[shop_room] < 6 || r_h[shop_room] < 4)) {
                 shop_room = (int8_t)(((uint8_t)shop_room + 1u) % rcount);
                 tries++;
@@ -515,6 +527,10 @@ void gen_level(void) __banked
         } else {
             place_gold();
             place_gold();
+            if (IN_MINES(dlvl)) {           /* the mines are gold veins */
+                place_gold();
+                place_gold();
+            }
             place_item('%');      /* food   */
             place_item(')');      /* weapon */
             place_item('[');      /* armor  */
@@ -533,6 +549,11 @@ void gen_level(void) __banked
      * or change this level's monster spawns. */
     if (dlvl == DLVL_AMULET)
         lvl[dn_y][dn_x] = has_amulet ? '.' : '"';
+
+    /* The mines bottom has no way further down either: the luckstone rests on
+     * the would-be down-stairs cell (same no-RNG trick as the Amulet). */
+    if (dlvl == (uint16_t)(MINES_BASE + MINES_DEPTH - 1))
+        lvl[dn_y][dn_x] = luckstone_taken ? '.' : '*';
 }
 
 /* is (x,y) inside the current level's shop room? (item.c uses this to bill) */

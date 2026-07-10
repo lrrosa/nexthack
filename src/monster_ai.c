@@ -42,7 +42,7 @@ static void spawn_monster(char type)
     if (shop_in_room(x, y)) return;               /* shops hold only the keeper */
     if (monster_at(x, y) >= 0) return;
     m_x[mcount] = x; m_y[mcount] = y;
-    m_hp[mcount] = (uint8_t)(mt->hp + dlvl / 2);   /* tougher the deeper you go */
+    m_hp[mcount] = (uint8_t)(mt->hp + eff_depth() / 2);   /* tougher when deep */
     m_type[mcount] = type; m_alive[mcount] = 1;
     mcount++;
 }
@@ -82,7 +82,7 @@ static void spawn_guardian(void)
 
 void spawn_level_monsters(void) __banked
 {
-    uint8_t count = (uint8_t)(2 + dlvl);   /* more monsters the deeper you go */
+    uint8_t count = (uint8_t)(2 + eff_depth());   /* more monsters when deep */
     int     vr    = level_vault_room();    /* -1 if this level has no vault     */
     uint8_t guards = (vr >= 0) ? 3 : 0;    /* a few tough guards inside it       */
     uint8_t i;
@@ -211,7 +211,7 @@ void attack_monster(uint8_t mi) __banked
     /* Dexterity decides whether the swing lands at all (Dx 11 = 85%, 16+ =
      * always) -- the whiffed turn still passes, as in NetHack. Luck leans on
      * the die: pleased gods steady your hand, spurned ones shake it. */
-    if (rn2(20) >= (uint8_t)(12 + (at_dex >> 1) + (luck >> 1))) {
+    if (rn2(20) >= (uint8_t)(12 + (at_dex >> 1) + (eff_luck() >> 1))) {
         msg2("You miss the ", mon_name(m_type[mi]), ".");
         return;
     }
@@ -237,7 +237,7 @@ static int iabs(int v) { return v < 0 ? -v : v; }
 static void monster_hits_player(uint8_t i)
 {
     const MonType *mt = mon_find(m_type[i]);
-    uint8_t bite = (uint8_t)(rn2(mt->dmg) + 1 + dlvl / 4);  /* harder when deep */
+    uint8_t bite = (uint8_t)(rn2(mt->dmg) + 1 + eff_depth() / 4);  /* harder deep */
 
     if (armor_def >= bite) {                 /* armor soaks the blow */
         msg2("The ", mt->name, " misses you!");
@@ -649,7 +649,7 @@ void monsters_turn(void) __banked
     /* trolls knit their wounds shut as they come for you (cap = spawn HP) */
     for (i = 0; i < mcount; i++)
         if (m_alive[i] && m_type[i] == 'T') {
-            uint8_t cap = (uint8_t)(mon_find('T')->hp + dlvl / 2);
+            uint8_t cap = (uint8_t)(mon_find('T')->hp + eff_depth() / 2);
             if (m_hp[i] < cap) m_hp[i]++;
         }
 #ifndef __ZXNEXT
@@ -772,7 +772,7 @@ void maybe_spawn_wanderer(void) __banked
 
     m_x[slot]    = x;
     m_y[slot]    = y;
-    m_hp[slot]   = (uint8_t)(mt->hp + dlvl / 2);
+    m_hp[slot]   = (uint8_t)(mt->hp + eff_depth() / 2);
     m_type[slot] = type;
     m_alive[slot] = 1;
     m_sleep[slot] = 0;          /* a fresh wanderer is awake */

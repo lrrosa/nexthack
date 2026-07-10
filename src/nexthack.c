@@ -38,6 +38,7 @@ uint8_t  php = 12, pmaxhp = 12;
 uint16_t gold = 0;
 uint8_t  dead = 0;
 uint8_t  has_amulet = 0;
+uint8_t  luckstone_taken = 0;    /* the mines' prize was claimed (see game.h) */
 uint8_t  won = 0;
 uint8_t  acted = 0;
 uint8_t  map_dirty = 1;   /* +zx renderer flag (unused on Next) */
@@ -104,6 +105,7 @@ struct save_player {
     uint8_t  st_conf, st_blind, st_sleep, st_poison;
     uint16_t pray_timeout;
     uint8_t  have_pet, pet_hp, pet_kills;
+    uint8_t  luckstone_taken;
     uint8_t  at_str, at_dex, at_con, at_int, at_wis, at_cha;
     uint8_t  pclass, intrinsics, pw, pmaxpw;
     uint8_t  known_spells;
@@ -153,6 +155,7 @@ int save_game(void) __banked
     p.st_sleep = st_sleep; p.st_poison = st_poison;
     p.pray_timeout = pray_timeout;
     p.have_pet = have_pet; p.pet_hp = pet_hp; p.pet_kills = pet_kills;
+    p.luckstone_taken = luckstone_taken;
     p.at_str = at_str; p.at_dex = at_dex; p.at_con = at_con;
     p.at_int = at_int; p.at_wis = at_wis; p.at_cha = at_cha;
     p.pclass = pclass; p.intrinsics = intrinsics;
@@ -198,6 +201,7 @@ int load_game(void) __banked
     st_sleep = p.st_sleep; st_poison = p.st_poison;
     pray_timeout = p.pray_timeout;
     have_pet = p.have_pet; pet_hp = p.pet_hp; pet_kills = p.pet_kills;
+    luckstone_taken = p.luckstone_taken;
     at_str = p.at_str; at_dex = p.at_dex; at_con = p.at_con;
     at_int = p.at_int; at_wis = p.at_wis; at_cha = p.at_cha;
     pclass = p.pclass; intrinsics = p.intrinsics;
@@ -297,7 +301,8 @@ void place_pet(void) __banked
 
 void build_level(void) __banked
 {
-    if (dlvl > max_dlvl) max_dlvl = dlvl;   /* deepest point, for the score */
+    if (dlvl > max_dlvl && !IN_MINES(dlvl))
+        max_dlvl = dlvl;                    /* deepest point, for the score */
     el_life = 0;             /* a dust engraving does not survive a level change */
     traps_reset();           /* sprung-trap set is per visit (level regenerates) */
     floor_reset();           /* loose thrown items don't survive a level change  */
@@ -703,7 +708,7 @@ void do_pray(void) __banked
         turns++; acted = 1;
         return;
     }
-    if (luck < 0) {                     /* the gods remember your affronts */
+    if (eff_luck() < 0) {               /* the gods remember your affronts */
         msg("You feel forsaken.");
         pray_timeout = 100;             /* and they take their time forgiving */
         turns++; acted = 1;
@@ -831,8 +836,9 @@ void draw_status(void) __banked
     x = print_str(68, 22, h, hunger_color());      /* hunger state at the tail */
     while (x < 80) putcell(x++, 22, ' ', C_GREEN);
 
-    x = print_str(0, 23, "Dlvl:", C_GREEN | C_BRIGHT);
-    x = put_uint(x, 23, dlvl, C_GREEN | C_BRIGHT);
+    x = print_str(0, 23, IN_MINES(dlvl) ? "Mine:" : "Dlvl:", C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, IN_MINES(dlvl) ? (uint16_t)(dlvl - MINES_BASE + 1) : dlvl,
+                 C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "  ", C_GREEN | C_BRIGHT);
     puttile(x, 23, T_DOLLAR); x++;        /* green '$' tile (ROM '$' is blank) */
     x = print_str(x, 23, ":", C_GREEN | C_BRIGHT);
@@ -907,8 +913,9 @@ void draw_status(void) __banked
      * has map_dirty == 1, so the first pass writes (and seeds) every cell. */
     sd_force = map_dirty;
 
-    x = sd_str(0, 22, "Dlvl:", C_GREEN | C_BRIGHT);
-    x = sd_uint(x, 22, dlvl, C_GREEN | C_BRIGHT);
+    x = sd_str(0, 22, IN_MINES(dlvl) ? "Mine:" : "Dlvl:", C_GREEN | C_BRIGHT);
+    x = sd_uint(x, 22, IN_MINES(dlvl) ? (uint16_t)(dlvl - MINES_BASE + 1) : dlvl,
+                C_GREEN | C_BRIGHT);
     x = sd_str(x, 22, " ", C_GREEN | C_BRIGHT);
     sd_putc(x, 22, T_DOLLAR, 0); x++;     /* green '$' tile (ROM '$' is blank) */
     x = sd_str(x, 22, ":", C_GREEN | C_BRIGHT);
@@ -961,6 +968,8 @@ static void describe(char dest, int moved)
     case '_': msg2("A ",
                    align_name(altar_align((uint8_t)hero_x, (uint8_t)hero_y)),
                    " altar. (d to offer)");           break;
+    case 'v': msg("A mine entrance. (> descends)");   break;
+    case '*': msg("A luckstone! (, to take)");        break;
     case '{': msg("There is a fountain here.");       break;
     default:  msg("");                                break;
     }
@@ -1143,6 +1152,16 @@ void try_move(int dx, int dy) __banked
 
 void go_down(void) __banked
 {
+    if (terrain(hero_x, hero_y) == 'v') {   /* into the Gnomish Mines */
+        dlvl = MINES_BASE;
+        turns++;
+        build_level();
+        hero_x = up_x; hero_y = up_y;
+        place_pet();
+        msg("You descend into the mines.");
+        sfx_stairs();
+        return;
+    }
     if (terrain(hero_x, hero_y) == '>') {
         dlvl++;
         turns++;
@@ -1162,7 +1181,15 @@ void go_down(void) __banked
 void go_up(void) __banked
 {
     if (terrain(hero_x, hero_y) == '<') {
-        if (dlvl > 1) {
+        if (dlvl == MINES_BASE) {           /* out of the mines */
+            dlvl = MINES_ENTR_DLVL;
+            turns++;
+            build_level();
+            hero_x = mn_x; hero_y = mn_y;   /* you emerge from the hole */
+            place_pet();
+            msg("You climb out of the mines.");
+            sfx_stairs();
+        } else if (dlvl > 1) {
             dlvl--;
             turns++;
             build_level();
@@ -1189,6 +1216,7 @@ void new_game(void) __banked
     turns = 0;
     dead = 0;
     has_amulet = 0;
+    luckstone_taken = 0;
     won = 0;
     xp = 0;
     xlvl = 1;

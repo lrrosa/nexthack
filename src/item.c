@@ -66,6 +66,7 @@ enum {
     O_ENCHW, O_ENCHA, O_RMCURSE,               /* '?' scrolls */
     O_GAINLVL,                                 /* '!' potion  */
     O_REGEN,                                   /* '=' ring    */
+    O_LUCKSTONE,   /* '*' the mines' prize; mindep 255 = placed, not generated */
     NUMOBJ
 };
 
@@ -117,7 +118,8 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '?',  0,  100,  4, "scroll of enchant armor" },
     { '?',  0,   80,  3, "scroll of remove curse" },
     { '!',  0,   80,  5, "potion of gain level" },
-    { '=',  0,  200,  6, "ring of regeneration" }
+    { '=',  0,  200,  6, "ring of regeneration" },
+    { '*',  0,  300, 255, "luckstone" }   /* the mines bottom (levelgen) */
 };
 
 typedef struct {
@@ -373,6 +375,17 @@ uint8_t pray_uncurse(uint8_t all) __banked
     return n;
 }
 
+/* Effective luck: the hidden stat plus a steady +2 while the luckstone rides
+ * in the pack (carried, not worn). Read by the to-hit roll and by prayer. */
+int8_t eff_luck(void) __banked
+{
+    uint8_t i;
+    for (i = 0; i < inv_count; i++)
+        if (inv[i].otyp == O_LUCKSTONE)
+            return (int8_t)(luck + 2);
+    return luck;
+}
+
 /* ---- inventory helpers ---- */
 
 static int find_class(char cls)
@@ -580,7 +593,7 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
 {
     char c = terrain(x, y);
     uint16_t h = item_hash(x, y);
-    uint8_t depth = (uint8_t)dlvl;
+    uint8_t depth = (uint8_t)eff_depth();   /* mine levels resolve shallow */
 
     if (in_vault_room((int)x, (int)y)) {
         uint16_t d = (uint16_t)(dlvl + VAULT_DEPTH_BONUS);
@@ -593,6 +606,10 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
     o->buc  = BUC_UNC;
     if (c == '"') {
         o->otyp = O_AMULET;
+        return;
+    }
+    if (c == '*') {
+        o->otyp = O_LUCKSTONE;
         return;
     }
     o->otyp = resolve_otyp(c, h, depth);
@@ -634,7 +651,7 @@ void do_pickup(void) __banked
 
     int fi;
 
-    if (c != '"' && c != ')' && c != '[' && c != '!' &&
+    if (c != '"' && c != ')' && c != '[' && c != '!' && c != '*' &&
         c != '%' && c != '?' && c != '=' && c != '/' && c != '&') {
         msg("Nothing here to pick up.");
         return;
@@ -693,6 +710,10 @@ void do_pickup(void) __banked
     if (c == '"') {
         has_amulet = 1;
         msg("Got the Amulet!  Climb back up!");
+        sfx_levelup();
+    } else if (c == '*') {
+        luckstone_taken = 1;            /* gen never re-places it */
+        msg("The luckstone hums with fortune!");
         sfx_levelup();
     } else {
         msg2("Got ", obj_desc(&o), ".");        /* short, so 23-char names fit 32 cols */

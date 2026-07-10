@@ -9,10 +9,20 @@
 /* the deepest level; the Amulet of Yendor waits here (carry it back to win) */
 #define DLVL_AMULET 50
 
-/* deepest level for which per-level mutations (gold/monsters/fog-of-war) are
- * remembered. Must be >= DLVL_AMULET (the deepest reachable level); kept tight
- * so the fog-of-war bitmaps leave room for the esxDOS save buffers in RAM. */
-#define MAXLVL DLVL_AMULET
+/* ---- the Gnomish Mines (v0.10): a 4-level side branch ----
+ * Entered through a mine entrance ('v') always found on MINES_ENTR_DLVL; its
+ * levels use internal dlvl ids MINES_BASE..MINES_BASE+MINES_DEPTH-1 (51..54),
+ * so every per-dlvl system (seeds, persistence masks, fog pool) just works.
+ * Difficulty and loot use eff_depth() (level.h), not the raw 51+ id. The
+ * luckstone waits at the bottom. */
+#define MINES_ENTR_DLVL 2
+#define MINES_BASE      (DLVL_AMULET + 1)
+#define MINES_DEPTH     4
+#define IN_MINES(d)     ((d) >= MINES_BASE)
+
+/* deepest level id for which per-level mutations (gold/monsters/fog-of-war)
+ * are remembered: the main shaft plus the mines branch. */
+#define MAXLVL (MINES_BASE + MINES_DEPTH - 1)
 
 /* player and run state (defined in nexthack.c) */
 extern int      hero_x, hero_y;
@@ -22,6 +32,8 @@ extern uint8_t  php, pmaxhp;
 extern uint16_t gold;
 extern uint8_t  dead;
 extern uint8_t  has_amulet; /* carrying the Amulet of Yendor                 */
+extern uint8_t  luckstone_taken; /* the mines-bottom luckstone was claimed
+                                  * (never re-placed by gen; saved)          */
 extern uint8_t  won;        /* surfaced with the Amulet (victory)            */
 extern uint8_t  acted;     /* did the player's action consume a turn? */
 extern uint8_t  map_dirty; /* +zx renderer: force a full map redraw (unused on Next) */

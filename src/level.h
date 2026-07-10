@@ -20,6 +20,11 @@
 extern char    lvl[MAPH][MAPW];
 extern uint8_t rcount;                    /* number of rooms          */
 extern uint8_t up_x, up_y, dn_x, dn_y;    /* this level's stairs      */
+extern uint8_t mn_x, mn_y;                /* mine entrance ('v') cell on
+                                           * MINES_ENTR_DLVL          */
+
+uint16_t eff_depth(void);   /* difficulty/loot depth (mines play shallow;
+                             * resident, see level.c) */
 
 /* terrain/walkable/tile_for and the fov_* group are HOT (resident, level.c).
  * Generation and persistence are COLD (banked, levelgen.c) and so declared

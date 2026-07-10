@@ -17,6 +17,16 @@
 char    lvl[MAPH][MAPW];
 uint8_t rcount;
 uint8_t up_x, up_y, dn_x, dn_y;
+uint8_t mn_x, mn_y;   /* the mine entrance cell (meaningful on MINES_ENTR_DLVL) */
+
+/* The difficulty/loot depth of the current level: mine levels carry internal
+ * ids 51+ but play like shallow depths just past their entrance. Resident:
+ * every spawner and the item resolver leans on it. */
+uint16_t eff_depth(void)
+{
+    return IN_MINES(dlvl) ? (uint16_t)(MINES_ENTR_DLVL + 1 + (dlvl - MINES_BASE))
+                          : dlvl;
+}
 
 /* An altar's alignment (0 Lawful / 1 Neutral / 2 Chaotic) -- a pure hash of the
  * world seed, depth and cell, so it is the same every visit and never touches
@@ -64,6 +74,8 @@ uint8_t tile_for(char c)
     case '&': return T_BOOK;
     case '{': return T_FOUNTAIN;
     case '"': return T_AMULET;
+    case 'v': return T_MINEHOLE;
+    case '*': return T_LUCKSTONE;
     default:  return T_ROCK;
     }
 }

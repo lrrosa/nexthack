@@ -153,7 +153,19 @@ const uint8_t gfx[NTILES][64] = {
     0,8,8,8,8,8,8,0, 8,8,8,13,13,8,8,8, 0,8,8,8,8,8,8,0, 0,8,8,0,0,8,8,0 },
   { /* T_MIMIC (a revealed mimic: brown chest, yellow eyes, toothy maw) */
     0,6,6,6,6,6,6,0, 6,6,13,6,6,13,6,6, 6,6,6,6,6,6,6,6, 4,6,4,6,4,6,4,6,
-    6,4,6,4,6,4,6,4, 6,6,6,6,6,6,6,6, 0,6,6,6,6,6,6,0, 0,0,0,0,0,0,0,0 }
+    6,4,6,4,6,4,6,4, 6,6,6,6,6,6,6,6, 0,6,6,6,6,6,6,0, 0,0,0,0,0,0,0,0 },
+  { /* T_MINEHOLE (a dark pit rimmed with brown earth and grey rubble) */
+    0,0,6,6,6,6,0,0, 0,6,2,1,1,2,6,0, 6,2,1,0,0,1,2,6, 6,1,0,0,0,0,1,6,
+    6,1,0,0,0,0,1,6, 6,2,1,0,0,1,2,6, 0,6,2,1,1,2,6,0, 0,0,6,6,6,6,0,0 },
+  { /* T_GNOME (small: pointed red cap, skin face, blue smock) */
+    0,0,0,8,8,0,0,0, 0,0,8,8,8,8,0,0, 0,0,15,15,15,15,0,0, 0,0,11,11,11,11,0,0,
+    0,11,11,11,11,11,11,0, 0,0,11,11,11,11,0,0, 0,0,11,0,0,11,0,0, 0,0,11,0,0,11,0,0 },
+  { /* T_DWARF (broad: iron helm, skin face, tan beard, brown tunic) */
+    0,0,2,2,2,2,0,0, 0,2,2,2,2,2,2,0, 0,0,15,15,15,15,0,0, 0,7,7,7,7,7,7,0,
+    0,6,6,6,6,6,6,0, 6,6,6,6,6,6,6,6, 0,0,6,0,0,6,0,0, 0,6,6,0,0,6,6,0 },
+  { /* T_LUCKSTONE (a grey stone with a warm gleam) */
+    0,0,0,0,0,0,0,0, 0,0,2,2,2,0,0,0, 0,2,3,3,2,2,0,0, 0,2,3,13,3,2,0,0,
+    0,2,3,3,3,2,0,0, 0,0,2,2,2,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 }
 };
 
 static void pack_tile(uint8_t tilenum, const uint8_t *px)
@@ -292,7 +304,11 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x3C,0x5A,0x18,0x7E,0xFF,0xDB,0x99,0x81 }, /* VAMPIRE (spread cape)    */
     { 0x18,0x99,0xDB,0xFF,0x7E,0x3C,0x18,0x08 }, /* DRAGON  (on the wing)    */
     { 0x18,0x3C,0x24,0x3C,0x7E,0xFF,0xFF,0x66 }, /* PRIEST  (mitred, robed)  */
-    { 0x7E,0x5A,0xFF,0xAA,0x55,0xFF,0x7E,0x00 }  /* MIMIC   (toothy chest)   */
+    { 0x7E,0x5A,0xFF,0xAA,0x55,0xFF,0x7E,0x00 }, /* MIMIC   (toothy chest)   */
+    { 0x3C,0x42,0x99,0xBD,0xBD,0x99,0x42,0x3C }, /* MINEHOLE (rimmed pit)    */
+    { 0x08,0x1C,0x3C,0x18,0x3C,0x18,0x24,0x24 }, /* GNOME   (pointy cap)     */
+    { 0x3C,0x7E,0x3C,0x7E,0x5A,0x7E,0x24,0x66 }, /* DWARF   (helm + beard)   */
+    { 0x00,0x38,0x7C,0x74,0x7C,0x38,0x00,0x00 }  /* LUCKSTONE (gleaming rock)*/
 };
 
 /* Copy the hand-drawn tiles into udg_bitmap[] (Bank 5, see platform.h) that the

@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 void item_reset(void) __banked;     /* empty inventory and unequip (new game)   */
+int8_t eff_luck(void) __banked;     /* luck + 2 while the luckstone is carried */
 void give_item(uint8_t otyp, uint8_t worn) __banked; /* class kit: add one item  */
 void floor_reset(void) __banked;    /* clear loose floor items (per level entry) */
 void do_pickup(void) __banked;      /* pick up the item under the hero          */

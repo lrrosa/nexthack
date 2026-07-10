@@ -120,7 +120,8 @@ start_game:
         case '>': go_down(); in_wait_nokey(); break;
         case '<': go_up();   in_wait_nokey(); break;
         case 13:
-            if (terrain(hero_x, hero_y) == '>')      go_down();
+            if (terrain(hero_x, hero_y) == '>' ||
+                terrain(hero_x, hero_y) == 'v')      go_down();
             else if (terrain(hero_x, hero_y) == '<') go_up();
             else msg("There are no stairs here.");
             in_wait_nokey();

@@ -10,6 +10,7 @@
 #include "platform.h"     /* T_* tile numbers (catalogue)                     */
 #include "rng.h"          /* rn2 (pick_mon)                                   */
 #include "game.h"         /* dlvl (pick_mon)                                  */
+#include "level.h"        /* eff_depth (mine levels play shallow)             */
 
 /* Monster state, shared with the banked half (monster_ai.c) via the externs in
  * monster.h. DATA is resident regardless of code banking. */
@@ -56,6 +57,10 @@ static const MonType montypes[] = {
      * spawn_level_monsters (slot 0, kill remembered by mon_dead bit 0).
      * mindepth 255 keeps it out of every random pool. */
     { 'M', 45, 9, 40, 255, T_PRIEST, 0, ATK_NONE, "high priest" },
+    /* the Gnomish Mines natives: never in the depth pool (mindepth 255) --
+     * pick_mon injects them directly on mine levels. */
+    { 'G',  4, 2, 2, 255, T_GNOME, 0, ATK_NONE, "gnome" },
+    { 'h',  8, 4, 5, 255, T_DWARF, 0, ATK_NONE, "dwarf" },
     /* the shopkeeper: drawn as '@' (reuses T_HERO), placed only in shops, never
      * randomly spawned (pick_mon skips it), and stationary (monster_ai mon_step). */
     { MON_KEEPER, 30, 0, 0, 1, T_KEEPER, 0, ATK_NONE, "shopkeeper" }
@@ -89,8 +94,12 @@ char pick_mon(void)
     char pool[NMON];
     uint8_t n = 0, i;
     /* the ascent is a gauntlet: with the Amulet in your pack the dungeon
-     * sends its deep servants after you no matter how near the surface */
-    uint16_t d = has_amulet ? (uint16_t)(dlvl + 15) : dlvl;
+     * sends its deep servants after you no matter how near the surface.
+     * (eff_depth: mine levels play shallow despite their 51+ ids.) */
+    uint16_t d = has_amulet ? (uint16_t)(eff_depth() + 15) : eff_depth();
+    /* the mines belong to the small folk: most spawns are natives */
+    if (IN_MINES(dlvl) && rn2(3) != 0)
+        return rn2(2) ? 'G' : 'h';
     for (i = 0; i < NMON; i++)
         if (montypes[i].ch != MON_KEEPER && montypes[i].mindepth <= d)
             pool[n++] = montypes[i].ch;
