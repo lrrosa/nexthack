@@ -103,9 +103,13 @@ code.
   past the **high priest** who guards it — and climb back out alive, through
   everything **Moloch** sends up after you (and he no longer takes your calls).
 
-![NextHack gameplay: a procedurally generated dungeon level drawn in colour 8×8 tiles, with the status and command bars below the map.](docs/gameplay.png)
+![NextHack gameplay: a magically mapped dungeon level drawn in colour 8×8 tiles — seven rooms and winding corridors, the hero and pet dog in a lit room, potions, gold and weapons on the floors, and the full status bar below.](docs/gameplay.png)
 
-*Exploring a dungeon level — rooms light up on entry, corridors reveal as you go, and gold, items and monsters share the floor.*
+*Dlvl 7 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, and gold, items and monsters share the floor. The status bar carries the whole character sheet, alignment included.*
+
+![The Gnomish Mines: the mine level revealed, two red-capped gnomes attacking the hero beside the pet dog, gold piles glinting in several chambers, and the status bar reading Mine:1.](docs/mines.png)
+
+*The Gnomish Mines (v0.10): gold-rich chambers, gnomes on the offensive — "The gnome misses you!" — and the luckstone waiting four levels down.*
 
 ## Project structure
 
@@ -229,6 +233,11 @@ it does not depend on esxDOS just to run.
 run-zx128.bat        REM dev convenience: boots nexthack128.tap in ZEsarUX (--machine 128k)
 ```
 
+![NextHack on the plain ZX Spectrum 128K: the ULA renderer with 1-bit tiles — revealed rooms and corridors, the hero and dog fighting a rat, and the compact status line.](docs/zx128.png)
+
+*The same game on a plain 128K: 1-bit tiles on the ULA, a 32-column viewport that
+edge-scrolls over the 80-wide map — "Your dog kills the rat!"*
+
 `run-zx128.bat` launches **ZEsarUX** (sibling `..\ZEsarUX\`) for quick local
 testing; it inserts the tape with `--tape`, so ZEsarUX auto-loads it straight to
 the title (no boot-menu key). It also passes `--noconfigfile` so the shared
@@ -265,9 +274,9 @@ in ZEsarUX too. **Run and ship the `.tap`, not the `.sna`.**
 
 Walk into a monster to attack it; walk over gold to pick it up.
 
-![The NextHack inventory screen, listing carried weapons, armour, potions, food and a scroll, with the worn and wielded items marked.](docs/inventory.png)
+![The NextHack inventory screen: a blessed +2 long sword (wielded), +1 ring mail (worn), an unidentified scroll and potion, the ring of regeneration (on hand), the luckstone, a food ration and a charged wand of cold.](docs/inventory.png)
 
-*The inventory screen (`i`): each item is a record of type, enchantment and erosion — the worn armour and wielded weapon are flagged.*
+*The inventory screen (`i`): enchantment, blessed/cursed state, unidentified appearances, wand charges — the worn and wielded pieces flagged.*
 
 ## Map & item tiles
 
