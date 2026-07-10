@@ -47,7 +47,7 @@ zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startu
 ```
 
 `zpragma.inc` (`REGISTER_SP=0xBFF0`, `CRT_APPEND_MMAP=1`, `CLIB_BANKING_SEGMENT=3`)
-and `mmap.inc` (the `PAGE_20_CODE`/`PAGE_22_CODE` section ORGs) drive the banking.
+and `mmap.inc` (the `PAGE_20/22/26/28_CODE` section ORGs) drive the banking.
 That single pass recompiles **everything** (~3 min). `build.ps1` does the same
 compile per `.c` to a `.o` (byte-identical output — verified same SHA-256), but
 **skips untouched modules and parallelises** across cores: clean ~75s, one-module
@@ -228,7 +228,7 @@ tilemap.
 - Memory budget: the cheap per-level masks scale to all 50 levels (`MAXLVL =
   DLVL_AMULET`, ~3 bytes/level), but the fog-of-war does **not** — it is a fixed
   `FOV_SLOTS`-entry LRU pool, so RAM is independent of dungeon depth. esxDOS itself
-  adds ~1.5 KB of BSS (sector buffers), so `FOV_SLOTS` (8) is kept below the RAM
+  adds ~1.5 KB of BSS (sector buffers), so `FOV_SLOTS` (12) is kept below the RAM
   max (~18) to reserve headroom for future features.
 
 ### Items (`item.c`)

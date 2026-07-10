@@ -8,6 +8,39 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [0.10.0] — 2026-07-08
+
+The depths release: a branch off the beaten shaft — and the LAST save-breaking
+release before 1.0.
+
+### Added
+- **The Gnomish Mines.** A dark hole waits somewhere on the floor of Dlvl 2:
+  `>` on it descends into a four-level side branch owned by **gnomes and
+  dwarves** — rich in gold, free of shops and vaults, and capped by the
+  **luckstone**, which steadies your luck by +2 while you carry it (your
+  sword arm and your prayers both feel it). The status bar reads `Mine:1-4`,
+  and climbing out of Mine:1 emerges from the very hole you entered.
+- **Your stash waits for you.** Dropped and thrown items — and the corpses of
+  the fallen — now persist: the floor of the 8 most recently left levels is
+  remembered, and remembered by the save file too. A pile of spares by the
+  stairs is a real strategy at last.
+- **Conducts.** The score screen now honours restraint: end your run without
+  ever killing by your own hand, eating flesh, reading a word, or petitioning
+  a god, and it says so — **Pacifist, Vegetarian, Illiterate, Atheist**.
+  (Your dog's kills don't stain your pacifism.)
+- **A longer memory.** The fog of war now remembers the **12** most recently
+  visited levels (was 4), and the pack grew to **26 slots** — one per menu
+  letter, a..z.
+
+### Changed
+- The build targets a fresh z88dk nightly (now expected at `../z88dk`);
+  verified byte-comparable on both targets.
+
+### Note — the save format freezes here
+- Saved games from 0.9.x will **not** load — the dungeon grew a branch, the
+  pack grew, the fog pool tripled. **This is the last save-breaking release:
+  from here through 1.0, saves stay compatible.**
+
 ## [0.9.0] — 2026-07-08
 
 The gauntlet release: the dungeon fights back — and hands you a bigger arsenal.

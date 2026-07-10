@@ -43,7 +43,11 @@ code.
   Neutral or Chaotic — the god your offerings answer to).
 - A **50-level dungeon**, generated procedurally and **deterministically**: each
   depth regenerates identically from its own seed, while the changes you make
-  (gold taken, monsters killed, items picked up) are remembered across revisits.
+  (gold taken, monsters killed, items picked up) are remembered across revisits
+  — plus the **Gnomish Mines**, a four-level side branch off Dlvl 2 owned by
+  gnomes and dwarves, gold-rich and capped by the luck-steadying **luckstone**.
+  Items you drop **stay where you left them** (the last 8 levels' floors are
+  remembered), so a stash by the stairs is a real strategy.
 - **Field of view** with fog of war — rooms light up on entry, corridors reveal
   around you, and explored-but-unseen terrain is drawn dimmed from memory.
 - **Turn-based combat** against a depth-scaled bestiary (rats, bats, kobolds,
@@ -93,7 +97,8 @@ code.
   save-scumming).
 - **Death and glory** — a score screen on death or victory sums up your run
   (class, depth reached, turns, gold) and weighs it against the **best run so
-  far**, which persists on disk between games.
+  far**, which persists on disk between games — and it honours your
+  **conducts**: Pacifist, Vegetarian, Illiterate, Atheist.
 - The goal: retrieve the **Amulet of Yendor** from the bottom of the dungeon —
   past the **high priest** who guards it — and climb back out alive, through
   everything **Moloch** sends up after you (and he no longer takes your calls).
@@ -271,14 +276,16 @@ the entities they depict (the symbol in parentheses is the internal map code, ke
 from the roguelike tradition):
 
 - **Terrain:** floor (`.`), corridor (`#`), wall (`-` `|`), door (`+`),
-  stairs up/down (`<` `>`), altar (`_`), fountain (`{`), a sprung trap (`^`)
+  stairs up/down (`<` `>`), a mine entrance (`v`), altar (`_`), fountain (`{`),
+  a sprung trap (`^`)
 - **Items:** gold (`$`), weapon (`)`), armor (`[`), potion (`!`), food (`%`),
-  scroll (`?`), ring (`=`), wand (`/`), spellbook (`&`), the Amulet of Yendor (`"`)
+  scroll (`?`), ring (`=`), wand (`/`), spellbook (`&`), the luckstone (`*`),
+  the Amulet of Yendor (`"`)
 - **Creatures:** hero and shopkeeper (`@`), rat (`r`), bat (`B`), acid blob (`a`),
   kobold (`k`), dog (`d`), snake (`S`), orc (`o`), zombie (`Z`), leprechaun (`l`),
   yellow light (`y`), homunculus (`i`), wraith (`W`), floating eye (`e`),
   troll (`T`), vampire (`V`), dragon (`D`), mimic (`m` — hidden ones wear an
-  item's tile), the high priest (`M`)
+  item's tile), gnome (`G`), dwarf (`h`), the high priest (`M`)
 
 ## Technical notes
 
