@@ -194,6 +194,7 @@ void hit_monster(uint8_t mi, uint8_t dmg) __banked
             corpse_drop(m_x[mi], m_y[mi], m_type[mi]);
         msg2("You kill the ", mt->name, "!");
         sfx_kill();
+        cnt_kills++;                    /* by your hand (conducts) */
         gain_xp(mt->xp);
     } else {
         m_hp[mi] = (uint8_t)(m_hp[mi] - dmg);

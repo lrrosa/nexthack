@@ -519,6 +519,7 @@ static void sacrifice(uint8_t s)
     /* 2 = co-aligned, 1 = a neutral party, 0 = crossed */
     uint8_t favour = (aa == alignment) ? 2 : (aa == 1 || alignment == 1) ? 1 : 0;
 
+    cnt_prayers++;                  /* an offering is worship (conducts) */
     inv_remove(s);                  /* the corpse is consumed on the altar */
     acted = 1; turns++;
     sfx_magic();
@@ -1284,6 +1285,7 @@ void do_eat(void) __banked
         inv_remove((uint8_t)s);
         nutrition += 250;                    /* lean fare next to a ration */
         if (nutrition > 1500) nutrition = 1500;
+        cnt_corpses++;              /* flesh breaks Vegetarian (conducts) */
         eat_corpse(mch);
     } else {
         nutrition += 800;
@@ -1304,10 +1306,12 @@ void do_read(void) __banked
     if (s == -2) { msg("Never mind."); return; }
     ot = inv[s].otyp;
     if (objtypes[ot].cls == '&') {      /* a spellbook: study it (it survives) */
+        cnt_reads++;                    /* studying breaks Illiterate too */
         learn_spell(objtypes[ot].prop);
         acted = 1; turns++;
         return;
     }
+    cnt_reads++;                /* scrolls break Illiterate (conducts) */
     id_set(ot);                 /* reading it identifies the type */
     inv_remove((uint8_t)s);
     sfx_magic();

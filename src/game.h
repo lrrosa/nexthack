@@ -94,6 +94,11 @@ extern uint16_t pray_timeout;
  * for the live slot. */
 extern uint8_t  have_pet;
 extern uint8_t  pet_hp;
+/* conduct counters (v0.10, saved): 0 at death/victory = the conduct held.
+ * kills = by the HERO's hand (pet kills stay pacifist); corpses = flesh
+ * eaten; reads = scrolls read + books studied; prayers = prayers AND altar
+ * offerings (the gods count attempts, heard or not). */
+extern uint16_t cnt_kills, cnt_corpses, cnt_reads, cnt_prayers;
 extern uint8_t  pet_kills;  /* lifetime kills: the dog grows at 4 and at 12
                              * (+2 bite and +6 HP/cap per size; see pet_hits
                              * and the upkeep regen cap) */

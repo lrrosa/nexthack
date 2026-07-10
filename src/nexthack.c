@@ -72,6 +72,7 @@ uint16_t pray_timeout = 0;                   /* turns until you may pray again *
 uint8_t  have_pet = 0;                        /* a living dog follows you (see game.h) */
 uint8_t  pet_hp = 0;                          /* the pet's health, carried across levels */
 uint8_t  pet_kills = 0;                       /* its lifetime kills (growth; see game.h) */
+uint16_t cnt_kills = 0, cnt_corpses = 0, cnt_reads = 0, cnt_prayers = 0;   /* conducts */
 
 /* hunger/regeneration bookkeeping */
 static uint8_t heal_timer = 0;
@@ -106,6 +107,7 @@ struct save_player {
     uint16_t pray_timeout;
     uint8_t  have_pet, pet_hp, pet_kills;
     uint8_t  luckstone_taken;
+    uint16_t cnt_kills, cnt_corpses, cnt_reads, cnt_prayers;
     uint8_t  at_str, at_dex, at_con, at_int, at_wis, at_cha;
     uint8_t  pclass, intrinsics, pw, pmaxpw;
     uint8_t  known_spells;
@@ -156,6 +158,8 @@ int save_game(void) __banked
     p.pray_timeout = pray_timeout;
     p.have_pet = have_pet; p.pet_hp = pet_hp; p.pet_kills = pet_kills;
     p.luckstone_taken = luckstone_taken;
+    p.cnt_kills = cnt_kills; p.cnt_corpses = cnt_corpses;
+    p.cnt_reads = cnt_reads; p.cnt_prayers = cnt_prayers;
     p.at_str = at_str; p.at_dex = at_dex; p.at_con = at_con;
     p.at_int = at_int; p.at_wis = at_wis; p.at_cha = at_cha;
     p.pclass = pclass; p.intrinsics = intrinsics;
@@ -202,6 +206,8 @@ int load_game(void) __banked
     pray_timeout = p.pray_timeout;
     have_pet = p.have_pet; pet_hp = p.pet_hp; pet_kills = p.pet_kills;
     luckstone_taken = p.luckstone_taken;
+    cnt_kills = p.cnt_kills; cnt_corpses = p.cnt_corpses;
+    cnt_reads = p.cnt_reads; cnt_prayers = p.cnt_prayers;
     at_str = p.at_str; at_dex = p.at_dex; at_con = p.at_con;
     at_int = p.at_int; at_wis = p.at_wis; at_cha = p.at_cha;
     pclass = p.pclass; intrinsics = p.intrinsics;
@@ -704,6 +710,7 @@ void do_pray(void) __banked
         msg("You have prayed too recently.");
         return;                         /* a refused prayer costs no turn */
     }
+    cnt_prayers++;                      /* the attempt breaks the conduct */
     if (has_amulet) {                   /* Moloch owns the air down here */
         msg("Moloch drowns out your prayer!");
         turns++; acted = 1;
@@ -1218,6 +1225,7 @@ void new_game(void) __banked
     dead = 0;
     has_amulet = 0;
     luckstone_taken = 0;
+    cnt_kills = cnt_corpses = cnt_reads = cnt_prayers = 0;
     won = 0;
     xp = 0;
     xlvl = 1;
@@ -1309,7 +1317,14 @@ void score_screen(uint8_t victory) __banked
         x = print_str(2, 10, "Best: ", C_GREEN | C_BRIGHT);
         put_uint(x, 10, hi.score, C_GREEN | C_BRIGHT);
     }
-    print_str(2, 13, "Press Enter.", C_WHITE | C_BRIGHT);
+    x = 2;
+    if (cnt_kills == 0)   x = print_str(x, 11, "Pacifist  ",   C_YELLOW | C_BRIGHT);
+    if (cnt_corpses == 0) print_str(x, 11, "Vegetarian",       C_YELLOW | C_BRIGHT);
+    x = 2;
+    if (cnt_reads == 0)   x = print_str(x, 12, "Illiterate  ", C_YELLOW | C_BRIGHT);
+    if (cnt_prayers == 0) print_str(x, 12, "Atheist",          C_YELLOW | C_BRIGHT);
+
+    print_str(2, 14, "Press Enter.", C_WHITE | C_BRIGHT);
     in_wait_nokey();
     do { k = getkey(); } while (k != 13);
     in_wait_nokey();

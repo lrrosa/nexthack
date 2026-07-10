@@ -9,7 +9,11 @@
 #ifdef __ZXNEXT
 #include <arch/zxn.h>
 
-#pragma codeseg PAGE_22_CODE
+/* PAGE_20 (bank 10, roomy): one-time init runs from any bank -- it reads
+ * resident data + the always-mapped ROM font/Bank 5, and gfx[] (const-banked
+ * below, ~3 KB with the v0.10 bestiary) lives next to its only reader. It
+ * moved out of PAGE_22 when the mines tiles + conduct code overflowed it. */
+#pragma codeseg PAGE_20_CODE
 
 #define TILEDEF_BASE  0x4000u
 #define ROM_FONT      0x3C00u
@@ -17,13 +21,13 @@
 extern const uint8_t master[16];    /* graphic-tile master palette  (platform.c) */
 extern const uint8_t inkcol[16];    /* text ink colours             (platform.c) */
 
-/* The 1728-byte graphic-tile table is read ONCE, here, by load_gfx_tiles(), so
- * it lives in this banked module's const section (PAGE_22_CODE) instead of
- * resident rodata -- reclaiming ~1.7 KB of the tight resident budget. It is
- * reachable because load_gfx_tiles() runs with PAGE_22 mapped in.
+/* The ~3 KB graphic-tile table is read ONCE, here, by load_gfx_tiles(), so
+ * it lives in this banked module's const section (PAGE_20_CODE) instead of
+ * resident rodata. It is reachable because load_gfx_tiles() runs with the
+ * same bank mapped in.
  * Each tile: 64 pixels (8 rows x 8 cols), values are master-palette indices.
  * Order matches the T_* numbering starting at T_ROCK. */
-#pragma constseg PAGE_22_CODE
+#pragma constseg PAGE_20_CODE
 const uint8_t gfx[NTILES][64] = {
   { /* T_ROCK */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
