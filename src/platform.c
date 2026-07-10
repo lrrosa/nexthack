@@ -77,8 +77,8 @@ const uint8_t udg_ink[NTILES] = {
        6,     4,     4,     1,     4,     7,     6,     6,     4,  /* bat: blue */
     /* SHOPWALL KEEPER  LEPRECHAUN YELLOWLIGHT TRAP HOMUNCULUS WRAITH ALTAR WAND FEYE BOOK FOUNTAIN */
        6,       3,          4,          6,        2,      2,        7,     7,    5,   1,   2,   5,
-    /* TROLL  VAMPIRE  DRAGON  PRIEST  MIMIC  MINEHOLE GNOME DWARF LUCKSTONE */
-       4,     7,       2,      3,      3,     6,       4,    7,    7
+    /* TROLL  VAMPIRE  DRAGON  PRIEST  MIMIC  MINEHOLE GNOME DWARF LUCKSTONE MINEWALL */
+       4,     7,       2,      3,      3,     6,       4,    7,    7,        6
     /* keeper magenta; leprechaun green; yellow light yellow; trap+imp red; wraith+altar white;
      * wand cyan; eye blue; book red; fountain cyan; troll green; vampire white; dragon red;
      * high priest + mimic magenta; mine hole yellow; gnome green; dwarf + luckstone white */

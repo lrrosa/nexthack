@@ -16,10 +16,13 @@ release before 1.0.
 ### Added
 - **The Gnomish Mines.** A dark hole waits somewhere on the floor of Dlvl 2:
   `>` on it descends into a four-level side branch owned by **gnomes and
-  dwarves** — rich in gold, free of shops and vaults, and capped by the
-  **luckstone**, which steadies your luck by +2 while you carry it (your
-  sword arm and your prayers both feel it). The status bar reads `Mine:1-4`,
-  and climbing out of Mine:1 emerges from the very hole you entered.
+  dwarves** — and it *looks* the part: chambers hewn from brown rock instead
+  of built brick, winding hand-dug tunnels, pillars of stone left standing,
+  and gold everywhere. **Mine:2 is Minetown**, a shop trading in the middle
+  of the caves; at the bottom rests the **luckstone**, which steadies your
+  luck by +2 while you carry it (your sword arm and your prayers both feel
+  it). The status bar reads `Mine:1-4`, and climbing out of Mine:1 emerges
+  from the very hole you entered.
 - **Your stash waits for you.** Dropped and thrown items — and the corpses of
   the fallen — now persist: the floor of the 8 most recently left levels is
   remembered, and remembered by the save file too. A pile of spares by the

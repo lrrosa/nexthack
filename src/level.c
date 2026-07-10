@@ -59,7 +59,7 @@ uint8_t tile_for(char c)
     case '_': return T_ALTAR;
     case '#': return T_CORR;
     case '-':
-    case '|': return T_WALL;
+    case '|': return IN_MINES(dlvl) ? T_MINEWALL : T_WALL;
     case '+': return T_DOOR;
     case '<': return T_SUP;
     case '>': return T_SDOWN;

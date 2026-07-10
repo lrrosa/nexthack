@@ -44,8 +44,9 @@ code.
 - A **50-level dungeon**, generated procedurally and **deterministically**: each
   depth regenerates identically from its own seed, while the changes you make
   (gold taken, monsters killed, items picked up) are remembered across revisits
-  — plus the **Gnomish Mines**, a four-level side branch off Dlvl 2 owned by
-  gnomes and dwarves, gold-rich and capped by the luck-steadying **luckstone**.
+  — plus the **Gnomish Mines**, a four-level side branch off Dlvl 2: chambers
+  hewn from rock, winding tunnels, gnomes and dwarves, **Minetown**'s shop in
+  the middle of the caves, and the luck-steadying **luckstone** at the bottom.
   Items you drop **stay where you left them** (the last 8 levels' floors are
   remembered), so a stash by the stairs is a real strategy.
 - **Field of view** with fog of war — rooms light up on entry, corridors reveal
@@ -107,9 +108,9 @@ code.
 
 *Dlvl 7 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, and gold, items and monsters share the floor. The status bar carries the whole character sheet, alignment included.*
 
-![The Gnomish Mines: the mine level revealed, two red-capped gnomes attacking the hero beside the pet dog, gold piles glinting in several chambers, and the status bar reading Mine:1.](docs/mines.png)
+![The Gnomish Mines: rock-hewn chambers and winding tunnels revealed, Minetown's bright-walled shop with its keeper, a gnome beside the hero, and the status bar reading Mine:2.](docs/mines.png)
 
-*The Gnomish Mines (v0.10): gold-rich chambers, gnomes on the offensive — "The gnome misses you!" — and the luckstone waiting four levels down.*
+*The Gnomish Mines (v0.10): chambers hewn from rock, winding tunnels, Minetown's shop trading mid-cave — and the luckstone waiting four levels down.*
 
 ## Project structure
 

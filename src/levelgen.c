@@ -88,8 +88,23 @@ static void dig_v(uint8_t y0, uint8_t y1, uint8_t x)
     for (; y0 <= y1; y0++) carve(x, y0);
 }
 
+/* Mine tunnels wander: walk toward the target one cell at a time, usually
+ * along the longer axis but drifting sideways 1-in-3 -- organic, winding,
+ * and connected by construction (every visited cell is carved). */
+static void dig_wobble(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
+{
+    int x = x0, y = y0;
+    carve((uint8_t)x, (uint8_t)y);
+    while (x != x1 || y != y1) {
+        if (x != x1 && (y == y1 || rn2(3) != 0)) x += (x1 > x) ? 1 : -1;
+        else                                     y += (y1 > y) ? 1 : -1;
+        carve((uint8_t)x, (uint8_t)y);
+    }
+}
+
 static void dig_corridor(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
 {
+    if (IN_MINES(dlvl)) { dig_wobble(x0, y0, x1, y1); return; }
     if (rn2(2)) { dig_h(x0, x1, y0); dig_v(y0, y1, x1); }
     else        { dig_v(y0, y1, x0); dig_h(x0, x1, y1); }
 }
@@ -504,7 +519,8 @@ void gen_level(void) __banked
         uint16_t sh = (uint16_t)(world_seed * 1009u + (uint16_t)dlvl * 2657u + 13u);
         sh ^= (uint16_t)(sh << 7);
         sh ^= (uint16_t)(sh >> 9);
-        if (dlvl >= 2 && dlvl != DLVL_AMULET && !IN_MINES(dlvl) && (sh % 3u) == 0) {
+        if (dlvl == (uint16_t)(MINES_BASE + 1) ||   /* Minetown: a shop in the caves */
+            (dlvl >= 2 && dlvl != DLVL_AMULET && !IN_MINES(dlvl) && (sh % 3u) == 0)) {
             uint8_t tries = 0;
             shop_room = (int8_t)((sh >> 5) % rcount);
             /* the shop must miss the stairs (a staircase in a shop is odd) and be
@@ -540,6 +556,22 @@ void gen_level(void) __banked
             if (dlvl >= 3 && rn2(2)) place_item('=');   /* ring */
             if (dlvl >= 2 && rn2(3) == 0) place_item('/');  /* wand */
             if (dlvl >= 2 && rn2(4) == 0) place_item('&');  /* spellbook (rare) */
+        }
+    }
+
+    /* Mine chambers are hewn, not built: scatter rock pillars through the
+     * bigger rooms (interior cells only, so nothing can be walled off; plain
+     * floor only, so stairs, loot and the shop stay untouched). */
+    if (IN_MINES(dlvl)) {
+        uint8_t r, k;
+        for (r = 0; r < rcount; r++) {
+            if (r_w[r] < 6 || r_h[r] < 5) continue;
+            for (k = 0; k < 2; k++) {
+                uint8_t px = (uint8_t)(r_x[r] + 2 + rn2((uint8_t)(r_w[r] - 4)));
+                uint8_t py = (uint8_t)(r_y[r] + 2 + rn2((uint8_t)(r_h[r] - 4)));
+                if (lvl[py][px] == '.' && !shop_in_room(px, py))
+                    lvl[py][px] = ' ';
+            }
         }
     }
 

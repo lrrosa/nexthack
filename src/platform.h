@@ -73,8 +73,9 @@
 #define T_GNOME       171  /* mines native: small and quick                   */
 #define T_DWARF       172  /* mines native: bearded, hits like his pick       */
 #define T_LUCKSTONE   173  /* the mines' prize ('*' at the bottom)            */
+#define T_MINEWALL    174  /* mines walls: hewn brown rock (vs built brick)   */
 
-#define NTILES   46      /* T_ROCK..T_LUCKSTONE: the graphic tiles */
+#define NTILES   47      /* T_ROCK..T_MINEWALL: the graphic tiles */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT

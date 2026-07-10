@@ -169,7 +169,10 @@ const uint8_t gfx[NTILES][64] = {
     0,6,6,6,6,6,6,0, 6,6,6,6,6,6,6,6, 0,0,6,0,0,6,0,0, 0,6,6,0,0,6,6,0 },
   { /* T_LUCKSTONE (a grey stone with a warm gleam) */
     0,0,0,0,0,0,0,0, 0,0,2,2,2,0,0,0, 0,2,3,3,2,2,0,0, 0,2,3,13,3,2,0,0,
-    0,2,3,3,3,2,0,0, 0,0,2,2,2,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 }
+    0,2,3,3,3,2,0,0, 0,0,2,2,2,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
+  { /* T_MINEWALL (hewn brown rock: cracks, a tan glint -- not brickwork) */
+    6,6,5,6,6,6,5,6, 6,5,6,6,5,6,6,6, 5,6,6,7,6,6,5,6, 6,6,5,6,6,5,6,6,
+    6,5,6,6,6,6,6,5, 6,6,6,5,6,7,6,6, 5,6,6,6,5,6,6,5, 6,6,5,6,6,6,5,6 }
 };
 
 static void pack_tile(uint8_t tilenum, const uint8_t *px)
@@ -312,7 +315,8 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x3C,0x42,0x99,0xBD,0xBD,0x99,0x42,0x3C }, /* MINEHOLE (rimmed pit)    */
     { 0x08,0x1C,0x3C,0x18,0x3C,0x18,0x24,0x24 }, /* GNOME   (pointy cap)     */
     { 0x3C,0x7E,0x3C,0x7E,0x5A,0x7E,0x24,0x66 }, /* DWARF   (helm + beard)   */
-    { 0x00,0x38,0x7C,0x74,0x7C,0x38,0x00,0x00 }  /* LUCKSTONE (gleaming rock)*/
+    { 0x00,0x38,0x7C,0x74,0x7C,0x38,0x00,0x00 }, /* LUCKSTONE (gleaming rock)*/
+    { 0xF7,0xBE,0xEF,0xFB,0x7E,0xDF,0xF5,0xBF }  /* MINEWALL  (rough rock)   */
 };
 
 /* Copy the hand-drawn tiles into udg_bitmap[] (Bank 5, see platform.h) that the
