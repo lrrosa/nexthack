@@ -234,10 +234,11 @@ it does not depend on esxDOS just to run.
 run-zx128.bat        REM dev convenience: boots nexthack128.tap in ZEsarUX (--machine 128k)
 ```
 
-![NextHack on the plain ZX Spectrum 128K: the ULA renderer with 1-bit tiles — revealed rooms and corridors, the hero and dog fighting a rat, and the compact status line.](docs/zx128.png)
+![NextHack on the plain ZX Spectrum 128K: the ULA renderer with 1-bit tiles — revealed rooms and corridors, the sword-bearing hero and his dog squaring up to an acid blob, and the compact status line.](docs/zx128.png)
 
 *The same game on a plain 128K: 1-bit tiles on the ULA, a 32-column viewport that
-edge-scrolls over the 80-wide map — "Your dog kills the rat!"*
+edge-scrolls over the 80-wide map — the hero (sword raised) and his dog squaring
+up to an acid blob.*
 
 `run-zx128.bat` launches **ZEsarUX** (sibling `..\ZEsarUX\`) for quick local
 testing; it inserts the tape with `--tape`, so ZEsarUX auto-loads it straight to
