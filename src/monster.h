@@ -21,6 +21,9 @@ extern uint8_t mcount;
 extern uint8_t m_x[], m_y[], m_alive[], m_hp[];
 extern uint8_t m_sleep[];    /* >0 = asleep this many turns (wand of sleep) */
 extern char    m_type[];
+extern uint8_t mon_dead[];   /* per-depth kill bitmask (bit i: slot i slain);
+                              * shared by monster_ai.c (combat sets bits) and
+                              * monster_spawn.c (applies/saves it) */
 
 /* The pet's live monster slot this level, or -1 if none is placed. Re-derived
  * every level by place_pet (the pet is never a persisted map monster), so it is

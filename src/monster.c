@@ -20,6 +20,10 @@ char    m_type[MAXMON];
 uint8_t m_sleep[MAXMON];  /* >0: asleep (e.g. a wand of sleep), ticked in mon_step */
 uint8_t mcount;
 int8_t  pet_idx = -1;     /* the pet's slot this level (see monster.h), -1 = none */
+uint8_t mon_dead[MAXLVL + 1];   /* bit i: monster i killed. Written by combat
+                                 * (monster_ai.c), applied/saved by
+                                 * monster_spawn.c; defined here because the
+                                 * two live in different banks. */
 
 /* ---- monster catalogue (resident; mon_find/pick_mon read it) ---- */
 static const MonType montypes[] = {

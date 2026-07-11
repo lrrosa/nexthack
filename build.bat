@@ -16,7 +16,7 @@ SET FLAGS=+zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -
 
 IF NOT "%~1"=="" GOTO single
 
-SET SRCS=src\mainentry.c src\nexthack.c src\platform.c src\platform_init.c src\rng.c src\level.c src\levelgen.c src\levelfov.c src\monster.c src\monster_ai.c src\item.c src\sfx.c src\leveltmpl.c src\classes.c src\spells.c srcasses.c src\titlegfx0.c src\titlegfx1.c src\titlegfx2.c src\titlepal.c src\victorygfx0.c src\victorygfx1.c src\victorygfx2.c src\victorypal.c
+SET SRCS=src\mainentry.c src\nexthack.c src\platform.c src\platform_init.c src\rng.c src\level.c src\levelgen.c src\levelfov.c src\monster.c src\monster_ai.c src\monster_spawn.c src\item.c src\sfx.c src\leveltmpl.c src\classes.c src\spells.c src\titlegfx0.c src\titlegfx1.c src\titlegfx2.c src\titlepal.c src\victorygfx0.c src\victorygfx1.c src\victorygfx2.c src\victorypal.c
 ECHO Building NextHack (nexthack.nex) ...
 zcc %FLAGS% %SRCS% -o nexthack -create-app
 IF EXIST nexthack.nex (ECHO. & ECHO OK: nexthack.nex built.) ELSE (ECHO. & ECHO BUILD FAILED.)
