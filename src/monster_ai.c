@@ -71,6 +71,7 @@ void hit_monster(uint8_t mi, uint8_t dmg) __banked
 {
     const MonType *mt = mon_find(m_type[mi]);
     if (m_type[mi] == 'x') m_type[mi] = 'm';   /* struck bait drops the disguise */
+    m_sleep[mi] = 0;                           /* any hit wakes it            */
     if (m_hp[mi] <= dmg) {
         m_alive[mi] = 0;
         if (dlvl <= MAXLVL)
@@ -96,8 +97,10 @@ void attack_monster(uint8_t mi) __banked
     turns++;
     /* Dexterity decides whether the swing lands at all (Dx 11 = 85%, 16+ =
      * always) -- the whiffed turn still passes, as in NetHack. Luck leans on
-     * the die: pleased gods steady your hand, spurned ones shake it. */
-    if (rn2(20) >= (uint8_t)(12 + (at_dex >> 1) + (eff_luck() >> 1))) {
+     * the die: pleased gods steady your hand, spurned ones shake it. A
+     * SLEEPING target can't dodge: the sneak attack always lands. */
+    if (!m_sleep[mi] &&
+        rn2(20) >= (uint8_t)(12 + (at_dex >> 1) + (eff_luck() >> 1))) {
         msg2("You miss the ", mon_name(m_type[mi]), ".");
         return;
     }
@@ -171,6 +174,24 @@ static void monster_hits_player(uint8_t i)
             break;
         }
     }
+}
+
+/* A spawn sleeper (m_sleep 255, set by monster_spawn.c's side hash) sleeps
+ * until disturbed -- 255 is a sentinel, not a timer. It stirs when the hero
+ * is close: adjacent always wakes it, within 5 it wakes 1-in-3 a turn (your
+ * footsteps); any hit wakes it at once (hit_monster/pet_hits). On waking it
+ * acts the same turn. Returns 1 while it stays asleep. */
+static uint8_t still_asleep(uint8_t i)
+{
+    int dx, dy;
+    if (m_sleep[i] != 255) return 0;
+    dx = iabs((int)m_x[i] - hero_x);
+    dy = iabs((int)m_y[i] - hero_y);
+    if ((dx <= 1 && dy <= 1) || (dx <= 5 && dy <= 5 && rn2(3) == 0)) {
+        m_sleep[i] = 0;              /* it stirs awake */
+        return 0;
+    }
+    return 1;
 }
 
 /* ---- pathfinding: a BFS distance field from the hero ("Dijkstra map").
@@ -328,6 +349,7 @@ static void pet_hits(uint8_t pi, uint8_t ti)
         return;
     }
     m_hp[ti] = (uint8_t)(m_hp[ti] - dmg);
+    m_sleep[ti] = 0;                         /* the bite wakes it             */
     if (rn2(2)) {                            /* the cornered enemy bites back */
         uint8_t back = (uint8_t)(rn2(mt->dmg) + 1);
         if (pet_hp <= back) {                /* the dog is slain */
@@ -462,6 +484,7 @@ static void mon_step(uint8_t i)
 
     if (m_type[i] == MON_KEEPER) return;   /* the shopkeeper never moves */
     if (m_type[i] == 'e') return;          /* the floating eye just floats */
+    if (still_asleep(i)) return;           /* a spawn sleeper, undisturbed */
     if (m_sleep[i]) { m_sleep[i]--; return; }    /* asleep (wand of sleep): no turn */
     if (i == pet_idx) { pet_step(i); return; }   /* the pet follows its own rules */
 
@@ -485,6 +508,7 @@ static uint8_t dragon_breath(uint8_t i)
 {
     int dx, dy, sx, sy;
     if (m_type[i] != 'D') return 0;
+    if (m_sleep[i]) return 0;              /* a sleeping dragon only snores */
     dx = hero_x - (int)m_x[i];
     dy = hero_y - (int)m_y[i];
     if (iabs(dx) <= 1 && iabs(dy) <= 1) return 0;   /* adjacent: bite instead */
@@ -548,8 +572,12 @@ void monsters_turn(void) __banked
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i] || i == pet_idx || m_type[i] == MON_KEEPER) continue;
         if (m_type[i] == 'x') continue;    /* a posing mimic wakes nothing */
+        if (still_asleep(i)) continue;     /* spawn sleepers roll their one
+                                            * per-turn wake chance HERE (no
+                                            * break: every sleeper rolls);
+                                            * asleep = wakes nothing */
         if (iabs((int)m_x[i] - hero_x) <= MON_WAKE &&
-            iabs((int)m_y[i] - hero_y) <= MON_WAKE) { awake = 1; break; }
+            iabs((int)m_y[i] - hero_y) <= MON_WAKE) awake = 1;
     }
     if (!awake) {
         /* no enemy near: heel the dog by sight, no flood. Only when a wall boxes
@@ -573,6 +601,7 @@ void monsters_turn(void) __banked
             if (!m_alive[i] || m_type[i] == MON_KEEPER) continue;
             if (m_type[i] == 'e') continue;   /* the floating eye just floats */
             if (mimic_hidden(i)) continue;    /* posing as an item */
+            if (m_sleep[i] == 255) continue;  /* still asleep (rolled in the scan) */
             if (m_sleep[i]) { m_sleep[i]--; continue; }
             if (i == (uint8_t)pet_idx) {
                 if (pet_bite_adjacent(i)) continue;

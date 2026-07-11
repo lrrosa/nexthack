@@ -26,6 +26,21 @@
 
 static int iabs(int v) { return v < 0 ? -v : v; }
 
+/* Does the monster spawning at (x,y) start asleep? A pure side hash (the
+ * item_hash pattern), never rn2: an extra roll here would shift the spawn
+ * stream and desync the mon_dead slot indices under the frozen save format.
+ * Deterministic per (seed, depth, cell), so a revisited level sleeps the
+ * same way it did the first time. */
+static uint8_t spawns_asleep(uint8_t x, uint8_t y)
+{
+    uint16_t h = (uint16_t)(world_seed + (uint16_t)dlvl * 4241u
+                            + (uint16_t)x * 269u + (uint16_t)y * 733u);
+    h ^= (uint16_t)(h << 7);
+    h ^= (uint16_t)(h >> 9);
+    h ^= (uint16_t)(h << 8);
+    return (uint8_t)(h & 1);
+}
+
 static void spawn_monster(char type)
 {
     const MonType *mt = mon_find(type);
@@ -40,6 +55,12 @@ static void spawn_monster(char type)
     m_x[mcount] = x; m_y[mcount] = y;
     m_hp[mcount] = (uint8_t)(mt->hp + eff_depth() / 2);   /* tougher when deep */
     m_type[mcount] = type; m_alive[mcount] = 1;
+    /* Half the dungeon sleeps until you disturb it, as in NetHack. 255 is
+     * the "until woken" sentinel (see monster_ai's still_asleep), not a
+     * timer. Hidden mimics stay "awake": their pose already is the ambush.
+     * Vault guards, the guardian and wanderers spawn alert elsewhere. */
+    if (type != 'x' && spawns_asleep(x, y))
+        m_sleep[mcount] = 255;
     mcount++;
 }
 
