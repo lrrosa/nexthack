@@ -36,6 +36,11 @@ release before 1.0.
   letter, a..z.
 
 ### Changed
+- **A visual pass across both targets.** The hero is finally an armoured
+  adventurer — helm, blue mail, shield and a raised sword on the Next, a
+  raised blade on the 128K's figure. The dog gained a real head, an eye and
+  a thin wagging tail on both machines, and the 128K's doors got their arch.
+  Fresh README screenshots throughout.
 - The build targets a fresh z88dk nightly (now expected at `../z88dk`);
   verified byte-comparable on both targets.
 
