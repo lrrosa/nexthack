@@ -54,9 +54,10 @@ const uint8_t gfx[NTILES][64] = {
      * belt, shield on the left arm, sword raised on the right, brown boots) */
     0,0,0,3,3,0,0,4, 0,0,3,3,3,3,0,4, 0,0,15,15,15,15,0,4, 2,0,11,11,11,11,0,4,
     2,3,11,11,11,11,15,6, 2,0,11,13,13,11,0,0, 0,0,11,0,0,11,0,0, 0,6,6,0,0,6,6,0 },
-  { /* T_DOG */
-    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,6,6, 0,6,6,6,6,6,6,0, 6,6,6,6,6,6,6,0,
-    6,6,6,6,6,6,0,0, 0,6,0,6,0,6,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
+  { /* T_DOG (side view: eared head left with an eye, body, two legs,
+     * thin tail raised at the right -- matches the 128K silhouette) */
+    0,0,0,0,0,0,0,0, 0,6,6,0,0,0,0,6, 6,6,6,6,0,0,0,6, 6,0,6,6,6,6,6,6,
+    0,6,6,6,6,6,6,0, 0,6,0,0,0,6,0,0, 0,6,0,0,0,6,0,0, 0,0,0,0,0,0,0,0 },
   { /* T_RAT */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,8, 0,2,2,2,2,2,8,0,
     2,2,2,2,2,2,2,0, 0,2,0,2,0,2,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
@@ -275,7 +276,7 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00 }, /* FLOOR    (centre dot)   */
     { 0xFF,0x88,0x88,0xFF,0x22,0x22,0xFF,0x88 }, /* WALL     (brick)        */
     { 0x00,0x20,0x00,0x04,0x00,0x40,0x00,0x08 }, /* CORR     (speckle)      */
-    { 0x7E,0x42,0x42,0x4A,0x42,0x42,0x42,0x7E }, /* DOOR     (door + knob)  */
+    { 0x3C,0x42,0x42,0x4A,0x42,0x42,0x42,0x7E }, /* DOOR (arched top + knob) */
     { 0x01,0x03,0x07,0x0F,0x1F,0x3F,0x7F,0xFF }, /* SUP      (ascend ramp)  */
     { 0xFF,0x7F,0x3F,0x1F,0x0F,0x07,0x03,0x01 }, /* SDOWN    (descend ramp) */
     { 0x19,0x19,0x3E,0x5A,0x18,0x18,0x24,0x66 }, /* HERO (person, raised sword: blade joins the right arm) */

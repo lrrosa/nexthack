@@ -104,9 +104,9 @@ code.
   past the **high priest** who guards it — and climb back out alive, through
   everything **Moloch** sends up after you (and he no longer takes your calls).
 
-![NextHack gameplay: a magically mapped dungeon level drawn in colour 8×8 tiles — seven rooms and winding corridors, the hero and pet dog in a lit room, potions, gold and weapons on the floors, and the full status bar below.](docs/gameplay.png)
+![NextHack gameplay: a magically mapped dungeon level drawn in colour 8×8 tiles — rooms and corridors across the level, a stocked shop with warm brick walls, the armoured hero and his dog facing monsters in a lit room, and the full status bar below.](docs/gameplay.png)
 
-*Dlvl 7 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, and gold, items and monsters share the floor. The status bar carries the whole character sheet, alignment included.*
+*Dlvl 7 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, a shop trades in the corner, and monsters find you anyway. The status bar carries the whole character sheet, alignment included.*
 
 ![The Gnomish Mines: rock-hewn chambers and winding tunnels revealed, Minetown's bright-walled shop with its keeper, a gnome beside the hero, and the status bar reading Mine:2.](docs/mines.png)
 
