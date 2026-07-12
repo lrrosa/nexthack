@@ -39,8 +39,9 @@ like NetHack.
 ### Changed
 - **Stairs you can finally read.** On the Next, up is a bright stone
   ziggurat rising toward you and down is banded treads sinking into a pit
-  that darkens with depth; on the 128K they are clean stepped profiles,
-  rising or falling with the slope.
+  that darkens with depth; on the 128K they are stepped profiles — up
+  climbs to a long top landing, down runs out onto a long floor, so the
+  two never mirror each other.
 - **The yellow light is not a coin.** Both targets now draw an irregular
   spark — uneven rays around a glowing core (orange on the Next); the gold
   piece stays a plain disc.
@@ -51,7 +52,9 @@ like NetHack.
   matched regular walls, so in the mines the shop drew as plain rock on
   both targets. Fixed — the shop now glows warm against the caves.
 - Small touches: the dog's eye sits properly in its head on both targets,
-  and the 128K altar is a classic column front (bar, three legs, base).
+  the rat grew an ear, a head and a raised tail (it was a headless blob),
+  and the 128K altar is a classic temple front — serifed top bar on two
+  columns.
 
 ### Note — the save freeze holds
 - Saves from 0.10.0 **load unchanged**. Everything above is transient
