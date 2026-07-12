@@ -8,7 +8,7 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
-## [0.11.0] — 2026-07-11
+## [0.11.0] — 2026-07-12
 
 The soul release: the dungeon stops charging at you — and starts behaving
 like NetHack.

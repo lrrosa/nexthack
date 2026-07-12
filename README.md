@@ -114,9 +114,9 @@ code.
 
 *Dlvl 7 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, a shop trades in the corner, and monsters find you anyway. The status bar carries the whole character sheet, alignment included.*
 
-![The Gnomish Mines: rock-hewn chambers and winding tunnels revealed, Minetown's bright-walled shop with its keeper, a gnome beside the hero, and the status bar reading Mine:2.](docs/mines.png)
+![The Gnomish Mines: cobblestone chambers and winding tunnels revealed, Minetown's warm-brick shop stocked with wares, and a peaceful dwarf standing near the hero and his dog, with the status bar reading Mine:2.](docs/mines.png)
 
-*The Gnomish Mines (v0.10): chambers hewn from rock, winding tunnels, Minetown's shop trading mid-cave — and the luckstone waiting four levels down.*
+*Minetown (Mine:2): cobblestone caves, the shop glowing warm brick, and the townsfolk at peace — until you draw first blood. The luckstone waits four levels down.*
 
 ## Project structure
 
