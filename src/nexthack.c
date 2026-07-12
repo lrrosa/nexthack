@@ -305,6 +305,67 @@ void place_pet(void) __banked
         }
 }
 
+/* ---- stair followers ----
+ * An awake, hostile monster standing next to you when you take the stairs
+ * comes along, as in NetHack: grabbed before the level switch, re-placed at
+ * your side after it. Transient by design (never saved) -- it simply IS the
+ * monster at your heel this instant. The shopkeeper keeps his shop, a posing
+ * mimic holds its pose, the floating eye floats where it is, sleepers sleep
+ * on and the peaceful stay home. Like the wanderers, a follower shares the
+ * mon_dead bitmask space of the level it arrives on. */
+static char    follow_type;
+static uint8_t follow_hp;
+
+static int iabs8(int v) { return v < 0 ? -v : v; }
+
+static void grab_follower(void)
+{
+    uint8_t i;
+    follow_type = 0;
+    for (i = 0; i < mcount; i++) {
+        if (!m_alive[i] || i == pet_idx) continue;
+        if (m_type[i] == MON_KEEPER || m_type[i] == 'x' ||
+            m_type[i] == 'e') continue;
+        if (m_sleep[i] || m_peace[i]) continue;
+        if (iabs8((int)m_x[i] - hero_x) <= 1 &&
+            iabs8((int)m_y[i] - hero_y) <= 1) {
+            follow_type = m_type[i];
+            follow_hp   = m_hp[i];      /* it arrives as wounded as it left */
+            return;
+        }
+    }
+}
+
+/* Place the grabbed follower on a free cell beside the hero -- called after
+ * place_pet so the dog gets first pick of the floor, and after the stairs
+ * message so "The X follows you!" is the line that stays up. */
+static void place_follower(void)
+{
+    int dx, dy;
+    char t = follow_type;
+    follow_type = 0;
+    if (!t || mcount >= MAXMON) return;
+    for (dy = -1; dy <= 1; dy++)
+        for (dx = -1; dx <= 1; dx++) {
+            int x = hero_x + dx, y = hero_y + dy;
+            char c;
+            if (dx == 0 && dy == 0) continue;
+            if (x < 0 || y < 0 || x >= MAPW || y >= MAPH) continue;
+            c = lvl[y][x];
+            if (c == '|' || c == '-' || c == ' ') continue;
+            if (monster_at(x, y) >= 0) continue;
+            m_x[mcount] = (uint8_t)x; m_y[mcount] = (uint8_t)y;
+            m_hp[mcount]    = follow_hp;
+            m_type[mcount]  = t;
+            m_alive[mcount] = 1;
+            m_sleep[mcount] = 0;
+            m_peace[mcount] = 0;
+            mcount++;
+            msg2("The ", mon_name(t), " follows you!");
+            return;
+        }
+}
+
 void build_level(void) __banked
 {
     if (dlvl > max_dlvl && !IN_MINES(dlvl))
@@ -1164,6 +1225,7 @@ void try_move(int dx, int dy) __banked
 void go_down(void) __banked
 {
     if (terrain(hero_x, hero_y) == 'v') {   /* into the Gnomish Mines */
+        grab_follower();
         dlvl = MINES_BASE;
         turns++;
         build_level();
@@ -1171,9 +1233,11 @@ void go_down(void) __banked
         place_pet();
         msg("You descend into the mines.");
         sfx_stairs();
+        place_follower();
         return;
     }
     if (terrain(hero_x, hero_y) == '>') {
+        grab_follower();
         dlvl++;
         turns++;
         build_level();
@@ -1184,6 +1248,7 @@ void go_down(void) __banked
         else
             msg("You descend the stairs.");
         sfx_stairs();
+        place_follower();
     } else {
         msg("You can't go down here.");
     }
@@ -1193,6 +1258,7 @@ void go_up(void) __banked
 {
     if (terrain(hero_x, hero_y) == '<') {
         if (dlvl == MINES_BASE) {           /* out of the mines */
+            grab_follower();
             dlvl = MINES_ENTR_DLVL;
             turns++;
             build_level();
@@ -1200,7 +1266,9 @@ void go_up(void) __banked
             place_pet();
             msg("You climb out of the mines.");
             sfx_stairs();
+            place_follower();
         } else if (dlvl > 1) {
+            grab_follower();
             dlvl--;
             turns++;
             build_level();
@@ -1208,6 +1276,7 @@ void go_up(void) __banked
             place_pet();                  /* the dog follows you up */
             msg("You climb up the stairs.");
             sfx_stairs();
+            place_follower();
         } else if (has_amulet) {
             won = 1;                      /* surfaced with the Amulet: victory */
         } else {
