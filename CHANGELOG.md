@@ -10,6 +10,14 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 
 ## [Unreleased]
 
+### Added
+- **Farlook (`;`).** Move a yellow cursor around the map and be told what
+  lies under it — monsters (with their mood: *"A sleeping orc."*, *"A
+  peaceful dwarf."*), items (resolved exactly as pickup would find them),
+  altars with their alignment, terrain. Honours what you can actually know:
+  unexplored cells stay unknown, monsters show only in sight (or by
+  telepathy), remembered terrain reads from memory. Costs no turn.
+
 ### Fixed
 - **The dog no longer misses a cramped landing.** Arriving on stairs whose
   every neighbouring cell was walled off or already occupied (a tiny stairs

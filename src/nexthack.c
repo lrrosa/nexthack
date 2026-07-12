@@ -843,7 +843,7 @@ void show_help(void) __banked
     print_str(2,  3, "Move: arrow keys, or", C_CYAN | C_BRIGHT);
     print_str(7,  4, "h j k l  y u b n",     C_CYAN | C_BRIGHT);
     print_str(2,  5, "Stairs: > < or Enter", C_CYAN | C_BRIGHT);
-    print_str(2,  6, "s search   . wait",    C_CYAN | C_BRIGHT);
+    print_str(2,  6, "s search . wait ; look", C_CYAN | C_BRIGHT);
     print_str(2,  8, ", pick up",            C_CYAN | C_BRIGHT);
     print_str(2,  9, "i inventory",          C_CYAN | C_BRIGHT);
     print_str(2, 10, "w wield    W wear",    C_CYAN | C_BRIGHT);
@@ -1056,6 +1056,119 @@ static int lookable(char c)
            c == ')' || c == '[' || c == '!' ||
            c == '%' || c == '?' || c == '=' || c == '/' || c == '&' ||
            c == '_' || c == '{';
+}
+
+/* ---- farlook (';') ----
+ * Move a cursor around the map and be told what lies there, as in NetHack.
+ * Costs no turn. */
+
+/* Say what occupies cell (x,y), honouring what the hero can actually know:
+ * unexplored cells stay unknown, monsters show only in sight (or by
+ * telepathy), remembered terrain reads from the map like the renderer does. */
+static void look_at(uint8_t x, uint8_t y)
+{
+    int mi;
+    char c;
+    if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) {
+        msg("That is you.");
+        return;
+    }
+    if (!fov_seen(x, y)) {
+        msg("You have not seen that spot.");
+        return;
+    }
+    mi = monster_at(x, y);
+    if (mi >= 0 && (fov_visible(x, y) || mon_sensed())) {
+        if (m_type[mi] == 'x') { msg("A potion."); return; }  /* the mimic's bait */
+        if (mi == pet_idx) { msg("Your faithful dog."); return; }
+        if (m_type[mi] == MON_KEEPER) { msg("The shopkeeper."); return; }
+        {
+            const char *nm = mon_name(m_type[mi]);
+            const char *art;
+            if      (m_peace[mi]) art = "A peaceful ";
+            else if (m_sleep[mi]) art = "A sleeping ";
+            else art = (nm[0] == 'a' || nm[0] == 'e' || nm[0] == 'i' ||
+                        nm[0] == 'o' || nm[0] == 'u') ? "An " : "A ";
+            msg2(art, nm, ".");
+        }
+        return;
+    }
+    c = lvl[y][x];
+    switch (c) {
+    case ')': case '[': case '!': case '%': case '?': case '=': case '/':
+    case '&':
+        msg(floor_item_desc_at(x, y));
+        break;
+    case '.': msg("The floor.");            break;
+    case '#': msg("A corridor.");           break;
+    case '|': case '-': msg("A wall.");     break;
+    case '+': msg("A door.");               break;
+    case ' ': msg("Solid stone.");          break;
+    case '<': msg("A staircase up.");       break;
+    case '>': msg("A staircase down.");     break;
+    case '^': msg("A trap.");               break;
+    case '_': msg2("A ", align_name(altar_align(x, y)), " altar."); break;
+    case '{': msg("A fountain.");           break;
+    case 'v': msg("A hole down to the mines."); break;
+    case '$': msg("A pile of gold.");       break;
+    case '*': msg("A luckstone.");          break;
+    case '"': msg("The Amulet of Yendor."); break;
+    default:  msg("");                      break;
+    }
+}
+
+/* The cursor is a yellow 'X' drawn OVER the screen cell, the original cell
+ * restored on every step -- no draw_map pass runs while looking. The Next
+ * saves and rewrites the two tilemap bytes in place; the 128K re-blits the
+ * cell from VIEW_SHADOW (which always mirrors the screen) and keeps the
+ * cursor inside the current viewport (looking never scrolls). */
+void do_farlook(void) __banked
+{
+    uint8_t cx = (uint8_t)hero_x, cy = (uint8_t)hero_y;
+    uint8_t x0, x1;
+    int k;
+#ifdef __ZXNEXT
+    uint8_t *cp;
+    uint8_t s0, s1;
+    x0 = 0; x1 = MAPW - 1;
+#else
+    uint8_t *shad = VIEW_SHADOW;
+    uint8_t sc;
+    uint16_t si;
+    x0 = vx_origin; x1 = (uint8_t)(vx_origin + TM_W - 1);
+#endif
+    msg("Look where? (moves; Enter ends)");
+    in_wait_nokey();
+    for (;;) {
+#ifdef __ZXNEXT
+        cp = tm_cell_ptr((uint8_t)(OX + cx), (uint8_t)(OY + cy));
+        s0 = cp[0]; s1 = cp[1];
+        putcell((uint8_t)(OX + cx), (uint8_t)(OY + cy), 'X', C_YELLOW | C_BRIGHT);
+        k = getkey_rpt();
+        cp[0] = s0; cp[1] = s1;
+#else
+        sc = (uint8_t)(cx - vx_origin);
+        si = (uint16_t)(((uint16_t)cy * TM_W + sc) << 1);
+        putcell(sc, (uint8_t)(OY + cy), 'X', C_YELLOW | C_BRIGHT);
+        k = getkey_rpt();
+        puttile_attr(sc, (uint8_t)(OY + cy), shad[si], shad[si + 1]);
+#endif
+        switch (k) {
+        case 'h': case  8: if (cx > x0) cx--; break;
+        case 'l': case  9: if (cx < x1) cx++; break;
+        case 'j': case 10: if (cy < MAPH - 1) cy++; break;
+        case 'k': case 11: if (cy > 0) cy--; break;
+        case 'y': if (cx > x0) cx--; if (cy > 0) cy--; break;
+        case 'u': if (cx < x1) cx++; if (cy > 0) cy--; break;
+        case 'b': if (cx > x0) cx--; if (cy < MAPH - 1) cy++; break;
+        case 'n': if (cx < x1) cx++; if (cy < MAPH - 1) cy++; break;
+        default:                       /* any other key ends the look */
+            msg("");
+            in_wait_nokey();
+            return;
+        }
+        look_at(cx, cy);
+    }
 }
 
 /* Per-visit set of traps that have already been sprung (so they don't re-fire).

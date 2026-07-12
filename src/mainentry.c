@@ -111,6 +111,7 @@ start_game:
             break;
 
         case 's': do_search(); in_wait_nokey(); break;  /* search for nearby traps */
+        case ';': do_farlook(); in_wait_nokey(); break; /* look around the map */
 
         /* wait a turn */
         case '.':

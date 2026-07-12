@@ -764,14 +764,21 @@ void death_drop(uint8_t x, uint8_t y) __banked
     floor_drop(x, y, &o);
 }
 
+/* description of the item at any cell (farlook) -- the same resolution as
+ * standing on it, so a spied item is exactly what pickup will find there */
+const char *floor_item_desc_at(uint8_t x, uint8_t y) __banked
+{
+    obj_t o;
+    int fi = floor_find(x, y);
+    if (fi >= 0) return obj_desc(&floor_obj[fi].o);   /* a loose item you threw */
+    resolve_floor(x, y, &o);
+    return obj_desc(&o);
+}
+
 /* description of the item on the hero's cell (for the "You see here" message) */
 const char *floor_item_desc(void) __banked
 {
-    obj_t o;
-    int fi = floor_find((uint8_t)hero_x, (uint8_t)hero_y);
-    if (fi >= 0) return obj_desc(&floor_obj[fi].o);   /* a loose item you threw */
-    resolve_floor((uint8_t)hero_x, (uint8_t)hero_y, &o);
-    return obj_desc(&o);
+    return floor_item_desc_at((uint8_t)hero_x, (uint8_t)hero_y);
 }
 
 void do_pickup(void) __banked
