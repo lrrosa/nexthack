@@ -48,17 +48,17 @@ const uint8_t gfx[NTILES][64] = {
      * light treads, grey risers) */
     0,0,0,3,3,0,0,0, 0,0,0,2,2,0,0,0, 0,0,3,3,3,3,0,0, 0,0,2,2,2,2,0,0,
     0,3,3,3,3,3,3,0, 0,2,2,2,2,2,2,0, 3,3,3,3,3,3,3,3, 2,2,2,2,2,2,2,2 },
-  { /* T_SDOWN (stairs down: the same steps sinking away into a dark pit --
-     * the fade-to-black is what tells it from T_SUP at a glance) */
-    3,3,3,3,3,3,3,3, 2,2,2,2,2,2,2,2, 0,2,2,2,2,2,2,0, 0,1,1,1,1,1,1,0,
-    0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,0,1,1,0,0,0, 0,0,0,0,0,0,0,0 },
+  { /* T_SDOWN (stairs down: treads sinking into a dark pit -- banded like
+     * T_SUP's treads/risers so it reads as STEPS, darkening with depth) */
+    3,3,3,3,3,3,3,3, 2,2,2,2,2,2,2,2, 0,3,3,3,3,3,3,0, 0,1,1,1,1,1,1,0,
+    0,0,2,2,2,2,0,0, 0,0,1,1,1,1,0,0, 0,0,0,1,1,0,0,0, 0,0,0,0,0,0,0,0 },
   { /* T_HERO (an armoured adventurer: helm, face, blue mail with a gold
      * belt, shield on the left arm, sword raised on the right, brown boots) */
     0,0,0,3,3,0,0,4, 0,0,3,3,3,3,0,4, 0,0,15,15,15,15,0,4, 2,0,11,11,11,11,0,4,
     2,3,11,11,11,11,15,6, 2,0,11,13,13,11,0,0, 0,0,11,0,0,11,0,0, 0,6,6,0,0,6,6,0 },
-  { /* T_DOG (side view: eared head left with an eye, body, two legs,
-     * thin tail raised at the right -- matches the 128K silhouette) */
-    0,0,0,0,0,0,0,0, 0,6,6,0,0,0,0,6, 6,6,6,6,0,0,0,6, 6,0,6,6,6,6,6,6,
+  { /* T_DOG (side view: eared head left, eye up in the head, body, two
+     * legs, thin raised tail -- matches the 128K silhouette) */
+    0,0,0,0,0,0,0,0, 0,6,6,0,0,0,0,6, 6,0,6,6,0,0,0,6, 6,6,6,6,6,6,6,6,
     0,6,6,6,6,6,6,0, 0,6,0,0,0,6,0,0, 0,6,0,0,0,6,0,0, 0,0,0,0,0,0,0,0 },
   { /* T_RAT */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,8, 0,2,2,2,2,2,8,0,
@@ -117,10 +117,10 @@ const uint8_t gfx[NTILES][64] = {
   { /* T_LEPRECHAUN (small green sprite with a tan hat) */
     0,0,0,7,7,0,0,0, 0,0,7,7,7,7,0,0, 0,0,0,9,9,0,0,0, 0,0,9,9,9,9,0,0,
     0,9,9,9,9,9,9,0, 0,0,9,9,9,9,0,0, 0,0,9,0,0,9,0,0, 0,0,9,0,0,9,0,0 },
-  { /* T_YELLOWLIGHT (glowing orb, orange core, radiating rays -- the rays
-     * keep it from ever reading as the gold coin) */
-    13,0,0,13,13,0,0,13, 0,13,0,13,13,0,13,0, 0,0,13,14,14,13,0,0, 13,13,14,14,14,14,13,13,
-    13,13,14,14,14,14,13,13, 0,0,13,14,14,13,0,0, 0,13,0,13,13,0,13,0, 13,0,0,13,13,0,0,13 },
+  { /* T_YELLOWLIGHT (an irregular spark: uneven rays around an orange core
+     * -- same shape as the 128K glyph, and nothing like the gold coin) */
+    13,0,0,0,13,0,0,13, 0,13,0,0,13,0,13,0, 0,0,13,13,13,13,0,0, 0,0,13,14,14,13,13,0,
+    13,13,13,14,14,13,0,0, 0,0,13,13,13,13,0,0, 0,13,0,13,0,0,13,0, 13,0,0,13,0,0,0,13 },
   { /* T_TRAP (a red ^ chevron -- a sprung trap) */
     0,0,0,0,0,0,0,0, 0,0,0,8,8,0,0,0, 0,0,8,8,8,8,0,0, 0,8,8,0,0,8,8,0,
     8,8,0,0,0,0,8,8, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
@@ -175,9 +175,11 @@ const uint8_t gfx[NTILES][64] = {
   { /* T_LUCKSTONE (a grey stone with a warm gleam) */
     0,0,0,0,0,0,0,0, 0,0,2,2,2,0,0,0, 0,2,3,3,2,2,0,0, 0,2,3,13,3,2,0,0,
     0,2,3,3,3,2,0,0, 0,0,2,2,2,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
-  { /* T_MINEWALL (hewn brown rock: cracks, a tan glint -- not brickwork) */
-    6,6,5,6,6,6,5,6, 6,5,6,6,5,6,6,6, 5,6,6,7,6,6,5,6, 6,6,5,6,6,5,6,6,
-    6,5,6,6,6,6,6,5, 6,6,6,5,6,7,6,6, 5,6,6,6,5,6,6,5, 6,6,5,6,6,6,5,6 },
+  { /* T_MINEWALL (cobblestones, brick-laid: a big stone per band, the lower
+     * band's stone CROSSES the tile seam so walls never stripe; tan glints,
+     * dark joints -- nothing like the shop's bricks) */
+    5,6,6,6,6,5,5,5, 6,6,7,6,6,6,5,5, 5,6,6,6,6,6,5,5, 5,5,5,5,5,5,5,5,
+    6,5,5,5,5,6,6,6, 6,5,5,5,5,6,7,6, 6,5,5,5,5,6,6,6, 5,5,5,5,5,5,5,5 },
   { /* T_NYMPH (golden hair, fair face, green gown, arms reaching out) */
     0,0,13,13,13,13,0,0, 0,13,15,15,15,15,13,0, 0,0,15,1,1,15,0,0, 0,0,9,9,9,9,0,0,
     0,9,9,9,9,9,9,0, 0,0,9,9,9,9,0,0, 0,0,9,9,9,9,0,0, 0,0,9,0,0,9,0,0 }
@@ -283,12 +285,13 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0xFF,0x88,0x88,0xFF,0x22,0x22,0xFF,0x88 }, /* WALL     (brick)        */
     { 0x00,0x20,0x00,0x04,0x00,0x40,0x00,0x08 }, /* CORR     (speckle)      */
     { 0x3C,0x42,0x42,0x4A,0x42,0x42,0x42,0x7E }, /* DOOR (arched top + knob) */
-    { 0x18,0x3C,0x7E,0x18,0x18,0x3C,0x7E,0xFF }, /* SUP (up arrow standing on
-                                                  * widening steps)          */
-    { 0xFF,0x7E,0x3C,0x18,0x18,0x7E,0x3C,0x18 }, /* SDOWN (steps narrowing to
-                                                  * a down arrow)            */
+    { 0x07,0x04,0x3C,0x20,0xE0,0x80,0x80,0x00 }, /* SUP (stepped profile
+                                                  * rising to the right)     */
+    { 0xE0,0x20,0x3C,0x04,0x07,0x01,0x01,0x00 }, /* SDOWN (stepped profile
+                                                  * falling to the right)    */
     { 0x19,0x19,0x3E,0x5A,0x18,0x18,0x24,0x66 }, /* HERO (person, raised sword: blade joins the right arm) */
-    { 0x00,0x60,0xF1,0x7F,0x7E,0x24,0x24,0x00 }, /* DOG (quadruped; thin tail, tip up) */
+    { 0x00,0x60,0xB1,0x7F,0x7E,0x24,0x24,0x00 }, /* DOG (quadruped; eye up in
+                                                  * the head, thin tail up)  */
     { 0x00,0x00,0x01,0x0E,0x1F,0x1F,0x0A,0x00 }, /* RAT      (rodent)       */
     { 0x00,0x3C,0x7E,0x7E,0x7E,0x7E,0x3C,0x00 }, /* GOLD     (coin)         */
     { 0x00,0x06,0x0F,0x1E,0x3C,0x78,0x30,0x00 }, /* FOOD     (drumstick)    */
@@ -308,12 +311,13 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0xFF,0xA8,0xA8,0xFF,0x2A,0x2A,0xFF,0xA8 }, /* SHOPWALL (denser brick) */
     { 0x18,0x3C,0x18,0x5A,0x18,0x18,0x24,0x42 }, /* KEEPER   (person variant)*/
     { 0x18,0x3C,0x18,0x3C,0x7E,0x18,0x24,0x42 }, /* LEPRECHAUN (sprite + hat)*/
-    { 0x99,0x5A,0x3C,0xFF,0xFF,0x3C,0x5A,0x99 }, /* YELLOWLIGHT (8-ray star --
-                                                  * the coin is a plain disc) */
+    { 0x89,0x4A,0x3C,0x3E,0xFC,0x3C,0x52,0x91 }, /* YELLOWLIGHT (irregular
+                                                  * spark; not the coin disc) */
     { 0x00,0x18,0x3C,0x66,0xC3,0x81,0x00,0x00 }, /* TRAP  (^ chevron)        */
     { 0x42,0x3C,0x5A,0x3C,0x18,0x3C,0x66,0x00 }, /* HOMUNCULUS (horned imp)  */
     { 0x3C,0x7E,0x66,0x7E,0x3C,0x3C,0x5A,0x24 }, /* WRAITH (hooded, wispy)   */
-    { 0x00,0x7E,0x7E,0x3C,0x3C,0x3C,0x7E,0x00 }, /* ALTAR (slab on pedestal) */
+    { 0x00,0x7E,0x5A,0x5A,0x5A,0x5A,0x7E,0x00 }, /* ALTAR (classic columns:
+                                                  * bar, three legs, base)   */
     { 0x06,0x06,0x0C,0x18,0x30,0x60,0xC0,0x80 }, /* WAND  (diagonal stick)   */
     { 0x3C,0x42,0x99,0xBD,0xBD,0x99,0x42,0x3C }, /* FEYE  (lidless eye)      */
     { 0x00,0x7C,0x7E,0x46,0x46,0x7E,0x7C,0x00 }, /* BOOK  (closed covers)    */
@@ -327,7 +331,9 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x08,0x1C,0x3C,0x18,0x3C,0x18,0x24,0x24 }, /* GNOME   (pointy cap)     */
     { 0x3C,0x7E,0x3C,0x7E,0x5A,0x7E,0x24,0x66 }, /* DWARF   (helm + beard)   */
     { 0x00,0x38,0x7C,0x74,0x7C,0x38,0x00,0x00 }, /* LUCKSTONE (gleaming rock)*/
-    { 0xF7,0xBE,0xEF,0xFB,0x7E,0xDF,0xF5,0xBF }, /* MINEWALL  (rough rock)   */
+    { 0x78,0xFC,0x7C,0x00,0x87,0x87,0x87,0x00 }, /* MINEWALL (brick-laid
+                                                  * cobbles; the lower stone
+                                                  * crosses the tile seam)    */
     { 0x3C,0x7E,0x5A,0x3C,0x7E,0x3C,0x3C,0x24 }  /* NYMPH (haired face, gown,
                                                   * arms out for your pack)  */
 };

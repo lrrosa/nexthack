@@ -38,13 +38,20 @@ like NetHack.
 
 ### Changed
 - **Stairs you can finally read.** On the Next, up is a bright stone
-  ziggurat rising toward you and down is the same steps sinking into a pit
-  that fades to black; on the 128K the direction arrow is part of the glyph.
-- **The yellow light is not a coin.** An 8-ray star on the 128K (it was one
-  pixel away from the gold piece); the Next orb now radiates rays.
+  ziggurat rising toward you and down is banded treads sinking into a pit
+  that darkens with depth; on the 128K they are clean stepped profiles,
+  rising or falling with the slope.
+- **The yellow light is not a coin.** Both targets now draw an irregular
+  spark — uneven rays around a glowing core (orange on the Next); the gold
+  piece stays a plain disc.
+- **The mines are built of stones.** Mine walls became rounded cobblestones
+  on both targets — brick-laid, dark joints, the odd tan glint — instead of
+  uniform rough noise.
 - **Minetown's shop wears its bricks.** The warm shop-wall override only
   matched regular walls, so in the mines the shop drew as plain rock on
   both targets. Fixed — the shop now glows warm against the caves.
+- Small touches: the dog's eye sits properly in its head on both targets,
+  and the 128K altar is a classic column front (bar, three legs, base).
 
 ### Note — the save freeze holds
 - Saves from 0.10.0 **load unchanged**. Everything above is transient
