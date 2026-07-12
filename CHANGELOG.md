@@ -36,6 +36,16 @@ like NetHack.
 - **Death drops.** About one kill in four leaves loot instead of a corpse —
   a depth-appropriate item where the monster fell. Your dog's kills count.
 
+### Changed
+- **Stairs you can finally read.** On the Next, up is a bright stone
+  ziggurat rising toward you and down is the same steps sinking into a pit
+  that fades to black; on the 128K the direction arrow is part of the glyph.
+- **The yellow light is not a coin.** An 8-ray star on the 128K (it was one
+  pixel away from the gold piece); the Next orb now radiates rays.
+- **Minetown's shop wears its bricks.** The warm shop-wall override only
+  matched regular walls, so in the mines the shop drew as plain rock on
+  both targets. Fixed — the shop now glows warm against the caves.
+
 ### Note — the save freeze holds
 - Saves from 0.10.0 **load unchanged**. Everything above is transient
   monster state or a pure side hash: the save format and the deterministic
