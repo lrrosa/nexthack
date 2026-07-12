@@ -432,9 +432,10 @@ void draw_map(void) __banked
                 t = tile_for(lvl[y][x]);
                 attr = 0x10;                      /* palette offset 1     */
             }
-            if (has_shop && t == T_WALL &&        /* shop walls: warm bricks */
+            if (has_shop && (t == T_WALL || t == T_MINEWALL) &&
                 x >= sx && x <= sx1 && y >= sy && y <= sy1)
-                t = T_SHOPWALL;
+                t = T_SHOPWALL;   /* shop walls: warm bricks -- Minetown's
+                                   * shop too (its walls resolve T_MINEWALL) */
             *p++ = t;
             *p++ = attr;
         }
@@ -484,7 +485,7 @@ static void dm_terrain(uint8_t mapx, uint8_t mapy, uint8_t vx)
     if (!(dm_seen[byte] & mask)) { t = T_ROCK; attr = 0; }
     else {
         t = tile_for(lvl[mapy][mapx]);
-        if (dm_shop && t == T_WALL &&
+        if (dm_shop && (t == T_WALL || t == T_MINEWALL) &&   /* Minetown too */
             mapx >= dm_sx && mapx <= dm_sx1 && mapy >= dm_sy && mapy <= dm_sy1) t = T_SHOPWALL;
         attr = (dm_vis[byte] & mask) ? (uint8_t)(udg_ink[t - T_ROCK] | 0x40)
                                      : udg_ink[t - T_ROCK];
@@ -638,7 +639,7 @@ void draw_map(void) __banked
                     t = T_ROCK; attr = 0;
                 } else {
                     t = tile_for(lrow[x]);
-                    if (has_shop && t == T_WALL &&
+                    if (has_shop && (t == T_WALL || t == T_MINEWALL) &&
                         x >= sx && x <= sx1 && y >= sy && y <= sy1) t = T_SHOPWALL;
                     attr = (dm_vis[byte] & mask)
                            ? (uint8_t)(udg_ink[t - T_ROCK] | 0x40)

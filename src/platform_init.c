@@ -44,12 +44,14 @@ const uint8_t gfx[NTILES][64] = {
   { /* T_DOOR (arched wooden door: grey frame, brown planks, knob) */
     0,0,3,3,3,3,0,0, 0,3,5,5,5,5,3,0, 3,5,6,6,6,6,5,3, 3,5,6,6,6,6,5,3,
     3,5,6,6,13,6,5,3, 3,5,6,6,6,6,5,3, 3,5,6,6,6,6,5,3, 0,3,3,3,3,3,3,0 },
-  { /* T_SUP (stairs up) */
-    0,0,0,0,0,0,3,3, 0,0,0,0,0,3,3,2, 0,0,0,0,3,3,2,0, 0,0,0,3,3,2,0,0,
-    0,0,3,3,2,0,0,0, 0,3,3,2,0,0,0,0, 3,3,2,0,0,0,0,0, 3,3,3,3,3,3,3,3 },
-  { /* T_SDOWN (stairs down) */
-    3,3,3,3,3,3,3,3, 0,0,0,0,0,2,3,3, 0,0,0,0,2,3,3,0, 0,0,0,2,3,3,0,0,
-    0,0,2,3,3,0,0,0, 0,2,3,3,0,0,0,0, 2,3,3,0,0,0,0,0, 3,3,0,0,0,0,0,0 },
+  { /* T_SUP (stairs up: a bright stone ziggurat rising toward you --
+     * light treads, grey risers) */
+    0,0,0,3,3,0,0,0, 0,0,0,2,2,0,0,0, 0,0,3,3,3,3,0,0, 0,0,2,2,2,2,0,0,
+    0,3,3,3,3,3,3,0, 0,2,2,2,2,2,2,0, 3,3,3,3,3,3,3,3, 2,2,2,2,2,2,2,2 },
+  { /* T_SDOWN (stairs down: the same steps sinking away into a dark pit --
+     * the fade-to-black is what tells it from T_SUP at a glance) */
+    3,3,3,3,3,3,3,3, 2,2,2,2,2,2,2,2, 0,2,2,2,2,2,2,0, 0,1,1,1,1,1,1,0,
+    0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,0,1,1,0,0,0, 0,0,0,0,0,0,0,0 },
   { /* T_HERO (an armoured adventurer: helm, face, blue mail with a gold
      * belt, shield on the left arm, sword raised on the right, brown boots) */
     0,0,0,3,3,0,0,4, 0,0,3,3,3,3,0,4, 0,0,15,15,15,15,0,4, 2,0,11,11,11,11,0,4,
@@ -115,9 +117,10 @@ const uint8_t gfx[NTILES][64] = {
   { /* T_LEPRECHAUN (small green sprite with a tan hat) */
     0,0,0,7,7,0,0,0, 0,0,7,7,7,7,0,0, 0,0,0,9,9,0,0,0, 0,0,9,9,9,9,0,0,
     0,9,9,9,9,9,9,0, 0,0,9,9,9,9,0,0, 0,0,9,0,0,9,0,0, 0,0,9,0,0,9,0,0 },
-  { /* T_YELLOWLIGHT (glowing yellow orb with an orange core) */
-    0,0,0,13,13,0,0,0, 0,0,13,13,13,13,0,0, 0,13,13,14,14,13,13,0, 0,13,14,14,14,14,13,0,
-    0,13,14,14,14,14,13,0, 0,13,13,14,14,13,13,0, 0,0,13,13,13,13,0,0, 0,0,0,13,13,0,0,0 },
+  { /* T_YELLOWLIGHT (glowing orb, orange core, radiating rays -- the rays
+     * keep it from ever reading as the gold coin) */
+    13,0,0,13,13,0,0,13, 0,13,0,13,13,0,13,0, 0,0,13,14,14,13,0,0, 13,13,14,14,14,14,13,13,
+    13,13,14,14,14,14,13,13, 0,0,13,14,14,13,0,0, 0,13,0,13,13,0,13,0, 13,0,0,13,13,0,0,13 },
   { /* T_TRAP (a red ^ chevron -- a sprung trap) */
     0,0,0,0,0,0,0,0, 0,0,0,8,8,0,0,0, 0,0,8,8,8,8,0,0, 0,8,8,0,0,8,8,0,
     8,8,0,0,0,0,8,8, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
@@ -280,8 +283,10 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0xFF,0x88,0x88,0xFF,0x22,0x22,0xFF,0x88 }, /* WALL     (brick)        */
     { 0x00,0x20,0x00,0x04,0x00,0x40,0x00,0x08 }, /* CORR     (speckle)      */
     { 0x3C,0x42,0x42,0x4A,0x42,0x42,0x42,0x7E }, /* DOOR (arched top + knob) */
-    { 0x01,0x03,0x07,0x0F,0x1F,0x3F,0x7F,0xFF }, /* SUP      (ascend ramp)  */
-    { 0xFF,0x7F,0x3F,0x1F,0x0F,0x07,0x03,0x01 }, /* SDOWN    (descend ramp) */
+    { 0x18,0x3C,0x7E,0x18,0x18,0x3C,0x7E,0xFF }, /* SUP (up arrow standing on
+                                                  * widening steps)          */
+    { 0xFF,0x7E,0x3C,0x18,0x18,0x7E,0x3C,0x18 }, /* SDOWN (steps narrowing to
+                                                  * a down arrow)            */
     { 0x19,0x19,0x3E,0x5A,0x18,0x18,0x24,0x66 }, /* HERO (person, raised sword: blade joins the right arm) */
     { 0x00,0x60,0xF1,0x7F,0x7E,0x24,0x24,0x00 }, /* DOG (quadruped; thin tail, tip up) */
     { 0x00,0x00,0x01,0x0E,0x1F,0x1F,0x0A,0x00 }, /* RAT      (rodent)       */
@@ -303,7 +308,8 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0xFF,0xA8,0xA8,0xFF,0x2A,0x2A,0xFF,0xA8 }, /* SHOPWALL (denser brick) */
     { 0x18,0x3C,0x18,0x5A,0x18,0x18,0x24,0x42 }, /* KEEPER   (person variant)*/
     { 0x18,0x3C,0x18,0x3C,0x7E,0x18,0x24,0x42 }, /* LEPRECHAUN (sprite + hat)*/
-    { 0x00,0x18,0x3C,0x7E,0x7E,0x3C,0x18,0x00 }, /* YELLOWLIGHT (glowing orb)*/
+    { 0x99,0x5A,0x3C,0xFF,0xFF,0x3C,0x5A,0x99 }, /* YELLOWLIGHT (8-ray star --
+                                                  * the coin is a plain disc) */
     { 0x00,0x18,0x3C,0x66,0xC3,0x81,0x00,0x00 }, /* TRAP  (^ chevron)        */
     { 0x42,0x3C,0x5A,0x3C,0x18,0x3C,0x66,0x00 }, /* HOMUNCULUS (horned imp)  */
     { 0x3C,0x7E,0x66,0x7E,0x3C,0x3C,0x5A,0x24 }, /* WRAITH (hooded, wispy)   */
