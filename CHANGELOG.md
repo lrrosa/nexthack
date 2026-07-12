@@ -8,6 +8,39 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [0.11.0] — 2026-07-11
+
+The soul release: the dungeon stops charging at you — and starts behaving
+like NetHack.
+
+### Added
+- **Half the dungeon is asleep.** Monsters now spawn asleep about half the
+  time: they hold their ground until you come near (footsteps within 5 cells
+  may stir them; standing next to one always does) — and a sleeping target
+  can't dodge, so the **sneak attack always lands**. A sleeping dragon only
+  snores. Stealth is a real option at last.
+- **Minetown makes peace.** The gnomes and dwarves of Mine:2 go about their
+  business: they amble around town, never strike first, and bumping one just
+  swaps places, like your dog. A townsman is murdered by *choice* — a thrown
+  blade, a wand, a spell — and first blood angers the **whole town** while
+  the gods frown on you (luck −2, *"You murder the dwarf!"*). Your dog won't
+  maul the townsfolk.
+- **Monsters follow you on the stairs.** An awake enemy standing at your
+  heel when you take the stairs (or the mine hole) comes along — *"The
+  kobold follows you!"* — as wounded as you left it. Fleeing a fight now
+  needs distance first, as in NetHack.
+- **The nymph** (`n`, depth 7+). Her bite is soft, but it lifts an item from
+  your pack — and she blinks away across the level with the prize. Kill her
+  and it drops at her feet; leave the level and she abandons it on the
+  floor, where the stash remembers it. Worn gear is strapped on.
+- **Death drops.** About one kill in four leaves loot instead of a corpse —
+  a depth-appropriate item where the monster fell. Your dog's kills count.
+
+### Note — the save freeze holds
+- Saves from 0.10.0 **load unchanged**. Everything above is transient
+  monster state or a pure side hash: the save format and the deterministic
+  generation streams are untouched, exactly as promised at the freeze.
+
 ## [0.10.0] — 2026-07-08
 
 The depths release: a branch off the beaten shaft — and the LAST save-breaking

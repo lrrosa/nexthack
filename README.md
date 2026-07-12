@@ -55,12 +55,18 @@ code.
   dogs, snakes, orcs, zombies, acid blobs, leprechauns, yellow lights, homunculi,
   wraiths, floating eyes — and deeper down, **trolls** that knit their wounds
   shut, life-draining **vampires**, **mimics** posing as items on the floor,
+  the **nymph**, who steals an item from your pack and blinks away with it,
   and the apex **dragon**, which **breathes fire** down a clear corridor) that
   chases you with BFS pathfinding. Many bite with a
-  **special attack** — poison, blindness, sleep, gold theft, life-drain — and
+  **special attack** — poison, blindness, sleep, theft, life-drain — and
   never melee a floating eye with your eyes open. Hidden **traps** (trap doors,
   darts, sleeping gas) lurk in the deeper floors. Scratch **Elbereth** (`E`) in
   the dust to keep monsters at bay; experience levels raise your HP.
+- **A dungeon with NetHack's manners** — half the monsters spawn **asleep**
+  (sneak-attack them: a sleeper can't dodge), an awake enemy at your heel
+  **follows you up and down the stairs**, kills may leave **death drops**
+  where the body fell, and **Minetown is at peace** until *you* draw first
+  blood — then the whole town comes for you, and the gods dock your luck.
 - **Corpses: you are what you eat** — slain monsters may leave one, and the
   right flesh teaches the body something: poison resistance, sleep resistance,
   or a floating eye's **telepathy** (sense every monster while blind).
