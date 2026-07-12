@@ -19,6 +19,9 @@ uint8_t m_hp[MAXMON];
 char    m_type[MAXMON];
 uint8_t m_sleep[MAXMON];  /* >0: asleep. 255 = until disturbed (spawn sleepers);
                            * smaller values tick down (wand/spell of sleep). */
+uint8_t m_peace[MAXMON];  /* 1 = peaceful (Minetown natives): minds its own
+                           * business until the hero draws blood (monster_ai
+                           * then angers the whole town). */
 uint8_t mcount;
 int8_t  pet_idx = -1;     /* the pet's slot this level (see monster.h), -1 = none */
 uint8_t mon_dead[MAXLVL + 1];   /* bit i: monster i killed. Written by combat

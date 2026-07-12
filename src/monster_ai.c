@@ -70,15 +70,24 @@ void level_up(void) __banked
 void hit_monster(uint8_t mi, uint8_t dmg) __banked
 {
     const MonType *mt = mon_find(m_type[mi]);
+    uint8_t was_peace = m_peace[mi];
     if (m_type[mi] == 'x') m_type[mi] = 'm';   /* struck bait drops the disguise */
     m_sleep[mi] = 0;                           /* any hit wakes it            */
+    if (was_peace) {
+        /* First blood on a townsman angers the whole town -- every peaceful
+         * on the level turns hostile -- and the gods frown on it (luck). */
+        uint8_t j;
+        for (j = 0; j < mcount; j++) m_peace[j] = 0;
+        luck = (int8_t)(luck - 2);
+        if (luck < -5) luck = -5;
+    }
     if (m_hp[mi] <= dmg) {
         m_alive[mi] = 0;
         if (dlvl <= MAXLVL)
             mon_dead[dlvl] |= (uint8_t)(1u << mi);   /* remember the kill */
         if (m_type[mi] != MON_KEEPER && rn2(2))      /* it may leave a corpse */
             corpse_drop(m_x[mi], m_y[mi], m_type[mi]);
-        msg2("You kill the ", mt->name, "!");
+        msg2(was_peace ? "You murder the " : "You kill the ", mt->name, "!");
         sfx_kill();
         cnt_kills++;                    /* by your hand (conducts) */
         gain_xp(mt->xp);
@@ -192,6 +201,25 @@ static uint8_t still_asleep(uint8_t i)
         return 0;
     }
     return 1;
+}
+
+/* A peaceful (Minetown townsfolk) never chases nor strikes: it just mills
+ * about its business -- an occasional step to a random free neighbour. */
+static void peace_amble(uint8_t i)
+{
+    int nx, ny;
+    char t;
+    if (rn2(3)) return;                    /* mostly it stands and haggles */
+    nx = (int)m_x[i] + (int)rn2(3) - 1;
+    ny = (int)m_y[i] + (int)rn2(3) - 1;
+    if (nx == (int)m_x[i] && ny == (int)m_y[i]) return;
+    if (nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH) return;
+    t = lvl[ny][nx];
+    if (t == '|' || t == '-' || t == ' ') return;
+    if (nx == hero_x && ny == hero_y) return;
+    if (monster_at(nx, ny) >= 0) return;
+    if (shop_in_room(nx, ny)) return;      /* the shop is the keeper's floor */
+    m_x[i] = (uint8_t)nx; m_y[i] = (uint8_t)ny;
 }
 
 /* ---- pathfinding: a BFS distance field from the hero ("Dijkstra map").
@@ -369,6 +397,7 @@ static uint8_t pet_bite_adjacent(uint8_t i)
     for (j = 0; j < mcount; j++) {
         if (!m_alive[j] || j == pet_idx || m_type[j] == MON_KEEPER) continue;
         if (m_type[j] == 'x') continue;    /* the dog can't smell a hidden mimic */
+        if (m_peace[j]) continue;          /* it won't maul the townsfolk */
         if (iabs((int)m_x[j] - (int)m_x[i]) <= 1 &&
             iabs((int)m_y[j] - (int)m_y[i]) <= 1) { pet_hits(i, j); return 1; }
     }
@@ -487,6 +516,7 @@ static void mon_step(uint8_t i)
     if (still_asleep(i)) return;           /* a spawn sleeper, undisturbed */
     if (m_sleep[i]) { m_sleep[i]--; return; }    /* asleep (wand of sleep): no turn */
     if (i == pet_idx) { pet_step(i); return; }   /* the pet follows its own rules */
+    if (m_peace[i]) { peace_amble(i); return; }  /* a peaceful minds its own */
 
     ddx = hero_x - (int)m_x[i];
     ddy = hero_y - (int)m_y[i];
@@ -572,6 +602,7 @@ void monsters_turn(void) __banked
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i] || i == pet_idx || m_type[i] == MON_KEEPER) continue;
         if (m_type[i] == 'x') continue;    /* a posing mimic wakes nothing */
+        if (m_peace[i]) continue;          /* townsfolk trigger no chase */
         if (still_asleep(i)) continue;     /* spawn sleepers roll their one
                                             * per-turn wake chance HERE (no
                                             * break: every sleeper rolls);
@@ -580,6 +611,9 @@ void monsters_turn(void) __banked
             iabs((int)m_y[i] - hero_y) <= MON_WAKE) awake = 1;
     }
     if (!awake) {
+        /* the townsfolk still mill about (cheap: no BFS involved) */
+        for (i = 0; i < mcount; i++)
+            if (m_alive[i] && m_peace[i]) peace_amble(i);
         /* no enemy near: heel the dog by sight, no flood. Only when a wall boxes
          * the greedy step (a bend or doorway it can't round straight to you) do we
          * flood -- once, routing just the dog. An open room never blocks, so it
@@ -603,6 +637,7 @@ void monsters_turn(void) __banked
             if (mimic_hidden(i)) continue;    /* posing as an item */
             if (m_sleep[i] == 255) continue;  /* still asleep (rolled in the scan) */
             if (m_sleep[i]) { m_sleep[i]--; continue; }
+            if (m_peace[i]) { peace_amble(i); continue; }  /* minds its own */
             if (i == (uint8_t)pet_idx) {
                 if (pet_bite_adjacent(i)) continue;
                 if (!pet_heel_greedy(i)) blocked |= (uint16_t)(1u << i);

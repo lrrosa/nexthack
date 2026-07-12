@@ -1123,7 +1123,10 @@ void try_move(int dx, int dy) __banked
     }
     mi = monster_at(nx, ny);
     if (mi >= 0) {
-        if (m_type[mi] == MON_KEEPER || mi == pet_idx) {  /* swap past, don't attack */
+        if (m_type[mi] == MON_KEEPER || mi == pet_idx ||
+            m_peace[mi]) {              /* swap past keeper/pet/peaceful -- a
+                                         * townsman is murdered by choice
+                                         * (throw/zap/cast), never by a bump */
             m_x[mi] = (uint8_t)hero_x;             /* the keeper/pet steps aside */
             m_y[mi] = (uint8_t)hero_y;             /* so you never bump into it  */
             hero_x = nx; hero_y = ny;

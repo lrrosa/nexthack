@@ -55,12 +55,19 @@ static void spawn_monster(char type)
     m_x[mcount] = x; m_y[mcount] = y;
     m_hp[mcount] = (uint8_t)(mt->hp + eff_depth() / 2);   /* tougher when deep */
     m_type[mcount] = type; m_alive[mcount] = 1;
-    /* Half the dungeon sleeps until you disturb it, as in NetHack. 255 is
-     * the "until woken" sentinel (see monster_ai's still_asleep), not a
-     * timer. Hidden mimics stay "awake": their pose already is the ambush.
-     * Vault guards, the guardian and wanderers spawn alert elsewhere. */
-    if (type != 'x' && spawns_asleep(x, y))
+    if (dlvl == (uint16_t)(MINES_BASE + 1) && (type == 'G' || type == 'h')) {
+        /* Minetown's natives go about their business: peaceful (and awake --
+         * the town is busy) until the hero draws blood; hit_monster then
+         * angers the whole town. (Skipping the sleep hash is safe: it is
+         * pure, so the spawn stream is unchanged.) */
+        m_peace[mcount] = 1;
+    } else if (type != 'x' && spawns_asleep(x, y)) {
+        /* Half the dungeon sleeps until you disturb it, as in NetHack. 255
+         * is the "until woken" sentinel (see monster_ai's still_asleep),
+         * not a timer. Hidden mimics stay "awake": their pose already is
+         * the ambush. Guards, the guardian and wanderers spawn alert. */
         m_sleep[mcount] = 255;
+    }
     mcount++;
 }
 
@@ -110,7 +117,7 @@ void spawn_level_monsters(void) __banked
     if (count > 8) count = 8;
     if (guards > count) guards = count;
     mcount = 0;
-    { uint8_t k; for (k = 0; k < MAXMON; k++) m_sleep[k] = 0; }   /* none asleep yet */
+    { uint8_t k; for (k = 0; k < MAXMON; k++) { m_sleep[k] = 0; m_peace[k] = 0; } }
     if (dlvl == DLVL_AMULET) {          /* the Amulet's keeper takes slot 0 */
         spawn_guardian();
         if (count > 7) count = 7;       /* randoms stay in tracked slots 1-7 */
@@ -208,5 +215,7 @@ void maybe_spawn_wanderer(void) __banked
     m_type[slot] = type;
     m_alive[slot] = 1;
     m_sleep[slot] = 0;          /* a fresh wanderer is awake */
+    m_peace[slot] = (uint8_t)(dlvl == (uint16_t)(MINES_BASE + 1) &&
+                              (type == 'G' || type == 'h'));  /* townsfolk */
     if (slot == mcount) mcount++;
 }
