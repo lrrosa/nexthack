@@ -176,6 +176,16 @@ static stash_t  stash[STASH_SLOTS];   /* ~544 B resident BSS (the reclaim pays) 
 static uint16_t stash_clock;
 static uint8_t  stash_prev;           /* dlvl whose floor sits in floor_obj[] */
 
+/* ---- stolen goods (the nymph, v0.11) ----
+ * A thief that steals keeps the item in a per-slot pocket. It comes back:
+ * kill her and it drops at her feet (drop_held); leave the level or save,
+ * and held_dump makes every thief abandon hers on the floor first, so the
+ * loot rides the stash pool above -- stolen goods are never silently lost
+ * with the transient monsters. (~60 B resident BSS.) */
+static obj_t   held_obj[MAXMON];
+static uint8_t held_has[MAXMON];
+static void    held_dump(void);       /* defined with the nymph code, below */
+
 static void stash_store(void)
 {
     uint8_t i, v = STASH_SLOTS, free_ = STASH_SLOTS;
@@ -199,7 +209,7 @@ static void stash_store(void)
     for (i = 0; i < floor_n; i++) stash[v].it[i] = floor_obj[i];
 }
 
-void floor_reset(void) __banked { stash_store(); floor_n = 0; }
+void floor_reset(void) __banked { held_dump(); stash_store(); floor_n = 0; }
 
 /* re-lay the incoming level's stash; terrain must be final (end of build_level) */
 void floor_restore(void) __banked
@@ -607,6 +617,7 @@ void item_reset(void) __banked
     weapon_dmg = 0;
     for (i = 0; i < sizeof id_known; i++) id_known[i] = 0;   /* nothing learned yet */
     for (i = 0; i < STASH_SLOTS; i++) stash[i].lvl = 0;      /* no stashes yet */
+    for (i = 0; i < MAXMON; i++) held_has[i] = 0;            /* no stolen goods */
     stash_clock = 0;
     stash_prev = 0;
     recompute_gear();
@@ -692,6 +703,65 @@ static uint16_t item_price(const obj_t *o)
     uint16_t p = objtypes[o->otyp].price;
     if (o->ench > 0) p = (uint16_t)(p + (uint16_t)o->ench * 5u);
     return p;
+}
+
+/* ---- the nymph's trade (see the held_obj block up top) ---- */
+
+static void drop_held_1(uint8_t mi)
+{
+    if (!held_has[mi]) return;
+    held_has[mi] = 0;
+    floor_drop(m_x[mi], m_y[mi], &held_obj[mi]);  /* lost only if the cell is taken */
+}
+
+void drop_held(uint8_t mi) __banked { drop_held_1(mi); }   /* a kill's return */
+
+/* every thief abandons its loot where it stands -- called before the
+ * outgoing floor is banked (floor_reset) and before a save writes the
+ * stash (item_save), while m_x/m_y still hold this level's monsters */
+static void held_dump(void)
+{
+    uint8_t i;
+    for (i = 0; i < mcount; i++) drop_held_1(i);
+}
+
+/* The nymph's charmed bite (ATK_ITEM, monster_ai): she lifts one loose item
+ * from the pack -- worn gear is strapped on -- and blinks away across the
+ * level with the prize. */
+void steal_item(uint8_t mi) __banked
+{
+    uint8_t cand[MAXINV], n = 0, i, s;
+    for (i = 0; i < inv_count; i++)
+        if (!inv[i].worn) cand[n++] = i;
+    if (n == 0 || held_has[mi]) return;     /* nothing loose / her hands are full */
+    s = cand[rn2(n)];
+    msg2("She steals ", obj_desc(&inv[s]), "!");
+    held_obj[mi] = inv[s];
+    held_has[mi] = 1;
+    inv_remove(s);
+    {
+        uint8_t x, y;
+        rand_floor((uint8_t)rn2(rcount), &x, &y);
+        if (lvl[y][x] == '.' && monster_at((int)x, (int)y) < 0 &&
+            !shop_in_room((int)x, (int)y) &&
+            !((int)x == hero_x && (int)y == hero_y)) {
+            m_x[mi] = x; m_y[mi] = y;       /* she blinks away */
+            map_flush = 1;                  /* +zx: she may cross the viewport */
+        }
+    }
+}
+
+/* A kill may leave loot besides the corpse (NetHack's death drops): a
+ * depth-appropriate item rolled from the play-time RNG -- never inside
+ * generation, so the deterministic streams stay untouched. */
+void death_drop(uint8_t x, uint8_t y) __banked
+{
+    static const char pool[8] = { ')', '[', '!', '%', '?', '=', '!', '%' };
+    obj_t o;
+    uint16_t h = rng_next();
+    o.otyp = resolve_otyp(pool[h & 7], (uint16_t)(h >> 3), (uint8_t)eff_depth());
+    o.ench = 0; o.ero = 0; o.worn = 0; o.buc = BUC_UNC;
+    floor_drop(x, y, &o);
 }
 
 /* description of the item on the hero's cell (for the "You see here" message) */
@@ -1492,7 +1562,8 @@ void do_zap(void) __banked
 
 void item_save(uint8_t h) __banked
 {
-    stash_store();                    /* bank the current floor first */
+    held_dump();                      /* thieves abandon their loot first */
+    stash_store();                    /* then bank the current floor */
     file_write(h, inv, INV_BYTES);
     file_write(h, &inv_count, 1);
     file_write(h, id_known, sizeof id_known);

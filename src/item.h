@@ -32,6 +32,9 @@ void do_drop(void) __banked;        /* drop an item on the floor (sells it in a 
 
 void corrode_worn(char cls) __banked; /* acid/rust corrodes the worn item       */
 void corpse_drop(uint8_t x, uint8_t y, char mch) __banked; /* leave a corpse    */
+void steal_item(uint8_t mi) __banked; /* the nymph lifts an item + blinks away  */
+void drop_held(uint8_t mi) __banked;  /* a slain thief drops its stolen loot    */
+void death_drop(uint8_t x, uint8_t y) __banked; /* a kill may leave random loot */
 void altar_sense(void) __banked;      /* an altar reveals carried items' BUC    */
 uint8_t pray_uncurse(uint8_t all) __banked; /* a prayer lifts curses (worn/all) */
 

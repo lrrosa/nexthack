@@ -69,6 +69,10 @@ static const MonType montypes[] = {
      * pick_mon injects them directly on mine levels. */
     { 'G',  4, 2, 2, 255, T_GNOME, 0, ATK_NONE, "gnome" },
     { 'h',  8, 4, 5, 255, T_DWARF, 0, ATK_NONE, "dwarf" },
+    /* the nymph: a soft bite, but it lifts an item from your pack and she
+     * blinks away across the level with it (item.c steal_item). Kill her
+     * and she drops the loot; leave the level and she abandons it. */
+    { 'n',  9, 2, 7, 7, T_NYMPH, 0, ATK_ITEM, "nymph" },
     /* the shopkeeper: drawn as '@' (reuses T_HERO), placed only in shops, never
      * randomly spawned (pick_mon skips it), and stationary (monster_ai mon_step). */
     { MON_KEEPER, 30, 0, 0, 1, T_KEEPER, 0, ATK_NONE, "shopkeeper" }

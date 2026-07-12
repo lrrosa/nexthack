@@ -85,8 +85,13 @@ void hit_monster(uint8_t mi, uint8_t dmg) __banked
         m_alive[mi] = 0;
         if (dlvl <= MAXLVL)
             mon_dead[dlvl] |= (uint8_t)(1u << mi);   /* remember the kill */
-        if (m_type[mi] != MON_KEEPER && rn2(2))      /* it may leave a corpse */
-            corpse_drop(m_x[mi], m_y[mi], m_type[mi]);
+        drop_held(mi);                               /* stolen goods return */
+        if (m_type[mi] != MON_KEEPER) {
+            if (rn2(4) == 0)                         /* it may leave loot... */
+                death_drop(m_x[mi], m_y[mi]);
+            else if (rn2(2))                         /* ...or its corpse     */
+                corpse_drop(m_x[mi], m_y[mi], m_type[mi]);
+        }
         msg2(was_peace ? "You murder the " : "You kill the ", mt->name, "!");
         sfx_kill();
         cnt_kills++;                    /* by your hand (conducts) */
@@ -180,6 +185,9 @@ static void monster_hits_player(uint8_t i)
                 if (php > pmaxhp) php = pmaxhp;
                 msg("You feel drained!");
             }
+            break;
+        case ATK_ITEM:
+            steal_item(i);   /* the nymph lifts an item and blinks away (item.c) */
             break;
         }
     }
@@ -365,7 +373,10 @@ static void pet_hits(uint8_t pi, uint8_t ti)
         m_alive[ti] = 0;
         if (dlvl <= MAXLVL)
             mon_dead[dlvl] |= (uint8_t)(1u << ti);
-        if (rn2(2))                        /* the dog's kill may leave a corpse */
+        drop_held(ti);                     /* stolen goods return */
+        if (rn2(4) == 0)                   /* the dog's kill may leave loot... */
+            death_drop(m_x[ti], m_y[ti]);
+        else if (rn2(2))                   /* ...or its corpse */
             corpse_drop(m_x[ti], m_y[ti], m_type[ti]);
         msg2("Your dog kills the ", mt->name, "!");
         sfx_kill();

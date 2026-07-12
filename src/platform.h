@@ -74,8 +74,13 @@
 #define T_DWARF       172  /* mines native: bearded, hits like his pick       */
 #define T_LUCKSTONE   173  /* the mines' prize ('*' at the bottom)            */
 #define T_MINEWALL    174  /* mines walls: hewn brown rock (vs built brick)   */
+#define T_NYMPH       175  /* the nymph: steals an item and blinks away       */
 
-#define NTILES   47      /* T_ROCK..T_MINEWALL: the graphic tiles */
+#define NTILES   48      /* T_ROCK..T_NYMPH: the graphic tiles.
+                          * 128K WARNING: udg_bitmap (0x6680, 8 B/tile) now ends
+                          * EXACTLY at 0x6800, where item.c places inv[] -- a
+                          * 49th tile would corrupt the inventory. Move inv[]
+                          * (or the bitmap) before adding another tile. */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT
