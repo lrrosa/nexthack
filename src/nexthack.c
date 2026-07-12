@@ -278,31 +278,35 @@ static void traps_reset(void);   /* defined with the trap code, below */
  * on every level entry (new game, descend/ascend, trap-door fall, restore), so
  * the dog always tags along. It takes the tail monster slot (after the random
  * mobs and any keeper), which the uint8_t mon_dead bitmask never tracks, and is
- * never persisted -- pet_idx/pet_hp carry it instead. If the hero arrived in a
- * spot with no free adjacent floor (a tight corridor), the pet sits out this
- * level and rejoins on the next. (Lives here, not monster_ai.c, to keep that
- * bank under 16 KB.) */
+ * never persisted -- pet_idx/pet_hp carry it instead. Adjacent cells first; if
+ * they are all blocked (a cramped stairs room whose one other floor cell holds
+ * a spawned monster), the radius-2 ring is tried before giving up, so the dog
+ * only sits a level out when your whole arrival neighbourhood is packed.
+ * (Lives here, not monster_ai.c, to keep that bank under 16 KB.) */
 void place_pet(void) __banked
 {
-    int dx, dy;
+    int dx, dy, r;
     pet_idx = -1;
     if (!have_pet || mcount >= MAXMON) return;
-    for (dy = -1; dy <= 1; dy++)
-        for (dx = -1; dx <= 1; dx++) {
-            int x = hero_x + dx, y = hero_y + dy;
-            char c;
-            if ((dx == 0 && dy == 0) || pet_idx >= 0) continue;
-            if (x < 0 || y < 0 || x >= MAPW || y >= MAPH) continue;
-            c = lvl[y][x];
-            if (c == '|' || c == '-' || c == ' ') continue;   /* need walkable floor */
-            if (monster_at(x, y) >= 0) continue;
-            m_x[mcount] = (uint8_t)x; m_y[mcount] = (uint8_t)y;
-            m_hp[mcount] = pet_hp;
-            m_type[mcount] = 'd';
-            m_alive[mcount] = 1;
-            pet_idx = (int8_t)mcount;
-            mcount++;
-        }
+    for (r = 1; r <= 2; r++)
+        for (dy = -r; dy <= r; dy++)
+            for (dx = -r; dx <= r; dx++) {
+                int x = hero_x + dx, y = hero_y + dy;
+                char c;
+                if (dx > -r && dx < r && dy > -r && dy < r)
+                    continue;                 /* ring r only: inner cells done */
+                if (pet_idx >= 0) continue;
+                if (x < 0 || y < 0 || x >= MAPW || y >= MAPH) continue;
+                c = lvl[y][x];
+                if (c == '|' || c == '-' || c == ' ') continue;   /* need walkable floor */
+                if (monster_at(x, y) >= 0) continue;
+                m_x[mcount] = (uint8_t)x; m_y[mcount] = (uint8_t)y;
+                m_hp[mcount] = pet_hp;
+                m_type[mcount] = 'd';
+                m_alive[mcount] = 1;
+                pet_idx = (int8_t)mcount;
+                mcount++;
+            }
 }
 
 /* ---- stair followers ----

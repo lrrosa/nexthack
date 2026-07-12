@@ -8,6 +8,17 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [Unreleased]
+
+### Fixed
+- **The dog no longer misses a cramped landing.** Arriving on stairs whose
+  every neighbouring cell was walled off or already occupied (a tiny stairs
+  room with a monster on its one free tile) made the dog sit the level out.
+  It now settles for a spot two cells away and trots back to your heel.
+
+### Changed
+- The Next rat gained a red eye under its ear.
+
 ## [0.11.0] — 2026-07-12
 
 The soul release: the dungeon stops charging at you — and starts behaving
