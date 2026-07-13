@@ -23,9 +23,17 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
   every neighbouring cell was walled off or already occupied (a tiny stairs
   room with a monster on its one free tile) made the dog sit the level out.
   It now settles for a spot two cells away and trots back to your heel.
+- **128K: the fog of war of parked levels could rot.** When the explored-map
+  pool grew to 12 levels (0.10.0), the renderer's repaint scratch was left
+  sitting inside it, silently corrupting two stored levels' memories. The
+  scratch moved to a genuinely free spot — revisited levels now always
+  remember exactly what you explored.
 
 ### Changed
-- The Next rat gained a red eye under its ear.
+- The rat gained an eye under its ear on both targets: a red pixel on the
+  Next, a one-pixel hole in the 128K silhouette.
+- The farlook cursor glides at the walking pace of the 128K on the Next too
+  (it inherited the Next's brisker walk repeat and overshot).
 
 ## [0.11.0] — 2026-07-12
 

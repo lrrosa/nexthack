@@ -44,7 +44,8 @@ extern uint8_t gold_taken[], item_taken[];   /* persistence masks (levelgen.c) *
 /* Where the LRU explored bitmaps live differs per target:
  *  - 128K: data-banked in Bank 5 (always mapped at 0x4000-0x7FFF) at 0x68A0,
  *    just past the 26-slot inv (0x6800..0x6882); 12 slots end at 0x7278,
- *    safely below the BFS scratch at 0x7400 -- zero resident cost. FLAT view
+ *    below the renderer's PREV_VIS copy (0x7280) and the BFS scratch at
+ *    0x7400 -- zero resident cost. FLAT view
  *    (SDCC rejects pointer-to-array casts): index as
  *    fov_pool[(uint16_t)slot*FOV_BYTES + byte].
  *  - Next: Bank 5's tail is full (tiles+inv below the 0x5C00 sysvars, tilemap

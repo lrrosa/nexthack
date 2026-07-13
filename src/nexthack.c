@@ -460,11 +460,14 @@ static uint8_t  prev_mx[MAXMON], prev_my[MAXMON];
 static uint16_t prev_vis_sum = 0xFFFF;
 static uint8_t  mon_bm[(MAPH * TM_W + 7) / 8];   /* viewport cells a monster covers */
 /* copy of the vis bitmap the screen was LAST PAINTED with, for the mid path's
- * XOR (210 B). In Bank 5's free gap after fov_pool (0x6880+840=0x6BC8), clear
- * of the BFS scratch at 0x7400. Synced only when a path repaints by vis (mid/
- * full), so it always mirrors the screen -- a vis-hash collision that leaves
- * stale cells self-repairs on the next mid pass. */
-#define PREV_VIS ((uint8_t *)0x6C00u)
+ * XOR (210 B). In Bank 5's free gap AFTER fov_pool -- the 12-slot pool runs
+ * 0x68A0..0x7278 (the old 0x6C00 home sat INSIDE it once the pool grew 4->12
+ * slots, so the repaint copy was silently corrupting two parked levels' fog
+ * of war) -- and below the BFS scratch at 0x7400 (0x7280+210=0x7352). Synced
+ * only when a path repaints by vis (mid/full), so it always mirrors the
+ * screen -- a vis-hash collision that leaves stale cells self-repairs on the
+ * next mid pass. */
+#define PREV_VIS ((uint8_t *)0x7280u)
 
 /* write one viewport cell ONLY if it differs from the shadow (write-once diff). */
 static void dm_paint(uint8_t mapx, uint8_t mapy, uint8_t vx, uint8_t t, uint8_t attr)
