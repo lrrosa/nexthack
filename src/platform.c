@@ -261,6 +261,17 @@ int getkey(void)
                                  * only a backstop against a stall */
 #endif
 
+/* A modal cursor (farlook) glides too fast at the Next's brisk walk repeat:
+ * while one is up the repeat drops to the 128K's ~80 ms pace, which already
+ * feels right there -- so slowing is a no-op on the 128K. */
+#ifdef __ZXNEXT
+#define RPT_SLOW 4
+#else
+#define RPT_SLOW RPT_NEXT
+#endif
+static uint8_t rpt_next = RPT_NEXT;
+void key_rpt_slow(uint8_t on) { rpt_next = on ? RPT_SLOW : RPT_NEXT; }
+
 int getkey_rpt(void)
 {
     static int last = 0;
@@ -268,7 +279,7 @@ int getkey_rpt(void)
     volatile uint8_t *fr = (volatile uint8_t *)23672;   /* FRAMES lsb, 50 Hz */
     int k = in_inkey();
     if (k != 0 && k == last) {          /* the same key is still held */
-        uint8_t n = rpt ? RPT_NEXT : RPT_FIRST;
+        uint8_t n = rpt ? rpt_next : RPT_FIRST;
         while (n--) {
             uint8_t  f = *fr;
             uint16_t guard = RPT_GUARD;

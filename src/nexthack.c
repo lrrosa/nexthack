@@ -1139,6 +1139,7 @@ void do_farlook(void) __banked
 #endif
     msg("Look where? (moves; Enter ends)");
     in_wait_nokey();
+    key_rpt_slow(1);         /* the cursor glides gentler than the walk (Next) */
     for (;;) {
 #ifdef __ZXNEXT
         cp = tm_cell_ptr((uint8_t)(OX + cx), (uint8_t)(OY + cy));
@@ -1163,6 +1164,7 @@ void do_farlook(void) __banked
         case 'b': if (cx > x0) cx--; if (cy < MAPH - 1) cy++; break;
         case 'n': if (cx < x1) cx++; if (cy < MAPH - 1) cy++; break;
         default:                       /* any other key ends the look */
+            key_rpt_slow(0);
             msg("");
             in_wait_nokey();
             return;

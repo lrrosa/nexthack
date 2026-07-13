@@ -296,9 +296,13 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x19,0x19,0x3E,0x5A,0x18,0x18,0x24,0x66 }, /* HERO (person, raised sword: blade joins the right arm) */
     { 0x00,0x60,0xB1,0x7F,0x7E,0x24,0x24,0x00 }, /* DOG (quadruped; eye up in
                                                   * the head, thin tail up)  */
-    { 0x00,0x00,0x40,0xFC,0xFF,0x44,0x00,0x00 }, /* RAT (simple solid blob:
+    { 0x00,0x00,0x40,0xBC,0xFF,0x44,0x00,0x00 }, /* RAT (simple solid blob:
                                                   * ear, snout left, tail
-                                                  * right, two stubby legs)  */
+                                                  * right, two stubby legs;
+                                                  * eye hole under the ear --
+                                                  * safe here: the solid row
+                                                  * below keeps the head one
+                                                  * piece, unlike round 3)   */
     { 0x00,0x3C,0x7E,0x7E,0x7E,0x7E,0x3C,0x00 }, /* GOLD     (coin)         */
     { 0x00,0x06,0x0F,0x1E,0x3C,0x78,0x30,0x00 }, /* FOOD     (drumstick)    */
     { 0x10,0x7C,0xD6,0x70,0x1C,0xD6,0x7C,0x10 }, /* DOLLAR   ($ glyph)      */

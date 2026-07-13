@@ -126,6 +126,9 @@ int getkey(void);
 /* getkey with typematic repeat: a fresh press acts at once, a held key repeats
  * after a beat -- the turn loop's read, so a tap is exactly one step */
 int getkey_rpt(void);
+/* slow getkey_rpt's held repeat while a modal cursor is up (farlook); pass 0
+ * to restore the walk pace. No-op on the 128K, whose pace already fits. */
+void key_rpt_slow(uint8_t on);
 
 /* ---- save-file I/O via NextZXOS/esxDOS ---- */
 #define FILE_ERR 0xFF                        /* handle returned on failure */
