@@ -20,7 +20,13 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 - **Creatures face where they walk.** The hero, the dog and the rat turn
   left or right with their last horizontal step (you also turn toward a
   wall you bump). On the Next this is the tilemap's hardware mirror; on
-  the 128K three pre-mirrored shapes are built at startup.
+  the 128K three pre-mirrored shapes are built at startup. The hero's
+  sword leads the way — his art is right-handed, so he mirrors walking
+  left; the animals face left and mirror walking right.
+- **Wanderers no longer pop into view.** A wandering monster could
+  materialise on a cell you were looking at — across a lit room it read
+  as a ghost (a wild dog doubly so). They now always arrive off-screen,
+  as the code always claimed they did.
 - **Discoveries (`D`).** A screen mapping each potion and scroll look you
   have identified to its true meaning — *"ruby potion: healing"*, *"ZELGO
   MER: remove curse"*. What you haven't drunk or read stays a mystery.
@@ -47,9 +53,9 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 ### Changed
 - The rat gained an eye under its ear on both targets: a red pixel on the
   Next, a one-pixel hole in the 128K silhouette.
-- The farlook cursor on the Next now glides at a deliberate ~140 ms step
-  (it inherited the Next's brisk walk repeat and overshot; the first
-  slowdown to the 128K's pace still felt rushed in play).
+- The farlook cursor on the Next settled at a ~100 ms step after play
+  found ~80 ms rushed and ~140 ms sluggish (it originally inherited the
+  Next's brisk walk repeat and overshot).
 
 ## [0.11.0] — 2026-07-12
 

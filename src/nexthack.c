@@ -71,7 +71,8 @@ uint8_t  el_x = 0, el_y = 0, el_life = 0;    /* Elbereth engraving (see game.h) 
 uint16_t pray_timeout = 0;                   /* turns until you may pray again */
 uint8_t  have_pet = 0;                        /* a living dog follows you (see game.h) */
 uint8_t  pet_hp = 0;                          /* the pet's health, carried across levels */
-uint8_t  hero_face = 0;                       /* 1 = facing right, drawn mirrored (see game.h) */
+uint8_t  hero_face = 1;                       /* 1 = facing right -- the hero art's natural,
+                                               * sword-on-the-right pose (see game.h) */
 uint8_t  pet_kills = 0;                       /* its lifetime kills (growth; see game.h) */
 uint16_t cnt_kills = 0, cnt_corpses = 0, cnt_reads = 0, cnt_prayers = 0;   /* conducts */
 
@@ -437,11 +438,13 @@ void draw_map(void) __banked
                 t = tile_for(lvl[y][x]);
                 attr = 0x10;                      /* palette offset 1     */
             }
-            /* directional art faces left; facing right = the tilemap's
-             * hardware X-mirror (attribute bit 3), zero tile memory. mi is
-             * fresh whenever t is a creature tile (set in that same branch). */
+            /* directional art: the animals face left, the hero (sword on his
+             * right arm) faces RIGHT -- so each mirrors on its off side, via
+             * the tilemap's hardware X-mirror (attribute bit 3, zero tile
+             * memory). mi is fresh whenever t is a creature tile (set in
+             * that same branch). */
             if (t == T_HERO) {
-                if (hero_face) attr |= 0x08;
+                if (!hero_face) attr |= 0x08;
             } else if ((t == T_DOG || t == T_RAT) && m_face[mi]) {
                 attr |= 0x08;
             }
@@ -492,13 +495,15 @@ static void dm_paint(uint8_t mapx, uint8_t mapy, uint8_t vx, uint8_t t, uint8_t 
     }
 }
 
-/* directional art faces left; facing right swaps in the pre-mirrored UDG copy
- * built at startup (ids past inv's blocked range -- see platform.h). The caller
- * keeps computing the ATTR from the base tile, so udg_ink[] is never indexed
- * with a mirrored id. */
-static uint8_t face_tile(uint8_t t, uint8_t face)
+/* directional art: pass mir=1 to swap in the pre-mirrored UDG copy built at
+ * startup (ids past inv's blocked range -- see platform.h). The animals face
+ * left so they mirror when facing right; the hero (sword on his right arm)
+ * faces right, so his callers pass !hero_face. The caller keeps computing
+ * the ATTR from the base tile, so udg_ink[] is never indexed with a
+ * mirrored id. */
+static uint8_t face_tile(uint8_t t, uint8_t mir)
 {
-    if (face) {
+    if (mir) {
         if (t == T_HERO) return T_HERO_R;
         if (t == T_DOG)  return T_DOG_R;
         if (t == T_RAT)  return T_RAT_R;
@@ -580,7 +585,7 @@ void draw_map(void) __banked
             (prev_hx != (uint8_t)hero_x || prev_hy != (uint8_t)hero_y))
             dm_terrain(prev_hx, prev_hy, vx);
         dm_paint((uint8_t)hero_x, (uint8_t)hero_y, vx,
-                 face_tile(T_HERO, hero_face),
+                 face_tile(T_HERO, (uint8_t)!hero_face),
                  (uint8_t)(udg_ink[T_HERO - T_ROCK] | 0x40));
         for (i = 0; i < MAXMON; i++) {
             uint8_t cmx = 255, cmy = 255;   /* this turn's drawn cell, or 255 = none */
@@ -666,7 +671,7 @@ void draw_map(void) __banked
                 mask = (uint8_t)(1u << (idx & 7));
                 x = (uint8_t)(vx + sc);
                 if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) {
-                    t = face_tile(T_HERO, hero_face);
+                    t = face_tile(T_HERO, (uint8_t)!hero_face);
                     attr = (uint8_t)(udg_ink[T_HERO - T_ROCK] | 0x40);
                 } else if (!(dm_seen[byte] & mask)) {
                     t = T_ROCK; attr = 0;

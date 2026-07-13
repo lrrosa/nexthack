@@ -209,6 +209,11 @@ void maybe_spawn_wanderer(void) __banked
     if (monster_at(x, y) >= 0)  return;      /* not onto another mon  */
     if (iabs((int)x - hero_x) <= 1 &&
         iabs((int)y - hero_y) <= 1) return;  /* not in the hero's lap */
+    if (fov_visible(x, y))      return;      /* and never in plain sight: a
+                                              * monster popping into existence
+                                              * across a lit room reads as a
+                                              * rendering ghost (the header
+                                              * always promised off-screen) */
 
     m_x[slot]    = x;
     m_y[slot]    = y;

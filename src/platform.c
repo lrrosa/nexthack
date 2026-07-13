@@ -265,7 +265,7 @@ int getkey(void)
  * while one is up the repeat drops to the 128K's ~80 ms pace, which already
  * feels right there -- so slowing is a no-op on the 128K. */
 #ifdef __ZXNEXT
-#define RPT_SLOW 7      /* ~140 ms: 4 (~80 ms) still felt rushed in play */
+#define RPT_SLOW 5      /* ~100 ms: 4 (~80 ms) felt rushed, 7 (~140 ms) sluggish */
 #else
 #define RPT_SLOW RPT_NEXT
 #endif
