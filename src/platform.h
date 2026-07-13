@@ -110,6 +110,16 @@ void    puttile_attr(uint8_t x, uint8_t y, uint8_t tile, uint8_t attr); /* UDG +
  * udg_bitmap[tile*8 + row] (the asm blits use the same base + index*8). */
 #define udg_bitmap ((uint8_t *)0x6680u)
 extern const uint8_t udg_ink[NTILES];
+/* Mirrored companions (hero/dog/rat facing RIGHT): bit-reversed copies built
+ * by build_udgs at startup. Their ids are NOT consecutive with the 48 base
+ * tiles: ids 176..192 would land the blit's 0x6680+(id-128)*8 address inside
+ * inv[] at 0x6800, so they live in the free gap ABOVE it -- 0x6888..0x68A0
+ * (ids 193..195), reached by the same formula, ending exactly at fov_pool.
+ * Never index udg_ink[] with these ids (compute the attr from the base tile,
+ * as the renderer's face_tile callers do). */
+#define T_HERO_R 193
+#define T_DOG_R  194
+#define T_RAT_R  195
 #endif
 uint8_t print_str(uint8_t x, uint8_t y, const char *s, uint8_t coff);
 uint8_t put_uint(uint8_t x, uint8_t y, uint16_t v, uint8_t coff);

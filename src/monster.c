@@ -22,6 +22,9 @@ uint8_t m_sleep[MAXMON];  /* >0: asleep. 255 = until disturbed (spawn sleepers);
 uint8_t m_peace[MAXMON];  /* 1 = peaceful (Minetown natives): minds its own
                            * business until the hero draws blood (monster_ai
                            * then angers the whole town). */
+uint8_t m_face[MAXMON];   /* 1 = last stepped right: directional art (dog/rat)
+                           * draws mirrored. Transient like a pose -- zeroed
+                           * each spawn, never saved. */
 uint8_t mcount;
 int8_t  pet_idx = -1;     /* the pet's slot this level (see monster.h), -1 = none */
 uint8_t mon_dead[MAXLVL + 1];   /* bit i: monster i killed. Written by combat
@@ -90,6 +93,13 @@ const MonType *mon_find(char ch)
 
 const char *mon_name(char t) { return mon_find(t)->name; }
 uint8_t     mon_tile(char t) { return mon_find(t)->tile; }
+
+/* turn monster i toward the column it is about to step to (call BEFORE the
+ * m_x write); a vertical step keeps the last facing, like a real animal */
+void mon_face_to(uint8_t i, uint8_t nx)
+{
+    if (nx != m_x[i]) m_face[i] = (uint8_t)(nx > m_x[i]);
+}
 
 int monster_at(int x, int y)
 {

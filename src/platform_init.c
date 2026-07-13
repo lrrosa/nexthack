@@ -357,6 +357,21 @@ static void build_udgs(void)
     for (t = 0; t < NTILES; t++)
         for (row = 0; row < 8; row++)
             udg_bitmap[(uint16_t)t * 8 + row] = udg_src[t][row];
+
+    /* the mirrored companions (hero/dog/rat walking right): bit-reversed
+     * copies at ids 193..195 -- see platform.h for why they sit past the
+     * id range that inv[] blocks */
+    {
+        static const uint8_t msrc[3] = { T_HERO - T_ROCK, T_DOG - T_ROCK,
+                                         T_RAT - T_ROCK };
+        uint8_t k, j;
+        for (k = 0; k < 3; k++)
+            for (row = 0; row < 8; row++) {
+                uint8_t b = udg_src[msrc[k]][row], m = 0;
+                for (j = 0; j < 8; j++) { m = (uint8_t)((m << 1) | (b & 1)); b >>= 1; }
+                udg_bitmap[(uint16_t)(T_HERO_R - T_ROCK + k) * 8 + row] = m;
+            }
+    }
 }
 
 void tm_init(void) __banked

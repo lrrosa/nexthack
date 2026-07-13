@@ -94,6 +94,10 @@ extern uint16_t pray_timeout;
  * for the live slot. */
 extern uint8_t  have_pet;
 extern uint8_t  pet_hp;
+extern uint8_t  hero_face;  /* 1 = facing right: the hero tile draws mirrored.
+                             * Set by try_move on horizontal steps (even blocked
+                             * ones -- you turn toward what you bump). Transient
+                             * pose, never saved. */
 /* conduct counters (v0.10, saved): 0 at death/victory = the conduct held.
  * kills = by the HERO's hand (pet kills stay pacifist); corpses = flesh
  * eaten; reads = scrolls read + books studied; prayers = prayers AND altar

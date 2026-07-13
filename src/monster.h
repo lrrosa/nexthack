@@ -23,6 +23,8 @@ extern uint8_t m_sleep[];    /* >0 = asleep: 255 sleeps until disturbed (spawn
                               * sleepers), less is a turn countdown (wand/spell) */
 extern uint8_t m_peace[];    /* 1 = peaceful: ambles, never attacks; striking
                               * it angers the town (try_move swaps past them) */
+extern uint8_t m_face[];     /* 1 = last stepped right: directional art (dog/
+                              * rat) draws mirrored; set via mon_face_to      */
 extern char    m_type[];
 extern uint8_t mon_dead[];   /* per-depth kill bitmask (bit i: slot i slain);
                               * shared by monster_ai.c (combat sets bits) and
@@ -58,6 +60,8 @@ const MonType  *mon_find(char ch);
 const char     *mon_name(char t);
 uint8_t         mon_tile(char t);
 char            pick_mon(void);   /* a depth-appropriate monster char */
+void            mon_face_to(uint8_t i, uint8_t nx);  /* turn i toward column nx
+                                                      * (call before moving it) */
 
 /* ---- BANKED entry points (monster_ai.c): reached via the trampoline ---- */
 void spawn_level_monsters(void)     __banked;

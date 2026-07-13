@@ -351,24 +351,29 @@ static uint8_t id_known[(NUMOBJ + 7) / 8];   /* one "identified?" bit per otyp *
 static uint8_t id_is(uint8_t otyp)  { return (id_known[otyp >> 3] >> (otyp & 7)) & 1u; }
 static void    id_set(uint8_t otyp) { id_known[otyp >> 3] |= (uint8_t)(1u << (otyp & 7)); }
 
+/* this game's look for a type, identified or not (the discoveries screen
+ * needs it for types you HAVE learned; other classes just show their name) */
+static const char *appearance_of(uint8_t otyp)
+{
+    char cls = objtypes[otyp].cls;
+    /* per-class ordinal: the appended arsenal types sit past their class
+     * block, so map them onto the next pool slots (keeps looks unique) */
+    if (cls == '!') {
+        uint8_t o = (otyp == O_GAINLVL) ? 5 : (uint8_t)(otyp - O_HEAL);
+        return pot_appear[(uint8_t)(o + (world_seed % NPOT)) % NPOT];
+    }
+    if (cls == '?') {
+        uint8_t o = (otyp >= O_ENCHW) ? (uint8_t)(3 + otyp - O_ENCHW)
+                                      : (uint8_t)(otyp - O_MAPPING);
+        return scr_appear[(uint8_t)(o + (world_seed % NSCR)) % NSCR];
+    }
+    return objtypes[otyp].name;
+}
+
 /* display name: the true name once identified, else this game's appearance */
 static const char *item_name(uint8_t otyp)
 {
-    char cls = objtypes[otyp].cls;
-    if (!id_is(otyp)) {
-        /* per-class ordinal: the appended arsenal types sit past their class
-         * block, so map them onto the next pool slots (keeps looks unique) */
-        if (cls == '!') {
-            uint8_t o = (otyp == O_GAINLVL) ? 5 : (uint8_t)(otyp - O_HEAL);
-            return pot_appear[(uint8_t)(o + (world_seed % NPOT)) % NPOT];
-        }
-        if (cls == '?') {
-            uint8_t o = (otyp >= O_ENCHW) ? (uint8_t)(3 + otyp - O_ENCHW)
-                                          : (uint8_t)(otyp - O_MAPPING);
-            return scr_appear[(uint8_t)(o + (world_seed % NSCR)) % NSCR];
-        }
-    }
-    return objtypes[otyp].name;
+    return id_is(otyp) ? objtypes[otyp].name : appearance_of(otyp);
 }
 
 /* a printable description with an erosion prefix and +N enchantment, e.g.
@@ -1059,6 +1064,56 @@ void show_inventory(void) __banked
     /* the caller redraws the map afterwards */
 }
 #endif
+
+/* ---- discoveries ('\'): the potion and scroll looks you have decoded ----
+ * Only those two classes wear per-game appearances (everything else shows
+ * its true name from day one), so the screen maps look -> meaning for each
+ * type you have identified. One 32-col layout for both targets, like the
+ * shared help screen; the main loop repaints the map afterwards. */
+void show_discoveries(void) __banked
+{
+    static const char cls_of[2] = { '!', '?' };
+    uint8_t i, y, c, row = 2, any = 0;
+
+    for (y = 0; y <= 21; y++)
+        clear_line(y, C_BLACK);
+#ifndef __ZXNEXT
+    clear_line(22, C_BLACK); clear_line(23, C_BLACK);
+    map_dirty = 1;                   /* restore the map + status on return */
+#endif
+    print_str(0, 0, "Discoveries  (any key)", C_WHITE | C_BRIGHT);
+
+    for (c = 0; c < 2; c++) {
+        uint8_t shown = 0;
+        for (i = 0; i < NUMOBJ; i++) {
+            const char *ap;
+            uint8_t x;
+            if (objtypes[i].cls != cls_of[c] || !id_is(i)) continue;
+            if (!shown) {
+                print_str(1, row, c ? "Scrolls:" : "Potions:", C_CYAN | C_BRIGHT);
+                row++; shown = 1;
+            }
+            /* the look, then the true name's tail ("potion of "/"scroll of "
+             * = 10 chars); scroll looks drop their "scroll labeled " prefix
+             * (15 chars) so the longest pair stays inside 32 columns */
+            ap = appearance_of(i);
+            x = print_str(2, row, c ? ap + 15 : ap, C_YELLOW | C_BRIGHT);
+            x = print_str(x, row, ": ", C_WHITE);
+            print_str(x, row, objtypes[i].name + 10, C_WHITE | C_BRIGHT);
+            row++; any = 1;
+        }
+        if (shown) row++;
+    }
+    if (!any)
+        print_str(2, 2, "Nothing identified yet.", C_WHITE);
+
+    in_wait_nokey();
+    getkey();
+    in_wait_nokey();
+#ifndef __ZXNEXT
+    clear_line(0, C_BLACK);   /* no message follows: wipe the header row */
+#endif
+}
 
 /* ---- equip / use ---- */
 

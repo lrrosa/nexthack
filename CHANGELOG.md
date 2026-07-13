@@ -17,6 +17,21 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
   altars with their alignment, terrain. Honours what you can actually know:
   unexplored cells stay unknown, monsters show only in sight (or by
   telepathy), remembered terrain reads from memory. Costs no turn.
+- **Creatures face where they walk.** The hero, the dog and the rat turn
+  left or right with their last horizontal step (you also turn toward a
+  wall you bump). On the Next this is the tilemap's hardware mirror; on
+  the 128K three pre-mirrored shapes are built at startup.
+- **Discoveries (`D`).** A screen mapping each potion and scroll look you
+  have identified to its true meaning — *"ruby potion: healing"*, *"ZELGO
+  MER: remove curse"*. What you haven't drunk or read stays a mystery.
+  (NetHack's `\` also works, but no Spectrum key produces that character,
+  so `D` is the listed key.)
+- **Two new traps.** The dungeon's floor now also hides teleport traps
+  (whisked across the level) and rust traps (a gush of water that rusts
+  your worn armour), alongside the trap door, the dart and the gas.
+- **Combat speaks with more than one verb.** You hit, smite and whack;
+  what bites you may also hit or tear at you. Kills are killed, slain or
+  destroyed — murder is still murder.
 
 ### Fixed
 - **The dog no longer misses a cramped landing.** Arriving on stairs whose
@@ -32,8 +47,9 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 ### Changed
 - The rat gained an eye under its ear on both targets: a red pixel on the
   Next, a one-pixel hole in the 128K silhouette.
-- The farlook cursor glides at the walking pace of the 128K on the Next too
-  (it inherited the Next's brisker walk repeat and overshot).
+- The farlook cursor on the Next now glides at a deliberate ~140 ms step
+  (it inherited the Next's brisk walk repeat and overshot; the first
+  slowdown to the 128K's pace still felt rushed in play).
 
 ## [0.11.0] — 2026-07-12
 

@@ -83,6 +83,10 @@ start_game:
         case 'z': do_zap();         in_wait_nokey(); break;   /* zap a wand       */
         case 'Z': do_cast();        in_wait_nokey(); break;   /* cast a spell     */
         case 'i': show_inventory(); break;          /* viewing costs no turn */
+        case '\\':                                  /* NetHack's key -- but no
+                                                     * Spectrum key makes '\',
+                                                     * so 'D' is the real one */
+        case 'D': show_discoveries(); break;        /* what the looks mean   */
         case '?': show_help();      break;          /* full key-list screen; no turn */
         case 'd': do_drop(); in_wait_nokey(); break; /* drop an item (sells in a shop) */
         case 'E':                                   /* engrave Elbereth in the dust */

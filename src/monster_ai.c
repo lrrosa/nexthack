@@ -92,13 +92,19 @@ void hit_monster(uint8_t mi, uint8_t dmg) __banked
             else if (rn2(2))                         /* ...or its corpse     */
                 corpse_drop(m_x[mi], m_y[mi], m_type[mi]);
         }
-        msg2(was_peace ? "You murder the " : "You kill the ", mt->name, "!");
+        {   /* the killing blow gets a little colour (runtime rn2: gen-safe) */
+            static const char *const killv[3] =
+                { "You kill the ", "You slay the ", "You destroy the " };
+            msg2(was_peace ? "You murder the " : killv[rn2(3)], mt->name, "!");
+        }
         sfx_kill();
         cnt_kills++;                    /* by your hand (conducts) */
         gain_xp(mt->xp);
     } else {
+        static const char *const hitv[3] =
+            { "You hit the ", "You smite the ", "You whack the " };
         m_hp[mi] = (uint8_t)(m_hp[mi] - dmg);
-        msg2("You hit the ", mt->name, ".");
+        msg2(hitv[rn2(3)], mt->name, ".");
         sfx_hit();
     }
 }
@@ -153,8 +159,10 @@ static void monster_hits_player(uint8_t i)
         php = 0; dead = 1;
         msg2("The ", mt->name, " kills you!");
     } else {
+        static const char *const bitev[3] =
+            { " bites you!", " hits you!", " tears at you!" };
         php = (uint8_t)(php - bite);
-        msg2("The ", mt->name, " bites you!");
+        msg2("The ", mt->name, bitev[rn2(3)]);
         if (mt->corr && rn2(2))     /* acid/rust corrodes your worn armour */
             corrode_worn('[');
         switch (mt->atk) {          /* special on-hit effects (status-effect layer) */
@@ -227,6 +235,7 @@ static void peace_amble(uint8_t i)
     if (nx == hero_x && ny == hero_y) return;
     if (monster_at(nx, ny) >= 0) return;
     if (shop_in_room(nx, ny)) return;      /* the shop is the keeper's floor */
+    mon_face_to(i, (uint8_t)nx);
     m_x[i] = (uint8_t)nx; m_y[i] = (uint8_t)ny;
 }
 
@@ -353,7 +362,11 @@ static void step_to_hero(uint8_t i)
     }
     if (bestx >= 0) {
         int mj = monster_at(bestx, besty);
-        if (mj >= 0) { m_x[mj] = m_x[i]; m_y[mj] = m_y[i]; } /* keeper steps aside */
+        if (mj >= 0) {                                       /* keeper steps aside */
+            mon_face_to((uint8_t)mj, m_x[i]);
+            m_x[mj] = m_x[i]; m_y[mj] = m_y[i];
+        }
+        mon_face_to(i, (uint8_t)bestx);
         m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty;
     }
 }
@@ -471,7 +484,11 @@ static uint8_t pet_heel_greedy(uint8_t i)   /* 1 = heeled/stepped, 0 = boxed in 
     }
     if (bestx >= 0) {
         int mj = monster_at(bestx, besty);
-        if (mj >= 0) { m_x[mj] = m_x[i]; m_y[mj] = m_y[i]; }  /* keeper steps aside */
+        if (mj >= 0) {                                        /* keeper steps aside */
+            mon_face_to((uint8_t)mj, m_x[i]);
+            m_x[mj] = m_x[i]; m_y[mj] = m_y[i];
+        }
+        mon_face_to(i, (uint8_t)bestx);
         m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty;
         return 1;
     }
@@ -512,7 +529,11 @@ static uint8_t enemy_chase_greedy(uint8_t i)
             bestc = c; bestm = m; bestx = nx; besty = ny;
         }
     }
-    if (bestx >= 0) { m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty; return 1; }
+    if (bestx >= 0) {
+        mon_face_to(i, (uint8_t)bestx);
+        m_x[i] = (uint8_t)bestx; m_y[i] = (uint8_t)besty;
+        return 1;
+    }
     return 0;
 }
 #endif

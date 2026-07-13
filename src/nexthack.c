@@ -71,6 +71,7 @@ uint8_t  el_x = 0, el_y = 0, el_life = 0;    /* Elbereth engraving (see game.h) 
 uint16_t pray_timeout = 0;                   /* turns until you may pray again */
 uint8_t  have_pet = 0;                        /* a living dog follows you (see game.h) */
 uint8_t  pet_hp = 0;                          /* the pet's health, carried across levels */
+uint8_t  hero_face = 0;                       /* 1 = facing right, drawn mirrored (see game.h) */
 uint8_t  pet_kills = 0;                       /* its lifetime kills (growth; see game.h) */
 uint16_t cnt_kills = 0, cnt_corpses = 0, cnt_reads = 0, cnt_prayers = 0;   /* conducts */
 
@@ -436,6 +437,14 @@ void draw_map(void) __banked
                 t = tile_for(lvl[y][x]);
                 attr = 0x10;                      /* palette offset 1     */
             }
+            /* directional art faces left; facing right = the tilemap's
+             * hardware X-mirror (attribute bit 3), zero tile memory. mi is
+             * fresh whenever t is a creature tile (set in that same branch). */
+            if (t == T_HERO) {
+                if (hero_face) attr |= 0x08;
+            } else if ((t == T_DOG || t == T_RAT) && m_face[mi]) {
+                attr |= 0x08;
+            }
             if (has_shop && (t == T_WALL || t == T_MINEWALL) &&
                 x >= sx && x <= sx1 && y >= sy && y <= sy1)
                 t = T_SHOPWALL;   /* shop walls: warm bricks -- Minetown's
@@ -481,6 +490,20 @@ static void dm_paint(uint8_t mapx, uint8_t mapy, uint8_t vx, uint8_t t, uint8_t 
         puttile_attr(sc, (uint8_t)(OY + mapy), t, attr);
         shad[si] = t; shad[si + 1] = attr;
     }
+}
+
+/* directional art faces left; facing right swaps in the pre-mirrored UDG copy
+ * built at startup (ids past inv's blocked range -- see platform.h). The caller
+ * keeps computing the ATTR from the base tile, so udg_ink[] is never indexed
+ * with a mirrored id. */
+static uint8_t face_tile(uint8_t t, uint8_t face)
+{
+    if (face) {
+        if (t == T_HERO) return T_HERO_R;
+        if (t == T_DOG)  return T_DOG_R;
+        if (t == T_RAT)  return T_RAT_R;
+    }
+    return t;
 }
 
 /* paint a cell's TERRAIN (the pass-1 non-hero logic) -- used by the fast path to
@@ -556,7 +579,8 @@ void draw_map(void) __banked
         if (prev_hx != 255 &&
             (prev_hx != (uint8_t)hero_x || prev_hy != (uint8_t)hero_y))
             dm_terrain(prev_hx, prev_hy, vx);
-        dm_paint((uint8_t)hero_x, (uint8_t)hero_y, vx, T_HERO,
+        dm_paint((uint8_t)hero_x, (uint8_t)hero_y, vx,
+                 face_tile(T_HERO, hero_face),
                  (uint8_t)(udg_ink[T_HERO - T_ROCK] | 0x40));
         for (i = 0; i < MAXMON; i++) {
             uint8_t cmx = 255, cmy = 255;   /* this turn's drawn cell, or 255 = none */
@@ -579,7 +603,8 @@ void draw_map(void) __banked
                 dm_terrain(prev_mx[i], prev_my[i], vx);
             if (cmx != 255) {
                 t = mon_tile(m_type[i]);
-                dm_paint(cmx, cmy, vx, t, (uint8_t)(udg_ink[t - T_ROCK] | 0x40));
+                dm_paint(cmx, cmy, vx, face_tile(t, m_face[i]),
+                         (uint8_t)(udg_ink[t - T_ROCK] | 0x40));
             }
         }
     } else {
@@ -614,7 +639,8 @@ void draw_map(void) __banked
             vb = (uint16_t)m_y[i] * TM_W + (uint16_t)(m_x[i] - vx);
             mon_bm[vb >> 3] |= (uint8_t)(1u << (vb & 7));
             mt = mon_tile(m_type[i]);
-            dm_paint(m_x[i], m_y[i], vx, mt, (uint8_t)(udg_ink[mt - T_ROCK] | 0x40));
+            dm_paint(m_x[i], m_y[i], vx, face_tile(mt, m_face[i]),
+                     (uint8_t)(udg_ink[mt - T_ROCK] | 0x40));
         }
         /* erase where each monster was drawn last turn (unless a monster is there
          * now) RIGHT AWAY -- not in the slow terrain pass below -- so the old cell
@@ -640,7 +666,7 @@ void draw_map(void) __banked
                 mask = (uint8_t)(1u << (idx & 7));
                 x = (uint8_t)(vx + sc);
                 if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) {
-                    t = T_HERO;
+                    t = face_tile(T_HERO, hero_face);
                     attr = (uint8_t)(udg_ink[T_HERO - T_ROCK] | 0x40);
                 } else if (!(dm_seen[byte] & mask)) {
                     t = T_ROCK; attr = 0;
@@ -848,7 +874,7 @@ void show_help(void) __banked
     print_str(2,  5, "Stairs: > < or Enter", C_CYAN | C_BRIGHT);
     print_str(2,  6, "s search . wait ; look", C_CYAN | C_BRIGHT);
     print_str(2,  8, ", pick up",            C_CYAN | C_BRIGHT);
-    print_str(2,  9, "i inventory",          C_CYAN | C_BRIGHT);
+    print_str(2,  9, "i inventory  D found", C_CYAN | C_BRIGHT);
     print_str(2, 10, "w wield    W wear",    C_CYAN | C_BRIGHT);
     print_str(2, 11, "P ring     t throw",   C_CYAN | C_BRIGHT);
     print_str(2, 12, "q quaff    e eat",     C_CYAN | C_BRIGHT);
@@ -1203,8 +1229,10 @@ static void add_sprung(uint8_t x, uint8_t y)
 
 /* Deterministic per-cell trap: a side hash (never rn2, so level generation and
  * persistence stay in sync). From Dlvl 2 on, ~1/47 of floor cells hide one of
- * three traps; it springs the first time you step there. */
-#define NTRAP 3
+ * five traps; it springs the first time you step there. (Growing NTRAP only
+ * remaps which trap a cell hides -- placement, saves and persistence are
+ * untouched, since the type is derived, never stored.) */
+#define NTRAP 5
 static int trap_type(uint8_t x, uint8_t y)
 {
     uint16_t h;
@@ -1238,13 +1266,23 @@ static void spring_trap(int t, uint8_t x, uint8_t y)
         sfx_hurt();
         if (php <= d) { php = 0; dead = 1; }
         else        php = (uint8_t)(php - d);
-    } else {                            /* sleeping gas */
+    } else if (t == 2) {                /* sleeping gas */
         if (intrinsics & INTR_SLEEP_RES) {
             msg("A whiff of gas.  You yawn.");
         } else {
             msg("Sleeping gas!");
             st_sleep = (uint8_t)(st_sleep + rn2(4) + 3);
         }
+    } else if (t == 3) {                /* teleport trap: whisked away (the
+                                         * runtime rn2 is safe, like the scroll) */
+        uint8_t tx, ty;
+        msg("A teleport trap!");
+        sfx_magic();
+        level_random_floor(&tx, &ty);
+        hero_x = tx; hero_y = ty;
+    } else {                            /* rust trap: a gush from above */
+        msg("A gush of water hits you!");
+        corrode_worn('[');
     }
 }
 
@@ -1293,6 +1331,8 @@ void try_move(int dx, int dy) __banked
     if (st_conf) {                  /* confused: lurch off in a random direction */
         do { dx = (int)rn2(3) - 1; dy = (int)rn2(3) - 1; } while (!dx && !dy);
     }
+    if (dx > 0)      hero_face = 1;   /* turn toward the step (even a blocked one) */
+    else if (dx < 0) hero_face = 0;
     nx = hero_x + dx;
     ny = hero_y + dy;
     dest = terrain(nx, ny);
@@ -1311,6 +1351,7 @@ void try_move(int dx, int dy) __banked
             m_peace[mi]) {              /* swap past keeper/pet/peaceful -- a
                                          * townsman is murdered by choice
                                          * (throw/zap/cast), never by a bump */
+            mon_face_to((uint8_t)mi, (uint8_t)hero_x);
             m_x[mi] = (uint8_t)hero_x;             /* the keeper/pet steps aside */
             m_y[mi] = (uint8_t)hero_y;             /* so you never bump into it  */
             hero_x = nx; hero_y = ny;
