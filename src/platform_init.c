@@ -176,13 +176,13 @@ const uint8_t gfx[NTILES][64] = {
   { /* T_LUCKSTONE (a grey stone with a warm gleam) */
     0,0,0,0,0,0,0,0, 0,0,2,2,2,0,0,0, 0,2,3,3,2,2,0,0, 0,2,3,13,3,2,0,0,
     0,2,3,3,3,2,0,0, 0,0,2,2,2,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
-  { /* T_MINEWALL (rounded cobbles from the user's mock, round 2 of his
-     * markup: every stone staggered -- the square 3x3 and the seam domino
-     * lost a corner each (his red), the grout dots and the seam-merging tip
-     * went (his green), so no two stones touch. One tan fleck INSIDE a
-     * stone keeps the warmth without narrowing any joint. */
-    5,6,6,5,5,6,6,5, 5,6,6,6,5,6,6,6, 5,6,6,5,5,5,6,6, 5,5,5,5,5,5,5,5,
-    6,5,6,6,6,5,5,6, 6,5,6,7,6,6,5,6, 6,5,5,6,6,5,5,5, 5,5,5,5,5,5,6,5 },
+  { /* T_MINEWALL (rounded cobbles from the user's mock, markup rounds 2+3:
+     * every stone staggered and none touching; joints are BLACK like the
+     * surrounding dark, so mine rooms stop reading as boxes (his round-3
+     * call); a tan fleck inside EACH big stone (the second one added where
+     * he marked red). Shape identical to the 128K tile. */
+    0,6,6,0,0,6,6,0, 0,6,6,6,0,6,7,6, 0,6,6,0,0,0,6,6, 0,0,0,0,0,0,0,0,
+    6,0,6,6,6,0,0,6, 6,0,6,7,6,6,0,6, 6,0,0,6,6,0,0,0, 0,0,0,0,0,0,6,0 },
   { /* T_NYMPH (golden hair, fair face, green gown, arms reaching out) */
     0,0,13,13,13,13,0,0, 0,13,15,15,15,15,13,0, 0,0,15,1,1,15,0,0, 0,0,9,9,9,9,0,0,
     0,9,9,9,9,9,9,0, 0,0,9,9,9,9,0,0, 0,0,9,9,9,9,0,0, 0,0,9,0,0,9,0,0 }
