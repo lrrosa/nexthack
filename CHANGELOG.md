@@ -8,6 +8,29 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [0.12.1] — 2026-07-13
+
+Stones by hand, and the dog learns to excuse itself.
+
+### Fixed
+- **The dog no longer gets corked behind townsfolk.** The pet only knew
+  how to displace the shopkeeper, so a peaceful gnome idling in a
+  one-wide room trapped it while you walked on alone. It now swaps past
+  peaceful monsters exactly as you do.
+
+### Changed
+- **The mine walls are real cobbles now.** Rebuilt from a mock drawn by
+  the player, over three markup rounds: separate rounded stones at
+  varied offsets, none touching, meandering joints — the old two-band
+  tile read as brick courses in a run. On the Next the joints went
+  black like the surrounding rock (mine rooms stop looking like filled
+  boxes) with a tan fleck inside each big stone; the 128K keeps its
+  approved pure two-tone.
+- **The 128K acid blob has eyes**, matching the Next's.
+
+### Note — the save freeze holds
+- Saves from 0.10.0 onward **load unchanged**: art and pet manners only.
+
 ## [0.12.0] — 2026-07-13
 
 The interface release: the dungeon answers your questions — and everyone
