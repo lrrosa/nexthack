@@ -176,12 +176,13 @@ const uint8_t gfx[NTILES][64] = {
   { /* T_LUCKSTONE (a grey stone with a warm gleam) */
     0,0,0,0,0,0,0,0, 0,0,2,2,2,0,0,0, 0,2,3,3,2,2,0,0, 0,2,3,13,3,2,0,0,
     0,2,3,3,3,2,0,0, 0,0,2,2,2,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
-  { /* T_MINEWALL (rounded cobbles from the user's mock: separate clipped
-     * pebbles at varied offsets, meandering dark joints, one stone flush to
-     * each seam and tan glints in the grout -- the old two-band layout read
-     * as bricks in a run) */
-    5,6,6,5,5,6,6,6, 6,6,6,6,5,6,6,6, 5,6,6,5,5,5,6,6, 5,5,5,5,7,5,5,5,
-    6,5,6,6,6,5,5,6, 6,5,6,6,6,6,5,6, 6,5,5,6,6,5,5,6, 5,7,5,5,5,5,6,5 },
+  { /* T_MINEWALL (rounded cobbles from the user's mock, round 2 of his
+     * markup: every stone staggered -- the square 3x3 and the seam domino
+     * lost a corner each (his red), the grout dots and the seam-merging tip
+     * went (his green), so no two stones touch. One tan fleck INSIDE a
+     * stone keeps the warmth without narrowing any joint. */
+    5,6,6,5,5,6,6,5, 5,6,6,6,5,6,6,6, 5,6,6,5,5,5,6,6, 5,5,5,5,5,5,5,5,
+    6,5,6,6,6,5,5,6, 6,5,6,7,6,6,5,6, 6,5,5,6,6,5,5,5, 5,5,5,5,5,5,6,5 },
   { /* T_NYMPH (golden hair, fair face, green gown, arms reaching out) */
     0,0,13,13,13,13,0,0, 0,13,15,15,15,15,13,0, 0,0,15,1,1,15,0,0, 0,0,9,9,9,9,0,0,
     0,9,9,9,9,9,9,0, 0,0,9,9,9,9,0,0, 0,0,9,9,9,9,0,0, 0,0,9,0,0,9,0,0 }
@@ -343,8 +344,9 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x08,0x1C,0x3C,0x18,0x3C,0x18,0x24,0x24 }, /* GNOME   (pointy cap)     */
     { 0x3C,0x7E,0x3C,0x7E,0x5A,0x7E,0x24,0x66 }, /* DWARF   (helm + beard)   */
     { 0x00,0x38,0x7C,0x74,0x7C,0x38,0x00,0x00 }, /* LUCKSTONE (gleaming rock)*/
-    { 0x67,0xF7,0x63,0x08,0xB9,0xBD,0x99,0x42 }, /* MINEWALL (rounded cobbles
-                                                  * from the user's mock --
+    { 0x66,0x77,0x63,0x00,0xB9,0xBD,0x98,0x02 }, /* MINEWALL (rounded cobbles
+                                                  * from the user's mock,
+                                                  * round-2 markup applied --
                                                   * see the Next gfx entry)   */
     { 0x3C,0x7E,0x5A,0x3C,0x7E,0x3C,0x3C,0x24 }  /* NYMPH (haired face, gown,
                                                   * arms out for your pack)  */
