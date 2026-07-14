@@ -266,8 +266,10 @@ in ZEsarUX too. **Run and ship the `.tap`, not the `.sna`.**
 | `>` `<` or `Enter`        | stairs down / up |
 | `.` or Space              | wait a turn |
 | `s`                       | search the ground for nearby hidden traps |
+| `;`                       | look around the map (a cursor describes whatever it rests on) |
 | `,`                       | pick up the item under you |
 | `i`                       | show inventory |
+| `D`                       | discoveries: which potion/scroll looks you have identified |
 | `d`                       | drop an item (sells it in a shop; offers a corpse on an altar) |
 | `w` / `W`                 | wield weapon / wear armor |
 | `P`                       | put on a ring |

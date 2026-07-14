@@ -8,7 +8,10 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
-## [Unreleased]
+## [0.12.0] — 2026-07-13
+
+The interface release: the dungeon answers your questions — and everyone
+walks like they mean it.
 
 ### Added
 - **Farlook (`;`).** Move a yellow cursor around the map and be told what
@@ -51,11 +54,18 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
   remember exactly what you explored.
 
 ### Changed
-- The rat gained an eye under its ear on both targets: a red pixel on the
-  Next, a one-pixel hole in the 128K silhouette.
+- The rat gained an eye under its ear on both targets — a red pixel on
+  the Next, a one-pixel hole in the 128K silhouette — and the Next dog's
+  eye is now a white glint instead of a hole.
 - The farlook cursor on the Next settled at a ~100 ms step after play
   found ~80 ms rushed and ~140 ms sluggish (it originally inherited the
   Next's brisk walk repeat and overshot).
+
+### Note — the save freeze holds
+- Saves from 0.10.0 and 0.11.0 **load unchanged**. Facing is a transient
+  pose, trap types are derived from the standing side hash, and the
+  discoveries screen only reads what the pack already recorded: the save
+  format and the deterministic generation streams are untouched.
 
 ## [0.11.0] — 2026-07-12
 

@@ -56,9 +56,9 @@ const uint8_t gfx[NTILES][64] = {
      * belt, shield on the left arm, sword raised on the right, brown boots) */
     0,0,0,3,3,0,0,4, 0,0,3,3,3,3,0,4, 0,0,15,15,15,15,0,4, 2,0,11,11,11,11,0,4,
     2,3,11,11,11,11,15,6, 2,0,11,13,13,11,0,0, 0,0,11,0,0,11,0,0, 0,6,6,0,0,6,6,0 },
-  { /* T_DOG (side view: eared head left, eye up in the head, body, two
-     * legs, thin raised tail -- matches the 128K silhouette) */
-    0,0,0,0,0,0,0,0, 0,6,6,0,0,0,0,6, 6,0,6,6,0,0,0,6, 6,6,6,6,6,6,6,6,
+  { /* T_DOG (side view: eared head left, white eye up in the head, body,
+     * two legs, thin raised tail -- matches the 128K silhouette) */
+    0,0,0,0,0,0,0,0, 0,6,6,0,0,0,0,6, 6,4,6,6,0,0,0,6, 6,6,6,6,6,6,6,6,
     0,6,6,6,6,6,6,0, 0,6,0,0,0,6,0,0, 0,6,0,0,0,6,0,0, 0,0,0,0,0,0,0,0 },
   { /* T_RAT (simple solid rodent, matching the 128K glyph: ear, snout at
      * the left, tail trailing right, two stubby legs; red eye under the ear) */
