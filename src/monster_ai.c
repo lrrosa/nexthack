@@ -350,10 +350,14 @@ static void step_to_hero(uint8_t i)
             nd = dist[(uint16_t)ny * MAPW + nx];
             if (nd == UNREACH || nd >= bestd) continue;
             {   /* don't stack -- except the pet, which DISPLACES the keeper
-                 * (a swapped keeper parked on the door would seal the shop) */
+                 * (a swapped keeper parked on the door would seal the shop)
+                 * and the peaceful townsfolk (a gnome idling in a one-wide
+                 * room corked the dog behind it, user-caught in Minetown --
+                 * the hero already swaps past peacefuls, so the dog does too) */
                 int mj = monster_at(nx, ny);
                 if (mj >= 0 &&
-                    !(i == pet_idx && m_type[mj] == MON_KEEPER)) continue;
+                    !(i == pet_idx &&
+                      (m_type[mj] == MON_KEEPER || m_peace[mj]))) continue;
             }
             if (i != pet_idx && shop_in_room(nx, ny))
                 continue;                            /* shops are an enemy safe zone -- but your pet follows you in */
@@ -475,10 +479,13 @@ static uint8_t pet_heel_greedy(uint8_t i)   /* 1 = heeled/stepped, 0 = boxed in 
             if (t == '|' || t == '-' || t == ' ') continue;   /* wall/rock     */
             if (nx == hx && ny == hy) continue;               /* not onto hero */
             mj = monster_at(nx, ny);
-            if (mj >= 0 && m_type[mj] != MON_KEEPER) continue; /* don't stack --
-                                 * but the pet DISPLACES the keeper (below):
-                                 * a swapped keeper parked on the shop door
-                                 * would seal the dog in or out forever */
+            if (mj >= 0 && m_type[mj] != MON_KEEPER &&
+                !m_peace[mj]) continue;  /* don't stack -- but the pet
+                                 * DISPLACES the keeper AND the peaceful
+                                 * townsfolk (below): a keeper parked on the
+                                 * shop door would seal the dog in or out,
+                                 * and an idling gnome in a one-wide room
+                                 * corked the dog behind it (user-caught) */
             bestc = c; bestx = nx; besty = ny;
         }
     }
