@@ -25,3 +25,15 @@
 *.swp
 .DS_Store
 Thumbs.db
+
+# Claude Code: the skills in .claude/skills/ ARE part of the project (they
+# encode the banking + emulator-verification procedures); the local settings
+# file is per-machine permission grants and is not.
+.claude/settings.local.json
+
+# emulator droppings
+zesarux_autosave.zsf
+zesarux_index_menu.idx
+nexthack.sav
+nexthack.sav.bak
+nexthack.hi

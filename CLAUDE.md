@@ -59,8 +59,19 @@ list in **both** `build.bat` and `build.ps1`, and decide resident vs banked
 
 There are no automated tests. Verification is manual: build, then run in ZEsarUX
 and observe. The build agent **can** drive ZEsarUX itself over ZRCP (read memory,
-inject keys — see the `zesarux-zrcp-debugging` memory) to verify most behaviour;
-the human confirms the wall-clock *feel* (which ZRCP's CPU-pausing reads distort).
+inject keys) to verify most behaviour; the human confirms the wall-clock *feel*
+(which ZRCP's CPU-pausing reads distort).
+
+**Two skills in `.claude/skills/` carry the procedures this repo keeps needing:**
+- **`zrcp-verify`** — the emulator harness (`zrcp.ps1`: launch per target,
+  symbol lookup from the `.map`, read/poke, key injection, message-line decode
+  on both renderers) plus the trap list. Use it to prove any change; do not
+  hand-roll the plumbing.
+- **`bank-budget`** — `python tools/bankmap.py` prints the resident half, every
+  code bank's free tail and the **Bank-5 tenant map with overlap detection**;
+  the skill holds the relocation procedure for a full bank. Run it *before*
+  adding code, data, tiles or strings, and after any change to `NTILES`,
+  `FOV_SLOTS` or `MAXINV`.
 
 ### Gotchas that waste time
 - **128K: load the `.tap`, never the `.sna`.** The `.sna` boots the resident title
