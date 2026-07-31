@@ -71,6 +71,22 @@ if (Test-Path nexthack.nex) {
         $fat | ForEach-Object { "PAGE OVERFLOW: $($_.Name) is $($_.Length) bytes (16384 max)" }
         throw "Build aborted: a banked page overflowed its 16 KB window."
     }
+    # The guard above only sees a bank that outgrew its window. bankmap.py also
+    # catches what nothing else does: two Bank-5 tenants overlapping (a grown
+    # fov_pool swallowed PREV_VIS for two releases) and the Layer 2 palettes
+    # spilling out of bank 11 (scrambles the title, invisible to ZRCP). Silent
+    # when clean; the report only prints if something is wrong.
+    # Python is optional here (the Next build otherwise needs none) -- if it is
+    # missing we warn rather than block the build.
+    if (Get-Command python -ErrorAction SilentlyContinue) {
+        $bm = & python tools/bankmap.py next --check 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            $bm
+            throw "Build aborted: memory-map problem (see .claude/skills/bank-budget)."
+        }
+    } else {
+        "NOTE: python not found -- skipped the bankmap memory-map check."
+    }
     $code = (Select-String -Path nexthack.map -Pattern '__CODE_END_tail\s+=\s+\$([0-9A-Fa-f]+)').Matches[0].Groups[1].Value
     $bss  = (Select-String -Path nexthack.map -Pattern '__BSS_END_tail\s+=\s+\$([0-9A-Fa-f]+)').Matches[0].Groups[1].Value
     "OK: nexthack.nex built in {0:N1}s.  resident __CODE_END=`${1}  __BSS_END=`${2}" -f $sw.Elapsed.TotalSeconds, $code, $bss

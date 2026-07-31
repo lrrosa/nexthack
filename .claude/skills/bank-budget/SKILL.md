@@ -84,12 +84,18 @@ silently corrupted two parked levels' fog of war. Also standing: `udg_bitmap`
 ends **exactly** at `inv[]` — a 49th tile corrupts the inventory (the mirrored
 UDG annex dodges this by living at ids 193-195, past the blocked range).
 
-## Overflow guards already in the build
+## Guards already in the build
 
-`build.ps1` refuses an oversized `PAGE_*.bin`; `tools/mktap128.py` refuses an
-oversized bank binary. **They are load-bearing** — a silent BANK_3 overflow
-shipped a v1.5.0 `.tap` that crashed to BASIC on every template level. If a
-guard fires, relocate; never bypass it.
+Both build scripts run `python tools/bankmap.py <target> --check` after linking
+and **abort on any overlap, bank overflow or palette spill** — silent when
+clean, and the report names the offender (`PREV_VIS <== OVERLAPS fov_pool`).
+Alongside it: `build.ps1` refuses an oversized `PAGE_*.bin` and
+`tools/mktap128.py` an oversized bank binary.
+
+**They are load-bearing** — a silent BANK_3 overflow shipped a v1.5.0 `.tap`
+that crashed to BASIC on every template level. If a guard fires, relocate;
+never bypass it. (On the 128K the guard runs *after* `mktap128.py`, so a
+failed build leaves a stale `.tap` on disk: rebuild before running anything.)
 
 ## After the change
 

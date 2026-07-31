@@ -79,6 +79,15 @@ $objs = ($csrcs + $asrcs) | ForEach-Object { "obj-zx128/$_.o" }
 $sw.Stop()
 
 if (Test-Path nexthack128.tap) {
+    # mktap128.py already refuses a bank binary that outgrew its 16 KB window.
+    # bankmap.py adds what nothing else checks: two Bank-5 tenants overlapping
+    # (the grown fov_pool swallowed PREV_VIS for two releases). Silent when
+    # clean -- the report only prints if something is wrong.
+    $bm = & python tools/bankmap.py zx128 --check 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $bm
+        throw "Build aborted: memory-map problem (see .claude/skills/bank-budget)."
+    }
     $code = (Select-String -Path nexthack128.map -Pattern '__CODE_END_tail\s+=\s+\$([0-9A-Fa-f]+)').Matches[0].Groups[1].Value
     $bss  = (Select-String -Path nexthack128.map -Pattern '__BSS_END_tail\s+=\s+\$([0-9A-Fa-f]+)').Matches[0].Groups[1].Value
     "OK: nexthack128.tap + .sna built in {0:N1}s.  resident __CODE_END=`${1}  __BSS_END=`${2}" -f $sw.Elapsed.TotalSeconds, $code, $bss

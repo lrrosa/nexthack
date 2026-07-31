@@ -233,9 +233,12 @@ def report_resident(mapfile, label):
         return warn
     free = STACK_FLOOR - bss
     note = ''
-    if bss >= STACK_WARN:
-        note = '  <== under the %d B stack reserve!' % (STACK_FLOOR - STACK_WARN)
-        warn.append(('resident %s' % label, bss))
+    if bss >= STACK_FLOOR:
+        note = '  <== PAST THE STACK FLOOR -- will corrupt the stack!'
+        warn.append(('resident %s past the stack floor' % label, bss))
+    elif bss >= STACK_WARN:
+        # advice, not a defect: the project has shipped this tight before
+        note = '  (tight: under the %d B stack reserve)' % (STACK_FLOOR - STACK_WARN)
     print('    __CODE_END=$%04X  __BSS_END=$%04X   %d B to the stack floor '
           '($%04X)%s' % (out.get('__CODE_END_tail', 0), bss, free,
                          STACK_FLOOR, note))
@@ -287,8 +290,9 @@ def main(argv):
         problems += run(t)
     print()
     if problems:
-        print('!! %d problem(s) above -- see .claude/skills/bank-budget'
-              % len(problems))
+        print('!! %d problem(s) above: %s'
+              % (len(problems), ', '.join(str(p[0]) for p in problems)))
+        print('   see .claude/skills/bank-budget for the relocation procedure')
         return 1 if check else 0
     print('No overlaps or overflows.')
     return 0
