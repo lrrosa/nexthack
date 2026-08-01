@@ -57,6 +57,42 @@ pressure, and vice versa.
    consts → PAGE_28/BANK_0 (~3.2 KB resident reclaimed); `monster_spawn.c`
    split out of a full AI bank; `sfx.c` bounced BANK_3 → BANK_1.
 
+### Where the space actually is
+
+**Next:** plenty. Banks 10/11/13/14 hold code, 12 holds PAGE_22's const spill
+(so a `PAGE_24` section there collides — `bankmap.py` flags it), 16-21 hold the
+Layer 2 images. Bank 15 and 22+ are free; add a `SECTION PAGE_nn_CODE` +
+`ORG 0xnnC000` to `mmap.inc`.
+
+**128K: the whole machine is 8 banks and 7 of them are spoken for.**
+
+| Bank | Holds |
+|---|---|
+| 0 | `item.c` + its consts |
+| 1 | `levelgen`, `monster_spawn`, `sfx` |
+| 2 | **the resident half** (0x8000-0xBFFF, not pageable) |
+| 3 | `nexthack.c`, `platform_init`, `classes`, `spells` — **full** |
+| 4 | `levelfov`, `scr`, title/victory SCRs |
+| 5 | **the data bank** (0x4000-0x7FFF, always mapped — see the tenant map) |
+| 6 | `monster_ai`, `leveltmpl` — **full** |
+| 7 | **UNUSED — the last spare 16 KB** |
+
+**Bank 7 is free because the 128K's hardware shadow screen is not used.** That
+feature displays bank 7 as an alternate framebuffer (bit 3 of `0x7FFD`); this
+game never enables it — the renderer is dirty-cell, repainting ~10-30 changed
+cells a turn, so double buffering would cost *more* (a full back buffer every
+frame) than it saves, `0xC000` is already the banked-code window, and
+`banked_call.asm`'s `or 16` clears bit 3 on every banked call anyway. So bank 7
+is plain RAM, and it is where the next 128K module should go.
+
+Claiming it: `#pragma output CRT_ORG_BANK_7 = 0x07C000` in
+`zpragma-zx128.inc`, `#pragma codeseg BANK_7` in the module, and **an entry in
+`tools/mktap128.py`'s `BANKS` list** — an unpacked bank is simply absent and
+the first banked call crashes. Caveat: banks 1/3/5/7 are **contended** (slower),
+so bank 7 suits cold code — a title screen, one-time init, the AY player's
+data — not the per-turn AI. (BANK_1 and BANK_3 are already contended and hold
+code, so this is no new compromise.)
+
 ## When the resident half is tight
 
 In order of preference:

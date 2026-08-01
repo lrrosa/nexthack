@@ -187,6 +187,7 @@ def report_code_banks(prefix, label):
     print('  Code banks -- %s' % label)
     found = False
     over = []
+    seen = set()
     for fn in sorted(os.listdir(ROOT)):
         m = re.match(r'^%s_((?:PAGE|BANK)_\w+)\.bin$' % re.escape(prefix), fn)
         if not m:
@@ -198,9 +199,16 @@ def report_code_banks(prefix, label):
         size = os.path.getsize(os.path.join(ROOT, fn))
         free = BANK_SIZE - size
         found = True
+        n = re.match(r'^BANK_(\d+)$', name)
+        if n:
+            seen.add(int(n.group(1)))
         if free < 0:
             over.append((name, -free))
             note = '  <== OVERFLOWS by %d B' % -free
+        elif name == 'PAGE_24_CODE':
+            # bank 12 is NOT free space: this is PAGE_22's const spill. A new
+            # section ORG'd there collides ("overlaps PAGE_22") -- use 26/28.
+            note = '  <== PAGE_22 const spill, NOT usable (see mmap.inc)'
         elif free < 256:
             note = '  <== effectively FULL'
         elif free < 1024:
@@ -211,6 +219,21 @@ def report_code_banks(prefix, label):
               % (name, size, BANK_SIZE, free, note))
     if not found:
         print('    (no .bin files -- build the target first)')
+        return over
+
+    if prefix == 'nexthack128':
+        # The 128K has exactly 8 banks. 5 is the always-mapped data bank and 2
+        # is the resident 0x8000-0xBFFF half, so neither can hold banked code;
+        # anything else unlisted is a spare 16 KB. Report it -- this is the
+        # answer to "a bank is full, where do I move a module?".
+        spare = [b for b in range(8) if b not in seen and b not in (2, 5)]
+        for b in spare:
+            print('    %-14s %6s   %d B free   <== UNUSED: a spare bank%s'
+                  % ('BANK_%d' % b, '-', BANK_SIZE,
+                     ' (contended: cold code only)' if b % 2 else ''))
+        if spare:
+            print('      to claim one: CRT_ORG_BANK_n = 0x0nC000 in '
+                  'zpragma-zx128.inc + an entry in mktap128.py BANKS')
     return over
 
 
