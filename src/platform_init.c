@@ -277,11 +277,18 @@ void tm_init(void) __banked
 
 #else  /* plain ZX Spectrum 128K */
 
-#pragma codeseg BANK_3
+/* BANK_7 -- the last spare 128K bank, claimed when BANK_3 (nexthack.c +
+ * classes + spells) overflowed. This module is the right tenant: it runs ONCE
+ * at boot (bank 7 is contended RAM, so speed there is irrelevant), tm_init is
+ * already __banked, and its only const (udg_src below) is read solely by
+ * build_udgs in this same file -- nothing outside reads it cross-bank. Note
+ * udg_ink, which the renderers DO read everywhere, lives in the resident
+ * platform.c and is unaffected. (The Next keeps this module in PAGE_20.) */
+#pragma codeseg BANK_7
 
 /* 27 monochrome map tiles (1 byte/row, MSB = leftmost pixel), order matches
  * the T_ROCK.. numbering. Drawn for clarity at 8x8 on a single-ink cell. */
-#pragma constseg BANK_3
+#pragma constseg BANK_7
 static const uint8_t udg_src[NTILES][8] = {
     { 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 }, /* ROCK     (blank)        */
     { 0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00 }, /* FLOOR    (centre dot)   */

@@ -1378,7 +1378,8 @@ void try_move(int dx, int dy) __banked
     if (maybe_trap(dest, (uint8_t)nx, (uint8_t)ny)) return;
     if (dest == '$') {
         uint16_t amt = (uint16_t)(rn2(20) + 1);
-        gold = (uint16_t)(gold + amt);
+        if (gold > (uint16_t)(60000u - amt)) gold = 60000u;  /* clamp, 16-bit */
+        else                                 gold = (uint16_t)(gold + amt);
         level_take_gold((uint8_t)nx, (uint8_t)ny);
         msg_num("You pick up ", amt, " gold pieces.");
         sfx_gold();
@@ -1502,14 +1503,22 @@ void new_game(void) __banked
 
 struct hiscore { uint16_t magic, score, depth; uint8_t pclass, won; };
 
+/* saturating 16-bit add: the score is the headline of a finished run, so it
+ * pins at the maximum rather than wrapping to a humiliating small number */
+static uint16_t sadd(uint16_t a, uint16_t b)
+{
+    return (a > (uint16_t)(0xFFFFu - b)) ? 0xFFFFu : (uint16_t)(a + b);
+}
+
 /* the run's score: gold, plus depth/experience, plus big bonuses for the
- * Amulet and for surfacing with it (a win). uint16, plenty for a Z80 run. */
+ * Amulet and for surfacing with it (a win). A hoarder at the 60000 gold clamp
+ * who then won used to overflow uint16 and be shown a tiny score. */
 static uint16_t run_score(uint8_t victory)
 {
-    uint16_t s = gold;
-    s = (uint16_t)(s + max_dlvl * 50u + xp);
-    if (has_amulet) s = (uint16_t)(s + 1000u);
-    if (victory)    s = (uint16_t)(s + 2000u);
+    uint16_t s = sadd(gold, (uint16_t)(max_dlvl * 50u));   /* max_dlvl <= 50 */
+    s = sadd(s, xp);
+    if (has_amulet) s = sadd(s, 1000u);
+    if (victory)    s = sadd(s, 2000u);
     return s;
 }
 

@@ -43,6 +43,13 @@ static void gain_xp(uint8_t amt)
                                                            * +1 if hardy */
         uint8_t pwg = (uint8_t)(at_int >= 14 ? 2 : 1);    /* the mind grows too */
         xlvl++;
+        /* Cap like the other two max-HP writers (the altar boon and the
+         * gain-level potion both guard with `< 250`). Without it a hero at
+         * 252 -- legitimately reachable, since the altar's guard lets it add
+         * 3 on top of 249 -- wrapped the uint8_t and came out of the level-up
+         * with 2 max HP instead of 255. */
+        if (pmaxhp + gain > 250)               /* both promote to int here */
+            gain = (pmaxhp >= 250) ? 0 : (uint8_t)(250 - pmaxhp);
         pmaxhp = (uint8_t)(pmaxhp + gain);
         php = (uint8_t)(php + gain);
         if (pmaxpw < 30) {
@@ -640,7 +647,17 @@ void monsters_turn(void) __banked
     uint8_t awake = 0;
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i] || i == pet_idx || m_type[i] == MON_KEEPER) continue;
-        if (m_type[i] == 'x') continue;    /* a posing mimic wakes nothing */
+        if (m_type[i] == 'x') {
+            /* A posing mimic wakes no CHASE at a distance -- that is the whole
+             * point of the disguise, and flooding for it would cost the speed
+             * this early-out buys. But one at your elbow is about to spring,
+             * and the loop below is what reveals and bites: without this the
+             * mimic sat inert on a quiet level (and since 0.11 spawns half the
+             * dungeon asleep, quiet IS the common case). */
+            if (iabs((int)m_x[i] - hero_x) <= 1 &&
+                iabs((int)m_y[i] - hero_y) <= 1) awake = 1;
+            continue;
+        }
         if (m_peace[i]) continue;          /* townsfolk trigger no chase */
         if (still_asleep(i)) continue;     /* spawn sleepers roll their one
                                             * per-turn wake chance HERE (no

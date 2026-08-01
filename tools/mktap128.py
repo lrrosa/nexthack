@@ -40,7 +40,8 @@ BANKS = [("nexthack128_BANK_0.bin", "bank0", 0),   # item.c + consts (v0.9 recla
          ("nexthack128_BANK_1.bin", "bank1", 1),
          ("nexthack128_BANK_3.bin", "bank3", 3),
          ("nexthack128_BANK_4.bin", "bank4", 4),
-         ("nexthack128_BANK_6.bin", "bank6", 6)]   # monster_ai (spare bank)
+         ("nexthack128_BANK_6.bin", "bank6", 6),   # monster_ai (spare bank)
+         ("nexthack128_BANK_7.bin", "bank7", 7)]   # platform_init (the last spare)
 
 # ---- ZX BASIC tokens ----
 CLEAR, VAL, LOAD, CODE_T, OUT, POKE, PEEK, AND, LET, RAND, USR = \

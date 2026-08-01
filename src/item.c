@@ -1297,7 +1297,8 @@ static void quaff_fountain(void)
         break;
     case 3:                              /* coins glinting at the bottom */
         { uint16_t amt = (uint16_t)(rn2(30) + 5);
-          gold = (uint16_t)(gold + amt);
+          if (gold > (uint16_t)(60000u - amt)) gold = 60000u;  /* clamp, 16-bit */
+          else                                 gold = (uint16_t)(gold + amt);
           msg_num("You scoop up ", amt, " gold pieces."); }
         break;
     case 4:                              /* the fountain dries up */

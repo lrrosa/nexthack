@@ -11,3 +11,8 @@
 #pragma output CRT_ORG_BANK_3 = 0x03C000   ; cold code bank B
 #pragma output CRT_ORG_BANK_4 = 0x04C000   ; data/SCR bank (title/victory, Phase 2)
 #pragma output CRT_ORG_BANK_6 = 0x06C000   ; cold code bank C (monster_ai: pet AI overflowed BANK_1)
+#pragma output CRT_ORG_BANK_7 = 0x07C000   ; the LAST spare bank (platform_init: BANK_3 filled up).
+                                           ; Free because the hardware shadow screen -- which would
+                                           ; display bank 7 as an alternate framebuffer -- is not
+                                           ; used; see the bank-budget skill. Contended RAM, so it
+                                           ; suits one-time/cold code only.
