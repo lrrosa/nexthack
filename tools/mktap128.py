@@ -58,16 +58,30 @@ def basic_line(num, body):     # num big-endian, length little-endian, end 0x0D
 
 
 def loader_program():
-    """10 CLEAR VAL"32767": LET b=PEEK VAL"23388" AND VAL"248"
+    """10 CLEAR VAL"32767": LET b=PEEK VAL"23388" AND VAL"16"
        20 LOAD ""CODE                                    (resident -> 0x8000)
        30 OUT VAL"32765",b+VAL"1": POKE VAL"23388",b+VAL"1": LOAD ""CODE  (bank 1)
-       40/50 banks 3,4    60 LOAD ""CODE (boot stub)
-       70 OUT VAL"32765",VAL"16": POKE VAL"23388",VAL"16": RANDOMIZE USR VAL"23296"
-    b keeps the 0x7FFD ROM/screen bits while only the bank bits change (BANKM is
-    kept in sync); the final line pages bank 0 + 48K ROM and runs the stub."""
+       40/50/... one line per bank    then LOAD ""CODE (boot stub)
+       ... OUT VAL"32765",VAL"16": POKE VAL"23388",VAL"16": RANDOMIZE USR VAL"23296"
+    The final line pages bank 0 + the 48K ROM and runs the stub.
+
+    Why `b` exists, and why it masks to bit 4 ONLY (see the RAM-interface note
+    in CLAUDE.md). Bit 4 (ROM select) genuinely must be preserved: boot a real
+    128K into "48K BASIC" and it is already 1, so forcing it to 0 mid-load
+    would swap the ROM out from under the running loader. Every OTHER bit must
+    be forced to 0, because we read them out of BANKM -- a 128K-ROM system
+    variable that does NOT exist on a 48K machine fitted with a RAM-expansion
+    interface (tkmem128-ii and friends). There, 23388 is the printer buffer and
+    holds garbage, and the old `AND 248` let that garbage reach:
+      bit 3  shadow screen  -- we never want it (and such interfaces can't do it)
+      bit 5  PAGING LOCK    -- one stray 1 and the very first OUT freezes the
+                               latch forever: the remaining banks never load
+      bits 6-7 512K extension on those interfaces -- would page the wrong 16K
+    On a healthy real 128K the two masks behave identically (bits 3/5/6/7 are
+    already 0 at this point), so this is pure robustness."""
     p = basic_line(10, bytes([CLEAR, VAL]) + q("32767") + b":" +
                        bytes([LET]) + b"b=" + bytes([PEEK, VAL]) + q("23388") +
-                       bytes([AND, VAL]) + q("248"))
+                       bytes([AND, VAL]) + q("16"))
     p += basic_line(20, bytes([LOAD]) + q("") + bytes([CODE_T]))
     ln = 30
     for _, _, bank in BANKS:

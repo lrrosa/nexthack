@@ -73,6 +73,24 @@ inject keys) to verify most behaviour; the human confirms the wall-clock *feel*
   adding code, data, tiles or strings, and after any change to `NTILES`,
   `FOV_SLOTS` or `MAXINV`.
 
+### The 128K target must also run on RAM-expansion interfaces
+The `.tap` is expected to work not only on a real 128K but on a **48K + external
+RAM interface** (e.g. `tkmem128-ii`), which is how many people get 128K RAM.
+Those boards implement the `0x7FFD` latch but *not* the machine around it. Two
+standing rules, both already satisfied — do not regress them:
+1. **Never enable the shadow screen (bit 3 of `0x7FFD`).** An external interface
+   physically cannot do it (the ULA's display RAM is inside the machine), so it
+   is the one documented incompatibility of such boards. We are immune because
+   the renderer is dirty-cell and draws to the normal ULA bitmap; the only
+   runtime writer of the port is `banked_call.asm`, whose `or 16` leaves bits
+   3/5/6/7 clear. Bank 7 is therefore plain RAM to us (see `bank-budget`).
+2. **Never depend on 128K-ROM system variables.** Such a board usually has no
+   128K ROM, so `BANKM` (23388) is just the printer buffer full of garbage. The
+   tape loader reads it to preserve the ROM-select bit and now masks it to
+   **bit 4 only**: letting bit 5 through would hit the *paging lock* and freeze
+   the latch before the banks finish loading. When writing `0x7FFD`, write the
+   bits you need (banks 0-2, ROM 4) and force the rest to 0.
+
 ### Gotchas that waste time
 - **128K: load the `.tap`, never the `.sna`.** The `.sna` boots the resident title
   then crashes on the first banked call. `run-zx128.bat` needs `--noconfigfile` or
