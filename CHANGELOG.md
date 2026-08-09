@@ -8,6 +8,16 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [Unreleased]
+
+### Fixed
+- **No more altars (or fountains) on a shop's floor.** They could be
+  dropped into the middle of a shopkeeper's stock — and there the altar
+  was useless as well as out of place, since dropping an item in a shop
+  sells it, so nothing could ever be sacrificed or blessed on it. Both
+  now keep out of shops; a level whose altar would have landed there
+  simply has none.
+
 ## [0.12.2] — 2026-07-31
 
 A pre-1.0 code audit, and the ambushes it found were not happening.

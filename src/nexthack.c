@@ -238,10 +238,24 @@ int load_game(void) __banked
 /* room rects (defined in levelgen.c) -- read here to drop an altar in one */
 extern uint8_t r_x[], r_y[], r_w[], r_h[];
 
+/* Neither an altar nor a fountain belongs on a shop's floor: the room is the
+ * keeper's stock, and NetHack keeps temples and shops apart. It is not just
+ * scenery either -- inside a shop `d` SELLS (do_drop branches on
+ * shop_in_room), so drop_at_feet never runs and the altar's whole purpose
+ * (sacrifice, the BUC flash, blessing a potion) is unreachable there. Both
+ * placements run after gen_level and this test is a pure rect check, so
+ * skipping costs no rn2 and cannot desync the deterministic generation. */
+static int spot_taken(uint8_t cx, uint8_t cy)
+{
+    return lvl[cy][cx] != '.' || shop_in_room(cx, cy);
+}
+
 /* Some levels hold an altar. A side hash of (world_seed, dlvl) -- never rn2, so
  * the deterministic per-depth persistence stays in sync -- picks roughly one
  * level in five and one of its rooms; we drop a '_' on that room's centre, but
- * only when it is plain floor (so it never buries stairs, a door or an item).
+ * only when it is plain floor outside any shop (so it never buries stairs, a
+ * door or an item, nor lands among the stock). If the pick is unusable the
+ * level simply has no altar -- placement is opportunistic by design.
  * Pure terrain, regenerated identically on every visit, so nothing to save. */
 static void place_altar(void)
 {
@@ -254,12 +268,12 @@ static void place_altar(void)
     room = (uint8_t)((h >> 3) % rcount);
     cx = (uint8_t)(r_x[room] + r_w[room] / 2);
     cy = (uint8_t)(r_y[room] + r_h[room] / 2);
-    if (lvl[cy][cx] == '.') lvl[cy][cx] = '_';
+    if (!spot_taken(cx, cy)) lvl[cy][cx] = '_';
 }
 
 /* Some levels have a fountain, chosen the same rn2-free way as the altar (a
  * different hash constant, so the two rarely land together and never overwrite
- * -- both guard on '.'). Roughly one level in four from depth 2 down. */
+ * -- both go through spot_taken). Roughly one level in four from depth 2 down. */
 static void place_fountain(void)
 {
     uint16_t h;
@@ -271,7 +285,7 @@ static void place_fountain(void)
     room = (uint8_t)((h >> 4) % rcount);
     cx = (uint8_t)(r_x[room] + r_w[room] / 2);
     cy = (uint8_t)(r_y[room] + r_h[room] / 2);
-    if (lvl[cy][cx] == '.') lvl[cy][cx] = '{';
+    if (!spot_taken(cx, cy)) lvl[cy][cx] = '{';
 }
 
 static void traps_reset(void);   /* defined with the trap code, below */
