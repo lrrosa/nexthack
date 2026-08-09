@@ -204,7 +204,7 @@ The plain 128K build uses the classic `+zx` target with manual 16 KB bank paging
 (port `0x7FFD`). It needs `..\ZEsarUX\` as a sibling folder to run.
 
 ```powershell
-.\build-zx128.ps1          # incremental -> nexthack128.tap (+ a 128K nexthack128.sna)
+.\build-zx128.ps1          # incremental -> nexthack128.tap
 .\build-zx128.ps1 -Clean   # force a full rebuild
 ```
 
@@ -252,10 +252,10 @@ the title (no boot-menu key). It also passes `--noconfigfile` so the shared
 ZEsarUX config can't force the Next machine over the 128K.
 Save/restore on the 128K needs an **esxDOS/DivMMC** interface, which the game
 probes for at startup: with one, `S` writes `nexthack.sav` and it reloads on the
-next boot; without one the game runs normally but cannot save. The build also
-emits a `nexthack128.sna`, but it is **dead** — it boots the resident title then
-crashes on the first banked call (it doesn't carry the code-banked RAM banks),
-in ZEsarUX too. **Run and ship the `.tap`, not the `.sna`.**
+next boot; without one the game runs normally but cannot save. The `.tap` is the
+only artifact: a snapshot cannot carry the code-banked RAM banks, so a `.sna`
+boots the resident title and then crashes on the first banked call — the build
+used to emit one and no longer does.
 
 ## Controls
 

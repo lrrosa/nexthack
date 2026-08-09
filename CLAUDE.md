@@ -31,7 +31,7 @@ run-zx128.bat        REM runs nexthack128.tap in ZEsarUX (128K; auto-loads the t
 ```powershell
 .\build.ps1          # incremental + parallel Next build -> nexthack.nex (preferred)
 .\build.ps1 -Clean   # force a full rebuild
-.\build-zx128.ps1    # builds the ZX 128K target -> nexthack128.tap (+ .sna, but the .sna is dead)
+.\build-zx128.ps1    # builds the ZX 128K target -> nexthack128.tap
 ```
 
 **Both targets run in ZEsarUX** (`..\ZEsarUX`, ZRCP on TCP :10000) -- CSpect and
@@ -92,8 +92,10 @@ standing rules, both already satisfied — do not regress them:
    bits you need (banks 0-2, ROM 4) and force the rest to 0.
 
 ### Gotchas that waste time
-- **128K: load the `.tap`, never the `.sna`.** The `.sna` boots the resident title
-  then crashes on the first banked call. `run-zx128.bat` needs `--noconfigfile` or
+- **128K: the `.tap` is the only artifact.** A `.sna` (appmake can still make one
+  by hand) boots the resident title then crashes on the first banked call — it
+  doesn't carry the code-banked RAM banks — so the build no longer emits one.
+  `run-zx128.bat` needs `--noconfigfile` or
   the shared `.zesaruxrc` (left by `run-next.bat`) forces the Next machine and
   reloads the last `.nex` over the tape (see the `zesarux-zrcp-debugging` memory).
 - SDCC's `warning 110 ... "EVELYN the modified DOG"` is a **harmless** peephole-optimizer

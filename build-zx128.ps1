@@ -1,5 +1,5 @@
 # === NextHack ZX Spectrum 128K build (branch zx128-port) ===
-#   .\build-zx128.ps1            compile + link -> nexthack128.tap (+ .sna for testing)
+#   .\build-zx128.ps1            compile + link -> nexthack128.tap
 #   .\build-zx128.ps1 -Clean     force a full rebuild
 #   .\build-zx128.ps1 -CompileOnly   compile every module, report pass/fail (no link)
 #
@@ -66,12 +66,15 @@ if ($fail) {
 }
 if ($CompileOnly) { "`nAll modules compiled OK in {0:N1}s." -f $sw.Elapsed.TotalSeconds; return }
 
-# --- link: 128K tape + a 128K sna for quick emulator testing ---
+# --- link: the 128K tape ---
+# We used to also link a .sna "for quick emulator testing", but it was never
+# usable: appmake's snapshot does not carry the code-banked RAM banks, so it
+# boots the resident title and crashes on the first banked call. It cost a link
+# pass every build and was a standing trap (load the .tap, never the .sna), so
+# it is no longer emitted.
 $objs = ($csrcs + $asrcs) | ForEach-Object { "obj-zx128/$_.o" }
 "`nlinking nexthack128.tap ..."
 & zcc +zx -vn -clib=sdcc_iy -startup=1 -pragma-include:zpragma-zx128.inc -m $objs -o nexthack128 -create-app
-"linking nexthack128.sna (128K) ..."
-& zcc +zx -subtype=sna -vn -clib=sdcc_iy -startup=1 -pragma-include:zpragma-zx128.inc -m $objs -o nexthack128 -create-app -Cz"--128"
 # z88dk's newlib +zx tape loader only loads the resident CODE, not the extra
 # banks -> rebuild the .tap with a 128K loader that pages + loads each bank.
 "rebuilding nexthack128.tap with the bank-paging 128K loader ..."
@@ -90,7 +93,7 @@ if (Test-Path nexthack128.tap) {
     }
     $code = (Select-String -Path nexthack128.map -Pattern '__CODE_END_tail\s+=\s+\$([0-9A-Fa-f]+)').Matches[0].Groups[1].Value
     $bss  = (Select-String -Path nexthack128.map -Pattern '__BSS_END_tail\s+=\s+\$([0-9A-Fa-f]+)').Matches[0].Groups[1].Value
-    "OK: nexthack128.tap + .sna built in {0:N1}s.  resident __CODE_END=`${1}  __BSS_END=`${2}" -f $sw.Elapsed.TotalSeconds, $code, $bss
+    "OK: nexthack128.tap built in {0:N1}s.  resident __CODE_END=`${1}  __BSS_END=`${2}" -f $sw.Elapsed.TotalSeconds, $code, $bss
 } else {
     throw "LINK FAILED."
 }
