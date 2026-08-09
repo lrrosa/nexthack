@@ -8,6 +8,41 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [0.12.2] — 2026-07-31
+
+A pre-1.0 code audit, and the ambushes it found were not happening.
+
+### Fixed
+- **Mimics ambush again on the 128K.** A disguised mimic standing right
+  beside you neither revealed itself nor bit, for as long as no *other*
+  enemy was awake nearby — and since 0.11 spawns half the dungeon asleep,
+  that was the common case. It now springs the moment you come alongside,
+  as it always did on the Next.
+- **Your max HP can no longer collapse on a level-up.** A hero who had
+  built up to around 250 max HP — reachable through repeated altar
+  boons — wrapped an internal counter on the next level gained, and came
+  out of it with **2**. Now capped.
+- **A rich winning run gets the score it earned.** A hoard near the gold
+  ceiling overflowed the score on the very screen that celebrates the
+  run, showing a tiny number; gold picked up from the floor or scooped
+  from a fountain could overflow the purse itself. Both now hold at
+  their maximum.
+
+### Changed
+- The 128K build no longer emits `nexthack128.sna`. It was never usable —
+  a snapshot cannot carry the code-banked RAM banks, so it booted the
+  title and crashed on the first banked call. The `.tap` is the artifact.
+- **Wider hardware reach on the 128K.** The tape loader read a system
+  variable that only exists on a real 128K ROM; on a 48K machine with a
+  RAM-expansion interface that address is a scratch buffer full of
+  garbage, and one stray bit in it would have locked the memory paging
+  before the game finished loading. It now takes only the bit it needs.
+  (The game itself never used the shadow screen, which is the one thing
+  those interfaces cannot do.)
+
+### Note — the save freeze holds
+- Saves from 0.10.0 onward **load unchanged**.
+
 ## [0.12.1] — 2026-07-13
 
 Stones by hand, and the dog learns to excuse itself.
