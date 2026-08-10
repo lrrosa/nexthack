@@ -17,6 +17,17 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
   sells it, so nothing could ever be sacrificed or blessed on it. Both
   now keep out of shops; a level whose altar would have landed there
   simply has none.
+- **The wand of teleportation stopped being an off switch.** It could
+  drop its victim inside a shop, where a monster is stranded for good —
+  the dungeon's inhabitants keep out of shops, so once every step leads
+  into one it can never move again. A dragon could be retired with a
+  single charge. It could also land the monster on top of the shopkeeper
+  or another creature. The bolt now looks for a clear spot, as the
+  nymph's blink always did, and the victim merely shudders if there is
+  none.
+- **Teleporting no longer lands you on top of a monster** (scroll or
+  trap): you would share its square, and had to step away and back to
+  fight it.
 
 ## [0.12.2] — 2026-07-31
 

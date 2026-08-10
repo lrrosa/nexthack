@@ -14,6 +14,7 @@
 #include "level.h"
 #include "rng.h"          /* rng_set, rn2, world_seed  */
 #include "game.h"         /* dlvl, MAXLVL, DLVL_AMULET, has_amulet */
+#include "monster.h"      /* monster_at (teleport must not land on anyone) */
 
 #ifdef __ZXNEXT
 #pragma codeseg PAGE_20_CODE
@@ -200,7 +201,7 @@ void rand_floor(uint8_t i, uint8_t *px, uint8_t *py) __banked
  * rn2() calls don't touch the deterministic per-depth generation. */
 void level_random_floor(uint8_t *px, uint8_t *py) __banked
 {
-    uint8_t cur = rcount, i, r;
+    uint8_t cur = rcount, i, r, tries;
 
     for (i = 0; i < rcount; i++)        /* which room (if any) is the hero in? */
         if ((uint8_t)hero_x >= r_x[i] && (uint8_t)hero_x < r_x[i] + r_w[i] &&
@@ -208,13 +209,21 @@ void level_random_floor(uint8_t *px, uint8_t *py) __banked
             cur = i; break;
         }
 
-    if (rcount > 1) {
-        do { r = (uint8_t)rn2(rcount); } while (r == cur);   /* a different room */
-        rand_floor(r, px, py);
-    } else {                            /* only one room: just avoid your own cell */
-        uint8_t tries = 0;
-        do { rand_floor(0, px, py); }
-        while (*px == (uint8_t)hero_x && *py == (uint8_t)hero_y && tries++ < 8);
+    /* Re-roll off an occupied cell: arriving ON a monster puts two creatures
+     * on one square, where monster_at only ever finds one and you would have
+     * to step away and back to fight it. After enough tries take the last
+     * roll anyway -- a crowded level should still teleport you somewhere.
+     * (A shop is a fine destination for the HERO: you may walk in freely.) */
+    for (tries = 0; tries < 12; tries++) {
+        if (rcount > 1) {
+            do { r = (uint8_t)rn2(rcount); } while (r == cur);   /* a different room */
+            rand_floor(r, px, py);
+        } else {                        /* only one room: just avoid your own cell */
+            rand_floor(0, px, py);
+        }
+        if (*px == (uint8_t)hero_x && *py == (uint8_t)hero_y) continue;
+        if (monster_at((int)*px, (int)*py) >= 0) continue;
+        return;
     }
 }
 

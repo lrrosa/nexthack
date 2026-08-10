@@ -1609,12 +1609,26 @@ void do_zap(void) __banked
         if (ot == O_WCOLD)   { hit_monster((uint8_t)mi, (uint8_t)(rn2(6) + 2)); continue; }
         if (ot == O_WSLEEP)  { m_sleep[mi] = (uint8_t)(rn2(10) + 8);
                                msg2("The ", mon_name(m_type[mi]), " falls asleep."); break; }
-        /* O_WTELE: whisk the monster to a random spot, off your back */
-        { uint8_t tx, ty, t = 0;
-          do { rand_floor((uint8_t)rn2(rcount), &tx, &ty); }
-          while (tx == (uint8_t)hero_x && ty == (uint8_t)hero_y && t++ < 8);
-          m_x[mi] = tx; m_y[mi] = ty;
-          msg2("The ", mon_name(m_type[mi]), " vanishes!"); }
+        /* O_WTELE: whisk the monster to a random spot, off your back. The
+         * destination needs exactly the guards the nymph's blink already
+         * uses (steal_item): plain floor, nobody standing there, not your
+         * own cell -- and NEVER inside a shop. A monster left in a shop's
+         * interior is frozen for good: both AI paths refuse a shop cell as
+         * a destination, so once every neighbour is one it can never step
+         * again, which turned the wand into a permanent off switch.
+         * If no spot qualifies it simply stays put. */
+        { uint8_t tx, ty, t;
+          for (t = 0; t < 12; t++) {
+              rand_floor((uint8_t)rn2(rcount), &tx, &ty);
+              if (lvl[ty][tx] != '.') continue;
+              if (monster_at((int)tx, (int)ty) >= 0) continue;
+              if (shop_in_room((int)tx, (int)ty)) continue;
+              if ((int)tx == hero_x && (int)ty == hero_y) continue;
+              m_x[mi] = tx; m_y[mi] = ty;
+              break;
+          }
+          msg2("The ", mon_name(m_type[mi]),
+               (t < 12) ? " vanishes!" : " shudders."); }
         break;
     }
     if (!hit) msg("The bolt fizzles out.");
