@@ -61,87 +61,95 @@ static const uint16_t periods[48] = {
     /* 5 */  212,  200,  189,  178,  168,  159,  150,  141,  133,  126,  119,  112
 };
 
-#define C_ 0
-#define D_ 2
-#define E_ 4
-#define F_ 5
-#define G_ 7
-#define A_ 9
-#define B_ 11
+#define C_  0
+#define Cs_ 1
+#define D_  2
+#define E_  4
+#define F_  5
+#define Fs_ 6
+#define G_  7
+#define A_  9
+#define B_  11
 #define N(oct, semi) ((uint8_t)((oct) * 12 + (semi) + 1))   /* 0 stays "rest" */
 #define REST 0
 
 /* ---- timing ----
- * Durations are 50 Hz ticks: 28 per quarter note is ~107 BPM, walking pace --
- * enough momentum to feel like an adventure, slow enough to stay stately. */
-#define Q   28
-#define E_8 14
-#define H   56
-#define DH  84
-#define W  112
+ * Durations are 50 Hz ticks: 20 per quarter note is 150 BPM -- the driving
+ * pace this kind of overworld fanfare wants, not a processional. */
+#define Q   20
+#define E_8 10
+#define DQ  30
+#define H   40
+#define DH  60
+#define W   80
+#define BAR 80
 
 typedef struct { uint8_t note, ticks; } ev_t;
 
 /* ---- the song ----
- * A: the heroic arch (bars 1-8), rising to the octave and falling back
- *    through the Dorian B natural.
- * B: the darker answer (bars 9-16), leaning on the minor v and the flat side,
- *    then resolving home.
- * Each voice loops independently but the bar counts match, so they realign. */
+ * D MAJOR, not the minor mode this started in: the overworld-fanfare sound
+ * the game wanted is unambiguously major, and that is the single biggest
+ * lever. On top of it the heroic devices -- the rising fourth and fifth in
+ * bar 1 (a bugle can only play the harmonic series, which is why fanfares
+ * are built from those leaps), dotted long-short figures for a martial gait,
+ * and melody that walks the triad rather than the scale.
+ * A: bars 1-8, the arch climbing to the high G and settling home.
+ * B: bars 9-16, a turn through the relative minor for contrast, then back.
+ * Each voice loops independently, but the bar counts match, so they realign. */
 static const ev_t lead[] = {
-    { N(4,D_), H  }, { N(4,F_), Q }, { N(4,A_), Q },          /* 1 */
-    { N(5,D_), DH }, { N(5,C_), Q },                          /* 2 */
-    { N(4,B_), Q }, { N(4,A_), Q }, { N(4,G_), Q }, { N(4,F_), Q },  /* 3 */
-    { N(4,E_), H }, { N(4,D_), H },                           /* 4 */
-    { N(4,A_), Q }, { N(5,D_), Q }, { N(5,F_), H },           /* 5 */
-    { N(5,E_), DH }, { N(5,D_), Q },                          /* 6 */
-    { N(5,C_), Q }, { N(4,B_), Q }, { N(4,A_), Q }, { N(4,G_), Q },  /* 7 */
-    { N(4,A_), W },                                           /* 8 */
-    { N(4,F_), Q }, { N(4,A_), Q }, { N(5,C_), H },           /* 9 */
-    { N(4,B_), Q }, { N(4,A_), Q }, { N(4,G_), H },           /* 10 */
-    { N(4,E_), Q }, { N(4,G_), Q }, { N(4,B_), H },           /* 11 */
-    { N(4,A_), W },                                           /* 12 */
-    { N(5,D_), Q }, { N(5,C_), Q }, { N(4,B_), Q }, { N(4,A_), Q },  /* 13 */
-    { N(4,G_), H }, { N(4,F_), H },                           /* 14 */
-    { N(4,E_), Q }, { N(4,F_), Q }, { N(4,G_), Q }, { N(4,A_), Q },  /* 15 */
-    { N(4,D_), W },                                           /* 16 */
+    { N(4,D_),  DQ }, { N(4,A_), E_8 }, { N(5,D_), H },        /* 1  the leap */
+    { N(5,Cs_), Q }, { N(4,B_), Q }, { N(4,A_), H },           /* 2  */
+    { N(4,B_),  Q }, { N(5,Cs_), Q }, { N(5,D_), Q }, { N(5,E_), Q }, /* 3 run up */
+    { N(5,Fs_), DQ }, { N(5,E_), E_8 }, { N(5,D_), H },        /* 4  */
+    { N(5,E_),  Q }, { N(5,Fs_), Q }, { N(5,G_), H },          /* 5  the peak */
+    { N(5,Fs_), Q }, { N(5,E_), Q }, { N(5,D_), H },           /* 6  */
+    { N(4,A_),  Q }, { N(4,B_), Q }, { N(5,Cs_), Q }, { N(5,D_), Q }, /* 7 */
+    { N(5,D_),  W },                                           /* 8  home */
+    { N(4,B_),  Q }, { N(5,D_), Q }, { N(5,Fs_), H },          /* 9  Bm     */
+    { N(5,E_),  Q }, { N(5,D_), Q }, { N(5,Cs_), H },          /* 10 */
+    { N(4,A_),  Q }, { N(5,Cs_), Q }, { N(5,E_), H },          /* 11 */
+    { N(5,D_),  H }, { N(5,Fs_), H },                          /* 12 */
+    { N(5,G_),  Q }, { N(5,Fs_), Q }, { N(5,E_), Q }, { N(5,D_), Q }, /* 13 down */
+    { N(5,Cs_), H }, { N(4,B_), H },                           /* 14 */
+    { N(4,A_),  Q }, { N(4,B_), Q }, { N(5,Cs_), Q }, { N(5,E_), Q }, /* 15 */
+    { N(5,D_),  W },                                           /* 16 */
     { REST, 0 }        /* 0 ticks = end marker: wrap to the top */
 };
 
-/* root on the downbeat, fifth at the half -- a walking bass without wandering */
+/* Root and fifth alternating in QUARTERS, not halves: at 150 BPM the bass is
+ * the engine, and four beats to the bar push where two only sat. */
 static const ev_t bass[] = {
-    { N(2,D_), H }, { N(2,A_), H },        /* 1  Dm */
-    { N(2,D_), H }, { N(2,A_), H },        /* 2  Dm */
-    { N(2,G_), H }, { N(3,D_), H },        /* 3  G  */
-    { N(2,A_), H }, { N(3,E_), H },        /* 4  Am */
-    { N(2,D_), H }, { N(2,A_), H },        /* 5  Dm */
-    { N(2,A_), H }, { N(3,E_), H },        /* 6  Am */
-    { N(2,F_), H }, { N(3,C_), H },        /* 7  F  */
-    { N(2,A_), H }, { N(3,E_), H },        /* 8  Am */
-    { N(2,F_), H }, { N(3,C_), H },        /* 9  F  */
-    { N(2,G_), H }, { N(3,D_), H },        /* 10 G  */
-    { N(2,E_), H }, { N(2,B_), H },        /* 11 Em */
-    { N(2,A_), H }, { N(3,E_), H },        /* 12 Am */
-    { N(2,D_), H }, { N(2,A_), H },        /* 13 Dm */
-    { N(2,G_), H }, { N(3,D_), H },        /* 14 G  */
-    { N(2,A_), H }, { N(3,E_), H },        /* 15 Am */
-    { N(2,D_), H }, { N(2,A_), H },        /* 16 Dm */
+    { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 1  D  */
+    { N(2,A_), Q }, { N(3,E_), Q }, { N(2,A_), Q }, { N(3,E_), Q },   /* 2  A  */
+    { N(2,B_), Q }, { N(3,Fs_), Q }, { N(2,B_), Q }, { N(3,Fs_), Q }, /* 3  Bm */
+    { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 4  D  */
+    { N(2,G_), Q }, { N(3,D_), Q }, { N(2,G_), Q }, { N(3,D_), Q },   /* 5  G  */
+    { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 6  D  */
+    { N(2,A_), Q }, { N(3,E_), Q }, { N(2,A_), Q }, { N(3,E_), Q },   /* 7  A  */
+    { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 8  D  */
+    { N(2,B_), Q }, { N(3,Fs_), Q }, { N(2,B_), Q }, { N(3,Fs_), Q }, /* 9  Bm */
+    { N(2,A_), Q }, { N(3,E_), Q }, { N(2,A_), Q }, { N(3,E_), Q },   /* 10 A  */
+    { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 11 D  */
+    { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 12 D  */
+    { N(2,G_), Q }, { N(3,D_), Q }, { N(2,G_), Q }, { N(3,D_), Q },   /* 13 G  */
+    { N(2,A_), Q }, { N(3,E_), Q }, { N(2,A_), Q }, { N(3,E_), Q },   /* 14 A  */
+    { N(2,A_), Q }, { N(3,E_), Q }, { N(2,A_), Q }, { N(3,E_), Q },   /* 15 A  */
+    { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 16 D  */
     { REST, 0 }
 };
 
-/* One chord per bar. Bit 7 of the note marks a MAJOR triad -- in Dorian the
- * IV (G) is major, which is exactly the sound that keeps this from being a
- * plain minor tune. The player cycles root/third/fifth every tick. */
+/* One chord per bar; bit 7 marks a MAJOR triad. The player cycles
+ * root/third/fifth every tick, which one AY channel hears as a chord. */
 #define MAJ 0x80
 static const ev_t arp[] = {
-    { N(4,D_),       W }, { N(4,D_),       W },        /* Dm Dm */
-    { N(4,G_) | MAJ, W }, { N(4,A_),       W },        /* G  Am */
-    { N(4,D_),       W }, { N(4,A_),       W },        /* Dm Am */
-    { N(4,F_) | MAJ, W }, { N(4,A_),       W },        /* F  Am */
-    { N(4,F_) | MAJ, W }, { N(4,G_) | MAJ, W },        /* F  G  */
-    { N(4,E_),       W }, { N(4,A_),       W },        /* Em Am */
-    { N(4,D_),       W }, { N(4,G_) | MAJ, W },        /* Dm G  */
-    { N(4,A_),       W }, { N(4,D_),       W },        /* Am Dm */
+    { N(4,D_) | MAJ, W }, { N(4,A_) | MAJ, W },        /* D  A  */
+    { N(4,B_),       W }, { N(4,D_) | MAJ, W },        /* Bm D  */
+    { N(4,G_) | MAJ, W }, { N(4,D_) | MAJ, W },        /* G  D  */
+    { N(4,A_) | MAJ, W }, { N(4,D_) | MAJ, W },        /* A  D  */
+    { N(4,B_),       W }, { N(4,A_) | MAJ, W },        /* Bm A  */
+    { N(4,D_) | MAJ, W }, { N(4,D_) | MAJ, W },        /* D  D  */
+    { N(4,G_) | MAJ, W }, { N(4,A_) | MAJ, W },        /* G  A  */
+    { N(4,A_) | MAJ, W }, { N(4,D_) | MAJ, W },        /* A  D  */
     { REST, 0 }
 };
 
@@ -173,11 +181,15 @@ static void voice_advance(voice_t *v)
     v->idx++;
 }
 
-/* Play one 50 Hz tick of all three voices into the chip. */
-static void tick(voice_t *lv, voice_t *bv, voice_t *av, uint8_t phase)
+/* Play one 50 Hz tick of all three voices into the chip. `beat` counts ticks
+ * inside the bar, and drives the drum: a short noise burst on beats 2 and 4,
+ * layered over the arpeggio channel (the AY lets a channel carry tone AND
+ * noise at once). It is the backbeat, and it is what turns a chord loop into
+ * something that marches. */
+static void tick(voice_t *lv, voice_t *bv, voice_t *av, uint8_t phase, uint8_t beat)
 {
     uint16_t p;
-    uint8_t  n;
+    uint8_t  n, hit;
 
     if (lv->left == 0) voice_advance(lv);
     if (bv->left == 0) voice_advance(bv);
@@ -202,14 +214,21 @@ static void tick(voice_t *lv, voice_t *bv, voice_t *av, uint8_t phase)
     }
     ay(4, (uint8_t)(p & 0xFF));  ay(5, (uint8_t)(p >> 8));
 
-    ay(7, 0x38);                  /* mixer: three tones on, no noise         */
+    /* the drum: 3 ticks of noise at the top of beats 2 and 4 */
+    hit = (uint8_t)((beat < 3) || (beat >= 40 && beat < 43));
+    if (hit) {
+        ay(6, 5);                 /* noise period: tight and snare-ish       */
+        ay(7, 0x18);              /* three tones on, plus noise on channel C */
+    } else {
+        ay(7, 0x38);              /* three tones on, no noise                */
+    }
+
     ay(8,  lv->note ? lv->vol : 0);
     ay(9,  bv->note ? bv->vol : 0);
-    ay(10, av->note ? av->vol : 0);
+    ay(10, hit ? 15 : (av->note ? av->vol : 0));
 
     /* let each note breathe: a slow decay reads as plucked rather than organ */
-    if (lv->decay && lv->vol && (lv->left % lv->decay) == 0) lv->vol--;
-    if (av->decay && av->vol && (av->left % av->decay) == 0) av->vol--;
+    if (lv->decay && lv->vol > 9 && (lv->left % lv->decay) == 0) lv->vol--;
     lv->left--; bv->left--; av->left--;
 }
 
@@ -225,15 +244,20 @@ void music_silence(void) __banked
  * loop alone would leave only a few hundred distinguishable outcomes. */
 uint16_t music_title_wait(void) __banked
 {
-    voice_t lv = { lead, 0, 0, 0, 0, 14, 9 };
-    voice_t bv = { bass, 0, 0, 0, 0, 13, 0 };
-    voice_t av = { arp,  0, 0, 0, 0,  7, 0 };
+    /* Volumes near the chip's ceiling of 15. The AY's steps are roughly
+     * logarithmic, so the audible lift comes less from the last step or two
+     * than from keeping them there: the lead's decay now floors at 9 instead
+     * of fading a long note to nothing. */
+    voice_t lv = { lead, 0, 0, 0, 0, 15, 12 };
+    voice_t bv = { bass, 0, 0, 0, 0, 15, 0 };
+    voice_t av = { arp,  0, 0, 0, 0, 11, 0 };
     uint16_t s = 1;
-    uint8_t  phase = 0;
+    uint8_t  phase = 0, beat = 0;
 
     for (;;) {
-        tick(&lv, &bv, &av, phase);
+        tick(&lv, &bv, &av, phase, beat);
         if (++phase > 2) phase = 0;
+        if (++beat >= BAR) beat = 0;
 
 #ifdef __ZXNEXT
         {   /* the bare .nex runs with interrupts off, so FRAMES never ticks:
