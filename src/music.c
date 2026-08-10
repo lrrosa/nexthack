@@ -97,22 +97,22 @@ typedef struct { uint8_t note, ticks; } ev_t;
  * B: bars 9-16, a turn through the relative minor for contrast, then back.
  * Each voice loops independently, but the bar counts match, so they realign. */
 static const ev_t lead[] = {
-    { N(4,D_),  DQ }, { N(4,A_), E_8 }, { N(5,D_), H },        /* 1  the leap */
-    { N(5,Cs_), Q }, { N(4,B_), Q }, { N(4,A_), H },           /* 2  */
-    { N(4,B_),  Q }, { N(5,Cs_), Q }, { N(5,D_), Q }, { N(5,E_), Q }, /* 3 run up */
-    { N(5,Fs_), DQ }, { N(5,E_), E_8 }, { N(5,D_), H },        /* 4  */
-    { N(5,E_),  Q }, { N(5,Fs_), Q }, { N(5,G_), H },          /* 5  the peak */
-    { N(5,Fs_), Q }, { N(5,E_), Q }, { N(5,D_), H },           /* 6  */
-    { N(4,A_),  Q }, { N(4,B_), Q }, { N(5,Cs_), Q }, { N(5,D_), Q }, /* 7 */
-    { N(5,D_),  W },                                           /* 8  home */
-    { N(4,B_),  Q }, { N(5,D_), Q }, { N(5,Fs_), H },          /* 9  Bm     */
-    { N(5,E_),  Q }, { N(5,D_), Q }, { N(5,Cs_), H },          /* 10 */
-    { N(4,A_),  Q }, { N(5,Cs_), Q }, { N(5,E_), H },          /* 11 */
-    { N(5,D_),  H }, { N(5,Fs_), H },                          /* 12 */
-    { N(5,G_),  Q }, { N(5,Fs_), Q }, { N(5,E_), Q }, { N(5,D_), Q }, /* 13 down */
-    { N(5,Cs_), H }, { N(4,B_), H },                           /* 14 */
-    { N(4,A_),  Q }, { N(4,B_), Q }, { N(5,Cs_), Q }, { N(5,E_), Q }, /* 15 */
-    { N(5,D_),  W },                                           /* 16 */
+    { N(3,A_), E_8 }, { N(4,D_), E_8 }, { N(4,Fs_), Q }, { N(4,A_), H }, /* 1 */
+    { N(5,D_),  DH }, { N(4,A_), Q },                          /* 2  the octave */
+    { N(4,B_),  Q }, { N(4,A_), Q }, { N(4,G_), H },           /* 3  */
+    { N(4,Fs_), W },                                           /* 4  land       */
+    { N(4,G_), E_8 }, { N(4,A_), E_8 }, { N(4,B_), Q }, { N(5,D_), H }, /* 5 */
+    { N(5,C_),  DH }, { N(4,A_), Q },                          /* 6  the flat 7 */
+    { N(4,B_),  Q }, { N(4,G_), Q }, { N(4,A_), H },           /* 7  */
+    { N(4,D_),  W },                                           /* 8  home       */
+    { N(5,D_),  Q }, { N(5,E_), Q }, { N(5,Fs_), H },          /* 9  */
+    { N(5,E_),  DQ }, { N(5,D_), E_8 }, { N(4,B_), H },        /* 10 */
+    { N(5,C_),  Q }, { N(5,D_), Q }, { N(5,E_), H },           /* 11 */
+    { N(5,D_),  W },                                           /* 12 */
+    { N(4,A_), E_8 }, { N(4,B_), E_8 }, { N(5,C_), Q }, { N(5,D_), H }, /* 13 */
+    { N(5,E_),  DQ }, { N(5,Fs_), E_8 }, { N(5,G_), H },       /* 14 the peak   */
+    { N(5,Fs_), Q }, { N(5,E_), Q }, { N(5,D_), Q }, { N(5,C_), Q },    /* 15 */
+    { N(4,D_),  W },                                           /* 16 the drop   */
     { REST, 0 }        /* 0 ticks = end marker: wrap to the top */
 };
 
@@ -120,20 +120,20 @@ static const ev_t lead[] = {
  * the engine, and four beats to the bar push where two only sat. */
 static const ev_t bass[] = {
     { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 1  D  */
-    { N(2,A_), Q }, { N(3,E_), Q }, { N(2,A_), Q }, { N(3,E_), Q },   /* 2  A  */
-    { N(2,B_), Q }, { N(3,Fs_), Q }, { N(2,B_), Q }, { N(3,Fs_), Q }, /* 3  Bm */
+    { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 2  D  */
+    { N(2,G_), Q }, { N(3,D_), Q }, { N(2,G_), Q }, { N(3,D_), Q },   /* 3  G  */
     { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 4  D  */
     { N(2,G_), Q }, { N(3,D_), Q }, { N(2,G_), Q }, { N(3,D_), Q },   /* 5  G  */
-    { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 6  D  */
-    { N(2,A_), Q }, { N(3,E_), Q }, { N(2,A_), Q }, { N(3,E_), Q },   /* 7  A  */
+    { N(3,C_), Q }, { N(3,G_), Q }, { N(3,C_), Q }, { N(3,G_), Q },   /* 6  C  */
+    { N(2,G_), Q }, { N(3,D_), Q }, { N(2,G_), Q }, { N(3,D_), Q },   /* 7  G  */
     { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 8  D  */
-    { N(2,B_), Q }, { N(3,Fs_), Q }, { N(2,B_), Q }, { N(3,Fs_), Q }, /* 9  Bm */
-    { N(2,A_), Q }, { N(3,E_), Q }, { N(2,A_), Q }, { N(3,E_), Q },   /* 10 A  */
-    { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 11 D  */
+    { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 9  D  */
+    { N(2,B_), Q }, { N(3,Fs_), Q }, { N(2,B_), Q }, { N(3,Fs_), Q }, /* 10 Bm */
+    { N(3,C_), Q }, { N(3,G_), Q }, { N(3,C_), Q }, { N(3,G_), Q },   /* 11 C  */
     { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 12 D  */
     { N(2,G_), Q }, { N(3,D_), Q }, { N(2,G_), Q }, { N(3,D_), Q },   /* 13 G  */
-    { N(2,A_), Q }, { N(3,E_), Q }, { N(2,A_), Q }, { N(3,E_), Q },   /* 14 A  */
-    { N(2,A_), Q }, { N(3,E_), Q }, { N(2,A_), Q }, { N(3,E_), Q },   /* 15 A  */
+    { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 14 D  */
+    { N(3,C_), Q }, { N(3,G_), Q }, { N(3,C_), Q }, { N(3,G_), Q },   /* 15 C  */
     { N(2,D_), Q }, { N(2,A_), Q }, { N(2,D_), Q }, { N(2,A_), Q },   /* 16 D  */
     { REST, 0 }
 };
@@ -142,14 +142,14 @@ static const ev_t bass[] = {
  * root/third/fifth every tick, which one AY channel hears as a chord. */
 #define MAJ 0x80
 static const ev_t arp[] = {
-    { N(4,D_) | MAJ, W }, { N(4,A_) | MAJ, W },        /* D  A  */
-    { N(4,B_),       W }, { N(4,D_) | MAJ, W },        /* Bm D  */
-    { N(4,G_) | MAJ, W }, { N(4,D_) | MAJ, W },        /* G  D  */
-    { N(4,A_) | MAJ, W }, { N(4,D_) | MAJ, W },        /* A  D  */
-    { N(4,B_),       W }, { N(4,A_) | MAJ, W },        /* Bm A  */
-    { N(4,D_) | MAJ, W }, { N(4,D_) | MAJ, W },        /* D  D  */
-    { N(4,G_) | MAJ, W }, { N(4,A_) | MAJ, W },        /* G  A  */
-    { N(4,A_) | MAJ, W }, { N(4,D_) | MAJ, W },        /* A  D  */
+    { N(3,D_) | MAJ, W }, { N(3,D_) | MAJ, W },        /* D  D  */
+    { N(3,G_) | MAJ, W }, { N(3,D_) | MAJ, W },        /* G  D  */
+    { N(3,G_) | MAJ, W }, { N(3,C_) | MAJ, W },        /* G  C  <- the flat 7 */
+    { N(3,G_) | MAJ, W }, { N(3,D_) | MAJ, W },        /* G  D  */
+    { N(3,D_) | MAJ, W }, { N(3,B_),       W },        /* D  Bm */
+    { N(3,C_) | MAJ, W }, { N(3,D_) | MAJ, W },        /* C  D  */
+    { N(3,G_) | MAJ, W }, { N(3,D_) | MAJ, W },        /* G  D  */
+    { N(3,C_) | MAJ, W }, { N(3,D_) | MAJ, W },        /* C  D  */
     { REST, 0 }
 };
 
@@ -165,6 +165,10 @@ typedef struct {
 } voice_t;
 
 #define NOTE_LO N(2, C_)                    /* the table's first entry */
+
+/* the drum's 4-tick volume envelope: a sharp attack that falls away, which is
+ * the whole difference between a hit and a burst of noise */
+static const uint8_t drum_env[4] = { 15, 11, 6, 2 };
 
 static uint16_t note_period(uint8_t note)
 {
@@ -214,18 +218,24 @@ static void tick(voice_t *lv, voice_t *bv, voice_t *av, uint8_t phase, uint8_t b
     }
     ay(4, (uint8_t)(p & 0xFF));  ay(5, (uint8_t)(p >> 8));
 
-    /* the drum: 3 ticks of noise at the top of beats 2 and 4 */
-    hit = (uint8_t)((beat < 3) || (beat >= 40 && beat < 43));
+    /* The drum on beats 2 and 4. Three things make it a HIT rather than the
+     * "flup" the first attempt produced: a LOW noise period (short periods
+     * are shrill -- 5 was a hiss, 17 has body), a volume that decays instead
+     * of sitting flat and cutting off square, and cutting channel C's TONE
+     * for the duration, so what you hear is noise alone and not noise mixed
+     * with a blaring arpeggio note. */
+    hit = (beat < 4) ? (uint8_t)(beat + 1)
+        : (beat >= 40 && beat < 44) ? (uint8_t)(beat - 40 + 1) : 0;
     if (hit) {
-        ay(6, 5);                 /* noise period: tight and snare-ish       */
-        ay(7, 0x18);              /* three tones on, plus noise on channel C */
+        ay(6, 17);                /* noise period: low and dry               */
+        ay(7, 0x1C);              /* A+B tone; C is noise ONLY, tone muted    */
     } else {
         ay(7, 0x38);              /* three tones on, no noise                */
     }
 
     ay(8,  lv->note ? lv->vol : 0);
     ay(9,  bv->note ? bv->vol : 0);
-    ay(10, hit ? 15 : (av->note ? av->vol : 0));
+    ay(10, hit ? drum_env[hit - 1] : (av->note ? av->vol : 0));
 
     /* let each note breathe: a slow decay reads as plucked rather than organ */
     if (lv->decay && lv->vol > 9 && (lv->left % lv->decay) == 0) lv->vol--;
@@ -250,7 +260,7 @@ uint16_t music_title_wait(void) __banked
      * of fading a long note to nothing. */
     voice_t lv = { lead, 0, 0, 0, 0, 15, 12 };
     voice_t bv = { bass, 0, 0, 0, 0, 15, 0 };
-    voice_t av = { arp,  0, 0, 0, 0, 11, 0 };
+    voice_t av = { arp,  0, 0, 0, 0,  9, 0 };   /* support, not sparkle */
     uint16_t s = 1;
     uint8_t  phase = 0, beat = 0;
 
