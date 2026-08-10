@@ -24,6 +24,7 @@
 #include "monster.h"
 #include "item.h"
 #include "sfx.h"
+#include "music.h"
 #include "classes.h"
 #ifndef __ZXNEXT
 #include "scr.h"
@@ -1639,8 +1640,9 @@ void title_screen(void) __banked
     uint16_t s = 1;
 
     show_layer2(title_pal, 16);
-    while (in_inkey() == 0)          /* seed from how long until the first key  */
-        s += 0x9E37u;
+    s = music_title_wait();          /* the theme plays until a key -- and the
+                                      * seed still comes from how long that
+                                      * took, stirred inside its wait loop */
     s ^= (uint16_t)(((uint16_t)ZXN_READ_REG(0x1F) << 8) ^ ZXN_READ_REG(0x1E));
     world_seed = s ? s : 0xACE1u;
     rng_set(world_seed);
@@ -1672,8 +1674,9 @@ void title_screen(void) __banked
     uint16_t s = 1;
 
     show_title_scr();                /* the hand-drawn SCR loading screen */
-    while (in_inkey() == 0)          /* seed from how long until the first key  */
-        s += 0x9E37u;
+    s = music_title_wait();          /* the theme plays until a key -- and the
+                                      * seed still comes from how long that
+                                      * took, stirred inside its wait loop */
     s ^= *(volatile uint16_t *)0x5C78u;   /* mix in the FRAMES counter */
     world_seed = s ? s : 0xACE1u;
     rng_set(world_seed);
