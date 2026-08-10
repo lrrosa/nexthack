@@ -74,15 +74,16 @@ static const uint16_t periods[48] = {
 #define REST 0
 
 /* ---- timing ----
- * Durations are 50 Hz ticks: 20 per quarter note is 150 BPM -- the driving
- * pace this kind of overworld fanfare wants, not a processional. */
-#define Q   20
-#define E_8 10
-#define DQ  30
-#define H   40
-#define DH  60
-#define W   80
-#define BAR 80
+ * Durations are 50 Hz ticks: 18 per quarter is ~167 BPM. Everything below is
+ * expressed in Q, so changing it retimes the whole piece; keep Q even so the
+ * quaver stays a whole number of ticks. */
+#define Q   18
+#define E_8 (Q / 2)
+#define DQ  (Q + Q / 2)
+#define H   (Q * 2)
+#define DH  (Q * 3)
+#define W   (Q * 4)
+#define BAR (Q * 4)
 
 typedef struct { uint8_t note, ticks; } ev_t;
 
@@ -112,7 +113,10 @@ static const ev_t lead[] = {
     { N(4,A_), E_8 }, { N(4,B_), E_8 }, { N(5,C_), Q }, { N(5,D_), H }, /* 13 */
     { N(5,E_),  DQ }, { N(5,Fs_), E_8 }, { N(5,G_), H },       /* 14 the peak   */
     { N(5,Fs_), Q }, { N(5,E_), Q }, { N(5,D_), Q }, { N(5,C_), Q },    /* 15 */
-    { N(4,D_),  W },                                           /* 16 the drop   */
+    { N(5,D_),  W },      /* 16 the flat 7 steps UP to the tonic: dropping a
+                           * seventh to D4 here read as a stumble, not a
+                           * landing (bar 8 still falls to D4, but only a
+                           * fifth, off a held A4 -- that one lands)        */
     { REST, 0 }        /* 0 ticks = end marker: wrap to the top */
 };
 
@@ -166,9 +170,25 @@ typedef struct {
 
 #define NOTE_LO N(2, C_)                    /* the table's first entry */
 
-/* the drum's 4-tick volume envelope: a sharp attack that falls away, which is
- * the whole difference between a hit and a burst of noise */
-static const uint8_t drum_env[4] = { 15, 11, 6, 2 };
+/* ---- the drum ----
+ * The AY has its own envelope generator, and it makes a far better percussive
+ * decay than stepping the volume every tick in software: shape 0 is \___,
+ * full to silence and hold, and rewriting R13 RETRIGGERS it. A channel opts
+ * in by setting bit 4 of its volume register (0x10) instead of a level.
+ * The generator is shared by all three channels, but only the drum uses it --
+ * lead and bass hold fixed levels -- so there is nothing to collide with.
+ *
+ * Envelope period is 16 steps of 256 clocks: time = 256 * period / 1773400.
+ * KICK ~87 ms, SNARE ~50 ms, which is thump versus crack.
+ *
+ * Kick lands on beats 1 and 3, snare on 2 and 4. That backbeat is the point:
+ * the first attempt hit ticks 0 and 40 of an 80-tick bar, which is beats 1
+ * and 3 -- doubling the bass instead of answering it, and plodding for it. */
+#define ENV_SHAPE_DECAY 0
+#define KICK_ENV  600
+#define SNARE_ENV 350
+#define KICK_TONE 1510        /* D2: a low thump, not a pitch you follow */
+#define DRUM_LEN  7           /* ticks channel C is on drum duty          */
 
 static uint16_t note_period(uint8_t note)
 {
@@ -218,24 +238,37 @@ static void tick(voice_t *lv, voice_t *bv, voice_t *av, uint8_t phase, uint8_t b
     }
     ay(4, (uint8_t)(p & 0xFF));  ay(5, (uint8_t)(p >> 8));
 
-    /* The drum on beats 2 and 4. Three things make it a HIT rather than the
-     * "flup" the first attempt produced: a LOW noise period (short periods
-     * are shrill -- 5 was a hiss, 17 has body), a volume that decays instead
-     * of sitting flat and cutting off square, and cutting channel C's TONE
-     * for the duration, so what you hear is noise alone and not noise mixed
-     * with a blaring arpeggio note. */
-    hit = (beat < 4) ? (uint8_t)(beat + 1)
-        : (beat >= 40 && beat < 44) ? (uint8_t)(beat - 40 + 1) : 0;
-    if (hit) {
-        ay(6, 17);                /* noise period: low and dry               */
-        ay(7, 0x1C);              /* A+B tone; C is noise ONLY, tone muted    */
+    /* Which drum, and how far into it? Kick on beats 1 and 3, snare on 2
+     * and 4; channel C lends itself to the drum for DRUM_LEN ticks and goes
+     * back to the arpeggio after. */
+    hit = 0;
+    {
+        uint8_t into = (uint8_t)(beat % Q);          /* ticks into this beat */
+        if (into < DRUM_LEN)
+            hit = (uint8_t)(((beat / Q) & 1) ? 2 : 1);   /* even beat = kick */
+        if (hit && into == 0) {                      /* the attack tick      */
+            uint16_t ep = (hit == 1) ? KICK_ENV : SNARE_ENV;
+            ay(11, (uint8_t)(ep & 0xFF));
+            ay(12, (uint8_t)(ep >> 8));
+            ay(13, ENV_SHAPE_DECAY);   /* writing R13 retriggers the decay   */
+        }
+    }
+
+    if (hit == 1) {                    /* kick: a low TONE on C, no noise    */
+        ay(4, (uint8_t)(KICK_TONE & 0xFF));
+        ay(5, (uint8_t)(KICK_TONE >> 8));
+        ay(7, 0x38);
+    } else if (hit == 2) {             /* snare: NOISE on C, its tone muted  */
+        ay(6, 17);                     /* noise period: low and dry          */
+        ay(7, 0x1C);
     } else {
-        ay(7, 0x38);              /* three tones on, no noise                */
+        ay(7, 0x38);
     }
 
     ay(8,  lv->note ? lv->vol : 0);
     ay(9,  bv->note ? bv->vol : 0);
-    ay(10, hit ? drum_env[hit - 1] : (av->note ? av->vol : 0));
+    /* 0x10 = "use the envelope generator" instead of a fixed level */
+    ay(10, hit ? 0x10 : (av->note ? av->vol : 0));
 
     /* let each note breathe: a slow decay reads as plucked rather than organ */
     if (lv->decay && lv->vol > 9 && (lv->left % lv->decay) == 0) lv->vol--;
