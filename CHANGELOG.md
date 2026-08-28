@@ -8,19 +8,24 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
-## [Unreleased]
+## [1.0.0] — 2026-07-31
+
+**NextHack is finished.** The dungeon is whole: fifty levels, the Gnomish
+Mines, the Amulet at the bottom and Moloch's retinue waiting on the climb
+back out — on a ZX Spectrum Next and on a plain 128K, from one source tree.
 
 ### Added
 - **A title theme.** The AY chip plays NextHack in while you look at the
   loading screen — a heroic sixteen bars in D Mixolydian over a walking
-  bass, an arpeggiated chord and a kick-and-snare backbeat. The Spectrum
-  128K and the Next both have the chip; a machine without one simply
-  shows the title in silence.
+  bass, an arpeggiated chord and a kick-and-snare backbeat. The 128K and
+  the Next both have the chip; a machine without one simply shows the
+  title in silence.
 
 ### Changed
-- **New title art.** Redrawn by hand at final resolution, without the
-  Spectrum colour stripes, which never sat well once the 128K squeezed
-  them through its two-colours-per-cell screen.
+- **New title art**, drawn at final resolution without the Spectrum colour
+  stripes, which never sat well once the 128K squeezed them through its
+  two-colours-per-cell screen.
+- Fresh screenshots throughout the README.
 
 ### Fixed
 - **No more altars (or fountains) on a shop's floor.** They could be
@@ -40,6 +45,9 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 - **Teleporting no longer lands you on top of a monster** (scroll or
   trap): you would share its square, and had to step away and back to
   fight it.
+
+### Note — the save freeze holds
+- Saves from 0.10.0 onward **load unchanged**.
 
 ## [0.12.2] — 2026-07-31
 

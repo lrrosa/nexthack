@@ -99,9 +99,11 @@ code.
   **special levels** — the cavernous Big Room, guarded **treasure vaults** (gold
   and superior gear behind tough monsters), and **hand-drawn maps** like a
   pillared temple, dropped in among the procedural floors.
-- Hunger and slow HP regeneration, beeper sound effects, and **save & quit** to
-  the SD card, NetHack-style (reloaded once on the next boot, then deleted — no
-  save-scumming).
+- Hunger and slow HP regeneration, beeper sound effects, an **AY title theme**
+  (sixteen bars in D Mixolydian over a walking bass and a kick-and-snare
+  backbeat — a machine with no AY simply shows the title in silence), and
+  **save & quit** to the SD card, NetHack-style (reloaded once on the next
+  boot, then deleted — no save-scumming).
 - **Death and glory** — a score screen on death or victory sums up your run
   (class, depth reached, turns, gold) and weighs it against the **best run so
   far**, which persists on disk between games — and it honours your
@@ -112,11 +114,11 @@ code.
 
 ![NextHack gameplay: a magically mapped dungeon level drawn in colour 8×8 tiles — rooms and corridors across the level, a stocked shop with warm brick walls, the armoured hero and his dog facing monsters in a lit room, and the full status bar below.](docs/gameplay.png)
 
-*Dlvl 7 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, a shop trades in the corner, and monsters find you anyway. The status bar carries the whole character sheet, alignment included.*
+*Dlvl 9 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, a shop trades in the corner, and monsters find you anyway. The status bar carries the whole character sheet, alignment included.*
 
-![The Gnomish Mines: cobblestone chambers and winding tunnels revealed, Minetown's warm-brick shop stocked with wares, and a peaceful dwarf standing near the hero and his dog, with the status bar reading Mine:2.](docs/mines.png)
+![The Gnomish Mines: cobblestone chambers and winding tunnels revealed, Minetown's warm-brick shop stocked with wares, and the hero and his dog meeting a monster in a lit chamber, with the status bar reading Mine:2.](docs/mines.png)
 
-*Minetown (Mine:2): cobblestone caves, the shop glowing warm brick, and the townsfolk at peace — until you draw first blood. The luckstone waits four levels down.*
+*Minetown (Mine:2): cobblestone caves hewn from the rock, the shop glowing warm brick, and the hero and his dog meeting what lives down here. The luckstone waits at the bottom of the branch.*
 
 ## Project structure
 
@@ -240,7 +242,7 @@ it does not depend on esxDOS just to run.
 run-zx128.bat        REM dev convenience: boots nexthack128.tap in ZEsarUX (--machine 128k)
 ```
 
-![NextHack on the plain ZX Spectrum 128K: the ULA renderer with 1-bit tiles — a magically mapped level, the sword-bearing hero with his dog beside a wand on the floor, and the compact status line.](docs/zx128.png)
+![NextHack on the plain ZX Spectrum 128K: the ULA renderer with 1-bit tiles — a magically mapped level, a stocked shop in yellow, the sword-bearing hero with his dog facing a monster, and the compact status line.](docs/zx128.png)
 
 *The same game on a plain 128K: 1-bit tiles on the ULA, a 32-column viewport that
 edge-scrolls over the 80-wide map — the hero (sword raised), his dog (tail up),
