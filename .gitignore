@@ -37,3 +37,6 @@ zesarux_index_menu.idx
 nexthack.sav
 nexthack.sav.bak
 nexthack.hi
+
+# python bytecode from the asset converters
+__pycache__/
