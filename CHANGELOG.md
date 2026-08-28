@@ -10,6 +10,18 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 
 ## [Unreleased]
 
+### Added
+- **A title theme.** The AY chip plays NextHack in while you look at the
+  loading screen — a heroic sixteen bars in D Mixolydian over a walking
+  bass, an arpeggiated chord and a kick-and-snare backbeat. The Spectrum
+  128K and the Next both have the chip; a machine without one simply
+  shows the title in silence.
+
+### Changed
+- **New title art.** Redrawn by hand at final resolution, without the
+  Spectrum colour stripes, which never sat well once the 128K squeezed
+  them through its two-colours-per-cell screen.
+
 ### Fixed
 - **No more altars (or fountains) on a shop's floor.** They could be
   dropped into the middle of a shopkeeper's stock — and there the altar
