@@ -30,6 +30,7 @@ void go_down(void)        __banked;
 void go_up(void)          __banked;
 void do_pray(void)        __banked;
 void do_search(void)      __banked;
+uint8_t rest_step(void)   __banked;   /* 'R': 1 = spend another resting turn */
 void do_farlook(void)     __banked;   /* ';': inspect any visible/remembered cell */
 
 #endif /* NEXTHACK_H */

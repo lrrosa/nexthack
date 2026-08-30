@@ -58,6 +58,13 @@ start_game:
     for (;;) {
         acted = 0;
         if (st_sleep) { acted = 1; turns++; }   /* asleep/paralysed: forfeit the turn */
+        else if (resting) {                     /* 'R': keep spending turns until
+                                                 * rest_step says to stop -- same
+                                                 * no-key path as st_sleep, so the
+                                                 * turn step is not duplicated */
+            if (rest_step()) { acted = 1; turns++; }
+            k = 0;                              /* nothing was typed this turn */
+        }
         else k = getkey_rpt();  /* typematic: a tap is one step, a hold walks */
 
         if (!st_sleep) switch (k) {
@@ -115,6 +122,11 @@ start_game:
             break;
 
         case 's': do_search(); in_wait_nokey(); break;  /* search for nearby traps */
+        case 'R':                                   /* rest until healed or disturbed */
+            resting = 1;
+            msg("You settle down to rest.");
+            in_wait_nokey();    /* or the held 'R' stops the rest it just began */
+            break;
         case ';': do_farlook(); in_wait_nokey(); break; /* look around the map */
 
         /* wait a turn */
@@ -142,7 +154,14 @@ start_game:
 
         fov_update(hero_x, hero_y); /* recompute what the hero can see */
         draw_status();
-        draw_map();
+        /* While resting nothing on the map moves that the player may act on:
+         * anything that comes into view ENDS the rest (rest_step checks before
+         * the turn is charged), and rest_step has already cleared the flag by
+         * the time we get here, so the interrupting turn still redraws. Skipping
+         * the redraw in between is what makes resting fast enough to use -- the
+         * Next redraws all 80x32 cells every turn, which held it to ~6 turns a
+         * second, i.e. four minutes to mend a deep hero. */
+        if (!resting) draw_map();
 
         if (won) {
             victory_screen();

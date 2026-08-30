@@ -8,6 +8,46 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [Unreleased]
+
+### Added
+- **Rest (`R`).** Sit still and let your wounds close, instead of tapping
+  `s` a thousand times. The turn loop simply keeps spending turns without
+  reading a key — the same path a sleeping hero already used — so upkeep,
+  the monsters' turn and the redraw all behave exactly as they do when you
+  play them out one keypress at a time.
+
+  It stops for good reasons only: you are healed, something hostile and
+  awake comes into view, you press a key, or hunger reaches *weak*. A
+  sleeping monster does not interrupt it, and neither does a shopkeeper, a
+  peaceful townsman, a hidden mimic or the floating eye — none of them are
+  coming for you. Everything else ends the rest **before** the turn is
+  charged, so you never take a free hit for having rested one turn too long.
+
+  This is the first change to come out of the balance instrument
+  (`tools/balance.py`). It was chosen over five other candidates because it
+  is the only one that lengthens a run without touching the shape of combat:
+  measured across 1600 simulated lives, absorption and HP-per-fight at every
+  depth are unchanged, while the median death moves from Dlvl 32-41 to
+  38-48 and the win rate goes from zero to about 1%. It does not fix the
+  underlying armour cliff — that is a separate decision, deliberately not
+  bundled here, because the model says two such changes at once take the
+  game from unwinnable to trivial.
+
+### Fixed
+- The `?` screen's character sheet no longer overprints itself on the 128K.
+  All six attributes on one line came to 33 columns from column 2, so on a
+  32-column ULA the last one wrapped and landed on top of the alignment
+  underneath. They now sit three to a row, with the alignment moved up beside
+  the class name -- the same number of rows as before, and unchanged in
+  substance on the Next's 80 columns.
+
+### Changed
+- The map is not redrawn between resting turns. Nothing on it can change
+  in a way you may act on — anything that appears ends the rest first — and
+  the Next redraws all 80x32 cells every turn, which held resting to about
+  six turns a second. Skipping it doubles that.
+
 ## [1.0.0] — 2026-07-31
 
 **NextHack is finished.** The dungeon is whole: fifty levels, the Gnomish

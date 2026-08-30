@@ -74,8 +74,10 @@ code.
   through the dungeon — and **grows with its kills**, biting harder and taking
   more punishment. **Throw** (`t`) a weapon down a corridor for a ranged
   attack — it lands on the floor to be reclaimed — **search** (`s`) the ground for
-  hidden traps, and **pray** (`p`) to your god to haul you out of trouble (best at
-  an altar).
+  hidden traps, **rest** (`R`) to let your wounds close, and **pray** (`p`) to your
+  god to haul you out of trouble (best at an altar). Resting is no free lunch:
+  it stops the moment anything wakes and comes into view, and the dungeon keeps
+  sending wanderers while you sit still.
 - **Items and equipment** — weapons, armour, potions, food, scrolls and rings,
   each with its own enchantment, erosion and **blessed/uncursed/cursed** state;
   potions and scrolls start **unidentified**. Wield/wear the best you carry,
@@ -268,6 +270,7 @@ used to emit one and no longer does.
 | `>` `<` or `Enter`        | stairs down / up |
 | `.` or Space              | wait a turn |
 | `s`                       | search the ground for nearby hidden traps |
+| `R`                       | rest until healed, disturbed, or hungry |
 | `;`                       | look around the map (a cursor describes whatever it rests on) |
 | `,`                       | pick up the item under you |
 | `i`                       | show inventory |

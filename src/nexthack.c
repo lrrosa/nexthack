@@ -42,6 +42,7 @@ uint8_t  has_amulet = 0;
 uint8_t  luckstone_taken = 0;    /* the mines' prize was claimed (see game.h) */
 uint8_t  won = 0;
 uint8_t  acted = 0;
+uint8_t  resting = 0;     /* 'R' rest: see rest_step (game.h) */
 uint8_t  map_dirty = 1;   /* +zx renderer flag (unused on Next) */
 uint8_t  map_flush = 0;   /* +zx: skip draw_map's fast path once (a cell changed
                            * at a distance: a throw landed, search revealed a
@@ -893,34 +894,40 @@ void show_help(void) __banked
     print_str(7,  4, "h j k l  y u b n",     C_CYAN | C_BRIGHT);
     print_str(2,  5, "Stairs: > < or Enter", C_CYAN | C_BRIGHT);
     print_str(2,  6, "s search . wait ; look", C_CYAN | C_BRIGHT);
-    print_str(2,  8, ", pick up",            C_CYAN | C_BRIGHT);
-    print_str(2,  9, "i inventory  D found", C_CYAN | C_BRIGHT);
-    print_str(2, 10, "w wield    W wear",    C_CYAN | C_BRIGHT);
-    print_str(2, 11, "P ring     t throw",   C_CYAN | C_BRIGHT);
-    print_str(2, 12, "q quaff    e eat",     C_CYAN | C_BRIGHT);
-    print_str(2, 13, "r read     p pray",    C_CYAN | C_BRIGHT);
-    print_str(2, 14, "E engrave Elbereth",   C_CYAN | C_BRIGHT);
-    print_str(2, 15, "d drop     S save",    C_CYAN | C_BRIGHT);
-    print_str(2, 16, "z zap  Z cast  ? help", C_CYAN | C_BRIGHT);
+    print_str(2,  7, "R rest until healed",    C_CYAN | C_BRIGHT);
+    print_str(2,  9, ", pick up",            C_CYAN | C_BRIGHT);
+    print_str(2,  10, "i inventory  D found", C_CYAN | C_BRIGHT);
+    print_str(2, 11, "w wield    W wear",    C_CYAN | C_BRIGHT);
+    print_str(2, 12, "P ring     t throw",   C_CYAN | C_BRIGHT);
+    print_str(2, 13, "q quaff    e eat",     C_CYAN | C_BRIGHT);
+    print_str(2, 14, "r read     p pray",    C_CYAN | C_BRIGHT);
+    print_str(2, 15, "E engrave Elbereth",   C_CYAN | C_BRIGHT);
+    print_str(2, 16, "d drop     S save",    C_CYAN | C_BRIGHT);
+    print_str(2, 17, "z zap  Z cast  ? help", C_CYAN | C_BRIGHT);
     {   /* the character sheet -- the 32-col 128K status bar has no room for
          * it, so both targets show it here */
-        uint8_t x = print_str(2, 17, class_name(), C_YELLOW | C_BRIGHT);
-        (void)x;
-        x = print_str(2, 18, "St:", C_GREEN | C_BRIGHT);
-        x = put_uint(x, 18, at_str, C_GREEN | C_BRIGHT);
-        x = print_str(x, 18, " Dx:", C_GREEN | C_BRIGHT);
-        x = put_uint(x, 18, at_dex, C_GREEN | C_BRIGHT);
-        x = print_str(x, 18, " Co:", C_GREEN | C_BRIGHT);
-        x = put_uint(x, 18, at_con, C_GREEN | C_BRIGHT);
-        x = print_str(x, 18, " In:", C_GREEN | C_BRIGHT);
-        x = put_uint(x, 18, at_int, C_GREEN | C_BRIGHT);
-        x = print_str(x, 18, " Wi:", C_GREEN | C_BRIGHT);
-        x = put_uint(x, 18, at_wis, C_GREEN | C_BRIGHT);
-        x = print_str(x, 18, " Ch:", C_GREEN | C_BRIGHT);
-        put_uint(x, 18, at_cha, C_GREEN | C_BRIGHT);
-        print_str(2, 19, align_name(alignment), C_CYAN | C_BRIGHT);
+        /* Three attributes to a row. All six on one line came to 33 columns
+         * from column 2, so on the 128K's 32-column ULA the last one wrapped
+         * and overprinted the alignment underneath it. Split in two, each row
+         * is 17 columns wide even with every attribute at two digits, and the
+         * alignment moves up beside the class name -- same number of rows as
+         * before, and the Next's 80 columns do not care either way. */
+        uint8_t x = print_str(2, 18, class_name(), C_YELLOW | C_BRIGHT);
+        print_str((uint8_t)(x + 1), 18, align_name(alignment), C_CYAN | C_BRIGHT);
+        x = print_str(2, 19, "St:", C_GREEN | C_BRIGHT);
+        x = put_uint(x, 19, at_str, C_GREEN | C_BRIGHT);
+        x = print_str(x, 19, " Dx:", C_GREEN | C_BRIGHT);
+        x = put_uint(x, 19, at_dex, C_GREEN | C_BRIGHT);
+        x = print_str(x, 19, " Co:", C_GREEN | C_BRIGHT);
+        put_uint(x, 19, at_con, C_GREEN | C_BRIGHT);
+        x = print_str(2, 20, "In:", C_GREEN | C_BRIGHT);
+        x = put_uint(x, 20, at_int, C_GREEN | C_BRIGHT);
+        x = print_str(x, 20, " Wi:", C_GREEN | C_BRIGHT);
+        x = put_uint(x, 20, at_wis, C_GREEN | C_BRIGHT);
+        x = print_str(x, 20, " Ch:", C_GREEN | C_BRIGHT);
+        put_uint(x, 20, at_cha, C_GREEN | C_BRIGHT);
     }
-    print_str(4, 20, "Press any key...",     C_WHITE | C_BRIGHT);
+    print_str(4, 21, "Press any key...",     C_WHITE | C_BRIGHT);
     in_wait_nokey();
     getkey();
     in_wait_nokey();
@@ -1327,6 +1334,44 @@ void do_search(void) __banked
     turns++; acted = 1;
 }
 
+/* 'R' rest: pass turns until the body has mended or something interrupts.
+ *
+ * There is no loop here on purpose. The turn loop already knows how to spend a
+ * turn the player did not type -- it is what st_sleep does -- so rest reuses
+ * that path: main() calls this once per iteration and, while it answers 1,
+ * charges a turn and runs the ordinary upkeep/monsters/redraw. Duplicating the
+ * turn step inside a rest loop is exactly the "same logic in two paths" that
+ * has produced most of this game's bugs.
+ *
+ * Stopping is the interesting half. A hero who rests through an approaching
+ * monster is a hero who dies asleep, and this is not hypothetical: measuring
+ * the armour rule, a tanked hero left standing 172 turns collected three
+ * wanderers and was killed by them. */
+uint8_t rest_step(void) __banked
+{
+    uint8_t i;
+
+    if (php >= pmaxhp)     { resting = 0; msg("You feel rested.");   return 0; }
+    if (hunger_state >= 2) { resting = 0; msg("You are too weak with hunger.");
+                             return 0; }
+    if (in_inkey())        { resting = 0; msg("You stop resting.");  return 0; }
+
+    for (i = 0; i < mcount; i++) {
+        if (!m_alive[i] || m_peace[i] || (int8_t)i == pet_idx) continue;
+        if (m_sleep[i]) continue;              /* still asleep: not yet a threat */
+        if (m_type[i] == MON_KEEPER) continue; /* the keeper never leaves his shop */
+        if (m_type[i] == 'x') continue;        /* a mimic is still a "potion"    */
+        if (m_type[i] == 'e') continue;        /* the floating eye never comes   */
+        if (!fov_visible(m_x[i], m_y[i])) continue;
+        resting = 0;
+        /* <= 32 columns on the 128K: "You stop: " + the longest name we
+         * can reach here ("yellow light") + " nearby!" is exactly 30 */
+        msg2("You stop: ", mon_name(m_type[i]), " nearby!");
+        return 0;
+    }
+    return 1;
+}
+
 /* Spring a hidden trap if the hero has just stepped onto (nx,ny) and it hides an
  * unsprung one. Returns 1 if a trap fired (the caller then returns, since a trap
  * door may already have rebuilt the level). Shared by an ordinary step and a
@@ -1490,6 +1535,7 @@ void new_game(void) __banked
     heal_timer = 0;
     hunger_state = 0;
     st_conf = st_blind = st_sleep = st_poison = 0;
+    resting = 0;
     pray_timeout = 0;
     intrinsics = 0;
     known_spells = 0;

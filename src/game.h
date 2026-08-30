@@ -40,6 +40,9 @@ extern uint8_t  map_dirty; /* +zx renderer: force a full map redraw (unused on N
 extern uint8_t  map_flush; /* +zx renderer: a cell changed at a distance -- skip the
                             * fast path once, no recenter (unused on Next) */
 extern int16_t  nutrition; /* hunger: drops each turn, food refills it    */
+extern uint8_t  resting;   /* 'R': the turn loop keeps passing turns without
+                            * reading a key until rest_step() says stop.
+                            * Transient like a pose -- never saved.       */
 
 /* equipment effects (set by item.c, used in combat and the status bar) */
 extern uint8_t  weapon_dmg;   /* extra melee damage from a wielded weapon */
