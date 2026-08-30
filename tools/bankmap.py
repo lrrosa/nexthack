@@ -233,7 +233,9 @@ def report_code_banks(prefix, label):
                      ' (contended: cold code only)' if b % 2 else ''))
         if spare:
             print('      to claim one: CRT_ORG_BANK_n = 0x0nC000 in '
-                  'zpragma-zx128.inc + an entry in mktap128.py BANKS')
+                  'zpragma-zx128.inc, the module\'s "code" in banks.json,')
+            print('      + an entry in mktap128.py BANKS (an unpacked bank is '
+                  'simply absent -- the first banked call crashes)')
     return over
 
 

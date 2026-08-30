@@ -1,0 +1,103 @@
+{
+  "_doc": [
+    "NextHack bank manifest -- the single place that says WHICH BANK each module's",
+    "code and consts live in, for both targets.",
+    "",
+    "The build (build.ps1 / build-zx128.ps1) turns each entry into zcc's",
+    "--codeseg/--constseg flags, so moving a module between banks is ONE edit here:",
+    "no source change, and only the modules whose assignment changed recompile.",
+    "The sources therefore carry NO '#pragma codeseg/constseg' -- an in-file pragma",
+    "silently OVERRIDES the command line (verified), so re-adding one takes a module",
+    "out of this manifest's control.",
+    "",
+    "A module with no 'code'/'const' key is RESIDENT (0x8000-0xBFF0): its code, and",
+    "its string/const literals, cost resident bytes. 'code' alone banks the code but",
+    "leaves the literals resident; adding 'const' banks the literals too (the",
+    "reclaim lever -- see the bank-budget skill).",
+    "",
+    "Every module in the target's build list must appear here (the build refuses an",
+    "undeclared one), and the 'colocate' groups are checked before compiling.",
+    "Run 'python tools/bankmap.py' to see what each bank has left."
+  ],
+
+  "next": {
+    "_doc": "Next: banks 10/11/13/14 as PAGE_20/22/26/28_CODE (ORG'd in mmap.inc); BANK_16..21 are z88dk-predefined sections holding the Layer 2 images.",
+
+    "mainentry":     { "why": "resident: main() -- the CRT jumps straight to it, so it cannot be banked" },
+    "platform":      { "why": "resident: the per-cell draw primitives + keyboard, called from every bank" },
+    "rng":           { "why": "resident: rn2 is a hot leaf" },
+    "level":         { "why": "resident: terrain/walkable/tile_for are per-cell leaves" },
+    "monster":       { "why": "resident: monster_at/mon_find/mon_tile are per-cell leaves" },
+
+    "nexthack":      { "code": "PAGE_22_CODE", "const": "PAGE_22_CODE", "why": "the game core; const banks every message/label literal next to the code that prints it" },
+    "classes":       { "code": "PAGE_22_CODE", "const": "PAGE_22_CODE", "why": "shares nexthack.c's bank on purpose -- draw_status/show_help read its tables in place" },
+    "spells":        { "code": "PAGE_22_CODE", "const": "PAGE_22_CODE", "why": "shares nexthack.c's bank like classes.c; spell names/messages cost zero resident bytes" },
+    "titlepal":      { "const": "PAGE_22_CODE", "why": "GENERATED. Must sit in the bank show_layer2() runs from -- it streams this palette with that bank mapped" },
+    "victorypal":    { "const": "PAGE_22_CODE", "why": "GENERATED. Same rule as titlepal" },
+    "sfx":           { "code": "PAGE_22_CODE", "why": "beeper effects; its literals stay resident (there are none worth banking)" },
+
+    "platform_init": { "code": "PAGE_20_CODE", "const": "PAGE_20_CODE", "why": "one-time init runs from any bank; const holds the ~3 KB gfx[] tile table next to load_gfx_tiles(), its only reader. Moved off PAGE_22 when the mines tiles + conduct code overflowed it" },
+    "levelgen":      { "code": "PAGE_20_CODE", "why": "generation + gold/item persistence" },
+    "monster_spawn": { "code": "PAGE_20_CODE", "const": "PAGE_20_CODE", "why": "split out of monster_ai.c when the AI banks filled up" },
+    "music":         { "code": "PAGE_20_CODE", "const": "PAGE_20_CODE", "why": "the AY title theme + its score tables" },
+
+    "monster_ai":    { "code": "PAGE_26_CODE", "const": "PAGE_26_CODE", "why": "bank 13, a third code bank opened when PAGE_20 filled up" },
+    "leveltmpl":     { "code": "PAGE_26_CODE", "const": "PAGE_26_CODE", "why": "const holds the generated leveltmpl_data.h grids; load_template() reads them in place, so both must share a bank" },
+    "levelfov":      { "code": "PAGE_26_CODE", "why": "moved off PAGE_20 when bank 10 filled up as item.c grew" },
+
+    "item":          { "code": "PAGE_28_CODE", "const": "PAGE_28_CODE", "why": "bank 14, item.c's own bank: the v0.9 reclaim banked the whole object catalogue with it, ~3.2 KB off the resident half" },
+
+    "titlegfx0":     { "const": "BANK_16", "why": "GENERATED. Layer 2 reads this third of the title image IN PLACE from bank 16 -- hardware-pinned, never repack" },
+    "titlegfx1":     { "const": "BANK_17", "why": "GENERATED. Hardware-pinned (see titlegfx0)" },
+    "titlegfx2":     { "const": "BANK_18", "why": "GENERATED. Hardware-pinned (see titlegfx0)" },
+    "victorygfx0":   { "const": "BANK_19", "why": "GENERATED. Hardware-pinned (see titlegfx0)" },
+    "victorygfx1":   { "const": "BANK_20", "why": "GENERATED. Hardware-pinned (see titlegfx0)" },
+    "victorygfx2":   { "const": "BANK_21", "why": "GENERATED. Hardware-pinned (see titlegfx0)" }
+  },
+
+  "zx128": {
+    "_doc": "128K: only banks 0/1/3/4/6/7 are pageable at 0xC000 (2 and 5 are fixed; 7 is free only because the shadow screen is never used). Six banks = a HARD 96 KB ceiling for banked code. ORG'd in zpragma-zx128.inc; each bank is also a tape-loader block in tools/mktap128.py.",
+
+    "mainentry":     { "why": "resident: main() -- the CRT jumps straight to it, so it cannot be banked" },
+    "platform":      { "why": "resident: the per-cell ULA blits + keyboard, called from every bank" },
+    "rng":           { "why": "resident: rn2 is a hot leaf" },
+    "level":         { "why": "resident: terrain/walkable/tile_for are per-cell leaves" },
+    "monster":       { "why": "resident: monster_at/mon_find/mon_tile are per-cell leaves" },
+
+    "item":          { "code": "BANK_0", "const": "BANK_0", "why": "item.c's own bank (the v0.9 reclaim) -- the 128K's spare uncontended bank" },
+
+    "levelgen":      { "code": "BANK_1", "why": "cold code bank A" },
+    "monster_spawn": { "code": "BANK_1", "const": "BANK_1", "why": "split out of monster_ai.c when BANK_6 filled up" },
+    "sfx":           { "code": "BANK_1", "why": "moved BACK here from BANK_3 when the 0.12 batch (farlook + mirroring + traps) filled BANK_3. All sfx_* entries are __banked and bit_beepfx + its tables are resident, so the move costs nothing" },
+
+    "nexthack":      { "code": "BANK_3", "const": "BANK_3", "why": "the game core; const banks every message/label literal next to the code that prints it" },
+    "classes":       { "code": "BANK_3", "const": "BANK_3", "why": "shares nexthack.c's bank on purpose -- draw_status/show_help read its tables in place" },
+    "spells":        { "code": "BANK_3", "const": "BANK_3", "why": "shares nexthack.c's bank like classes.c" },
+
+    "scr":           { "code": "BANK_4", "why": "the SCR blitter; must share a bank with the two screens below, which it reads in place" },
+    "title_scr":     { "const": "BANK_4", "why": "GENERATED. The 6912-byte title SCR, read in place by scr.c" },
+    "victory_scr":   { "const": "BANK_4", "why": "GENERATED. The 6912-byte victory SCR, read in place by scr.c" },
+    "levelfov":      { "code": "BANK_4", "why": "moved out of BANK_1 when item.c's growth filled it; BANK_4 held the SCR screens with room to spare" },
+
+    "monster_ai":    { "code": "BANK_6", "const": "BANK_6", "why": "the spare bank -- the pet AI outgrew BANK_1" },
+    "leveltmpl":     { "code": "BANK_6", "const": "BANK_6", "why": "const holds the generated template grids, read in place by load_template(). It used to share BANK_3 with nexthack.c; as that code grew the combined section silently overflowed 16 KB and the truncated template data crashed every template level -- mktap128.py now refuses an oversized bank" },
+
+    "platform_init": { "code": "BANK_7", "const": "BANK_7", "why": "moved here when BANK_3 overflowed. It runs ONCE at boot, so bank 7's contended RAM costs nothing, and its only const (udg_src) is read solely by build_udgs in the same file. NOTE udg_ink, which the renderers read everywhere, lives in the resident platform.c" },
+    "music":         { "code": "BANK_7", "const": "BANK_7", "why": "the AY title theme + its score tables; bank 7 has ~14 KB free" }
+  },
+
+  "colocate": [
+    {
+      "modules": ["nexthack", "classes", "spells"],
+      "why": "classes.c/spells.c hand their const tables and literals to nexthack.c's code (draw_status, show_help, the class picker). A pointer into a bank that is NOT mapped reads garbage, so these three must share one bank."
+    },
+    {
+      "modules": ["nexthack", "titlepal", "victorypal"],
+      "why": "show_layer2() (in nexthack.c) streams these palettes to NextReg 0x44 while its OWN bank is mapped in, so each palette must live in that same bank. Next only."
+    },
+    {
+      "modules": ["scr", "title_scr", "victory_scr"],
+      "why": "scr.c copies these SCRs to the ULA screen by dereferencing them directly, so the data must live in the bank scr.c runs from. 128K only."
+    }
+  ]
+}

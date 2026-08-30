@@ -2,8 +2,9 @@
  * Copyright (C) 2026 Leonardo Roman da Rosa */
 /* classes.c - the class picker (the NetHack-identity batch).
  *
- * Fully banked INCLUDING its consts and string literals (#pragma constseg):
- * the class table and the picker screen's text cost zero resident bytes.
+ * Fully banked INCLUDING its consts and string literals (banks.json gives it
+ * a "const" bank): the class table and the picker screen's text cost zero
+ * resident bytes.
  * It deliberately shares nexthack.c's bank, so draw_status and show_help
  * (same bank, mapped when they run) can read class_name()'s pointer in
  * place -- a cross-bank caller could not. */
@@ -12,14 +13,6 @@
 #include "platform.h"
 #include "item.h"
 #include "classes.h"
-
-#ifdef __ZXNEXT
-#pragma codeseg  PAGE_22_CODE
-#pragma constseg PAGE_22_CODE
-#else
-#pragma codeseg  BANK_3
-#pragma constseg BANK_3
-#endif
 
 typedef struct {
     const char *name;

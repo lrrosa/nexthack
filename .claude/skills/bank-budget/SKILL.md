@@ -36,13 +36,16 @@ pressure, and vice versa.
 ## When a code bank is full
 
 1. **Do not shrink the feature first.** Relocate a module: move a whole,
-   self-contained `.c` to a roomier bank (`#pragma codeseg`), not part of one —
-   in-file `#pragma codeseg` does NOT partition by position.
+   self-contained `.c` to a roomier bank by editing its `"code"` (and `"const"`)
+   in **`banks.json`** — one edit, and only that module recompiles. A file is
+   the unit; there is no way to split one by position.
 2. **A module is safe to move only if** every cross-module call it makes is
    `__banked` or resident (a direct intra-bank call crashes once it is
-   cross-bank), and its `constseg` tables are consumed **only** while its own
+   cross-bank), and its `const` tables are consumed **only** while its own
    bank is mapped.
-3. **Coupling traps** (these block the obvious moves):
+3. **Coupling traps** (these block the obvious moves — the known ones are
+   `colocate` groups in `banks.json`, which the build enforces before compiling;
+   **add a group when you create a new coupling**):
    - `classes.c` / `spells.c` consts are pointer-coupled to consumers in
      `nexthack.c`'s bank — moving them means moving the consumers too.
    - PAGE_22 (bank 11) must hold **code + const under 16 KB**: `show_layer2`
@@ -71,11 +74,14 @@ Layer 2 images. Bank 15 and 22+ are free; add a `SECTION PAGE_nn_CODE` +
 | 0 | `item.c` + its consts |
 | 1 | `levelgen`, `monster_spawn`, `sfx` |
 | 2 | **the resident half** (0x8000-0xBFFF, not pageable) |
-| 3 | `nexthack.c`, `platform_init`, `classes`, `spells` — **full** |
+| 3 | `nexthack.c`, `classes`, `spells` — **full** |
 | 4 | `levelfov`, `scr`, title/victory SCRs |
 | 5 | **the data bank** (0x4000-0x7FFF, always mapped — see the tenant map) |
 | 6 | `monster_ai`, `leveltmpl` — **full** |
-| 7 | **UNUSED — the last spare 16 KB** |
+| 7 | `platform_init`, `music` — the last bank, and still the roomiest |
+
+(That table goes stale every time a bank fills; `banks.json` is authoritative
+and `python tools/bankmap.py` prints what is actually left.)
 
 **Bank 7 is free because the 128K's hardware shadow screen is not used.** That
 feature displays bank 7 as an alternate framebuffer (bit 3 of `0x7FFD`); this
@@ -85,8 +91,8 @@ frame) than it saves, `0xC000` is already the banked-code window, and
 `banked_call.asm`'s `or 16` clears bit 3 on every banked call anyway. So bank 7
 is plain RAM, and it is where the next 128K module should go.
 
-Claiming it: `#pragma output CRT_ORG_BANK_7 = 0x07C000` in
-`zpragma-zx128.inc`, `#pragma codeseg BANK_7` in the module, and **an entry in
+Claiming a bank takes three edits: `#pragma output CRT_ORG_BANK_n = 0x0nC000` in
+`zpragma-zx128.inc`, the module's `"code"` in `banks.json`, and **an entry in
 `tools/mktap128.py`'s `BANKS` list** — an unpacked bank is simply absent and
 the first banked call crashes. Caveat: banks 1/3/5/7 are **contended** (slower),
 so bank 7 suits cold code — a title screen, one-time init, the AY player's
@@ -96,10 +102,10 @@ code, so this is no new compromise.)
 ## When the resident half is tight
 
 In order of preference:
-1. **const-bank the strings**: `#pragma constseg <the module's own bank>` puts
-   its literals in that bank. Safe because they are consumed while it is
-   mapped. **Never pass a constseg'd literal into another bank's `__banked`
-   function.**
+1. **const-bank the strings**: give the module a `"const"` of its own bank in
+   `banks.json` and its literals move there. Safe because they are consumed
+   while it is mapped. **Never pass a const-banked literal into another bank's
+   `__banked` function** — if you must, put both modules in one `colocate` group.
 2. **const-bank a read-once table** (`gfx[]` pattern: read only by its
    same-bank reader at startup).
 3. **data-bank an array into Bank 5** — only if `bankmap.py` shows a gap that

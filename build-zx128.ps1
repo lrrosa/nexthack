@@ -10,6 +10,10 @@
 # become small SCRs (Phase 2). Objects go to obj-zx128/ with the .o suffix (zcc
 # only recognises .o as a linkable object) so they never clash with the Next
 # build's src/*.o.
+#
+# WHICH bank each module lands in comes from banks.json, passed to zcc as
+# --codeseg/--constseg (the sources carry no #pragma codeseg -- see banks.ps1).
+# Only banks 0/1/3/4/6/7 are pageable here, so this target is the tight one.
 param([switch]$Clean, [switch]$CompileOnly)
 
 $ErrorActionPreference = 'Stop'
@@ -28,6 +32,13 @@ $csrcs = 'mainentry','nexthack','platform','platform_init','rng','level','levelg
 $asrcs = 'banked_call','esxdetect','puttile_asm'
 $cflags = @('+zx','-clib=sdcc_iy','-SO3','--max-allocs-per-node200000','-pragma-include:zpragma-zx128.inc')
 
+# Bank assignment (banks.json -> --codeseg/--constseg). Validates that every
+# module is declared and that the co-located groups share a bank, and throws
+# before compiling if either is wrong. The .asm modules declare their own
+# sections, so they are not in the manifest.
+. (Join-Path $root 'banks.ps1')
+$bank = Import-BankManifest -Target zx128 -Modules $csrcs
+
 $sw = [Diagnostics.Stopwatch]::StartNew()
 $fail = @()
 
@@ -42,11 +53,16 @@ function Stale($src, $o) {
 
 foreach ($m in $csrcs) {
     $o = "obj-zx128/$m.o"
-    if (Stale "src/$m.c" $o) {
-        $log = & zcc $cflags -c "src/$m.c" -o $o 2>&1
+    # The .seg stamp records the bank flags the .o was built with, so re-banking
+    # a module in banks.json recompiles exactly that module.
+    $seg = "obj-zx128/$m.seg"
+    $segStale = (-not (Test-Path $seg)) -or ((Get-Content $seg -Raw) -ne $bank[$m].Stamp)
+    if ($segStale -or (Stale "src/$m.c" $o)) {
+        $zargs = @($cflags) + $bank[$m].Flags + @('-c', "src/$m.c", '-o', $o)
+        $log = & zcc $zargs 2>&1
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path $o)) {
             $fail += [pscustomobject]@{ Mod = "$m.c"; Log = ($log -join "`n") }
-        } else { "  ok  $m.c" }
+        } else { Set-Content $seg $bank[$m].Stamp -NoNewline; "  ok  $m.c" }
     } else { "  --  $m.c (up to date)" }
 }
 foreach ($m in $asrcs) {

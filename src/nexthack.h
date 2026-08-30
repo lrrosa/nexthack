@@ -4,7 +4,7 @@
  *
  * nexthack.c holds the shared game-state globals (resident DATA) and the game
  * logic: rendering, the turn step, level orchestration, save/restore and the
- * screens. All of that CODE is banked (PAGE_22_CODE); only main() stays
+ * screens. All of that CODE is banked (see banks.json); only main() stays
  * resident (mainentry.c). The functions main() calls are therefore __banked,
  * reached through the trampoline. Their inner loops touch only resident leaves
  * (terrain/tile_for/FOV in level.c, the platform primitives) and resident DATA,

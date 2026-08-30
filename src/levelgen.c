@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Leonardo Roman da Rosa */
 /* levelgen.c - COLD half of the level module: procedural dungeon generation
  * and per-level gold/item persistence. Split out of level.c so it can be a
- * whole BANKED module (PAGE_20_CODE), mapped into the 0xC000 window on demand.
+ * whole BANKED module (see banks.json), mapped into the 0xC000 window on demand.
  *
  * Its code is cold (runs on level entry / pickup, never per frame), so the
  * trampoline cost is irrelevant. Its DATA stays resident (only code is banked),
@@ -15,12 +15,6 @@
 #include "rng.h"          /* rng_set, rn2, world_seed  */
 #include "game.h"         /* dlvl, MAXLVL, DLVL_AMULET, has_amulet */
 #include "monster.h"      /* monster_at (teleport must not land on anyone) */
-
-#ifdef __ZXNEXT
-#pragma codeseg PAGE_20_CODE
-#else
-#pragma codeseg BANK_1
-#endif
 
 /* playable area (leaves a rock margin around the edges) */
 #define PX0 1

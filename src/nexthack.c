@@ -120,19 +120,14 @@ struct save_player {
     int8_t   luck;
 };
 
-/* From here down, all of nexthack.c's CODE is banked into PAGE_22_CODE (mapped
- * into the 0xC000 window on demand). The globals above are DATA and stay
- * resident. The functions main() calls are __banked (see nexthack.h); the
- * static helpers (hunger_*, describe) are reached by in-page calls. */
-#ifdef __ZXNEXT
-#pragma codeseg PAGE_22_CODE
-#pragma constseg PAGE_22_CODE
-#else
-#pragma codeseg BANK_3
-#pragma constseg BANK_3
-#endif
-/* constseg banks this file's RODATA -- every message/label literal -- next to
- * its code (~1.5 KB off the resident half, the lever that paid for corpses).
+/* From here down, all of nexthack.c's CODE is banked (banks.json says which
+ * bank per target; it is mapped into the 0xC000 window on demand). The globals
+ * above are DATA and stay resident. The functions main() calls are __banked
+ * (see nexthack.h); the static helpers (hunger_*, describe) are reached by
+ * in-page calls. */
+/* Const-banking puts this file's RODATA -- every message/label literal --
+ * next to its code (~1.5 KB off the resident half, the lever that paid for
+ * corpses).
  * Safe because every literal is CONSUMED while this bank is mapped: msg/
  * print_str copy to the screen during the call (resident callees don't remap),
  * and the only string pointers that leave the file (hunger_label to

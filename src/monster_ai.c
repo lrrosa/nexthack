@@ -18,20 +18,13 @@
 #include "sfx.h"          /* sound effects                                    */
 #include "item.h"         /* corrode_worn                                     */
 
-#ifdef __ZXNEXT
-#pragma codeseg PAGE_26_CODE   /* bank 13: a third code bank (PAGE_20 filled up) */
-#pragma constseg PAGE_26_CODE
-#else
-#pragma codeseg BANK_6   /* the spare 128K bank: the pet AI outgrew BANK_1 */
-#pragma constseg BANK_6
-#endif
-/* constseg: this file's message literals live in its own bank (consumed by
- * msg/msg2 while it is mapped), not the tight resident half. Don't pass them
- * into another bank's __banked functions. */
+/* Const-banked (banks.json): this file's message literals live in its own
+ * bank (consumed by msg/msg2 while it is mapped), not the tight resident
+ * half. Don't pass them into another bank's __banked functions. */
 
 /* Spawning and the mon_dead persistence/save live in monster_spawn.c; the
  * combat below sets mon_dead's kill bits directly (defined in monster.c).
- * place_pet lives in nexthack.c (PAGE_22) to keep this bank under its 16 KB. */
+ * place_pet lives in nexthack.c's bank to keep this one under its 16 KB. */
 
 /* ---- experience ---- */
 static void gain_xp(uint8_t amt)

@@ -4,7 +4,7 @@
  *
  * None of this is per-cell hot: fov_update runs once per turn; draw_map calls
  * fov_bitmap()/vis_bitmap() once per redraw and then reads the returned bitmap
- * inline. So all of it can be banked (PAGE_20_CODE) -- the entry points are
+ * inline. So all of it can be banked (see banks.json) -- the entry points are
  * __banked. The fog-of-war pool is DATA and stays resident, so the inline
  * per-cell reads in (banked) draw_map cost nothing. The room table r_*[] and
  * the persistence masks come from levelgen.c via extern. */
@@ -12,14 +12,6 @@
 #include "level.h"
 #include "platform.h"     /* file_read/file_write */
 #include "game.h"         /* dlvl, MAXLVL          */
-
-#ifdef __ZXNEXT
-#pragma codeseg PAGE_26_CODE   /* moved off PAGE_20 (bank 10 filled up as item.c
-                                * grew); shares bank 13 with leveltmpl/monster_ai */
-#else
-#pragma codeseg BANK_4   /* moved out of BANK_1 when item.c's growth filled it
-                          * (BANK_4 holds the SCR screens with ~2.5 KB spare) */
-#endif
 
 extern uint8_t r_x[], r_y[], r_w[], r_h[];   /* room rects (levelgen.c) */
 extern uint8_t gold_taken[], item_taken[];   /* persistence masks (levelgen.c) */

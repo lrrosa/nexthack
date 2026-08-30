@@ -22,7 +22,7 @@ codegen drift in the banked pages is normal). Build/run are scripts run from
 this folder:
 
 ```bat
-build.bat            REM builds the whole Next game -> nexthack.nex (+ nexthack.map)
+build.bat            REM builds the whole Next game (forwards to build.ps1)
 build.bat foo.c      REM builds a single .c file -> foo.nex
 run-next.bat         REM runs nexthack.nex in ZEsarUX (Next; esxDOS auto-mounted, so 'S' save works)
 run-next.bat foo.nex REM runs a specific .nex
@@ -40,22 +40,44 @@ boots the resident title but crashes on the first banked call (it doesn't carry
 the code-banked RAM banks). ZEsarUX auto-mounts esxDOS onto the .nex's folder, so
 save/restore works with no SD image (the old `run-sd.bat`, now removed).
 
-`build.bat` sets `ZCCCFG`/`PATH` (to `..\z88dk`) and invokes one zcc pass:
+The scripts set `ZCCCFG`/`PATH` (to `..\z88dk`), compile each `.c` to a `.o` and
+then link:
 
 ```
-zcc +zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startup=1 -pragma-include:zpragma.inc -m <srcs> -o nexthack -create-app
+zcc +zxn -clib=sdcc_iy -SO3 --max-allocs-per-node200000 -pragma-include:zpragma.inc <bank flags> -c src/foo.c -o src/foo.o
+zcc +zxn -subtype=nex -vn -clib=sdcc_iy -startup=1 -pragma-include:zpragma.inc -m <objs> -o nexthack -create-app
 ```
 
 `zpragma.inc` (`REGISTER_SP=0xBFF0`, `CRT_APPEND_MMAP=1`, `CLIB_BANKING_SEGMENT=3`)
-and `mmap.inc` (the `PAGE_20/22/26/28_CODE` section ORGs) drive the banking.
-That single pass recompiles **everything** (~3 min). `build.ps1` does the same
-compile per `.c` to a `.o` (byte-identical output — verified same SHA-256), but
-**skips untouched modules and parallelises** across cores: clean ~75s, one-module
-edit ~25s, no-op ~2s. Prefer it; `build.bat` is the single-shot fallback.
+and `mmap.inc` (the `PAGE_20/22/26/28_CODE` section ORGs) drive the banking;
+`<bank flags>` are the per-module `--codeseg`/`--constseg` read from `banks.json`
+(below). `build.ps1` **skips untouched modules and parallelises** across cores:
+clean ~75s, one-module edit ~25s, no-op ~2s. `build.bat` forwards the full build
+to it — per-module segment flags mean the old single zcc pass can no longer
+express the banking — and keeps its own single-file `build.bat foo.c` mode.
 
-When adding a new `.c` module, put it in `src/`, add it to the `SRCS`/`$srcs`
-list in **both** `build.bat` and `build.ps1`, and decide resident vs banked
-(see Memory budget).
+### Bank assignment lives in `banks.json`
+Which bank a module's **code** and **consts** go in is declared once per target
+in `banks.json` at the repo root, with the reason for each placement. `banks.ps1`
+turns it into zcc's `--codeseg`/`--constseg`, and both build scripts read it. The
+sources therefore carry **no `#pragma codeseg/constseg`** — an in-file pragma
+silently *overrides* the command line (verified), so re-adding one takes that
+module out of the manifest's control.
+
+- Moving a module between banks is **one edit in `banks.json`**. A `.seg` stamp
+  written next to each `.o` records the flags it was built with, so exactly the
+  re-banked module recompiles (~25 s), not the tree.
+- No `code`/`const` key = **resident**. `code` alone banks the code and leaves
+  the string/const literals resident; adding `const` banks those too.
+- The build **refuses an undeclared module** (it would land resident and silently
+  eat stack-floor headroom) and checks the `colocate` groups: modules that hand
+  consts or literals to each other's code must share one bank. That is the one
+  bank mistake no size check can catch — it compiles, links, passes the 16 KB
+  guards, then reads garbage at runtime with the bank paged out.
+
+When adding a new `.c` module, put it in `src/`, add it to `$srcs` in `build.ps1`
+and/or `$csrcs` in `build-zx128.ps1`, declare it in `banks.json` for each target
+that builds it, and decide resident vs banked (see Memory budget).
 
 There are no automated tests. Verification is manual: build, then run in ZEsarUX
 and observe. The build agent **can** drive ZEsarUX itself over ZRCP (read memory,
@@ -208,9 +230,9 @@ tilemap.
   bank (NextReg 0x12), turns the tilemap off (0x6B=0) + Layer 2 on (0x69 bit7);
   `hide_layer2()` reverses it (0x69=0, 0x6B=0xC0). Each palette **must** live in
   `PAGE_22_CODE` (bank 11) because the code that streams it runs from there.
-- **Two banking gotchas this exposed:** (a) SDCC `#pragma constseg` is
-  *per-translation-unit* — switching it mid-file does NOT split areas (the last one
-  wins), so each bank's array needs its **own `.c`** (hence three files). (b) z88dk
+- **Two banking gotchas this exposed:** (a) a translation unit gets **one** const
+  section, so each bank's array needs its **own `.c`** (hence three files); which
+  bank that is comes from `banks.json`, not from a pragma in the file. (b) z88dk
   **predefines** `BANK_nn` sections already ORG'd at `0x__C000` (bank 16 = 0x20C000,
   i.e. `(page8k<<16)|0xC000`), so reference them from `constseg` but do **not**
   re-`ORG` them in `mmap.inc` (that errors "ORG redefined").
@@ -355,16 +377,17 @@ the old text-title strings from resident rodata).
 - **New resident DATA is still the scarce resource.** Banked code's `static` data —
   **and its string/const literals (resident rodata)** — stay resident, so data/text-heavy
   features eat the ~575 B fast (the shops' message strings did). Levers when it overflows:
-  (a) **const-bank read-once tables** — `gfx[]` (1728 B, read only by `load_gfx_tiles` at
-  startup) lives in `platform_init.c` under `#pragma constseg PAGE_22_CODE`, so it sits in
-  Bank 11 next to its reader (which runs with that page mapped); (b) data-bank scratch
+  (a) **const-bank read-once tables** — `gfx[]` (~3 KB, read only by `load_gfx_tiles` at
+  startup) lives in `platform_init.c`, whose `const` `banks.json` puts in `PAGE_20_CODE`,
+  so it sits next to its reader (which runs with that page mapped); (b) data-bank scratch
   arrays into Bank 5's free tail (like `dist`/`bfsq`); (c) trim strings.
 - **`--max-allocs-per-node200000` is load-bearing for resident code size** (the SDCC
   allocator's thoroughness shrinks code); don't lower it.
 
 **Partitioning rules (how the split is done — see `nextzxos-banking-findings` memory):**
-1. Split a mixed module into wholly-hot/wholly-cold **files** — in-file `#pragma codeseg`
-   does NOT partition by position (it scrambles sections).
+1. Split a mixed module into wholly-hot/wholly-cold **files** — the assignment is
+   per-module (one `banks.json` entry per `.c`), and an in-file `#pragma codeseg` does
+   NOT partition by position either (it scrambles sections). A file is the unit.
 2. A module containing `main()` → bank the module, move only `main()` to a tiny resident
    file (`mainentry.c`); the CRT jumps straight to main, so it can't be banked.
 3. Keep the per-cell/per-move **leaves** resident (`platform.c` draw primitives,
@@ -373,6 +396,7 @@ the old text-title strings from resident rodata).
    static helpers stay plain. (Read-once tables like `gfx[]` are *not* leaves — bank them.)
 4. Data shared across a split is defined in one file, `extern` in the other (DATA is
    resident regardless of which file's code is banked).
-5. Resident modules: `mainentry.c`, `platform.c`, `level.c`, `monster.c`, `rng.c`.
-   Banked: `nexthack.c`+`platform_init.c` (PAGE_22); `item.c`,`levelgen.c`,`levelfov.c`,
-   `monster_ai.c`,`sfx.c` (PAGE_20).
+5. Resident modules: `mainentry.c`, `platform.c`, `level.c`, `monster.c`, `rng.c`
+   (they carry no `code`/`const` key). Everything else is banked — **`banks.json` is
+   the authoritative list**, per target, with the reason for each placement; read it
+   rather than a list here, which goes stale every time a bank fills up.

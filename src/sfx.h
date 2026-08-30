@@ -4,7 +4,7 @@
 #ifndef SFX_H
 #define SFX_H
 
-/* All banked (PAGE_20_CODE): sound is cold (event-driven), so the trampoline
+/* All banked (see banks.json): sound is cold (event-driven), so the trampoline
  * cost is irrelevant. The BEEPFX_* effect tables are resident library rodata. */
 void sfx_hit(void)     __banked;  /* you hit a monster        */
 void sfx_kill(void)    __banked;  /* a monster dies           */

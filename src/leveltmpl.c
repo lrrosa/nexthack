@@ -2,8 +2,9 @@
  * Copyright (C) 2026 Leonardo Roman da Rosa */
 /* leveltmpl.c - BANKED loader for the hand-drawn special-level templates
  * (Phase 24). The template grids + their room rects (the generated
- * leveltmpl_data.h) are const-banked in PAGE_22_CODE, so this loader -- which
- * runs with that page mapped -- reads them IN PLACE: no resident cost. For an
+ * leveltmpl_data.h) are const-banked in this module's own bank, so this loader
+ * -- which runs with that page mapped -- reads them IN PLACE: no resident cost.
+ * For an
  * SP_TEMPLATE depth, gen_level (levelgen.c) calls load_template: it stamps the
  * map into lvl[][], records the stairs, and fills r_*[]/rcount so FOV lights
  * the chambers (a raw grid has no rooms, so without this only radius-1 +
@@ -13,27 +14,13 @@
 
 extern uint8_t r_x[], r_y[], r_w[], r_h[];   /* room rects (defined in levelgen.c) */
 
-/* On the Next, this module (loader + ~8.6 KB of template const, read together)
- * lives in PAGE_26_CODE (bank 13, with monster_ai) -- NOT PAGE_22, whose 16 KB
- * would overflow into bank 12 and push the Layer 2 palettes (title_pal/
- * victory_pal) out of bank 11, corrupting the title/victory colours (the
- * streaming code reads the palette in place with bank 11 mapped).
- * On the 128K it lives in BANK_6 (with monster_ai) for the same reason: it
- * used to share BANK_3 with nexthack.c's code, and as that code grew the
- * combined section silently overflowed 16 KB -- neither the linker nor the
- * tape packer errors -- so the loaded bank was truncated at its 16 KB edge
- * and the clipped template data crashed the machine on entering any template
- * level (mktap128.py now refuses an oversized bank). */
-#ifdef __ZXNEXT
-#pragma codeseg PAGE_26_CODE
-#else
-#pragma codeseg BANK_6
-#endif
-#ifdef __ZXNEXT
-#pragma constseg PAGE_26_CODE
-#else
-#pragma constseg BANK_6
-#endif
+/* The loader and its ~8.6 KB of template const are banked TOGETHER (the loader
+ * reads the grids in place), and they need a bank with room to spare: sharing
+ * one with code that kept growing is what silently overflowed 16 KB -- neither
+ * the linker nor the tape packer errored, the loaded bank was truncated at its
+ * edge, and the clipped template data crashed the machine on entering any
+ * template level (mktap128.py now refuses an oversized bank). banks.json says
+ * which bank each target uses, and why. */
 #include "leveltmpl_data.h"   /* NTMPL, tmpl_map, tmpl_nroom, tmpl_room (const) */
 
 uint8_t template_count(void) __banked

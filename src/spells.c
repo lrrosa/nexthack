@@ -7,9 +7,9 @@
  * mind: rn2(20) >= In + xlvl wastes the turn and the power -- the Wizard
  * (In 16) almost never fumbles, the Valkyrie (In 8) often does.
  *
- * Banked INCLUDING consts and string literals (#pragma constseg), sharing
- * nexthack.c's bank like classes.c -- spell names and messages cost zero
- * resident bytes and are only consumed while this bank is mapped. */
+ * Banked INCLUDING consts and string literals (a "const" bank in banks.json),
+ * sharing nexthack.c's bank like classes.c -- spell names and messages cost
+ * zero resident bytes and are only consumed while this bank is mapped. */
 
 #include "game.h"
 #include "platform.h"
@@ -18,14 +18,6 @@
 #include "sfx.h"
 #include "rng.h"
 #include "spells.h"
-
-#ifdef __ZXNEXT
-#pragma codeseg  PAGE_22_CODE
-#pragma constseg PAGE_22_CODE
-#else
-#pragma codeseg  BANK_3
-#pragma constseg BANK_3
-#endif
 
 #define NSPELL 4
 #define SP_FORCE 0

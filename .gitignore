@@ -2,6 +2,7 @@
 *.nex
 *.map
 *.o
+*.seg
 *_CODE.bin
 *_BANK_*.bin
 

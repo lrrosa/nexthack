@@ -2,9 +2,9 @@
  * Copyright (C) 2026 Leonardo Roman da Rosa */
 /* monster_spawn.c - the COLD third of the monster module: level-entry spawning
  * and the killed-monster persistence/save. Split out of monster_ai.c (v0.11)
- * because that bank (PAGE_26 / the 128K's BANK_6) filled to the brim and the
- * per-turn AI needed its room back. Everything here runs once per level entry
- * (or once per save), so it banks freely into the roomier PAGE_20 / BANK_1.
+ * because monster_ai's bank filled to the brim and the per-turn AI needed its
+ * room back. Everything here runs once per level entry (or once per save), so
+ * it banks freely into whichever bank has room (banks.json).
  *
  * The monster arrays and per-cell lookups stay RESIDENT in monster.c (reached
  * by direct calls); mon_dead is shared with monster_ai.c's combat (a kill sets
@@ -15,14 +15,6 @@
 #include "platform.h"     /* file_read/file_write                             */
 #include "rng.h"          /* rn2                                              */
 #include "game.h"         /* dlvl, has_amulet, hero_x/hero_y                  */
-
-#ifdef __ZXNEXT
-#pragma codeseg PAGE_20_CODE
-#pragma constseg PAGE_20_CODE
-#else
-#pragma codeseg BANK_1
-#pragma constseg BANK_1
-#endif
 
 static int iabs(int v) { return v < 0 ? -v : v; }
 

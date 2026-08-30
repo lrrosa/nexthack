@@ -13,22 +13,13 @@
  * the mode's signature colour. It answers the title art -- a proud knight, a
  * moonlit castle behind, the demon and the treasure ahead.
  *
- * BANKING: cold code, and on the 128K it joins platform_init in the spare
- * BANK_7. Note that the song tables are const-banked with it, so nothing
- * outside this file may read them. */
+ * BANKING: cold code, with the song tables const-banked alongside it (see
+ * banks.json), so nothing outside this file may read them. */
 
 #include <z80.h>          /* z80_outp (newlib: _DEVELOPMENT/common/z80.h) */
 #include <input.h>        /* in_inkey */
 #include <stdint.h>
 #include "music.h"
-
-#ifdef __ZXNEXT
-#pragma codeseg PAGE_20_CODE
-#pragma constseg PAGE_20_CODE
-#else
-#pragma codeseg BANK_7
-#pragma constseg BANK_7
-#endif
 
 /* ---- the chip ----
  * AY-3-8912: register select on 0xFFFD, data on 0xBFFD. Both ports have A15

@@ -4,8 +4,9 @@
  * Floor items live in the terrain buffer as single chars:
  *   ')' weapon   '[' armor   '!' potion   '%' food
  *
- * item.c is a BANKED (cold) module: its code lives in PAGE_20_CODE, mapped into
- * the 0xC000 window on demand, so every entry point is __banked (called via the
+ * item.c is a BANKED (cold) module with a bank of its own (banks.json), mapped
+ * into the 0xC000 window on demand, so every entry point is __banked (called via
+ * the
  * trampoline from resident code). Banked code may only touch RESIDENT data. */
 #ifndef ITEM_H
 #define ITEM_H

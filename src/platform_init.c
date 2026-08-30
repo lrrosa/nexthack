@@ -9,11 +9,9 @@
 #ifdef __ZXNEXT
 #include <arch/zxn.h>
 
-/* PAGE_20 (bank 10, roomy): one-time init runs from any bank -- it reads
- * resident data + the always-mapped ROM font/Bank 5, and gfx[] (const-banked
- * below, ~3 KB with the v0.10 bestiary) lives next to its only reader. It
- * moved out of PAGE_22 when the mines tiles + conduct code overflowed it. */
-#pragma codeseg PAGE_20_CODE
+/* Banked (banks.json): one-time init runs from any bank -- it reads resident
+ * data + the always-mapped ROM font/Bank 5, and gfx[] (const-banked with it,
+ * ~3 KB with the v0.10 bestiary) lives next to its only reader. */
 
 #define TILEDEF_BASE  0x4000u
 #define ROM_FONT      0x3C00u
@@ -22,12 +20,10 @@ extern const uint8_t master[16];    /* graphic-tile master palette  (platform.c)
 extern const uint8_t inkcol[16];    /* text ink colours             (platform.c) */
 
 /* The ~3 KB graphic-tile table is read ONCE, here, by load_gfx_tiles(), so
- * it lives in this banked module's const section (PAGE_20_CODE) instead of
- * resident rodata. It is reachable because load_gfx_tiles() runs with the
- * same bank mapped in.
+ * it lives in this banked module's own const bank instead of resident rodata.
+ * It is reachable because load_gfx_tiles() runs with the same bank mapped in.
  * Each tile: 64 pixels (8 rows x 8 cols), values are master-palette indices.
  * Order matches the T_* numbering starting at T_ROCK. */
-#pragma constseg PAGE_20_CODE
 const uint8_t gfx[NTILES][64] = {
   { /* T_ROCK */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
@@ -277,18 +273,15 @@ void tm_init(void) __banked
 
 #else  /* plain ZX Spectrum 128K */
 
-/* BANK_7 -- the last spare 128K bank, claimed when BANK_3 (nexthack.c +
- * classes + spells) overflowed. This module is the right tenant: it runs ONCE
- * at boot (bank 7 is contended RAM, so speed there is irrelevant), tm_init is
- * already __banked, and its only const (udg_src below) is read solely by
- * build_udgs in this same file -- nothing outside reads it cross-bank. Note
- * udg_ink, which the renderers DO read everywhere, lives in the resident
- * platform.c and is unaffected. (The Next keeps this module in PAGE_20.) */
-#pragma codeseg BANK_7
+/* A good tenant for a leftover, contended bank: this module runs ONCE at boot
+ * (so speed there is irrelevant), tm_init is already __banked, and its only
+ * const (udg_src below) is read solely by build_udgs in this same file --
+ * nothing outside reads it cross-bank. Note udg_ink, which the renderers DO
+ * read everywhere, lives in the resident platform.c and is unaffected.
+ * banks.json says which bank each target uses. */
 
 /* 27 monochrome map tiles (1 byte/row, MSB = leftmost pixel), order matches
  * the T_ROCK.. numbering. Drawn for clarity at 8x8 on a single-ink cell. */
-#pragma constseg BANK_7
 static const uint8_t udg_src[NTILES][8] = {
     { 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 }, /* ROCK     (blank)        */
     { 0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00 }, /* FLOOR    (centre dot)   */
