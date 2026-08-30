@@ -8,7 +8,11 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
-## [Unreleased]
+## [1.1.0] — 2026-08-30
+
+**Rest.** The first change chosen by measurement instead of instinct: of six
+candidate repairs to the difficulty curve, this is the only one that makes a
+run longer without making a fight different.
 
 ### Added
 - **Rest (`R`).** Sit still and let your wounds close, instead of tapping
@@ -39,7 +43,7 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
   All six attributes on one line came to 33 columns from column 2, so on a
   32-column ULA the last one wrapped and landed on top of the alignment
   underneath. They now sit three to a row, with the alignment moved up beside
-  the class name -- the same number of rows as before, and unchanged in
+  the class name — the same number of rows as before, and unchanged in
   substance on the Next's 80 columns.
 
 ### Changed
