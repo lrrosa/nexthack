@@ -73,6 +73,30 @@ inject keys) to verify most behaviour; the human confirms the wall-clock *feel*
   adding code, data, tiles or strings, and after any change to `NTILES`,
   `FOV_SLOTS` or `MAXINV`.
 
+### Balance: measure it, don't guess it
+`python tools/balance.py report` models the difficulty curve offline (a minute,
+no emulator). It exists because 1.0 shipped without the balance pass and the
+questions it answers -- how much HP a fight costs at depth N, how many fights a
+full HP bar buys, where runs actually die -- cannot be answered by playing.
+
+Three rules make its numbers trustworthy, and any change to the tool must keep
+them: (1) `montypes[]`, `objtypes[]` and `classes[]` are **parsed out of the C**,
+never retyped, and a table that stops parsing makes the tool refuse to run
+rather than report stale numbers; (2) every formula carries the `file:line` it
+mirrors (`balance.py formulas` prints them side by side); (3) the dice are the
+game's own xorshift16 and item hashes, bit-exact. So **after tuning a table,
+re-running the tool measures the change immediately** -- that is the point of it.
+
+Subcommands: `tables curves duel gear rest gauntlet runs sweep report`
+(`--class`, `--depths`, `--turns`, `--engage`, `--pet`, `--csv`). `sweep` exists
+to show how much a conclusion depends on the three things the model has to guess
+(turns per level, fraction of a level fought, whether the dog lives) -- quote it
+whenever quoting a death depth. The 2026-08-29 findings are in the *Armour
+cliff* report: defence plateaus at `armor_def` 7-8 by Dlvl 10 while the bite's
+`+eff_depth()/4` grows forever, so absorption falls from 86% of blows to zero by
+Dlvl 28; no monster can kill a full-HP hero one-on-one at any depth, and there
+is no rest command to convert time into HP.
+
 ### The 128K target must also run on RAM-expansion interfaces
 The `.tap` is expected to work not only on a real 128K but on a **48K + external
 RAM interface** (e.g. `tkmem128-ii`), which is how many people get 128K RAM.
