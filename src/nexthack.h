@@ -32,5 +32,6 @@ void do_pray(void)        __banked;
 void do_search(void)      __banked;
 uint8_t rest_step(void)   __banked;   /* 'R': 1 = spend another resting turn */
 void do_farlook(void)     __banked;   /* ';': inspect any visible/remembered cell */
+void traps_reset(void)    __banked;   /* clear the per-visit sprung-trap set */
 
 #endif /* NEXTHACK_H */

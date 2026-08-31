@@ -111,13 +111,18 @@ python tools/bankpack.py plan zx128 --grow monster_ai=2000
   a module**: on the Next, `nexthack`+`classes`+`spells` and `nexthack`+the two
   Layer 2 palettes overlap, so all five move together or not at all.
 
-**What it found (2026-08-30): neither target needs repacking, and the binding
-constraint is not free space.** Everything fits, with 14327 B free in the 128K's
-BANK_7 and 2526 B in the Next's PAGE_20. The wall is the `nexthack` colocate group
-— one indivisible 16358 B unit on the 128K (26 B under a full bank) and 15827 B on
-the Next (557 B). No packing can help it: it already sits alone. Growing
-`nexthack.c` means splitting the module or breaking the group (reach the data
-through a `__banked` accessor instead of a pointer), never relocating it.
+**What it found (2026-08-30), and what was done about it.** Nothing was badly
+packed: everything fitted, and the binding constraint was not free space. The wall
+was the `nexthack` colocate group — one **indivisible** 16358 B unit on the 128K,
+26 B under a full bank. No packing can help a unit that already sits alone in its
+bank, so the only lever left was the other one: **`nexthack_lvl.c` was split out of
+`nexthack.c`** (2026-08-31), taking the cold level half. BANK_3 went 26 B → 2229 B
+free and PAGE_22 414 B → 2592 B. On the Next the new module took its own bank 15
+(PAGE_30) instead of PAGE_20, which it would have squeezed to 344 B — the Next has
+spare banks, so the split buys headroom on both targets instead of moving the
+shortage from one bank to another. That is the shape of the next such fix too:
+when a colocate group fills a bank, split a module or break the group (reach the
+data through a `__banked` accessor instead of a pointer); never relocate.
 
 There are no automated tests. Verification is manual: build, then run in ZEsarUX
 and observe. The build agent **can** drive ZEsarUX itself over ZRCP (read memory,
@@ -218,7 +223,8 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `sfx.c/.h` | B | beeper sound effects |
 | `titlegfx0/1/2.c`, `victorygfx0/1/2.c` | B | the Layer 2 title / victory images (generated): 3×16 KB framebuffer thirds const-banked into banks 16/17/18 and 19/20/21 (see Title & victory screens) |
 | `titlepal.c`, `victorypal.c` | B | each image's 9-bit palette, const-banked in `PAGE_22_CODE` next to the code that streams it |
-| `nexthack.c/.h` | B | game-state globals (resident DATA) + rendering, turn step, level orchestration, save/restore, screens; `.h` declares its `__banked` entry points for `mainentry.c` |
+| `nexthack.c/.h` | B | game-state globals (resident DATA) + rendering, turn step, save/restore, screens; `.h` declares its `__banked` entry points for `mainentry.c` |
+| `nexthack_lvl.c` | B | the cold level half split off it: `build_level`, the altar/fountain/pet/follower placement, and the stairs |
 | `game.h` | — | shared player/run state (`extern`s defined in `nexthack.c`) |
 
 Shared mutable state (`hero_x/y`, `dlvl`, `php`, `gold`, `ac`, `xp`, `nutrition`, …)

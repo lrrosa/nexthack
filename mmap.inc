@@ -11,6 +11,12 @@ SECTION PAGE_26_CODE
 ; const-banked catalogue/strings (the v0.9 reclaim) outgrew PAGE_20.
 SECTION PAGE_28_CODE
     ORG 0x1CC000
+; PAGE_30_CODE is bank 15 (free): opened for nexthack_lvl.c when splitting
+; nexthack.c would otherwise just have moved the tight bank from PAGE_22 to
+; PAGE_20. The Next has banks to spare (15, 22+) and each costs only 16 KB of
+; .nex file, so the split buys headroom on BOTH targets instead of trading it.
+SECTION PAGE_30_CODE
+    ORG 0x1EC000
 ; The Layer 2 title image (titlegfx0/1/2.c) goes in banks 16/17/18 via z88dk's
 ; predefined BANK_16/17/18 sections (already ORG'd at 0x20C000/0x22C000/0x24C000
 ; = the 0xC000 window over those banks), so nothing to add here.

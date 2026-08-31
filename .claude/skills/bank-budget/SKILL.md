@@ -1,6 +1,6 @@
 ---
 name: bank-budget
-description: Check and manage NextHack's memory budget before growing the game — the resident half, the 16 KB code banks (Next PAGE_20/22/26/28, 128K BANK_0/1/3/4/6) and the shared Bank-5 data map. Use when adding a feature, module, tile, table or message strings; when a build reports a bank overflow or the resident half nears the stack floor; when changing a Bank-5 tenant's size (NTILES, FOV_SLOTS, MAXINV); or when something works on one target and crashes/corrupts on the other.
+description: Check and manage NextHack's memory budget before growing the game — the resident half, the 16 KB code banks (Next PAGE_20/22/26/28/30, 128K BANK_0/1/3/4/6/7) and the shared Bank-5 data map. Use when adding a feature, module, tile, table or message strings; when a build reports a bank overflow or the resident half nears the stack floor; when changing a Bank-5 tenant's size (NTILES, FOV_SLOTS, MAXINV); or when something works on one target and crashes/corrupts on the other.
 ---
 
 # Memory budget: check before you grow
@@ -24,7 +24,7 @@ Run it **before** starting, then again after the build.
 
 | Adding | Spends | Room today |
 |---|---|---|
-| Cold code, `__banked` entry points | a **code bank** | Next: PAGE_20 roomy, PAGE_22/26 tight; 128K: BANK_1 roomy, **BANK_3 and BANK_6 effectively full** |
+| Cold code, `__banked` entry points | a **code bank** | Next: PAGE_30 nearly empty, PAGE_20/22 ~2.5 KB, PAGE_26 tight; 128K: BANK_7 and BANK_1 roomy, **BANK_6 effectively full** |
 | `static` data, arrays | the **resident half** | ~1 KB (Next) / ~3 KB (128K) to the stack floor |
 | **String literals** (`msg()`, screens) | the **resident half** — unless const-banked | the classic silent sink |
 | A Bank-5 array, tiles, the fov pool | the **Bank-5 map** | Next: **full**; 128K: a few small gaps |
@@ -73,8 +73,9 @@ pressure, and vice versa.
 
 **Next:** plenty. Banks 10/11/13/14 hold code, 12 holds PAGE_22's const spill
 (so a `PAGE_24` section there collides — `bankmap.py` flags it), 16-21 hold the
-Layer 2 images. Bank 15 and 22+ are free; add a `SECTION PAGE_nn_CODE` +
-`ORG 0xnnC000` to `mmap.inc`.
+Layer 2 images, 15 is `nexthack_lvl` (PAGE_30). Banks 22+ are still free; add a
+`SECTION PAGE_nn_CODE` + `ORG 0xnnC000` to `mmap.inc`, then list it in
+`banks.json`'s `_pool`.
 
 **128K: the whole machine is 8 banks and 7 of them are spoken for.**
 
@@ -83,11 +84,11 @@ Layer 2 images. Bank 15 and 22+ are free; add a `SECTION PAGE_nn_CODE` +
 | 0 | `item.c` + its consts |
 | 1 | `levelgen`, `monster_spawn`, `sfx` |
 | 2 | **the resident half** (0x8000-0xBFFF, not pageable) |
-| 3 | `nexthack.c`, `classes`, `spells` — **full** |
+| 3 | `nexthack.c`, `classes`, `spells` — 2.2 KB free since the 2026-08-31 split |
 | 4 | `levelfov`, `scr`, title/victory SCRs |
 | 5 | **the data bank** (0x4000-0x7FFF, always mapped — see the tenant map) |
 | 6 | `monster_ai`, `leveltmpl` — **full** |
-| 7 | `platform_init`, `music` — the last bank, and still the roomiest |
+| 7 | `platform_init`, `music`, `nexthack_lvl` — the last bank, still roomiest |
 
 (That table goes stale every time a bank fills; `banks.json` is authoritative
 and `python tools/bankmap.py` prints what is actually left.)

@@ -22,14 +22,16 @@
 
   "next": {
     "_doc": "Next: banks 10/11/13/14 as PAGE_20/22/26/28_CODE (ORG'd in mmap.inc); BANK_16..21 are z88dk-predefined sections holding the Layer 2 images.",
-    "_pool": ["PAGE_20_CODE", "PAGE_22_CODE", "PAGE_26_CODE", "PAGE_28_CODE"],
-    "_pool_doc": "The banks tools/bankpack.py may pack into. NOT PAGE_24_CODE (bank 12) -- that is PAGE_22's const spill, and a section ORG'd there collides. A module assigned to a bank outside this pool is PINNED: BANK_16..21 are read in place by the Layer 2 hardware. To add a bank: a SECTION + ORG in mmap.inc, then list it here (bank 15 and 22+ are free).",
+    "_pool": ["PAGE_20_CODE", "PAGE_22_CODE", "PAGE_26_CODE", "PAGE_28_CODE", "PAGE_30_CODE"],
+    "_pool_doc": "The banks tools/bankpack.py may pack into. NOT PAGE_24_CODE (bank 12) -- that is PAGE_22's const spill, and a section ORG'd there collides. A module assigned to a bank outside this pool is PINNED: BANK_16..21 are read in place by the Layer 2 hardware. To add a bank: a SECTION + ORG in mmap.inc, then list it here (bank 15 is now nexthack_lvl's; 22+ are still free).",
 
     "mainentry":     { "why": "resident: main() -- the CRT jumps straight to it, so it cannot be banked" },
     "platform":      { "why": "resident: the per-cell draw primitives + keyboard, called from every bank" },
     "rng":           { "why": "resident: rn2 is a hot leaf" },
     "level":         { "why": "resident: terrain/walkable/tile_for are per-cell leaves" },
     "monster":       { "why": "resident: monster_at/mon_find/mon_tile are per-cell leaves" },
+
+    "nexthack_lvl":  { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "the cold level half split out of nexthack.c: build_level, the altar/fountain/pet/follower placement and the stairs. Deliberately NOT in nexthack.c's bank -- the point of the split was to get these bytes out of the classes+spells colocate group. In its own bank 15 rather than PAGE_20, which it would have squeezed to 344 B: the Next has spare banks, so the split buys headroom instead of moving the shortage" },
 
     "nexthack":      { "code": "PAGE_22_CODE", "const": "PAGE_22_CODE", "why": "the game core; const banks every message/label literal next to the code that prints it" },
     "classes":       { "code": "PAGE_22_CODE", "const": "PAGE_22_CODE", "why": "shares nexthack.c's bank on purpose -- draw_status/show_help read its tables in place" },
@@ -73,6 +75,8 @@
     "levelgen":      { "code": "BANK_1", "why": "cold code bank A" },
     "monster_spawn": { "code": "BANK_1", "const": "BANK_1", "why": "split out of monster_ai.c when BANK_6 filled up" },
     "sfx":           { "code": "BANK_1", "why": "moved BACK here from BANK_3 when the 0.12 batch (farlook + mirroring + traps) filled BANK_3. All sfx_* entries are __banked and bit_beepfx + its tables are resident, so the move costs nothing" },
+
+    "nexthack_lvl":  { "code": "BANK_7", "const": "BANK_7", "why": "the cold level half split out of nexthack.c (see the Next entry). BANK_7 because it had ~14 KB free and this code runs once per level entry, so its contended RAM costs nothing" },
 
     "nexthack":      { "code": "BANK_3", "const": "BANK_3", "why": "the game core; const banks every message/label literal next to the code that prints it" },
     "classes":       { "code": "BANK_3", "const": "BANK_3", "why": "shares nexthack.c's bank on purpose -- draw_status/show_help read its tables in place" },

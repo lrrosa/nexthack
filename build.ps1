@@ -24,7 +24,7 @@ $env:PATH   = (Join-Path $root '..\z88dk\bin') + ';' + $env:PATH
 $zcccfg = $env:ZCCCFG   # captured for the parallel runspaces ($using:)
 $zpath  = $env:PATH
 
-$srcs   = 'mainentry','nexthack','platform','platform_init','rng','level','levelgen','levelfov','monster','monster_ai','monster_spawn','item','sfx','music','leveltmpl','classes','spells','titlegfx0','titlegfx1','titlegfx2','titlepal','victorygfx0','victorygfx1','victorygfx2','victorypal'
+$srcs   = 'mainentry','nexthack','nexthack_lvl','platform','platform_init','rng','level','levelgen','levelfov','monster','monster_ai','monster_spawn','item','sfx','music','leveltmpl','classes','spells','titlegfx0','titlegfx1','titlegfx2','titlepal','victorygfx0','victorygfx1','victorygfx2','victorypal'
 $cflags = @('+zxn','-clib=sdcc_iy','-SO3','--max-allocs-per-node200000','-pragma-include:zpragma.inc')
 
 # Bank assignment (banks.json -> --codeseg/--constseg). This also validates that
