@@ -10,6 +10,7 @@
 #   python tools/bankpack.py plan    [next|zx128]   fewest moves that fit
 #   python tools/bankpack.py plan --consolidate     pack into fewest banks
 #   python tools/bankpack.py plan --grow nexthack=2000    what if it grew?
+#   python tools/bankpack.py apply zx128 --grow monster_ai=2000   write it
 #
 # Why this exists: banks.json (see the bank-manifest commit) made moving a module
 # between banks one edit, but WHICH bank is still chosen by hand, one full bank
@@ -31,9 +32,13 @@
 #      plan that split one would compile, link, pass every size check and then
 #      read garbage at runtime.
 #
-# It only ever READS banks.json. Applying a plan is a separate, deliberate step:
-# on the 128K a bank left empty must also leave tools/mktap128.py's BANKS list,
-# or the tape loader tries to load a block the linker never emitted.
+# `apply` is the only subcommand that writes, and it writes ONLY banks.json --
+# surgically, so the hand-written "why" text survives. Everything downstream
+# already follows the manifest: mktap128.py derives the tape's bank list from
+# it, so a repack that empties a bank drops that block by itself.
+#
+# After an apply, rebuild AND re-verify in the emulator: every address in the
+# touched banks moves, so a latent bank-discipline bug surfaces there.
 
 import itertools
 import json
@@ -260,7 +265,9 @@ def repair(pool, us, load, grown):
     return [], False
 
 
-def cmd_plan(target, consolidate=False, grow=None):
+def compute(target, consolidate=False, grow=None):
+    """Everything both `plan` and `apply` need: the units, where they are now,
+    and the moves. Returns a dict; `moves` is [] when nothing needs to move."""
     man = manifest()
     size = measure(man, target)
     us = units(man, target, size)
@@ -277,6 +284,24 @@ def cmd_plan(target, consolidate=False, grow=None):
         else:
             die("'%s' is not a banked module of %s." % (mod, target))
     load = {b: sum(grown[n] for n, _ in cur.get(b, [])) for b in pool}
+
+    if consolidate:
+        new, unplaced = ffd(pool, us)
+        where = {n: b for b, items in new.items() for n, _ in items}
+        moves = [(n, b, where[n]) for n, _, _, b, p in us
+                 if not p and where.get(n) and where[n] != b]
+        ok = not unplaced
+    else:
+        new, unplaced = None, []
+        moves, ok = repair(pool, us, load, grown)
+    return dict(man=man, us=us, pool=pool, cur=cur, grown=grown, load=load,
+                moves=moves, ok=ok, new=new, unplaced=unplaced)
+
+
+def cmd_plan(target, consolidate=False, grow=None):
+    c = compute(target, consolidate, grow)
+    man, us, pool, cur, grown, load = (c["man"], c["us"], c["pool"], c["cur"],
+                                       c["grown"], c["load"])
 
     print("== %s: %s ==" % (target, "consolidation plan" if consolidate else
                             "placement plan"))
@@ -296,19 +321,16 @@ def cmd_plan(target, consolidate=False, grow=None):
               "  breaking its colocate group (reach the data through a __banked\n"
               "  accessor instead of a pointer), not moving it.")
 
+    moves = c["moves"]
     if consolidate:
-        new, unplaced = ffd(pool, us)
         print()
-        show(new, pool, "CONSOLIDATED (fewest banks -- maximises ONE free block)")
-        if unplaced:
+        show(c["new"], pool, "CONSOLIDATED (fewest banks -- maximises ONE free block)")
+        if c["unplaced"]:
             print("\n  DOES NOT FIT:")
-            for n, s in unplaced:
+            for n, s in c["unplaced"]:
                 print("    %-38s %6d" % (n, s))
-        where = {n: b for b, items in new.items() for n, _ in items}
-        moves = [(n, b, where[n]) for n, _, _, b, p in us
-                 if not p and where.get(n) and where[n] != b]
     else:
-        moves, ok = repair(pool, us, load, grown)
+        ok = c["ok"]
         if not moves and ok:
             free = sorted((BANK_SIZE - load[b], b) for b in pool)
             print("\n  Everything fits. No move needed.")
@@ -336,15 +358,74 @@ def cmd_plan(target, consolidate=False, grow=None):
              max(BANK_SIZE - after[b] for b in pool)))
 
 
-USAGE = ("usage: bankpack.py [measure|report|plan] [next|zx128]\n"
+def rewrite_manifest(target, changes):
+    """Point each moved module at its new bank, IN PLACE.
+
+    A surgical line edit, not json.dump: re-serialising would reflow the whole
+    file and throw away the key order, the alignment and the per-entry "why"
+    text, which is the part a human actually reads. Each entry is one line, so
+    only the bank names on those lines change.
+    """
+    # newline="" both ways: read and write the file's own line endings back
+    # untouched, so the diff is the banks that moved and nothing else.
+    path = os.path.join(ROOT, "banks.json")
+    with open(path, newline="") as f:
+        text = f.read()
+
+    start = text.index('  "%s": {' % target)
+    end = text.index("\n  },", start)
+    head, body, tail = text[:start], text[start:end], text[end:]
+
+    for mod, newbank in sorted(changes.items()):
+        pat = re.compile(r'^(\s*"%s":\s*\{.*)$' % re.escape(mod), re.M)
+        m = pat.search(body)
+        if not m:
+            die("no '%s' entry in the %s section of banks.json." % (mod, target))
+        line = m.group(1)
+        fixed = re.sub(r'("(?:code|const)":\s*")[^"]+(")',
+                       lambda g: g.group(1) + newbank + g.group(2), line)
+        if fixed == line:
+            die("'%s' has no code/const key to move." % mod)
+        body = body[:m.start(1)] + fixed + body[m.end(1):]
+
+    with open(path, "w", newline="") as f:
+        f.write(head + body + tail)
+
+
+def cmd_apply(target, consolidate=False, grow=None):
+    c = compute(target, consolidate, grow)
+    if not c["ok"]:
+        die("no placement fits -- nothing to apply. Run 'plan' for the detail.")
+    if not c["moves"]:
+        print("bankpack: %s already fits; nothing to move." % target)
+        return
+
+    unit_mods = {n: mods for n, mods, _, _, _ in c["us"]}
+    changes = {m: dst for n, _, dst in c["moves"] for m in unit_mods[n]}
+
+    print("== %s: applying %d move(s) to banks.json ==" % (target, len(c["moves"])))
+    for n, src, dst in sorted(c["moves"]):
+        print("    %-38s %-14s -> %s" % (n, src, dst))
+    rewrite_manifest(target, changes)
+
+    print("\n  %d module(s) will recompile: %s"
+          % (len(changes), ", ".join(sorted(changes))))
+    print("  The 'why' text of the moved entries still describes the OLD bank.\n"
+          "  It is prose a person wrote; fix it by hand rather than let it lie.")
+    print("  Then rebuild and RE-VERIFY: every address in those banks changed, so\n"
+          "  a latent bank-discipline bug surfaces here and nowhere else.")
+
+
+USAGE = ("usage: bankpack.py [measure|report|plan|apply] [next|zx128]\n"
          "                  plan --consolidate      pack into the fewest banks\n"
-         "                  plan --grow mod=BYTES   what if this module grew?")
+         "                  plan --grow mod=BYTES   what if this module grew?\n"
+         "                  apply ...               write the plan to banks.json")
 
 
 def main():
     args = sys.argv[1:]
     cmd = args[0] if args and not args[0].startswith("-") else "report"
-    if cmd not in ("measure", "report", "plan"):
+    if cmd not in ("measure", "report", "plan", "apply"):
         die(USAGE)
     consolidate = "--consolidate" in args
     grow = {}
@@ -360,6 +441,8 @@ def main():
             print()
         if cmd == "plan":
             cmd_plan(t, consolidate, grow)
+        elif cmd == "apply":
+            cmd_apply(t, consolidate, grow)
         else:
             {"measure": cmd_measure, "report": cmd_report}[cmd](t)
 

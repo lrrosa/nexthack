@@ -20,7 +20,9 @@
 #
 #   python tools/mktap128.py        (run from the repo root, after the link)
 
+import json
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -36,12 +38,36 @@ STUB_ADDR = 0x5B00     # 23296: printer buffer -- free, survives the loads
 STUB = bytes([0xF3, 0xED, 0x56, 0x3E, 0x3F, 0xED, 0x47, 0xC3, 0x00, 0x80])
 
 CODE_BIN = "nexthack128_CODE.bin"
-BANKS = [("nexthack128_BANK_0.bin", "bank0", 0),   # item.c + consts (v0.9 reclaim)
-         ("nexthack128_BANK_1.bin", "bank1", 1),
-         ("nexthack128_BANK_3.bin", "bank3", 3),
-         ("nexthack128_BANK_4.bin", "bank4", 4),
-         ("nexthack128_BANK_6.bin", "bank6", 6),   # monster_ai (spare bank)
-         ("nexthack128_BANK_7.bin", "bank7", 7)]   # platform_init (the last spare)
+
+
+def banks_from_manifest():
+    """Which banks the tape must carry -- derived from banks.json, not listed.
+
+    The two failure modes are opposite and both silent-ish: a bank that holds
+    code but is missing from the tape is simply ABSENT at runtime, and the first
+    __banked call into it crashes; a bank listed here that no module was assigned
+    to produces no .bin at all, and the loader stops on a block that does not
+    exist. Reading the same manifest the compiler was driven from keeps the tape
+    and the assignment from drifting apart -- which matters now that a repack
+    (tools/bankpack.py) can empty a bank.
+    """
+    with open(os.path.join(ROOT, "banks.json")) as f:
+        zx = json.load(f)["zx128"]
+    used = set()
+    for mod, e in zx.items():
+        if not mod.startswith("_"):
+            used.update(b for b in (e.get("code"), e.get("const")) if b)
+    out = []
+    for name in used:
+        m = re.match(r"^BANK_(\d+)$", name)
+        if not m:
+            sys.exit("mktap128: %r is not a 128K bank name (BANK_n)." % name)
+        out.append(("nexthack128_%s.bin" % name, "bank%s" % m.group(1),
+                    int(m.group(1))))
+    return sorted(out, key=lambda b: b[2])
+
+
+BANKS = banks_from_manifest()
 
 # ---- ZX BASIC tokens ----
 CLEAR, VAL, LOAD, CODE_T, OUT, POKE, PEEK, AND, LET, RAND, USR = \
@@ -122,7 +148,12 @@ def main():
     code = open(os.path.join(ROOT, CODE_BIN), "rb").read()
     tap += header(3, "nexthack", len(code), CODE) + block(0xFF, code)
     for fname, name, _ in BANKS:
-        data = open(os.path.join(ROOT, fname), "rb").read()
+        path = os.path.join(ROOT, fname)
+        if not os.path.exists(path):
+            sys.exit("mktap128: %s is missing. banks.json assigns a module to that "
+                     "bank but the linker emitted nothing for it -- link first, or "
+                     "fix the assignment." % fname)
+        data = open(path, "rb").read()
         if len(data) > 16384:
             # The linker happily emits an ORG'd bank section past its 16 KB
             # window and LOAD "" CODE at 0xC000 truncates it at 0xFFFF -- the

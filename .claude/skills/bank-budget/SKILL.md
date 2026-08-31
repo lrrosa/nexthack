@@ -41,6 +41,9 @@ pressure, and vice versa.
    plainly that nothing fits, which is a budget wall rather than a placement
    accident. Picking a bank by eye, one full bank at a time, is what left the 128K
    with 21 KB stranded in two banks while two others sat at 26 and 42 free bytes.
+   Swap `plan` for `apply` to write it into `banks.json`; then fix the moved
+   entries' `why` text (it still describes the old bank) and **re-verify in the
+   emulator** — every address in those banks changed.
 1. **Do not shrink the feature first.** Relocate a module: move a whole,
    self-contained `.c` to a roomier bank by editing its `"code"` (and `"const"`)
    in **`banks.json`** — one edit, and only that module recompiles. A file is

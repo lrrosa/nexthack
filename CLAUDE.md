@@ -96,6 +96,17 @@ python tools/bankpack.py plan zx128 --grow monster_ai=2000
   minimising banks). `--grow mod=BYTES` asks the real question: a bank is about to
   overflow, what is the smallest fix? `--consolidate` packs into the fewest banks
   and prints the churn it costs.
+- `apply` — writes that plan into `banks.json`, and is the only subcommand that
+  writes anything. The edit is surgical (one line per moved module), so the
+  hand-written `why` text survives — which the tool then tells you to fix, since
+  it now describes the old bank. **Rebuild and re-verify in the emulator after
+  applying:** every address in the touched banks moves, so a latent
+  bank-discipline bug surfaces there and nowhere else.
+- `tools/mktap128.py` derives the tape's bank blocks from `banks.json` too, so a
+  repack that empties a bank drops that block by itself. The two failure modes it
+  closes are opposite: a bank holding code but missing from the tape is absent at
+  runtime (the first `__banked` call into it crashes), and a bank on the tape that
+  no module was assigned to has no `.bin` for the loader to find.
 - Colocate groups are packed as one indivisible unit, **including groups that share
   a module**: on the Next, `nexthack`+`classes`+`spells` and `nexthack`+the two
   Layer 2 palettes overlap, so all five move together or not at all.
