@@ -31,7 +31,8 @@ function Import-BankManifest {
     if (-not $tm) { throw "Bank manifest '$Path' has no '$Target' section." }
 
     # --- invariant 1: the declared module set matches what we are building ---
-    $declared = $tm.PSObject.Properties.Name | Where-Object { $_ -ne '_doc' }
+    # Keys starting with '_' are metadata (_doc, _pool, ...), not modules.
+    $declared = $tm.PSObject.Properties.Name | Where-Object { -not $_.StartsWith('_') }
     $missing  = $Modules  | Where-Object { $_ -notin $declared }
     $extra    = $declared | Where-Object { $_ -notin $Modules }
     if ($missing) {

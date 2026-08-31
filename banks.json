@@ -22,6 +22,8 @@
 
   "next": {
     "_doc": "Next: banks 10/11/13/14 as PAGE_20/22/26/28_CODE (ORG'd in mmap.inc); BANK_16..21 are z88dk-predefined sections holding the Layer 2 images.",
+    "_pool": ["PAGE_20_CODE", "PAGE_22_CODE", "PAGE_26_CODE", "PAGE_28_CODE"],
+    "_pool_doc": "The banks tools/bankpack.py may pack into. NOT PAGE_24_CODE (bank 12) -- that is PAGE_22's const spill, and a section ORG'd there collides. A module assigned to a bank outside this pool is PINNED: BANK_16..21 are read in place by the Layer 2 hardware. To add a bank: a SECTION + ORG in mmap.inc, then list it here (bank 15 and 22+ are free).",
 
     "mainentry":     { "why": "resident: main() -- the CRT jumps straight to it, so it cannot be banked" },
     "platform":      { "why": "resident: the per-cell draw primitives + keyboard, called from every bank" },
@@ -57,6 +59,8 @@
 
   "zx128": {
     "_doc": "128K: only banks 0/1/3/4/6/7 are pageable at 0xC000 (2 and 5 are fixed; 7 is free only because the shadow screen is never used). Six banks = a HARD 96 KB ceiling for banked code. ORG'd in zpragma-zx128.inc; each bank is also a tape-loader block in tools/mktap128.py.",
+    "_pool": ["BANK_0", "BANK_1", "BANK_3", "BANK_4", "BANK_6", "BANK_7"],
+    "_pool_doc": "Every bank this machine has. There is no seventh: 2 holds the resident half and 5 is the always-mapped data bank. Adding one is impossible, so a plan that does not fit here is a real budget wall, not a placement accident.",
 
     "mainentry":     { "why": "resident: main() -- the CRT jumps straight to it, so it cannot be banked" },
     "platform":      { "why": "resident: the per-cell ULA blits + keyboard, called from every bank" },

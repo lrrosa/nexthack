@@ -79,6 +79,35 @@ When adding a new `.c` module, put it in `src/`, add it to `$srcs` in `build.ps1
 and/or `$csrcs` in `build-zx128.ps1`, declare it in `banks.json` for each target
 that builds it, and decide resident vs banked (see Memory budget).
 
+### Where a module should go: `python tools/bankpack.py`
+`banks.json` made *moving* a module one edit; `bankpack.py` decides **which bank**
+instead of choosing by hand under pressure (that is how the 128K got two banks at
+26 and 42 free bytes while two others held 21 KB between them). It reads the
+`.o` files with `z88dk-z80nm`, so every size is what the linker will actually
+place — build first; a missing `.o` makes it refuse rather than estimate.
+
+```bash
+python tools/bankpack.py plan zx128 --grow monster_ai=2000
+```
+
+- `measure` — per-module banked footprint. `report` — the current packing + slack.
+- `plan` — the **fewest moves** that make everything fit (each move costs a
+  recompile *and* a fresh emulator verification, so minimising moves beats
+  minimising banks). `--grow mod=BYTES` asks the real question: a bank is about to
+  overflow, what is the smallest fix? `--consolidate` packs into the fewest banks
+  and prints the churn it costs.
+- Colocate groups are packed as one indivisible unit, **including groups that share
+  a module**: on the Next, `nexthack`+`classes`+`spells` and `nexthack`+the two
+  Layer 2 palettes overlap, so all five move together or not at all.
+
+**What it found (2026-08-30): neither target needs repacking, and the binding
+constraint is not free space.** Everything fits, with 14327 B free in the 128K's
+BANK_7 and 2526 B in the Next's PAGE_20. The wall is the `nexthack` colocate group
+— one indivisible 16358 B unit on the 128K (26 B under a full bank) and 15827 B on
+the Next (557 B). No packing can help it: it already sits alone. Growing
+`nexthack.c` means splitting the module or breaking the group (reach the data
+through a `__banked` accessor instead of a pointer), never relocating it.
+
 There are no automated tests. Verification is manual: build, then run in ZEsarUX
 and observe. The build agent **can** drive ZEsarUX itself over ZRCP (read memory,
 inject keys) to verify most behaviour; the human confirms the wall-clock *feel*
