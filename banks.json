@@ -46,7 +46,7 @@
     "music":         { "code": "PAGE_20_CODE", "const": "PAGE_20_CODE", "why": "the AY title theme + its score tables" },
 
     "monster_ai":    { "code": "PAGE_26_CODE", "const": "PAGE_26_CODE", "why": "bank 13, a third code bank opened when PAGE_20 filled up" },
-    "leveltmpl":     { "code": "PAGE_26_CODE", "const": "PAGE_26_CODE", "why": "const holds the generated leveltmpl_data.h grids; load_template() reads them in place, so both must share a bank" },
+    "leveltmpl":     { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "const holds the generated leveltmpl_data.h grids; load_template() reads them in place, so both must share a bank. Moved off PAGE_26 with the 128K half, so monster_ai + levelfov get that bank to themselves" },
     "levelfov":      { "code": "PAGE_26_CODE", "why": "moved off PAGE_20 when bank 10 filled up as item.c grew" },
 
     "item":          { "code": "PAGE_28_CODE", "const": "PAGE_28_CODE", "why": "bank 14, item.c's own bank: the v0.9 reclaim banked the whole object catalogue with it, ~3.2 KB off the resident half" },
@@ -62,6 +62,8 @@
   "zx128": {
     "_doc": "128K: only banks 0/1/3/4/6/7 are pageable at 0xC000 (2 and 5 are fixed; 7 is free only because the shadow screen is never used). Six banks = a HARD 96 KB ceiling for banked code. ORG'd in zpragma-zx128.inc; each bank is also a tape-loader block in tools/mktap128.py.",
     "_pool": ["BANK_0", "BANK_1", "BANK_3", "BANK_4", "BANK_6", "BANK_7"],
+    "_contended": ["BANK_1", "BANK_3", "BANK_5", "BANK_7"],
+    "_contended_doc": "The ULA steals cycles from the odd banks, so code there runs slower. It is a PREFERENCE, not a rule: a module marked \"hot\" (per-turn code) is placed in an uncontended bank when one has room, and nexthack itself already sits in the contended BANK_3 because its colocate group has nowhere else to go. The Next has no such split, so it declares none.",
     "_pool_doc": "Every bank this machine has. There is no seventh: 2 holds the resident half and 5 is the always-mapped data bank. Adding one is impossible, so a plan that does not fit here is a real budget wall, not a placement accident.",
 
     "mainentry":     { "why": "resident: main() -- the CRT jumps straight to it, so it cannot be banked" },
@@ -78,17 +80,17 @@
 
     "nexthack_lvl":  { "code": "BANK_7", "const": "BANK_7", "why": "the cold level half split out of nexthack.c (see the Next entry). BANK_7 because it had ~14 KB free and this code runs once per level entry, so its contended RAM costs nothing" },
 
-    "nexthack":      { "code": "BANK_3", "const": "BANK_3", "why": "the game core; const banks every message/label literal next to the code that prints it" },
+    "nexthack":      { "hot": true, "code": "BANK_3", "const": "BANK_3", "why": "the game core; const banks every message/label literal next to the code that prints it" },
     "classes":       { "code": "BANK_3", "const": "BANK_3", "why": "shares nexthack.c's bank on purpose -- draw_status/show_help read its tables in place" },
     "spells":        { "code": "BANK_3", "const": "BANK_3", "why": "shares nexthack.c's bank like classes.c" },
 
     "scr":           { "code": "BANK_4", "why": "the SCR blitter; must share a bank with the two screens below, which it reads in place" },
     "title_scr":     { "const": "BANK_4", "why": "GENERATED. The 6912-byte title SCR, read in place by scr.c" },
     "victory_scr":   { "const": "BANK_4", "why": "GENERATED. The 6912-byte victory SCR, read in place by scr.c" },
-    "levelfov":      { "code": "BANK_4", "why": "moved out of BANK_1 when item.c's growth filled it; BANK_4 held the SCR screens with room to spare" },
+    "levelfov":      { "hot": true, "code": "BANK_4", "why": "moved out of BANK_1 when item.c's growth filled it; BANK_4 held the SCR screens with room to spare" },
 
-    "monster_ai":    { "code": "BANK_6", "const": "BANK_6", "why": "the spare bank -- the pet AI outgrew BANK_1" },
-    "leveltmpl":     { "code": "BANK_6", "const": "BANK_6", "why": "const holds the generated template grids, read in place by load_template(). It used to share BANK_3 with nexthack.c; as that code grew the combined section silently overflowed 16 KB and the truncated template data crashed every template level -- mktap128.py now refuses an oversized bank" },
+    "monster_ai":    { "hot": true, "code": "BANK_6", "const": "BANK_6", "why": "the spare bank -- the pet AI outgrew BANK_1" },
+    "leveltmpl":     { "code": "BANK_7", "const": "BANK_7", "why": "const holds the generated template grids, read in place by load_template(). Moved off BANK_6 (2026-08-31) to leave that uncontended bank to monster_ai alone: this module is read ONCE on entering a template level, so BANK_7's contended RAM costs it nothing, while the per-turn AI would feel it. Earlier it shared BANK_3 with nexthack.c; as that code grew the combined section silently overflowed 16 KB and the truncated template data crashed every template level -- mktap128.py now refuses an oversized bank" },
 
     "platform_init": { "code": "BANK_7", "const": "BANK_7", "why": "moved here when BANK_3 overflowed. It runs ONCE at boot, so bank 7's contended RAM costs nothing, and its only const (udg_src) is read solely by build_udgs in the same file. NOTE udg_ink, which the renderers read everywhere, lives in the resident platform.c" },
     "music":         { "code": "BANK_7", "const": "BANK_7", "why": "the AY title theme + its score tables; bank 7 has ~14 KB free" }

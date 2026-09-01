@@ -40,6 +40,7 @@
 # After an apply, rebuild AND re-verify in the emulator: every address in the
 # touched banks moves, so a latent bank-discipline bug surfaces there.
 
+import collections
 import itertools
 import json
 import os
@@ -61,6 +62,11 @@ RESIDENT_SECTIONS = {
     "", "IGNORE", "code_compiler", "rodata_compiler", "data_compiler",
     "bss_compiler", "code_crt_init", "code_home", "code_driver", "bss_driver",
 }
+
+# A packing unit: one module, or a whole colocate group. The first five fields
+# are unpacked positionally all over this file; `hot` rides along for the
+# contended-RAM preference below.
+Unit = collections.namedtuple("Unit", "name mods size bank pinned hot")
 
 SEC_RE = re.compile(r'^\s*Section\s+"?([A-Za-z0-9_]*)"?:\s+(\d+)\s+bytes\s*$')
 
@@ -143,26 +149,27 @@ def units(man, target, size):
     merged = {r: ms for r, ms in merged.items() if len(ms) > 1}
 
     grouped = {m for ms in merged.values() for m in ms}
+    hot = lambda ms: any(tm[m].get("hot") for m in ms)
     out = []
     for g, ms in sorted(merged.items()):
         ms = sorted(ms)
         banks = {b for m in ms for b in size[m][1]}
-        out.append(("+".join(ms), ms, sum(size[m][0] for m in ms),
-                    sorted(banks)[0] if banks else None,
-                    not all(b in pool for b in banks)))
+        out.append(Unit("+".join(ms), ms, sum(size[m][0] for m in ms),
+                        sorted(banks)[0] if banks else None,
+                        not all(b in pool for b in banks), hot(ms)))
     for m in mods:
         if m in grouped or size[m][0] == 0:
             continue
         banks = size[m][1]
-        out.append((m, [m], size[m][0], banks[0] if banks else None,
-                    not all(b in pool for b in banks)))
+        out.append(Unit(m, [m], size[m][0], banks[0] if banks else None,
+                        not all(b in pool for b in banks), hot([m])))
     return out
 
 
 def current(man, target, us):
     """bank -> [(unit, bytes)] as the build has it today."""
     occ = {b: [] for b in man[target]["_pool"]}
-    for name, _, sz, bank, pinned in us:
+    for name, _, sz, bank, pinned, _h in us:
         if not pinned:
             occ.setdefault(bank, []).append((name, sz))
     return occ
@@ -174,7 +181,7 @@ def ffd(pool, us):
     occ = {b: [] for b in pool}
     left = dict.fromkeys(pool, BANK_SIZE)
     unplaced = []
-    for name, _, sz, _, pinned in sorted(us, key=lambda u: -u[2]):
+    for name, _, sz, _, pinned, _h in sorted(us, key=lambda u: -u[2]):
         if pinned:
             continue
         for b in pool:
@@ -225,14 +232,14 @@ def cmd_report(target):
     pool = man[target]["_pool"]
     print("== %s: current packing ==" % target)
     show(current(man, target, us), pool, "as banks.json has it")
-    pins = [(n, s) for n, _, s, b, p in us if p]
+    pins = [(n, s) for n, _, s, b, p, _h in us if p]
     if pins:
         print("  pinned outside the pool (never packed):")
         for n, s in sorted(pins):
             print("    %-38s %6d" % (n, s))
 
 
-def repair(pool, us, load, grown):
+def repair(pool, us, load, grown, contended=()):
     """Fewest unit moves that bring every bank back under 16 KB.
 
     Minimising MOVES, not banks used: each move costs a recompile and a fresh
@@ -242,17 +249,23 @@ def repair(pool, us, load, grown):
     over = [b for b in pool if load[b] > BANK_SIZE]
     if not over:
         return [], True
-    movable = [(n, b, grown[n]) for n, _, _, b, p in us if not p and b in over]
+    movable = [(n, b, grown[n], h) for n, _, _, b, p, h in us if not p and b in over]
     for k in range(1, len(movable) + 1):
         for combo in itertools.combinations(movable, k):
             left = dict(load)
-            for n, b, sz in combo:
+            for n, b, sz, _hot in combo:
                 left[b] -= sz
             if any(left[b] > BANK_SIZE for b in pool):
                 continue
             moves, ok = [], True
-            for n, b, sz in sorted(combo, key=lambda c: -c[2]):
-                for dst in pool:
+            for n, b, sz, hot in sorted(combo, key=lambda c: -c[2]):
+                # A hot unit (per-turn code) tries the uncontended banks first:
+                # on the 128K the ULA steals cycles from banks 1/3/5/7, so the
+                # chase AI landing there is a real slowdown. Preference, not a
+                # rule -- if only a contended bank has room, it still goes.
+                order = pool if not hot else ([b2 for b2 in pool if b2 not in contended] +
+                                              [b2 for b2 in pool if b2 in contended])
+                for dst in order:
                     if dst != b and BANK_SIZE - left[dst] >= sz:
                         left[dst] += sz
                         moves.append((n, b, dst))
@@ -271,13 +284,14 @@ def compute(target, consolidate=False, grow=None):
     man = manifest()
     size = measure(man, target)
     us = units(man, target, size)
-    pool = man[target]["_pool"]
+    tm = man[target]
+    pool = tm["_pool"]
     cur = current(man, target, us)
 
     # Growth is asked per MODULE but lands on the whole unit it belongs to.
-    grown = {n: sz for n, _, sz, _, p in us if not p}
+    grown = {n: sz for n, _, sz, _, p, _h in us if not p}
     for mod, extra in (grow or {}).items():
-        for n, mods, _, _, p in us:
+        for n, mods, _, _, p, _h in us:
             if mod in mods and not p:
                 grown[n] += extra
                 break
@@ -288,12 +302,12 @@ def compute(target, consolidate=False, grow=None):
     if consolidate:
         new, unplaced = ffd(pool, us)
         where = {n: b for b, items in new.items() for n, _ in items}
-        moves = [(n, b, where[n]) for n, _, _, b, p in us
+        moves = [(n, b, where[n]) for n, _, _, b, p, _h in us
                  if not p and where.get(n) and where[n] != b]
         ok = not unplaced
     else:
         new, unplaced = None, []
-        moves, ok = repair(pool, us, load, grown)
+        moves, ok = repair(pool, us, load, grown, tm.get("_contended", []))
     return dict(man=man, us=us, pool=pool, cur=cur, grown=grown, load=load,
                 moves=moves, ok=ok, new=new, unplaced=unplaced)
 
@@ -311,7 +325,7 @@ def cmd_plan(target, consolidate=False, grow=None):
     show(cur, pool, "CURRENT" if not grow else "CURRENT (with the growth applied)")
 
     # The binding constraint is the biggest INDIVISIBLE unit, not the total.
-    big = max((grown[n], n, mods) for n, mods, _, _, p in us if not p)
+    big = max((grown[n], n, mods) for n, mods, _, _, p, _h in us if not p)
     slack = BANK_SIZE - big[0]
     print("\n  Largest indivisible unit: %s = %d B, %d B %s a full bank."
           % (big[1], big[0], abs(slack), "under" if slack >= 0 else "OVER"))
@@ -400,7 +414,7 @@ def cmd_apply(target, consolidate=False, grow=None):
         print("bankpack: %s already fits; nothing to move." % target)
         return
 
-    unit_mods = {n: mods for n, mods, _, _, _ in c["us"]}
+    unit_mods = {n: mods for n, mods, _, _, _, _h in c["us"]}
     changes = {m: dst for n, _, dst in c["moves"] for m in unit_mods[n]}
 
     print("== %s: applying %d move(s) to banks.json ==" % (target, len(c["moves"])))

@@ -24,7 +24,7 @@ Run it **before** starting, then again after the build.
 
 | Adding | Spends | Room today |
 |---|---|---|
-| Cold code, `__banked` entry points | a **code bank** | Next: PAGE_30 nearly empty, PAGE_20/22 ~2.5 KB, PAGE_26 tight; 128K: BANK_7 and BANK_1 roomy, **BANK_6 effectively full** |
+| Cold code, `__banked` entry points | a **code bank** | Next: PAGE_26 ~9 KB, PAGE_30 ~5 KB, PAGE_20/22 ~2.5 KB; 128K: BANK_6 ~8.6 KB (uncontended), BANK_1 ~7 KB, BANK_7 ~3 KB |
 | `static` data, arrays | the **resident half** | ~1 KB (Next) / ~3 KB (128K) to the stack floor |
 | **String literals** (`msg()`, screens) | the **resident half** — unless const-banked | the classic silent sink |
 | A Bank-5 array, tiles, the fov pool | the **Bank-5 map** | Next: **full**; 128K: a few small gaps |
@@ -65,6 +65,13 @@ pressure, and vice versa.
      there collides. Use PAGE_26/28.
    - 128K: a new bank must be added to `tools/mktap128.py`'s `BANKS` list, or
      it is simply absent and the first banked call crashes.
+   - 128K: banks **1/3/5/7 are contended** — the ULA steals cycles there, so
+     per-turn code runs slower. `banks.json` declares `_contended` and marks
+     per-turn modules `"hot": true`, and `bankpack` steers a hot unit to an
+     uncontended bank when one has room. It is a PREFERENCE, so read the plan:
+     asked to relieve BANK_6 it first proposed moving `monster_ai` (the chase
+     AI) into contended BANK_7 — the right answer was to move `leveltmpl`,
+     which is read once per level entry and does not care.
 4. Precedents that worked: `monster_ai.c` → PAGE_26/BANK_6; `item.c` + all its
    consts → PAGE_28/BANK_0 (~3.2 KB resident reclaimed); `monster_spawn.c`
    split out of a full AI bank; `sfx.c` bounced BANK_3 → BANK_1.
@@ -87,8 +94,8 @@ Layer 2 images, 15 is `nexthack_lvl` (PAGE_30). Banks 22+ are still free; add a
 | 3 | `nexthack.c`, `classes`, `spells` — 2.2 KB free since the 2026-08-31 split |
 | 4 | `levelfov`, `scr`, title/victory SCRs |
 | 5 | **the data bank** (0x4000-0x7FFF, always mapped — see the tenant map) |
-| 6 | `monster_ai`, `leveltmpl` — **full** |
-| 7 | `platform_init`, `music`, `nexthack_lvl` — the last bank, still roomiest |
+| 6 | `monster_ai` alone — 8.6 KB free, and UNCONTENDED: the per-turn AI belongs here |
+| 7 | `platform_init`, `music`, `nexthack_lvl`, `leveltmpl` — contended: cold code only |
 
 (That table goes stale every time a bank fills; `banks.json` is authoritative
 and `python tools/bankmap.py` prints what is actually left.)

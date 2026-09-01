@@ -216,7 +216,7 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `level.c/.h` | R | terrain buffer + the per-cell leaves `terrain`/`walkable`/`tile_for`; `.h` declares the whole level interface |
 | `levelgen.c` | B | procedural generation + gold/item persistence (owns room table + masks) |
 | `levelfov.c` | B | field of view + save/restore (owns the fog-of-war pool) |
-| `leveltmpl.c` | B | loader for the hand-drawn special-level templates (generated `leveltmpl_data.h`, const-banked in PAGE_22) |
+| `leveltmpl.c` | B | loader for the hand-drawn special-level templates (generated `leveltmpl_data.h`, const-banked beside it) |
 | `monster.c/.h` | R | monster arrays + per-monster leaves (`monster_at`, `mon_find`, `mon_tile`, `pick_mon`); catalogue |
 | `monster_ai.c` | B | BFS chase, combat, spawning, kill-persistence |
 | `item.c/.h` | B | inventory and item actions (pick up, wield/wear/quaff/eat/read/put-on) |
@@ -311,13 +311,14 @@ tilemap.
   expose it to the spawner and to `item.c`.
 - **Templates** (Phase 24): hand-drawn 21×80 ASCII maps in `tools/templates/*.txt`
   (with a `;rooms:` metadata line) are packed by `tools/txt2template.py` into the
-  generated `src/leveltmpl_data.h` — `const` grids + room rects, const-banked into
-  `PAGE_22_CODE`. The banked loader `load_template()` (`leveltmpl.c`, same page so
-  it reads the const in place) stamps the grid into `lvl[][]`, finds `<`/`>`, and
-  fills `r_*[]`/`rcount` from the metadata so FOV lights the chambers. To add or
-  edit a template: edit a `.txt`, re-run the tool; the generated `.h` is committed.
-  There are 5 templates (cavern/crypt/fortress/maze/temple); they nearly fill bank
-  11 (~2 KB free), so a 6th would need a dedicated bank (mirror the title banks).
+  generated `src/leveltmpl_data.h` — `const` grids + room rects, const-banked with
+  the loader (`banks.json` says which bank; `load_template()` runs from that same
+  one, so it reads the const in place). It stamps the grid into `lvl[][]`, finds
+  `<`/`>`, and fills `r_*[]`/`rcount` from the metadata so FOV lights the chambers.
+  To add or edit a template: edit a `.txt`, re-run the tool; the generated `.h` is
+  committed. There are 5 templates (cavern/crypt/fortress/maze/temple) totalling
+  ~8.8 KB; since 2026-08-31 they share a roomy bank (128K BANK_7, Next PAGE_30)
+  with 3-5 KB spare, so a 6th no longer needs a bank of its own.
   **Any early-returning special level must rely on `gen_level` resetting
   `shop_room`/`vault_room` at the top** — `special_gen` skips the loot block, so
   without that reset a special level inherits the previous level's shop/vault.
