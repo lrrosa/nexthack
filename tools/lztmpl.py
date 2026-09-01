@@ -126,8 +126,51 @@ def expand(blob, size):
     return bytes(out)
 
 
+def _selftest():
+    """Round-trip the real templates plus the shapes that break LZ encoders.
+
+    The offset-2048 case earns its place: the encoder used to overflow its second
+    byte there, and no template could ever reach it (their output is 1680 B), so
+    the bug would have waited for a sixth template to surface.
+    """
+    import pathlib
+    import random
+
+    cases = []
+    tdir = pathlib.Path(__file__).resolve().parent / "templates"
+    for p in sorted(tdir.glob("*.txt")):
+        rows = [ln for ln in p.read_text().splitlines() if not ln.startswith(";")]
+        rows += [""] * (21 - len(rows))
+        cases.append((p.stem, "".join(r.ljust(80) for r in rows[:21]).encode("latin1")))
+
+    marker, filler = b"ZQX", bytes((i * 7 + 3) % 251 for i in range(2045))
+    rng = random.Random(7)          # ONE generator: a fresh Random(7) per byte
+    noise = bytes(rng.randrange(256) for _ in range(4096))   # repeats one value
+    cases += [
+        ("offset 2048", marker + filler + marker + b"tail"),
+        ("max run", b"A" * 9000),
+        ("max length", b"B" * 40 + b"C" + b"B" * 40),
+        ("incompressible", noise),
+        ("cyclic", bytes(range(256)) * 20),
+        ("one byte", b"\x00"),
+        ("two bytes", b"\xff\xfe"),
+    ]
+
+    worst = 0.0
+    for name, d in cases:
+        c = compress(d)
+        back = expand(c, len(d))
+        if back != d:
+            raise SystemExit("lztmpl: ROUND-TRIP FAILED on %r (%d B)" % (name, len(d)))
+        pct = 100.0 * len(c) / len(d)
+        worst = max(worst, pct)
+        print("  ok  %-16s %6d -> %6d (%5.1f%%)" % (name, len(d), len(c), pct))
+    print("  %d cases round-tripped; worst ratio %.1f%%" % (len(cases), worst))
+
+
 if __name__ == "__main__":
-    # self-test on whatever files are named, else a quick sanity check
+    if not sys.argv[1:]:
+        _selftest()
     for path in sys.argv[1:]:
         d = open(path, "rb").read()
         c = compress(d)

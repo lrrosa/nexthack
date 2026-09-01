@@ -1,0 +1,63 @@
+# Repo invariants that need no toolchain and no emulator.
+#
+# What this DOES catch: a generated file whose source moved on without it, a
+# module added to a build but not declared in banks.json, a colocate group split
+# across banks, a C table that stopped parsing under tools/balance.py, and an LZ
+# stream that does not round-trip.
+#
+# What it does NOT catch, and no CI here will: "the bank loaded garbage". That
+# is the failure this architecture actually produces, and proving the absence of
+# it needs ZEsarUX driven over ZRCP -- see .claude/skills/zrcp-verify. Building
+# the two targets would also fit here, but it needs a pinned z88dk nightly; that
+# is a separate decision, not a free one.
+name: checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  invariants:
+    name: repo invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Pinned on purpose. The asset generators only open/convert/read the
+      # source PNGs -- both are already 256x192, so they take the pixel-exact
+      # path with no resampling or quantizing and are byte-reproducible. An
+      # exact pin keeps a Pillow release from turning that into a red build.
+      - name: install Pillow
+        run: python -m pip install --quiet "Pillow==11.3.0"
+
+      - name: tools parse
+        run: python -m compileall -q tools
+
+      - name: LZ round-trip
+        run: python tools/lztmpl.py
+
+      - name: bank manifest matches the builds
+        shell: pwsh
+        run: ./tools/check-manifest.ps1
+
+      # balance.py parses montypes[]/objtypes[]/classes[] straight out of the C
+      # and refuses to run rather than report stale numbers, so this fails the
+      # moment a table's shape changes under it.
+      - name: balance tables still parse
+        run: python tools/balance.py tables > /dev/null
+
+      - name: generated sources are up to date
+        run: |
+          python tools/txt2template.py
+          python tools/png2layer2.py
+          python tools/png2scr.py
+          if ! git diff --exit-code -- src/; then
+            echo "::error::a generated file in src/ is stale -- re-run its tool and commit the result"
+            exit 1
+          fi

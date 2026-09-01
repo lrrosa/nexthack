@@ -133,10 +133,19 @@ shortage from one bank to another. That is the shape of the next such fix too:
 when a colocate group fills a bank, split a module or break the group (reach the
 data through a `__banked` accessor instead of a pointer); never relocate.
 
-There are no automated tests. Verification is manual: build, then run in ZEsarUX
-and observe. The build agent **can** drive ZEsarUX itself over ZRCP (read memory,
-inject keys) to verify most behaviour; the human confirms the wall-clock *feel*
-(which ZRCP's CPU-pausing reads distort).
+There are no automated *behaviour* tests, and CI does not add any. Verification is
+manual: build, then run in ZEsarUX and observe. The build agent **can** drive
+ZEsarUX itself over ZRCP (read memory, inject keys) to verify most behaviour; the
+human confirms the wall-clock *feel* (which ZRCP's CPU-pausing reads distort).
+
+`.github/workflows/checks.yml` guards the **invariants** instead — no toolchain,
+no emulator, seconds to run: the generated sources in `src/` still match their
+tools, `banks.json` still matches what the builds compile (declared modules,
+intact colocate groups, real bank names), `balance.py` can still parse the C
+tables, and the LZ streams still round-trip. Run any of them locally the same
+way. What CI cannot catch is the failure this architecture actually produces --
+*the bank loaded garbage* -- which is why a bank change is still re-verified in
+the emulator.
 
 **Two skills in `.claude/skills/` carry the procedures this repo keeps needing:**
 - **`zrcp-verify`** — the emulator harness (`zrcp.ps1`: launch per target,
