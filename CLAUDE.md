@@ -94,8 +94,13 @@ python tools/bankpack.py plan zx128 --grow monster_ai=2000
 - `plan` — the **fewest moves** that make everything fit (each move costs a
   recompile *and* a fresh emulator verification, so minimising moves beats
   minimising banks). `--grow mod=BYTES` asks the real question: a bank is about to
-  overflow, what is the smallest fix? `--consolidate` packs into the fewest banks
-  and prints the churn it costs.
+  overflow, what is the smallest fix? `--free BANK_4` asks the other one: give that
+  bank headroom *now*, before it overflows. `--consolidate` packs into the fewest
+  banks and prints the churn it costs.
+- On the 128K it also knows the **contended** banks (1/3/5/7, where the ULA steals
+  cycles): `banks.json` marks per-turn modules `"hot": true` and a hot unit is
+  steered to an uncontended bank when one has room. A preference, not a rule —
+  `nexthack` itself sits in contended BANK_3 because its group has nowhere else.
 - `apply` — writes that plan into `banks.json`, and is the only subcommand that
   writes anything. The edit is surgical (one line per moved module), so the
   hand-written `why` text survives — which the tool then tells you to fix, since

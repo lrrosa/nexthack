@@ -24,7 +24,7 @@ Run it **before** starting, then again after the build.
 
 | Adding | Spends | Room today |
 |---|---|---|
-| Cold code, `__banked` entry points | a **code bank** | Next: PAGE_26 ~9 KB, PAGE_30 ~5 KB, PAGE_20/22 ~2.5 KB; 128K: BANK_6 ~8.6 KB (uncontended), BANK_1 ~7 KB, BANK_7 ~3 KB |
+| Cold code, `__banked` entry points | a **code bank** | Next: PAGE_26 ~9 KB, PAGE_30 ~5 KB, PAGE_20/22 ~2.5 KB; 128K: BANK_1 ~7 KB, BANK_6 ~6.9 KB (uncontended), BANK_7 ~3 KB, BANK_4 ~2.5 KB |
 | `static` data, arrays | the **resident half** | ~1 KB (Next) / ~3 KB (128K) to the stack floor |
 | **String literals** (`msg()`, screens) | the **resident half** — unless const-banked | the classic silent sink |
 | A Bank-5 array, tiles, the fov pool | the **Bank-5 map** | Next: **full**; 128K: a few small gaps |
@@ -41,6 +41,9 @@ pressure, and vice versa.
    plainly that nothing fits, which is a budget wall rather than a placement
    accident. Picking a bank by eye, one full bank at a time, is what left the 128K
    with 21 KB stranded in two banks while two others sat at 26 and 42 free bytes.
+   To give a bank headroom BEFORE it overflows -- `plan` stays silent while a
+   bank still fits at 627 free bytes -- ask `plan <target> --free BANK_4`: the
+   fewest moves that empty the most of that one bank.
    Swap `plan` for `apply` to write it into `banks.json`; then fix the moved
    entries' `why` text (it still describes the old bank) and **re-verify in the
    emulator** — every address in those banks changed.
@@ -92,9 +95,9 @@ Layer 2 images, 15 is `nexthack_lvl` (PAGE_30). Banks 22+ are still free; add a
 | 1 | `levelgen`, `monster_spawn`, `sfx` |
 | 2 | **the resident half** (0x8000-0xBFFF, not pageable) |
 | 3 | `nexthack.c`, `classes`, `spells` — 2.2 KB free since the 2026-08-31 split |
-| 4 | `levelfov`, `scr`, title/victory SCRs |
+| 4 | `scr` + the two SCRs — 2.5 KB free, but the group is 13.9 KB and cannot move |
 | 5 | **the data bank** (0x4000-0x7FFF, always mapped — see the tenant map) |
-| 6 | `monster_ai` alone — 8.6 KB free, and UNCONTENDED: the per-turn AI belongs here |
+| 6 | `monster_ai`, `levelfov` — 6.9 KB free, and UNCONTENDED: per-turn code belongs here |
 | 7 | `platform_init`, `music`, `nexthack_lvl`, `leveltmpl` — contended: cold code only |
 
 (That table goes stale every time a bank fills; `banks.json` is authoritative

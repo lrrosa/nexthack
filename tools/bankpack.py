@@ -10,6 +10,7 @@
 #   python tools/bankpack.py plan    [next|zx128]   fewest moves that fit
 #   python tools/bankpack.py plan --consolidate     pack into fewest banks
 #   python tools/bankpack.py plan --grow nexthack=2000    what if it grew?
+#   python tools/bankpack.py plan zx128 --free BANK_4    give a bank headroom
 #   python tools/bankpack.py apply zx128 --grow monster_ai=2000   write it
 #
 # Why this exists: banks.json (see the bank-manifest commit) made moving a module
@@ -278,7 +279,7 @@ def repair(pool, us, load, grown, contended=()):
     return [], False
 
 
-def compute(target, consolidate=False, grow=None):
+def compute(target, consolidate=False, grow=None, free_bank=None):
     """Everything both `plan` and `apply` need: the units, where they are now,
     and the moves. Returns a dict; `moves` is [] when nothing needs to move."""
     man = manifest()
@@ -299,7 +300,15 @@ def compute(target, consolidate=False, grow=None):
             die("'%s' is not a banked module of %s." % (mod, target))
     load = {b: sum(grown[n] for n, _ in cur.get(b, [])) for b in pool}
 
-    if consolidate:
+    if free_bank:
+        if free_bank not in pool:
+            die("'%s' is not a bank of %s (pool: %s)."
+                % (free_bank, target, ", ".join(pool)))
+        new, unplaced = None, []
+        moves, _freed = relieve(pool, us, load, grown,
+                                tm.get("_contended", []), free_bank)
+        ok = True
+    elif consolidate:
         new, unplaced = ffd(pool, us)
         where = {n: b for b, items in new.items() for n, _ in items}
         moves = [(n, b, where[n]) for n, _, _, b, p, _h in us
@@ -312,8 +321,48 @@ def compute(target, consolidate=False, grow=None):
                 moves=moves, ok=ok, new=new, unplaced=unplaced)
 
 
-def cmd_plan(target, consolidate=False, grow=None):
-    c = compute(target, consolidate, grow)
+def relieve(pool, us, load, grown, contended, bank):
+    """Fewest moves that get the most out of ONE named bank.
+
+    `plan` answers "what is the minimum that makes it fit", which is silent
+    while a bank still fits at 627 free bytes. This answers the question that
+    actually gets asked -- "free BANK_4" -- by emptying as much of it as a
+    single small set of moves can, without breaking anything else.
+    """
+    cands = [(n, b, grown[n], h) for n, _, _, b, p, h in us if not p and b == bank]
+    if not cands:
+        return [], 0
+    best = None
+    for k in range(1, len(cands) + 1):
+        for combo in itertools.combinations(cands, k):
+            left = dict(load)
+            for n, b, sz, _h in combo:
+                left[b] -= sz
+            moves, ok = [], True
+            for n, b, sz, hot in sorted(combo, key=lambda c: -c[2]):
+                order = pool if not hot else (
+                    [x for x in pool if x not in contended] +
+                    [x for x in pool if x in contended])
+                for dst in order:
+                    if dst != b and BANK_SIZE - left[dst] >= sz:
+                        left[dst] += sz
+                        moves.append((n, b, dst))
+                        break
+                else:
+                    ok = False
+                    break
+            if not ok:
+                continue
+            freed = sum(c[2] for c in combo)
+            if best is None or freed > best[1]:
+                best = (moves, freed)
+        if best:
+            break          # minimal k wins; among those, the most freed
+    return best if best else ([], 0)
+
+
+def cmd_plan(target, consolidate=False, grow=None, free_bank=None):
+    c = compute(target, consolidate, grow, free_bank)
     man, us, pool, cur, grown, load = (c["man"], c["us"], c["pool"], c["cur"],
                                        c["grown"], c["load"])
 
@@ -343,6 +392,11 @@ def cmd_plan(target, consolidate=False, grow=None):
             print("\n  DOES NOT FIT:")
             for n, s in c["unplaced"]:
                 print("    %-38s %6d" % (n, s))
+    elif free_bank:
+        if not moves:
+            print("\n  Nothing in %s can move: it holds only pinned or "
+                  "unplaceable units." % free_bank)
+            return
     else:
         ok = c["ok"]
         if not moves and ok:
@@ -367,6 +421,10 @@ def cmd_plan(target, consolidate=False, grow=None):
     for n, a, b in moves:
         after[a] -= grown[n]
         after[b] += grown[n]
+    if free_bank:
+        print("\n  %s: %d B free now -> %d B after"
+              % (free_bank, BANK_SIZE - load[free_bank],
+                 BANK_SIZE - after[free_bank]))
     print("\n  largest free block: %d B now -> %d B after"
           % (max(BANK_SIZE - load[b] for b in pool),
              max(BANK_SIZE - after[b] for b in pool)))
@@ -406,8 +464,8 @@ def rewrite_manifest(target, changes):
         f.write(head + body + tail)
 
 
-def cmd_apply(target, consolidate=False, grow=None):
-    c = compute(target, consolidate, grow)
+def cmd_apply(target, consolidate=False, grow=None, free_bank=None):
+    c = compute(target, consolidate, grow, free_bank)
     if not c["ok"]:
         die("no placement fits -- nothing to apply. Run 'plan' for the detail.")
     if not c["moves"]:
@@ -433,6 +491,7 @@ def cmd_apply(target, consolidate=False, grow=None):
 USAGE = ("usage: bankpack.py [measure|report|plan|apply] [next|zx128]\n"
          "                  plan --consolidate      pack into the fewest banks\n"
          "                  plan --grow mod=BYTES   what if this module grew?\n"
+         "                  plan --free BANK_4      empty a named bank\n"
          "                  apply ...               write the plan to banks.json")
 
 
@@ -443,7 +502,10 @@ def main():
         die(USAGE)
     consolidate = "--consolidate" in args
     grow = {}
+    free_bank = None
     for i, a in enumerate(args):
+        if a == "--free" and i + 1 < len(args):
+            free_bank = args[i + 1]
         if a == "--grow" and i + 1 < len(args):
             k, _, v = args[i + 1].partition("=")
             if not v.lstrip("+").isdigit():
@@ -454,9 +516,9 @@ def main():
         if i:
             print()
         if cmd == "plan":
-            cmd_plan(t, consolidate, grow)
+            cmd_plan(t, consolidate, grow, free_bank)
         elif cmd == "apply":
-            cmd_apply(t, consolidate, grow)
+            cmd_apply(t, consolidate, grow, free_bank)
         else:
             {"measure": cmd_measure, "report": cmd_report}[cmd](t)
 

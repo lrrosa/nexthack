@@ -87,7 +87,7 @@
     "scr":           { "code": "BANK_4", "why": "the SCR blitter; must share a bank with the two screens below, which it reads in place" },
     "title_scr":     { "const": "BANK_4", "why": "GENERATED. The 6912-byte title SCR, read in place by scr.c" },
     "victory_scr":   { "const": "BANK_4", "why": "GENERATED. The 6912-byte victory SCR, read in place by scr.c" },
-    "levelfov":      { "hot": true, "code": "BANK_4", "why": "moved out of BANK_1 when item.c's growth filled it; BANK_4 held the SCR screens with room to spare" },
+    "levelfov":      { "hot": true, "code": "BANK_6", "why": "joins monster_ai (2026-08-31), which is also where the Next keeps it. BANK_6 is UNCONTENDED and fov_update runs every turn, so this is the right half of the machine for it; leaving BANK_4 to the scr+SCR group alone took that bank from 627 to 2508 B free. It had been in BANK_1, then BANK_4 when item.c's growth filled BANK_1" },
 
     "monster_ai":    { "hot": true, "code": "BANK_6", "const": "BANK_6", "why": "the spare bank -- the pet AI outgrew BANK_1" },
     "leveltmpl":     { "code": "BANK_7", "const": "BANK_7", "why": "const holds the generated template grids, read in place by load_template(). Moved off BANK_6 (2026-08-31) to leave that uncontended bank to monster_ai alone: this module is read ONCE on entering a template level, so BANK_7's contended RAM costs it nothing, while the per-turn AI would feel it. Earlier it shared BANK_3 with nexthack.c; as that code grew the combined section silently overflowed 16 KB and the truncated template data crashed every template level -- mktap128.py now refuses an oversized bank" },
