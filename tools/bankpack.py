@@ -11,6 +11,7 @@
 #   python tools/bankpack.py plan --consolidate     pack into fewest banks
 #   python tools/bankpack.py plan --grow nexthack=2000    what if it grew?
 #   python tools/bankpack.py plan zx128 --free BANK_4    give a bank headroom
+#   python tools/bankpack.py compress zx128   what packs well (a HINT, read it)
 #   python tools/bankpack.py apply zx128 --grow monster_ai=2000   write it
 #
 # Why this exists: banks.json (see the bank-manifest commit) made moving a module
@@ -51,6 +52,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+sys.path.insert(0, HERE)
+import lztmpl                       # the game's own packer, so the ratio is real
 BANK_SIZE = 16384
 
 # Where each target's objects land, and the z80nm that can read them.
@@ -70,6 +73,7 @@ RESIDENT_SECTIONS = {
 Unit = collections.namedtuple("Unit", "name mods size bank pinned hot")
 
 SEC_RE = re.compile(r'^\s*Section\s+"?([A-Za-z0-9_]*)"?:\s+(\d+)\s+bytes\s*$')
+DUMP_RE = re.compile(r'^\s*C \$[0-9A-Fa-f]+: ((?:[0-9A-Fa-f]{2} ?)+)\s*$')
 
 
 def die(msg):
@@ -101,6 +105,28 @@ def sections_of(obj):
         if m and m.group(1) not in RESIDENT_SECTIONS and int(m.group(2)) > 0:
             got[m.group(1)] = int(m.group(2))
     return got
+
+
+def section_bytes(obj):
+    """{section: bytes} -- the CONTENT z80nm dumps, banked sections only.
+
+    The bytes still carry unresolved relocations (address fields read 00 00),
+    which makes code pack a shade better here than it truly would. Data is
+    unaffected -- and data is the only thing this measurement can be spent on.
+    """
+    out = subprocess.run([Z80NM, "-a", obj], capture_output=True, text=True).stdout
+    got, cur = {}, None
+    for line in out.splitlines():
+        m = SEC_RE.match(line)
+        if m:
+            cur = m.group(1) if m.group(1) not in RESIDENT_SECTIONS else None
+            if cur:
+                got.setdefault(cur, bytearray())
+            continue
+        m = DUMP_RE.match(line)
+        if m and cur is not None:
+            got[cur] += bytes.fromhex(m.group(1).replace(" ", ""))
+    return {k: bytes(v) for k, v in got.items() if v}
 
 
 def measure(man, target):
@@ -224,6 +250,45 @@ def cmd_measure(target):
     res = [m for m, (sz, _) in size.items() if sz == 0]
     print("    %-16s %6d" % ("TOTAL banked", tot))
     print("    resident: %s" % ", ".join(sorted(res)))
+
+
+def cmd_compress(target):
+    """How well each module's banked bytes pack -- a HINT, not a plan.
+
+    It answers "is there anything here worth compressing", which is the question
+    that found the templates: 8400 B of grids at 10%. It cannot answer "should
+    you", because that turns on something no measurement sees -- see the rule
+    printed at the end.
+    """
+    man = manifest()
+    tm = man[target]
+    rows = []
+    for mod in modules_of(man, target):
+        secs = section_bytes(os.path.join(ROOT, OBJDIR[target], mod + ".o"))
+        raw = b"".join(secs[k] for k in sorted(secs))
+        if not raw:
+            continue
+        packed = len(lztmpl.compress(raw))
+        rows.append((len(raw) - packed, mod, len(raw), packed,
+                     "const" if tm[mod].get("const") else "code only"))
+
+    print("== %s: how well each module's banked bytes pack ==" % target)
+    print("  (tools/lztmpl.py -- the format the game already decompresses)")
+    print("  %-16s %7s %8s %7s %8s   %s"
+          % ("module", "bytes", "packed", "ratio", "would free", "section holds"))
+    for saved, mod, raw, packed, kind in sorted(rows, reverse=True):
+        print("  %-16s %7d %8d %6.1f%% %8d   %s"
+              % (mod, raw, packed, 100.0 * packed / raw, saved, kind))
+
+    print("\n  Spend this ONLY where the thing it unpacks into already exists and")
+    print("  the data is read once. Templates qualified -- load_template was")
+    print("  going to write those 1680 bytes into lvl[][] regardless, so the")
+    print("  destination was free and the bank kept the difference.")
+    print("  CODE never qualifies: to run from a bank it must be there expanded,")
+    print("  so you would carry both forms and save nothing. A 'code only' row")
+    print("  packing well is a mirage.")
+    print("  Strings are the awkward middle: they need a scratch buffer and the")
+    print("  work lands in the per-turn path.")
 
 
 def cmd_report(target):
@@ -488,7 +553,7 @@ def cmd_apply(target, consolidate=False, grow=None, free_bank=None):
           "  a latent bank-discipline bug surfaces here and nowhere else.")
 
 
-USAGE = ("usage: bankpack.py [measure|report|plan|apply] [next|zx128]\n"
+USAGE = ("usage: bankpack.py [measure|report|plan|apply|compress] [next|zx128]\n"
          "                  plan --consolidate      pack into the fewest banks\n"
          "                  plan --grow mod=BYTES   what if this module grew?\n"
          "                  plan --free BANK_4      empty a named bank\n"
@@ -498,7 +563,7 @@ USAGE = ("usage: bankpack.py [measure|report|plan|apply] [next|zx128]\n"
 def main():
     args = sys.argv[1:]
     cmd = args[0] if args and not args[0].startswith("-") else "report"
-    if cmd not in ("measure", "report", "plan", "apply"):
+    if cmd not in ("measure", "report", "plan", "apply", "compress"):
         die(USAGE)
     consolidate = "--consolidate" in args
     grow = {}
@@ -520,7 +585,8 @@ def main():
         elif cmd == "apply":
             cmd_apply(t, consolidate, grow, free_bank)
         else:
-            {"measure": cmd_measure, "report": cmd_report}[cmd](t)
+            {"measure": cmd_measure, "report": cmd_report,
+             "compress": cmd_compress}[cmd](t)
 
 
 if __name__ == "__main__":

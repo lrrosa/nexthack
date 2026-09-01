@@ -98,7 +98,7 @@ Layer 2 images, 15 is `nexthack_lvl` (PAGE_30). Banks 22+ are still free; add a
 | 4 | `scr` + the two SCRs — 2.5 KB free, but the group is 13.9 KB and cannot move |
 | 5 | **the data bank** (0x4000-0x7FFF, always mapped — see the tenant map) |
 | 6 | `monster_ai`, `levelfov` — 6.9 KB free, and UNCONTENDED: per-turn code belongs here |
-| 7 | `platform_init`, `music`, `nexthack_lvl`, `leveltmpl` — contended: cold code only |
+| 7 | `platform_init`, `music`, `nexthack_lvl`, `leveltmpl` — 10.4 KB free since the templates were packed; contended, so cold code only |
 
 (That table goes stale every time a bank fills; `banks.json` is authoritative
 and `python tools/bankmap.py` prints what is actually left.)
@@ -128,10 +128,16 @@ In order of preference:
    `__banked` function** — if you must, put both modules in one `colocate` group.
 2. **const-bank a read-once table** (`gfx[]` pattern: read only by its
    same-bank reader at startup).
-3. **data-bank an array into Bank 5** — only if `bankmap.py` shows a gap that
+3. **compress it** — but only where the thing it unpacks into ALREADY EXISTS
+   and the data is read once. The templates went 8400 B -> 864 B because
+   `load_template` was going to write those bytes into `lvl[][]` regardless.
+   `python tools/bankpack.py compress <target>` ranks the candidates; the
+   next best is the 128K's two SCRs (13.9 KB at ~50%, unpacking into the ULA
+   screen they are copied to anyway). Code never qualifies.
+4. **data-bank an array into Bank 5** — only if `bankmap.py` shows a gap that
    fits. SDCC rejects pointer-to-array casts, so use a flat `#define` and index
    `pool[slot*STRIDE + i]`.
-4. Shrinking `FOV_SLOTS` works but costs remembered levels **and bumps
+5. Shrinking `FOV_SLOTS` works but costs remembered levels **and bumps
    SAVE_VER** (the pool is in the save). Last resort — the format is frozen.
 
 ## When you change a Bank-5 tenant's size

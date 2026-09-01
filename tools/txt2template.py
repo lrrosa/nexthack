@@ -13,7 +13,11 @@
 #   ;rooms: x,y,w,h [x,y,w,h ...]        (1..3 room rects FOV should light)
 # Rows shorter than MAPW are padded with rock; missing trailing rows are rock.
 
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import lztmpl
 
 HERE = Path(__file__).resolve().parent
 TDIR = HERE / "templates"
@@ -49,10 +53,6 @@ def load(path):
     return name, grid, rooms
 
 
-def cstr(s):
-    return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
-
-
 def main():
     tmpls = [load(p) for p in sorted(TDIR.glob("*.txt"))]
     if not tmpls:
@@ -67,13 +67,29 @@ def main():
         f.write(" * bank, and load_template() runs from that same one. */\n\n")
         f.write("#define NTMPL %d\n\n" % len(tmpls))
 
-        f.write("static const char tmpl_map[NTMPL][MAPH][MAPW] = {\n")
+        # The grids are LZ-packed (tools/lztmpl.py) and expanded straight into
+        # lvl[][] by load_template, which was going to write those 1680 bytes
+        # anyway -- so the destination costs nothing and the bank keeps the
+        # difference: 8400 B of grids become about a tenth of that.
+        blobs, offs = [], []
         for name, grid, _ in tmpls:
-            f.write("  { /* %s */\n" % name)
-            for row in grid:
-                f.write("    " + cstr(row) + ",\n")
-            f.write("  },\n")
+            data = "".join(grid).encode("latin1")
+            blob = lztmpl.compress(data)
+            if lztmpl.expand(blob, len(data)) != data:     # never ship a guess
+                raise SystemExit(name + ": LZ round-trip failed")
+            offs.append(sum(len(b) for b in blobs))
+            blobs.append(blob)
+
+        f.write("/* One LZ stream per template; lz_expand() in leveltmpl.c\n"
+                " * unpacks it directly into lvl[][]. */\n")
+        f.write("static const uint8_t tmpl_lz[] = {\n")
+        for (name, _, _), blob in zip(tmpls, blobs):
+            f.write("  /* %s: %d B */\n" % (name, len(blob)))
+            for i in range(0, len(blob), 16):
+                f.write("  " + ",".join(str(b) for b in blob[i:i + 16]) + ",\n")
         f.write("};\n\n")
+        f.write("static const uint16_t tmpl_off[NTMPL] = { %s };\n\n"
+                % ", ".join(str(o) for o in offs))
 
         f.write("static const uint8_t tmpl_nroom[NTMPL] = { %s };\n\n"
                 % ", ".join(str(len(r)) for _, _, r in tmpls))
@@ -85,8 +101,12 @@ def main():
             f.write("  { " + ", ".join(cells) + " },\n")
         f.write("};\n")
 
+    packed = sum(len(b) for b in blobs)
+    raw = len(tmpls) * MAPW * MAPH
     print("wrote %s  (%d template(s): %s)"
           % (OUT, len(tmpls), ", ".join(n for n, _, _ in tmpls)))
+    print("  grids %d B -> %d B packed (%.1f%%), round-trip verified"
+          % (raw, packed, 100.0 * packed / raw))
 
 
 if __name__ == "__main__":

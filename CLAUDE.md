@@ -97,6 +97,10 @@ python tools/bankpack.py plan zx128 --grow monster_ai=2000
   overflow, what is the smallest fix? `--free BANK_4` asks the other one: give that
   bank headroom *now*, before it overflows. `--consolidate` packs into the fewest
   banks and prints the churn it costs.
+- `compress` ranks every module by how well its banked bytes pack, using the
+  game's own LZ. A **hint, not a plan**: only data read once into a destination
+  that already exists can spend it — code never can, so a well-packing
+  `code only` row is a mirage. It is what found the templates at 13%.
 - On the 128K it also knows the **contended** banks (1/3/5/7, where the ULA steals
   cycles): `banks.json` marks per-turn modules `"hot": true` and a hot unit is
   steered to an uncontended bank when one has room. A preference, not a rule —
@@ -221,7 +225,7 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `level.c/.h` | R | terrain buffer + the per-cell leaves `terrain`/`walkable`/`tile_for`; `.h` declares the whole level interface |
 | `levelgen.c` | B | procedural generation + gold/item persistence (owns room table + masks) |
 | `levelfov.c` | B | field of view + save/restore (owns the fog-of-war pool) |
-| `leveltmpl.c` | B | loader for the hand-drawn special-level templates (generated `leveltmpl_data.h`, const-banked beside it) |
+| `leveltmpl.c` | B | loader for the hand-drawn special-level templates (generated `leveltmpl_data.h`, LZ-packed and const-banked beside it) |
 | `monster.c/.h` | R | monster arrays + per-monster leaves (`monster_at`, `mon_find`, `mon_tile`, `pick_mon`); catalogue |
 | `monster_ai.c` | B | BFS chase, combat, spawning, kill-persistence |
 | `item.c/.h` | B | inventory and item actions (pick up, wield/wear/quaff/eat/read/put-on) |
@@ -321,9 +325,16 @@ tilemap.
   one, so it reads the const in place). It stamps the grid into `lvl[][]`, finds
   `<`/`>`, and fills `r_*[]`/`rcount` from the metadata so FOV lights the chambers.
   To add or edit a template: edit a `.txt`, re-run the tool; the generated `.h` is
-  committed. There are 5 templates (cavern/crypt/fortress/maze/temple) totalling
-  ~8.8 KB; since 2026-08-31 they share a roomy bank (128K BANK_7, Next PAGE_30)
-  with 3-5 KB spare, so a 6th no longer needs a bank of its own.
+  committed. There are 5 templates (cavern/crypt/fortress/maze/temple).
+- **The grids are LZ-packed** (`tools/lztmpl.py`): 8400 B of ASCII becomes 864 B,
+  because `lz_expand()` unpacks each stream straight into `lvl[][]` — the 1680
+  bytes `load_template` was going to write anyway, so the destination is free and
+  the bank keeps the difference. `leveltmpl` costs 1459 B instead of 8801. That is
+  the general rule for compressing anything here: **only where the thing it
+  unpacks into already exists and the data is read once** (`python
+  tools/bankpack.py compress` ranks the candidates, with the same caveat).
+  The generator refuses to emit a stream that does not round-trip, and a 6th
+  template now costs ~170 B rather than a bank.
   **Any early-returning special level must rely on `gen_level` resetting
   `shop_room`/`vault_room` at the top** — `special_gen` skips the loot block, so
   without that reset a special level inherits the previous level's shop/vault.
