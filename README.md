@@ -24,15 +24,26 @@ shows the same art as an attribute-clash SCR.*
 
 ## Strategy
 
-This is a **fresh reimplementation** of NetHack's design in C, sized for the Z80N
+This is a **fresh reimplementation** of NetHack's design in C, sized for the Z80
 — not a recompile of NetHack's source. The design reference is the NetHack **5.0
 development version** (the branch long known as 3.7; the latest *stable* release is
 3.6.7). You cannot just
 compile the original: it is ~250k lines of C that assume 32-bit ints and
 megabytes of flat RAM (5.0 even depends on Lua), while the Z80 only sees 64 KB at
-a time. So the engine is rebuilt on a dedicated **Next platform layer** (display,
+a time. So the engine is rebuilt on a **platform layer** of its own (display,
 keyboard, sound), reusing NetHack's design, key bindings and feel rather than its
 code.
+
+**One source tree, two machines.** The same game logic compiles for the ZX
+Spectrum Next and for a plain 128K, with `#ifdef __ZXNEXT` picking the platform
+layer underneath it. The Next draws on its hardware tilemap — 80×32 colour
+tiles, with Layer 2 for the title and victory art; the 128K blits 1-bit UDGs
+into the ULA bitmap through a 32-column viewport that scrolls with the hero,
+and keeps the whole map in a shadow buffer so it can redraw only the cells that
+changed. Both break the 64 KB ceiling the same way, by banking cold code out of
+the resident half — the Next through its MMU, the 128K through the `0x7FFD`
+latch — and the 128K build is careful to stay compatible with a 48K plus a
+RAM-expansion interface, which is how many people actually have 128 KB.
 
 ## Features
 
@@ -78,7 +89,8 @@ code.
   god to haul you out of trouble (best at an altar). Resting is no free lunch:
   it stops the moment anything wakes and comes into view, and the dungeon keeps
   sending wanderers while you sit still.
-- **Items and equipment** — weapons, armour, potions, food, scrolls and rings,
+- **Items and equipment** — weapons, armour (seven grades, from leather up to
+  dragon scale in the deep floors), potions, food, scrolls and rings,
   each with its own enchantment, erosion and **blessed/uncursed/cursed** state;
   potions and scrolls start **unidentified**. Wield/wear the best you carry,
   quaff/eat/read, watch acid blobs corrode your gear, beware cursed items that

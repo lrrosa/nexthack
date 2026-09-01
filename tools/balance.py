@@ -290,8 +290,8 @@ FORMULAS = [
      "bite = rn2(mt->dmg) + 1 + eff_depth() / 4",
      "mon_bite(rng, mt, depth)"),
     ("armour soak", "src/monster_ai.c:158",
-     "if (armor_def >= bite) miss; else bite -= armor_def",
-     "apply_soak(bite, armor_def)  -- a full absorb is a MISS, not 0 damage"),
+     "bite = (armor_def >= bite) ? 1 : bite - armor_def",
+     "apply_soak(bite, armor_def)  -- a covered blow GRAZES for 1 (1.2+)"),
     ("hero to-hit", "src/monster_ai.c:130",
      "miss if rn2(20) >= 12 + (at_dex >> 1) + (eff_luck() >> 1)",
      "hero_hits(rng, dex, luck)"),
@@ -334,8 +334,13 @@ def mon_bite(rng, mt, depth):
 
 
 def apply_soak(bite, armor_def):
-    """returns damage dealt, or None for a full absorb (the C prints a miss)"""
-    return None if armor_def >= bite else bite - armor_def
+    """src/monster_ai.c:158 -- armour SUBTRACTS, with a floor of 1.
+
+    Until 1.2 a covered blow was a total miss, and this returned None for it.
+    That rule was all-or-nothing at both ends of the dungeon; now the armour
+    turns the blow into a graze instead, so every attack lands for at least 1."""
+    d = bite - armor_def
+    return 1 if d < 1 else d
 
 
 def hero_hits(rng, dex, luck=0):

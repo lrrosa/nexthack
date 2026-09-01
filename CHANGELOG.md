@@ -8,6 +8,47 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.2.0] — 2026-09-01
+
+**The cliff becomes a climb.** Armour stopped improving on Dlvl 10 while the
+dungeon kept scaling for forty more floors; this is the repair, measured on
+both sides of the fault.
+
+
+### Changed
+- **Armour subtracts instead of cancelling.** A blow your armour covered used
+  to be a clean miss; now it grazes you for 1 — "You shrug off the rat!" This
+  is the repair the *armour cliff* actually needed. The old rule was
+  all-or-nothing at both ends of the dungeon: it made the first twenty floors
+  harmless (86% of blows simply bounced on Dlvl 1) and had nothing left to
+  give on the last twenty, where no armour you can find covers a bite of
+  13–20. Measured, a fight now costs 0.4% of your HP bar on Dlvl 3 instead of
+  0.1%, and 2.1% instead of 0.4% on Dlvl 10, while every depth past 20 is
+  untouched.
+
+### Added
+- **Three deeper armours** — splint mail (Dlvl 14), banded mail (Dlvl 20) and
+  dragon scale (Dlvl 28). The catalogue used to stop at plate mail on Dlvl 10
+  while the dungeon kept scaling for forty more floors, so the second half of
+  a run was fought in first-half armour. These continue the cadence the first
+  four set rather than inventing a new one.
+
+  Together the two changes turn the curve from a plateau and a cliff into a
+  climb: a fight costs 0.4% of your bar at the top, 2% through the middle
+  floors and 9.2% at the bottom, rising the whole way. Runs reach Dlvl 42–47
+  instead of 38–48, and the Amulet is now genuinely winnable — a few percent
+  of runs, more if you use the rest command well.
+
+  This is the second and last change out of `tools/balance.py`'s six
+  candidates. The two shipped separately on purpose, and the measurement says
+  why: rest and deep armour *multiply* (0.9% and 2.4% alone, 37% together),
+  while the soak rule and the ladder *compensate* — the rule hardens the game
+  where the ladder softens it.
+
+### Fixed
+- Nothing: this release changes balance only. Saves from 1.1 still load
+  (`SAVE_VER` 27; the three appended types leave the save's size unchanged).
+
 ## [1.1.0] — 2026-08-30
 
 **Rest.** The first change chosen by measurement instead of instinct: of six

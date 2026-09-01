@@ -60,6 +60,10 @@ enum {
     O_GAINLVL,                                 /* '!' potion  */
     O_REGEN,                                   /* '=' ring    */
     O_LUCKSTONE,   /* '*' the mines' prize; mindep 255 = placed, not generated */
+    /* the 1.2 armour ladder -- APPENDED, as ever, so no saved otyp shifts.
+     * (id_known is (NUMOBJ+7)/8 bytes: 36 and 39 types both need 5, so the
+     * save format is untouched.) */
+    O_SPLINT, O_BANDED, O_DRAGSCALE,           /* '[' the deep armour */
     NUMOBJ
 };
 
@@ -112,7 +116,15 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '?',  0,   80,  3, "scroll of remove curse" },
     { '!',  0,   80,  5, "potion of gain level" },
     { '=',  0,  200,  6, "ring of regeneration" },
-    { '*',  0,  300, 255, "luckstone" }   /* the mines bottom (levelgen) */
+    { '*',  0,  300, 255, "luckstone" },  /* the mines bottom (levelgen) */
+    /* The catalogue used to stop at plate mail on Dlvl 10 while the dungeon
+     * kept scaling for forty more floors -- the hero fought the second half
+     * in first-half armour. This continues the cadence the first four set
+     * (+1 every three to six floors) instead of inventing a new one. Names
+     * stay <= 12 chars so the 32-column inventory still fits a prefix. */
+    { '[',  6,  300,  14, "splint mail" },
+    { '[',  7,  450,  20, "banded mail" },
+    { '[',  8, 1200,  28, "dragon scale" }
 };
 
 typedef struct {
