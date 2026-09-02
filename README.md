@@ -128,7 +128,7 @@ RAM-expansion interface, which is how many people actually have 128 KB.
 
 ![NextHack gameplay: a magically mapped dungeon level drawn in colour 8×8 tiles — rooms and corridors across the level, a stocked shop with warm brick walls, the armoured hero and his dog facing monsters in a lit room, and the full status bar below.](docs/gameplay.png)
 
-*Dlvl 9 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, a shop trades in the corner, and monsters find you anyway. The status bar carries the whole character sheet, alignment included.*
+*Dlvl 8 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, a shop trades in the corner, and monsters find you anyway. The rat at the hero's elbow just bounced off his dragon scale: armour turns a blow aside, it no longer erases it. The status bar carries the whole character sheet, alignment included.*
 
 ![The Gnomish Mines: cobblestone chambers and winding tunnels revealed, Minetown's warm-brick shop stocked with wares, and the hero and his dog meeting a monster in a lit chamber, with the status bar reading Mine:2.](docs/mines.png)
 
@@ -259,8 +259,8 @@ run-zx128.bat        REM dev convenience: boots nexthack128.tap in ZEsarUX (--ma
 ![NextHack on the plain ZX Spectrum 128K: the ULA renderer with 1-bit tiles — a magically mapped level, a stocked shop in yellow, the sword-bearing hero with his dog facing a monster, and the compact status line.](docs/zx128.png)
 
 *The same game on a plain 128K: 1-bit tiles on the ULA, a 32-column viewport that
-edge-scrolls over the 80-wide map — the hero (sword raised), his dog (tail up),
-and a freshly mapped level.*
+edge-scrolls over the 80-wide map — the hero (sword raised), his dog (tail up), a
+freshly mapped level, and the shop picked out in yellow.*
 
 `run-zx128.bat` launches **ZEsarUX** (sibling `..\ZEsarUX\`) for quick local
 testing; it inserts the tape with `--tape`, so ZEsarUX auto-loads it straight to
@@ -301,7 +301,7 @@ used to emit one and no longer does.
 
 Walk into a monster to attack it; walk over gold to pick it up.
 
-![The NextHack inventory screen: a blessed +2 long sword (wielded), +1 ring mail (worn), an unidentified scroll and potion, the ring of regeneration (on hand), the luckstone, a food ration and a charged wand of cold.](docs/inventory.png)
+![The NextHack inventory screen: a blessed +2 long sword (wielded), +1 dragon scale (worn), an unidentified scroll and potion, the ring of regeneration (on hand), the luckstone, a food ration and a charged wand of cold.](docs/inventory.png)
 
 *The inventory screen (`i`): enchantment, blessed/cursed state, unidentified appearances, wand charges — the worn and wielded pieces flagged.*
 
