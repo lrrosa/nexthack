@@ -422,9 +422,11 @@ static int special_gen(void)
     place_item('!');      /* potion */
     place_item('!');
     if (rn2(2))    place_item('?');     /* scroll */
-    if (dlvl >= 3) place_item('=');     /* ring   */
-    if (dlvl >= 2 && rn2(3) == 0) place_item('/');   /* wand (uncommon) */
-    if (dlvl >= 6 && rn2(10) == 0) place_item('"');  /* amulet (rare) */
+    if (eff_depth() >= 3) place_item('=');     /* ring   */
+    if (eff_depth() >= 2 && rn2(3) == 0) place_item('/');   /* wand */
+    /* same two guards as the ordinary block (see there) */
+    if (eff_depth() >= 6 && dlvl != DLVL_AMULET && rn2(10) == 0)
+        place_item('"');
     return 1;
 }
 
@@ -555,16 +557,22 @@ void gen_level(void) __banked
             place_item(')');      /* weapon */
             place_item('[');      /* armor  */
             place_item('!');      /* potion */
-            if (dlvl >= 2) place_item('!');
+            if (eff_depth() >= 2) place_item('!');
             if (rn2(2))    place_item('?');     /* scroll */
-            if (dlvl >= 3 && rn2(2)) place_item('=');   /* ring */
-            if (dlvl >= 2 && rn2(3) == 0) place_item('/');  /* wand */
-            if (dlvl >= 2 && rn2(4) == 0) place_item('&');  /* spellbook (rare) */
-            /* An amulet, rarely and deep. Without this the two wearable
-             * amulets existed in the catalogue and nowhere in the dungeon --
-             * the feature was dead, which is also what hid the has_amulet bug
-             * (the tests poked one straight into the pack). */
-            if (dlvl >= 6 && rn2(10) == 0) place_item('"');
+            if (eff_depth() >= 3 && rn2(2)) place_item('=');   /* ring */
+            if (eff_depth() >= 2 && rn2(3) == 0) place_item('/');  /* wand */
+            if (eff_depth() >= 2 && rn2(4) == 0) place_item('&'); /* spellbook */
+            /* An amulet, rarely and deep. Two traps here, both of which
+             * manufacture a FALSE Amulet of Yendor:
+             *   - on DLVL_AMULET itself, resolve_floor answers O_AMULET for
+             *     any '"', so a second one would win the game where it lay;
+             *   - the depth that RESOLVES the item is eff_depth(), and the
+             *     mines run eff_depth 3..6 under dlvl 51..54. Below 6 no
+             *     amulet is eligible, and resolve_otyp's empty-pool fallback
+             *     returns the first '"' in the catalogue -- Yendor's own.
+             * Gate on eff_depth, and never on the win level. */
+            if (eff_depth() >= 6 && dlvl != DLVL_AMULET && rn2(10) == 0)
+                place_item('"');
         }
     }
 

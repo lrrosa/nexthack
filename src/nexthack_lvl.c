@@ -83,7 +83,7 @@ static void place_fountain(void)
     uint16_t h;
     uint8_t room, cx, cy;
 
-    if (rcount == 0 || dlvl < 2) return;
+    if (rcount == 0 || eff_depth() < 2) return;
     h = (uint16_t)(world_seed * 3u + (uint16_t)dlvl * 0x2C9Fu);
     if ((h % 4u) != 0) return;
     room = (uint8_t)((h >> 4) % rcount);

@@ -1101,7 +1101,9 @@ static void add_sprung(uint8_t x, uint8_t y)
 static uint8_t door_hash_locked(uint8_t x, uint8_t y)
 {
     uint16_t h;
-    if (dlvl < 3 || lvl[y][x] != '+') return 0;
+    /* eff_depth, so the mines are judged by how they PLAY (3..6) and not by
+     * their internal dlvl 51..54 -- same result today, but it is the rule */
+    if (eff_depth() < 3 || lvl[y][x] != '+') return 0;
     /* Never a shop's door: the keeper cannot leave to let you in, and a shop
      * you have to kick your way into is not a shop. Same rule trap_type uses,
      * and the same reason -- a pure rect test, no RNG, so generation stays
@@ -1172,7 +1174,7 @@ void do_kick(void) __banked
 static int trap_type(uint8_t x, uint8_t y)
 {
     uint16_t h;
-    if (dlvl < 2) return -1;
+    if (eff_depth() < 2) return -1;
     if (shop_in_room(x, y)) return -1;  /* NetHack rule: no traps inside a shop
                                          * (a trap door mid-shopping is cruel).
                                          * Pure rect test -- no RNG, so the

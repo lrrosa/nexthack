@@ -16,6 +16,12 @@
  * Difficulty and loot use eff_depth() (level.h), not the raw 51+ id. The
  * luckstone waits at the bottom. */
 #define MINES_ENTR_DLVL 2
+/* THE MINES RULE: inside the branch dlvl runs 51..54 while the level PLAYS
+ * as eff_depth() 3..6. Anything deciding DIFFICULTY or LOOT QUALITY must
+ * read eff_depth(); only identity, persistence indices and side hashes may
+ * read dlvl. Reading dlvl for loot is what let the mines mint a false
+ * Amulet of Yendor, and `dlvl >= DLVL_AMULET` is what silently refused the
+ * wand of digging in the whole branch (51..54 are all >= 50). */
 #define MINES_BASE      (DLVL_AMULET + 1)
 #define MINES_DEPTH     4
 #define IN_MINES(d)     ((d) >= MINES_BASE)

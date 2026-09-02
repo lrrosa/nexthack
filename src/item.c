@@ -740,7 +740,7 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
     uint8_t depth = (uint8_t)eff_depth();   /* mine levels resolve shallow */
 
     if (in_vault_room((int)x, (int)y)) {
-        uint16_t d = (uint16_t)(dlvl + VAULT_DEPTH_BONUS);
+        uint16_t d = (uint16_t)(eff_depth() + VAULT_DEPTH_BONUS);
         depth = (uint8_t)(d > MAXLVL ? MAXLVL : d);
     }
 
@@ -754,6 +754,12 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
          * shallower is one of the wearable amulets. */
         o->otyp = (dlvl == DLVL_AMULET) ? O_AMULET
                                         : resolve_otyp('"', h, depth);
+        /* Belt and braces: resolve_otyp falls back to the FIRST type of the
+         * class when none is eligible at this depth, and the first '"' is
+         * Yendor's own. levelgen now gates on eff_depth so that cannot
+         * happen, but a minted Amulet hands over the game, so refuse it here
+         * too rather than trust one caller to stay careful. */
+        if (o->otyp == O_AMULET) o->otyp = O_AMU_ESP;
         o->buc  = (uint8_t)((((h >> 11) & 7) < 5) ? BUC_UNC : BUC_CURSE);
         return;
     }
@@ -1279,6 +1285,28 @@ uint8_t life_saved(void) __banked
     return 1;
 }
 
+/* The best amulet you can actually put on.
+ *
+ * find_best() cannot do this job: every amulet has prop 0, so it returns
+ * whichever sits first in the pack -- and one of them is the Amulet of Yendor,
+ * which is carried for the whole climb out and is not wearable. 'P' then found
+ * it, failed the "not Yendor" guard and put nothing on at all, so life saving
+ * was unreachable exactly during the ascent, which is when it matters most. */
+static int find_best_amulet(void)
+{
+    int best = -1, bestval = -999;
+    uint8_t i;
+    for (i = 0; i < inv_count; i++) {
+        int v;
+        if (objtypes[inv[i].otyp].cls != '"') continue;
+        if (inv[i].otyp == O_AMULET || inv[i].worn) continue;
+        v = (int)inv[i].ench - inv[i].ero;
+        if (buc_st(&inv[i]) == BUC_CURSE) v -= 2;   /* prefer a clean one */
+        if (v > bestval) { bestval = v; best = (int)i; }
+    }
+    return best;
+}
+
 void do_puton(void) __banked
 {
     int w = find_worn('='), s;
@@ -1289,9 +1317,15 @@ void do_puton(void) __banked
     if (s < 0 || inv[s].worn) {
         /* nothing to gain on the hand: hang an amulet round the neck instead,
          * so one key still covers all the jewellery as it does in NetHack */
-        int a = find_best('"');
-        if (a >= 0 && !inv[a].worn && inv[a].otyp != O_AMULET) {
-            unworn_class('"');
+        int a = find_best_amulet();
+        if (a >= 0) {
+            /* A cursed amulet holds on, the way a cursed ring and a cursed
+             * suit do -- unworn_class() used to swap it off for free. */
+            int wa = find_worn('"');
+            if (wa >= 0 && buc_st(&inv[wa]) == BUC_CURSE && buc_seen(&inv[wa])) {
+                msg("Your amulet is stuck fast!"); return;
+            }
+            if (wa >= 0) inv[wa].worn = 0;
             inv[a].worn = 1;
             inv[a].buc |= BUC_KNOWN;
             recompute_gear();
@@ -1722,9 +1756,17 @@ void do_zap(void) __banked
     ot = inv[s].otyp;
 
     if (ot == O_WDIG) {                  /* digging needs no aim -- it goes down */
-        inv[s].ench--;
         acted = 1; turns++;
-        if (dlvl >= DLVL_AMULET) { msg("The floor here resists digging."); return; }
+        /* Refuse only where there is no floor below: the win level, and the
+         * mines' bottom. `dlvl >= DLVL_AMULET` looked equivalent and was not
+         * -- the mines run dlvl 51..54, all of them >= 50, so digging was
+         * refused throughout the whole branch. The charge is spent AFTER the
+         * refusal now; it used to burn on a dig that never happened. */
+        if (dlvl == DLVL_AMULET ||
+            dlvl == (uint16_t)(MINES_BASE + MINES_DEPTH - 1)) {
+            msg("The floor here resists digging."); return;
+        }
+        inv[s].ench--;
         msg("You dig a hole and drop through!");
         sfx_stairs();
         dlvl++;

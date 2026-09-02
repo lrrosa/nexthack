@@ -80,6 +80,34 @@ items straight into the pack instead of picking them up off the floor.
 - The `"` on the floor no longer announces itself as the Amulet of Yendor
   anywhere but the bottom.
 
+- **A second audit pass, prompted by asking what else the mines distort.**
+  Inside the branch `dlvl` runs 51-54 while the level *plays* as `eff_depth()`
+  3-6, and four of these came from reading the wrong one:
+
+  - **Carrying the Amulet of Yendor stopped you wearing any amulet.** Every
+    amulet has `prop 0`, so `find_best` returned whichever sat first in the
+    pack; with Yendor there it failed the "not Yendor" guard and put nothing
+    on — during the climb out, which is exactly when life saving matters.
+  - **A cursed amulet came off for free**, where a cursed ring is *stuck fast*
+    and cursed armour is *welded on*.
+  - **The loot could put a second `"` on Dlvl 50**, where any `"` resolves to
+    the real Amulet — two of them on the win level.
+  - **The mines minted a false Amulet.** The loot gated on `dlvl >= 6`, but
+    the item is *resolved* at `eff_depth()`; below 6 no amulet is eligible and
+    `resolve_otyp`'s empty-pool fallback returns the first `"` in the
+    catalogue, which is Yendor's own. Gated on `eff_depth` now, and
+    `resolve_floor` refuses to mint an Amulet off the win level whatever the
+    caller does.
+  - **The wand of digging never worked in the mines.** `dlvl >= DLVL_AMULET`
+    reads as "the Amulet's floor", but 51-54 are all >= 50, so the whole
+    branch refused to dig — and spent the charge doing it. It now refuses only
+    where there is no floor below, and a refused dig keeps its charge.
+
+  Nine further comparisons decided loot or difficulty from raw `dlvl`. All of
+  them happen to give the same answer today, which is luck rather than design,
+  so they now read `eff_depth()` too — no generated level changes. The rule is
+  written down in `game.h` beside the mines' own constants.
+
 ### Not done
 - **Tools (`(`)** — a pick-axe and a lock pick were planned and are blocked,
   not deferred. A new item class needs a new tile, and the 128K's `udg_bitmap`

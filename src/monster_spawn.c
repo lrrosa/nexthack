@@ -77,7 +77,10 @@ static void spawn_guard(uint8_t room)
     if (x == up_x && y == up_y) return;
     if (monster_at(x, y) >= 0) return;
     m_x[mcount] = x; m_y[mcount] = y;
-    m_hp[mcount] = (uint8_t)(mt->hp + dlvl);       /* tougher than the usual +dlvl/2 */
+    /* eff_depth, like every other difficulty number -- raw dlvl would give a
+     * mines vault guard 51+ HP. There are no vaults in the mines today, so
+     * this changes nothing; it stops the next person finding out. */
+    m_hp[mcount] = (uint8_t)(mt->hp + eff_depth());  /* tougher than the usual half */
     m_type[mcount] = mt->ch; m_alive[mcount] = 1;
     mcount++;
 }
