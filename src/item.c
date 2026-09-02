@@ -64,67 +64,94 @@ enum {
      * (id_known is (NUMOBJ+7)/8 bytes: 36 and 39 types both need 5, so the
      * save format is untouched.) */
     O_SPLINT, O_BANDED, O_DRAGSCALE,           /* '[' the deep armour */
+    O_SHIELD, O_HELM, O_BOOTS, O_CLOAK, O_LSHIELD,  /* '[' the other slots */
+    O_AMU_ESP, O_AMU_LIFE,                     /* '"' amulets you can wear  */
     NUMOBJ
 };
+
+/* Armour slots. Only '[' uses these; everything else is SL_NONE and the
+ * field is ignored. NetHack layers a suit, and recompute_gear was already
+ * summing every worn '[' piece -- one unworn_class('[') in do_wear was all
+ * that kept the hero in a single suit. */
+#define SL_NONE   0
+#define SL_SUIT   1
+#define SL_SHIELD 2
+#define SL_HELM   3
+#define SL_BOOTS  4
+#define SL_CLOAK  5
 
 typedef struct {
     char        cls;     /* class char in the terrain buffer                  */
     uint8_t     prop;    /* weapon:+dmg  armour:AC bonus  potion:heal base    */
     uint16_t    price;   /* base shop price (used from Phase 20)              */
     uint8_t     mindep;  /* earliest depth at which it is generated           */
+    uint8_t     slot;    /* '[' only: which body slot it occupies (SL_*)      */
     const char *name;
 } objtype_t;
 
 static const objtype_t objtypes[NUMOBJ] = {
     /* cls prop price mindep name */
-    { ')',  2,    5,  1, "dagger" },
-    { ')',  3,   15,  2, "short sword" },
-    { ')',  4,   40,  5, "mace" },
-    { ')',  5,   80,  9, "long sword" },
-    { '[',  2,   10,  1, "leather armor" },
-    { '[',  3,   40,  3, "ring mail" },
-    { '[',  4,  100,  6, "chain mail" },
-    { '[',  5,  200, 10, "plate mail" },
-    { '!',  7,   20,  1, "potion of healing" },
-    { '!', 14,   60,  4, "potion of extra healing" },
-    { '!',  0,   30,  2, "potion of confusion" },
-    { '!',  0,   30,  3, "potion of sleeping" },
-    { '!',  0,   30,  4, "potion of blindness" },
-    { '?',  0,   40,  1, "scroll of magic mapping" },
-    { '?',  0,   60,  1, "scroll of teleportation" },
-    { '?',  0,   40,  2, "scroll of identify" },
-    { '=',  1,  150,  3, "ring of protection" },
-    { '%',  0,   10,  1, "food ration" },
-    { '"',  0,    0, 50, "the Amulet of Yendor" },
+    { ')',  2,    5,  1, SL_NONE, "dagger" },
+    { ')',  3,   15,  2, SL_NONE, "short sword" },
+    { ')',  4,   40,  5, SL_NONE, "mace" },
+    { ')',  5,   80,  9, SL_NONE, "long sword" },
+    { '[',  2,   10,  1, SL_SUIT, "leather armor" },
+    { '[',  3,   40,  3, SL_SUIT, "ring mail" },
+    { '[',  4,  100,  6, SL_SUIT, "chain mail" },
+    { '[',  5,  200, 10, SL_SUIT, "plate mail" },
+    { '!',  7,   20,  1, SL_NONE, "potion of healing" },
+    { '!', 14,   60,  4, SL_NONE, "potion of extra healing" },
+    { '!',  0,   30,  2, SL_NONE, "potion of confusion" },
+    { '!',  0,   30,  3, SL_NONE, "potion of sleeping" },
+    { '!',  0,   30,  4, SL_NONE, "potion of blindness" },
+    { '?',  0,   40,  1, SL_NONE, "scroll of magic mapping" },
+    { '?',  0,   60,  1, SL_NONE, "scroll of teleportation" },
+    { '?',  0,   40,  2, SL_NONE, "scroll of identify" },
+    { '=',  1,  150,  3, SL_NONE, "ring of protection" },
+    { '%',  0,   10,  1, SL_NONE, "food ration" },
+    { '"',  0,    0, 50, SL_NONE, "the Amulet of Yendor" },
     /* wands: prop is unused (the effect is by type); zapped with 'z', charges
      * live in obj_t.ench. */
-    { '/',  0,  150,  2, "wand of striking" },
-    { '/',  0,  200,  4, "wand of cold" },
-    { '/',  0,  175,  3, "wand of sleep" },
-    { '/',  0,  200,  5, "wand of teleportation" },
-    { '/',  0,  150,  6, "wand of digging" },
-    { '%',  0,    2, 255, "corpse" },  /* never generated (mindep 255) */
+    { '/',  0,  150,  2, SL_NONE, "wand of striking" },
+    { '/',  0,  200,  4, SL_NONE, "wand of cold" },
+    { '/',  0,  175,  3, SL_NONE, "wand of sleep" },
+    { '/',  0,  200,  5, SL_NONE, "wand of teleportation" },
+    { '/',  0,  150,  6, SL_NONE, "wand of digging" },
+    { '%',  0,    2, 255, SL_NONE, "corpse" },  /* never generated (mindep 255) */
     /* spellbooks: prop = the spell index (spells.c). Read to learn, Z casts. */
-    { '&',  0,  100,  2, "spellbook of force bolt" },
-    { '&',  1,  120,  3, "spellbook of healing" },
-    { '&',  2,  150,  4, "spellbook of sleep" },
-    { '&',  3,  180,  6, "spellbook of teleportation" },
-    { ')',  8,  400, 255, "Excalibur" },  /* only from a fountain (mindep 255) */
+    { '&',  0,  100,  2, SL_NONE, "spellbook of force bolt" },
+    { '&',  1,  120,  3, SL_NONE, "spellbook of healing" },
+    { '&',  2,  150,  4, SL_NONE, "spellbook of sleep" },
+    { '&',  3,  180,  6, SL_NONE, "spellbook of teleportation" },
+    { ')',  8,  400, 255, SL_NONE, "Excalibur" },  /* only from a fountain (mindep 255) */
     /* the v0.9 arsenal (appended; see the enum note) */
-    { '?',  0,  100,  3, "scroll of enchant weapon" },
-    { '?',  0,  100,  4, "scroll of enchant armor" },
-    { '?',  0,   80,  3, "scroll of remove curse" },
-    { '!',  0,   80,  5, "potion of gain level" },
-    { '=',  0,  200,  6, "ring of regeneration" },
-    { '*',  0,  300, 255, "luckstone" },  /* the mines bottom (levelgen) */
+    { '?',  0,  100,  3, SL_NONE, "scroll of enchant weapon" },
+    { '?',  0,  100,  4, SL_NONE, "scroll of enchant armor" },
+    { '?',  0,   80,  3, SL_NONE, "scroll of remove curse" },
+    { '!',  0,   80,  5, SL_NONE, "potion of gain level" },
+    { '=',  0,  200,  6, SL_NONE, "ring of regeneration" },
+    { '*',  0,  300, 255, SL_NONE, "luckstone" },  /* the mines bottom (levelgen) */
     /* The catalogue used to stop at plate mail on Dlvl 10 while the dungeon
      * kept scaling for forty more floors -- the hero fought the second half
      * in first-half armour. This continues the cadence the first four set
      * (+1 every three to six floors) instead of inventing a new one. Names
      * stay <= 12 chars so the 32-column inventory still fits a prefix. */
-    { '[',  6,  300,  14, "splint mail" },
-    { '[',  7,  450,  20, "banded mail" },
-    { '[',  8, 1200,  28, "dragon scale" }
+    { '[',  6,  300,  14, SL_SUIT, "splint mail" },
+    { '[',  7,  450,  20, SL_SUIT, "banded mail" },
+    { '[',  8, 1200,  28, SL_SUIT, "dragon scale" },
+    /* The trimmings. Each is worth about a point, as in NetHack, where the
+     * body suit is most of your protection and the rest is the set. Names
+     * stay <= 12 chars for the 32-column inventory. */
+    { '[',  2,   60,   4, SL_SHIELD, "small shield" },
+    { '[',  2,   80,   8, SL_HELM,   "helmet" },
+    { '[',  2,   70,  11, SL_BOOTS,  "boots" },
+    { '[',  2,  120,  15, SL_CLOAK,  "cloak" },
+    { '[',  3,  260,  20, SL_SHIELD, "large shield" },
+    /* Amulets. The Amulet of Yendor keeps '"' to itself on its own floor
+     * (resolve_floor checks the depth), so these are what the class means
+     * anywhere else. Neither has a prop: their worth is the effect. */
+    { '"',  0,  180,   6, SL_NONE, "amulet of ESP" },
+    { '"',  0,  400,  12, SL_NONE, "amulet of life" }
 };
 
 typedef struct {
@@ -286,21 +313,38 @@ void corpse_drop(uint8_t x, uint8_t y, char mch) __banked
 
 /* recompute the combat globals (weapon_dmg, armor_def, ac) from worn gear.
  * Erosion subtracts from an item's bonus; enchantment adds to it. */
+/* what a piece is actually worth once enchantment, erosion and blessing are
+ * counted -- shared by recompute_gear and do_wear so the two cannot disagree
+ * about which armour is better */
+static int gear_eff(const obj_t *o)
+{
+    int eff = (int)objtypes[o->otyp].prop + o->ench - o->ero;
+    if (buc_st(o) == BUC_BLESS)      eff += 1;   /* blessed gear is better */
+    else if (buc_st(o) == BUC_CURSE) eff -= 2;   /* cursed gear is a drag   */
+    return eff < 0 ? 0 : eff;
+}
+
+/* A worn set saturates. Five slots each carrying a depth-scaled enchantment
+ * would otherwise hand the hero armor_def 17-19 where one suit gives 10 --
+ * measured at 30-99% of runs won against 1.4-9.6%, i.e. the deep floors stop
+ * being dangerous at all. The cap is NetHack's diminishing returns, cheaply:
+ * the DISPLAYED ac keeps falling with every piece, so a new find still reads
+ * as progress even when the reduction has topped out. */
+#define ARMOR_CAP 10
+
 static void recompute_gear(void)
 {
     uint8_t i, base_ac = 10, redux = 0;
 
     weapon_dmg = 0;
     regen_ring = 0;         /* re-derived from what is worn (never saved) */
+    amu_esp = amu_life = 0;
     for (i = 0; i < inv_count; i++) {
         const objtype_t *t;
         int eff;
         if (!inv[i].worn) continue;
         t = &objtypes[inv[i].otyp];
-        eff = (int)t->prop + inv[i].ench - inv[i].ero;
-        if (buc_st(&inv[i]) == BUC_BLESS)      eff += 1;   /* blessed gear is better */
-        else if (buc_st(&inv[i]) == BUC_CURSE) eff -= 2;   /* cursed gear is a drag   */
-        if (eff < 0) eff = 0;
+        eff = gear_eff(&inv[i]);
         if (t->cls == ')') {
             weapon_dmg = (uint8_t)eff;
         } else if (t->cls == '[') {
@@ -311,10 +355,13 @@ static void recompute_gear(void)
             redux += (uint8_t)eff;
             if (inv[i].otyp == O_REGEN)
                 regen_ring = 1;         /* upkeep() mends twice as fast */
+        } else if (t->cls == '"') {
+            if (inv[i].otyp == O_AMU_ESP)  amu_esp = 1;
+            if (inv[i].otyp == O_AMU_LIFE) amu_life = 1;
         }
     }
     ac = base_ac;
-    armor_def = redux;
+    armor_def = (redux > ARMOR_CAP) ? ARMOR_CAP : redux;
 }
 
 /* corrode the worn item of class cls (acid/rust from a monster): bump its
@@ -686,7 +733,12 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
     o->worn = 0;
     o->buc  = BUC_UNC;
     if (c == '"') {
-        o->otyp = O_AMULET;
+        /* The Amulet of Yendor sits on the bottom floor and nowhere else
+         * (mindep 50 keeps resolve_otyp off it anyway); a '"' anywhere
+         * shallower is one of the wearable amulets. */
+        o->otyp = (dlvl == DLVL_AMULET) ? O_AMULET
+                                        : resolve_otyp('"', h, depth);
+        o->buc  = (uint8_t)((((h >> 11) & 7) < 5) ? BUC_UNC : BUC_CURSE);
         return;
     }
     if (c == '*') {
@@ -1139,21 +1191,73 @@ void do_wield(void) __banked
     else                             msg2("Wield ", obj_desc(&inv[s]), ".");
 }
 
+/* the piece worn in this slot, or -1 */
+static int find_worn_slot(uint8_t slot)
+{
+    uint8_t i;
+    for (i = 0; i < inv_count; i++)
+        if (inv[i].worn && objtypes[inv[i].otyp].cls == '[' &&
+            objtypes[inv[i].otyp].slot == slot) return (int)i;
+    return -1;
+}
+
+/* The unworn piece that improves the SET most: the biggest gain over whatever
+ * already occupies its slot. One W at a time therefore assembles a suit --
+ * shield, then helm, then boots -- instead of swapping the body armour, and
+ * it never asks a question the old one-suit version did not ask. */
+static int find_best_gain(void)
+{
+    int best = -1, bestgain = 0;
+    uint8_t i;
+    for (i = 0; i < inv_count; i++) {
+        const objtype_t *t = &objtypes[inv[i].otyp];
+        int gain, w;
+        if (t->cls != '[' || inv[i].worn) continue;
+        w = find_worn_slot(t->slot);
+        gain = gear_eff(&inv[i]) - (w >= 0 ? gear_eff(&inv[w]) : 0);
+        if (gain > bestgain) { bestgain = gain; best = (int)i; }
+    }
+    return best;
+}
+
 void do_wear(void) __banked
 {
-    int w = find_worn('['), s;
+    int s = find_best_gain(), w;
+    if (s < 0) {
+        msg(find_best('[') < 0 ? "You have no armor to wear."
+                               : "You are wearing your best.");
+        return;
+    }
+    w = find_worn_slot(objtypes[inv[s].otyp].slot);
     if (w >= 0 && buc_st(&inv[w]) == BUC_CURSE && buc_seen(&inv[w])) {
         msg("Your armor is welded on!"); return;
     }
-    s = find_best('[');
-    if (s < 0) { msg("You have no armor to wear."); return; }
-    if (inv[s].worn) { msg("Already wearing your best."); return; }
-    unworn_class('[');                  /* swap: take off the old suit first */
+    if (w >= 0) inv[w].worn = 0;        /* only THAT slot comes off */
     inv[s].worn = 1;
     inv[s].buc |= BUC_KNOWN;
     recompute_gear();
     if (buc_st(&inv[s]) == BUC_CURSE) msg2("Welded!  ", obj_desc(&inv[s]), ".");
     else                             msg2("You don ", obj_desc(&inv[s]), ".");
+}
+
+/* The amulet of life saving, checked in ONE place: main() asks before it acts
+ * on `dead`, so every way of dying -- a bite, a trap, starvation, a dragon's
+ * breath -- is covered without touching any of them. The amulet burns out
+ * doing it, as in NetHack. Returns 1 if it spent itself. */
+uint8_t life_saved(void) __banked
+{
+    uint8_t i;
+    if (!amu_life) return 0;
+    for (i = 0; i < inv_count; i++)
+        if (inv[i].worn && inv[i].otyp == O_AMU_LIFE) { inv_remove(i); break; }
+    dead = 0;
+    php = pmaxhp;
+    recompute_gear();                 /* clears amu_life with the amulet */
+    /* <= 32 columns on the 128K ULA: the first wording ran to 40 and the
+     * message line clipped it mid-word */
+    msg("But wait...  your amulet glows!");
+    sfx_magic();
+    return 1;
 }
 
 void do_puton(void) __banked
@@ -1163,6 +1267,22 @@ void do_puton(void) __banked
         msg("Your ring is stuck fast!"); return;
     }
     s = find_best('=');
+    if (s < 0 || inv[s].worn) {
+        /* nothing to gain on the hand: hang an amulet round the neck instead,
+         * so one key still covers all the jewellery as it does in NetHack */
+        int a = find_best('"');
+        if (a >= 0 && !inv[a].worn && inv[a].otyp != O_AMULET) {
+            unworn_class('"');
+            inv[a].worn = 1;
+            inv[a].buc |= BUC_KNOWN;
+            recompute_gear();
+            id_set(inv[a].otyp);
+            msg2("You wear ", obj_desc(&inv[a]), ".");
+            sfx_magic();
+            acted = 1; turns++;
+            return;
+        }
+    }
     if (s < 0) { msg("You have no ring to put on."); return; }
     if (inv[s].worn) { msg("You are already wearing a ring."); return; }
     unworn_class('=');

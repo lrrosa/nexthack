@@ -40,6 +40,15 @@ extern uint8_t  map_dirty; /* +zx renderer: force a full map redraw (unused on N
 extern uint8_t  map_flush; /* +zx renderer: a cell changed at a distance -- skip the
                             * fast path once, no recenter (unused on Next) */
 extern int16_t  nutrition; /* hunger: drops each turn, food refills it    */
+extern uint8_t  amu_esp;   /* wearing the amulet of ESP: telepathy while it
+                            * is on, like regen_ring re-derived from the worn
+                            * set by recompute_gear, never saved            */
+extern uint8_t  amu_life;  /* wearing the amulet of life saving             */
+extern uint8_t  door_open[MAXLVL + 1];
+                           /* bit i: the i-th locked door of that depth has
+                            * been forced. Locked-ness itself is a pure side
+                            * hash (like traps), so only the FORCING needs
+                            * remembering -- one byte a level, saved.        */
 extern uint8_t  resting;   /* 'R': the turn loop keeps passing turns without
                             * reading a key until rest_step() says stop.
                             * Transient like a pose -- never saved.       */

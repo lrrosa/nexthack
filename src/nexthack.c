@@ -43,6 +43,8 @@ uint8_t  luckstone_taken = 0;    /* the mines' prize was claimed (see game.h) */
 uint8_t  won = 0;
 uint8_t  acted = 0;
 uint8_t  resting = 0;     /* 'R' rest: see rest_step (game.h) */
+uint8_t  door_open[MAXLVL + 1];   /* forced locked doors (see game.h) */
+uint8_t  amu_esp = 0, amu_life = 0;   /* worn amulets (see game.h) */
 uint8_t  map_dirty = 1;   /* +zx renderer flag (unused on Next) */
 uint8_t  map_flush = 0;   /* +zx: skip draw_map's fast path once (a cell changed
                            * at a distance: a throw landed, search revealed a
@@ -89,7 +91,11 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   27     /* v0.10.0: MAXINV 24->26 (INV_BYTES) and the
+#define SAVE_VER   28     /* v1.3.0: the armour slots widened the object
+                           * catalogue past 40 types (id_known 5 -> 7 bytes)
+                           * and door_open[] joined the file. 27 was the 1.0
+                           * freeze format; this is the first break since. */
+#define SAVE_VER_OLD 27   /* v0.10.0: MAXINV 24->26 (INV_BYTES) and the
                            * fog-of-war pool grew to 12 slots */
 
 struct save_hdr {
@@ -169,6 +175,7 @@ int save_game(void) __banked
     p.luck = luck;
     file_write(h, &p, sizeof p);
 
+    file_write(h, door_open, sizeof door_open);
     item_save(h);
     level_save(h);
     monster_save(h);
@@ -217,6 +224,7 @@ int load_game(void) __banked
     luck = p.luck;
     dead = 0; won = 0;
 
+    file_read(h, door_open, sizeof door_open);
     item_load(h);
     level_load(h);
     monster_load(h);
@@ -232,7 +240,7 @@ int load_game(void) __banked
 
 /* telepathy: while blind you sense every monster on the level (the floating
  * eye's gift) -- both renderers draw monsters through this despite no vision */
-#define mon_sensed() (st_blind && (intrinsics & INTR_TELEPATHY))
+#define mon_sensed() (st_blind && ((intrinsics & INTR_TELEPATHY) || amu_esp))
 
 #ifdef __ZXNEXT
 void draw_map(void) __banked
@@ -710,7 +718,7 @@ void show_help(void) __banked
     print_str(7,  4, "h j k l  y u b n",     C_CYAN | C_BRIGHT);
     print_str(2,  5, "Stairs: > < or Enter", C_CYAN | C_BRIGHT);
     print_str(2,  6, "s search . wait ; look", C_CYAN | C_BRIGHT);
-    print_str(2,  7, "R rest until healed",    C_CYAN | C_BRIGHT);
+    print_str(2,  7, "R rest  K kick a door",  C_CYAN | C_BRIGHT);
     print_str(2,  9, ", pick up",            C_CYAN | C_BRIGHT);
     print_str(2,  10, "i inventory  D found", C_CYAN | C_BRIGHT);
     print_str(2, 11, "w wield    W wear",    C_CYAN | C_BRIGHT);
@@ -1078,6 +1086,82 @@ static void add_sprung(uint8_t x, uint8_t y)
  * remaps which trap a cell hides -- placement, saves and persistence are
  * untouched, since the type is derived, never stored.) */
 #define NTRAP 5
+/* ---- locked doors ----
+ * Which doors are locked is a PURE SIDE HASH, exactly like trap_type: no rn2,
+ * so the deterministic generation stays byte-identical and the persistence bit
+ * indices cannot shift. Only the forcing is remembered (door_open).
+ *
+ * Monsters and the pet still walk through a locked door. That is deliberate:
+ * making it solid for them would route the BFS around it, and the dog would be
+ * corked behind the first one the hero kicks past -- the same left-behind bug
+ * that took three fixes to kill. The door costs the hero turns, it does not
+ * fortify him. */
+static uint8_t door_hash_locked(uint8_t x, uint8_t y)
+{
+    uint16_t h;
+    if (dlvl < 3 || lvl[y][x] != '+') return 0;
+    h = (uint16_t)(world_seed * 47u + (uint16_t)dlvl * 3571u
+                   + (uint16_t)x * 89u + (uint16_t)y * 149u);
+    h ^= (uint16_t)(h << 7);
+    h ^= (uint16_t)(h >> 9);
+    h ^= (uint16_t)(h << 8);
+    return (uint8_t)((h & 3u) == 0);       /* about one door in four */
+}
+
+/* position of this door among the level's locked ones, or -1. Scan order is
+ * the map's, so the index is stable for a given depth and seed. */
+static int locked_index(uint8_t x, uint8_t y)
+{
+    uint8_t ix, iy;
+    int n = 0;
+    for (iy = 0; iy < MAPH; iy++)
+        for (ix = 0; ix < MAPW; ix++) {
+            if (!door_hash_locked(ix, iy)) continue;
+            if (ix == x && iy == y) return n;
+            if (++n >= 8) return -1;       /* the mask holds eight */
+        }
+    return -1;
+}
+
+uint8_t door_locked(uint8_t x, uint8_t y) __banked
+{
+    int idx;
+    if (!door_hash_locked(x, y)) return 0;
+    idx = locked_index(x, y);
+    if (idx < 0) return 0;                 /* past the eighth: never locked */
+    if (dlvl <= MAXLVL && (door_open[dlvl] & (uint8_t)(1u << idx))) return 0;
+    return 1;
+}
+
+/* 'K': put a boot through the adjacent locked door. Strength decides. */
+void do_kick(void) __banked
+{
+    int dx, dy;
+    for (dy = -1; dy <= 1; dy++)
+        for (dx = -1; dx <= 1; dx++) {
+            int x = hero_x + dx, y = hero_y + dy;
+            int idx;
+            if ((dx == 0 && dy == 0)) continue;
+            if (x < 0 || y < 0 || x >= MAPW || y >= MAPH) continue;
+            if (terrain(x, y) != '+') continue;
+            if (!door_locked((uint8_t)x, (uint8_t)y)) continue;
+            turns++; acted = 1;
+            if (rn2(20) < (uint8_t)(4 + (at_str >> 1))) {
+                idx = locked_index((uint8_t)x, (uint8_t)y);
+                if (idx >= 0 && dlvl <= MAXLVL)
+                    door_open[dlvl] |= (uint8_t)(1u << idx);
+                map_flush = 1;
+                msg("WHAMM!!  The door crashes open!");
+                sfx_kill();
+            } else {
+                msg("WHAMM!!");
+                sfx_hit();
+            }
+            return;
+        }
+    msg("There is no locked door here.");
+}
+
 static int trap_type(uint8_t x, uint8_t y)
 {
     uint16_t h;
@@ -1182,6 +1266,7 @@ uint8_t rest_step(void) __banked
         if (m_type[i] == 'e') continue;        /* the floating eye never comes   */
         if (!fov_visible(m_x[i], m_y[i])) continue;
         resting = 0;
+    { uint8_t i; for (i = 0; i <= MAXLVL; i++) door_open[i] = 0; }
         /* <= 32 columns on the 128K: "You stop: " + the longest name we
          * can reach here ("yellow light") + " nearby!" is exactly 30 */
         msg2("You stop: ", mon_name(m_type[i]), " nearby!");
@@ -1219,6 +1304,12 @@ void try_move(int dx, int dy) __banked
     nx = hero_x + dx;
     ny = hero_y + dy;
     dest = terrain(nx, ny);
+
+    if (dest == '+' && door_locked((uint8_t)nx, (uint8_t)ny)) {
+        msg("This door is locked.");      /* K kicks it in */
+        turns++; acted = 1;
+        return;
+    }
 
     if (!walkable(dest)) {
         /* Bumping a wall: if you're standing on an item or stairs, re-announce

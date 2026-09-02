@@ -182,7 +182,7 @@ class Mon(object):
 
 
 class Obj(object):
-    __slots__ = ("idx", "cls", "prop", "price", "mindep", "name")
+    __slots__ = ("idx", "cls", "prop", "price", "mindep", "slot", "name")
 
     def __init__(self, **kw):
         for k, v in kw.items():
@@ -224,15 +224,18 @@ class Tables(object):
                 mindep=int(f[4]), corr=int(f[6]), atk=f[7].strip(),
                 name=f[8].strip().strip('"')))
 
+        item_consts = _defines(item_c)
         self.objs = []
         for i, row in enumerate(_rows(_body(item_c, "objtypes[NUMOBJ]"))):
             f = _fields(row)
-            if len(f) != 5:
+            if len(f) != 6:
                 raise ParseError("objtypes row has %d fields: %r" % (len(f), row))
             self.objs.append(Obj(
                 idx=i, cls=f[0].strip().strip("'"), prop=int(f[1]),
                 price=int(f[2]), mindep=int(f[3]),
-                name=f[4].strip().strip('"')))
+                slot=_num(f[4], item_consts),
+                name=f[5].strip().strip('"')))
+        self.ARMOR_CAP = int(item_consts.get("ARMOR_CAP", "255"))
 
         kc = _defines(cls_c)
         self.classes = []
@@ -310,9 +313,12 @@ FORMULAS = [
     ("monsters per level", "src/monster_spawn.c:110",
      "count = 2 + eff_depth(), capped at 8",
      "spawn_count(depth)"),
-    ("gear power", "src/item.c:295",
+    ("gear power", "src/item.c gear_eff",
      "eff = prop + ench - ero; +1 blessed, -2 cursed; armour redux = max(eff-1,1)",
      "gear_eff(obj) / armor_redux(eff)"),
+    ("worn set", "src/item.c recompute_gear",
+     "every worn '[' piece adds; armor_def saturates at ARMOR_CAP",
+     "Hero.recompute() -- one piece per SL_* slot since 1.3"),
     ("floor enchantment", "src/item.c:693",
      "roll = (h >> 5) % 100; +1 if roll < depth, +2 if roll < depth/3",
      "floor_ench(h, depth)"),
@@ -424,19 +430,21 @@ class Hero(object):
         self.potions = []            # otyps of carried healing potions
         # best-worn tracking: item.c equips the highest prop+ench-ero
         self.best_wpn = None         # (eff,) of the wielded weapon
-        self.best_arm = None
+        self.best_slot = {}          # armour slot -> eff of the piece worn
         self.best_ring = None
         for otyp, equipped in cls.kit:
             o = tables.objs[otyp]
             if o.cls == "!" and o.prop > 0:
                 self.potions.append(otyp)
             if equipped:
-                self.offer(o.cls, o.prop)
+                self.offer(o.cls, o.prop, o.slot)
         self.recompute()
 
     # -- src/item.c:478 best_of + :284 recompute_gear -------------------------
-    def offer(self, cls, eff):
-        """consider a piece of gear; the game wears the highest eff it holds"""
+    def offer(self, cls, eff, slot=0):
+        """consider a piece of gear.  Armour is per SLOT since 1.3 (do_wear
+        takes off only the piece that slot already holds), so a shield and a
+        suit are both worn rather than one replacing the other."""
         if eff <= 0:
             return False
         if cls == ")":
@@ -444,8 +452,8 @@ class Hero(object):
                 self.best_wpn = eff
                 return True
         elif cls == "[":
-            if self.best_arm is None or eff > self.best_arm:
-                self.best_arm = eff
+            if slot not in self.best_slot or eff > self.best_slot[slot]:
+                self.best_slot[slot] = eff
                 return True
         elif cls == "=":
             if self.best_ring is None or eff > self.best_ring:
@@ -454,13 +462,16 @@ class Hero(object):
         return False
 
     def recompute(self):
+        """src/item.c recompute_gear -- every worn piece adds, then the total
+        saturates at ARMOR_CAP.  Without the cap five enchanted slots reach
+        armor_def 17-19 against a single suit's 10, which measured 30-99% of
+        runs won."""
         self.weapon_dmg = self.best_wpn or 0
-        redux = 0
-        if self.best_arm:
-            redux += armor_redux(self.best_arm)
+        redux = sum(armor_redux(e) for e in self.best_slot.values())
         if self.best_ring:
             redux += self.best_ring
-        self.armor_def = redux
+        cap = getattr(self.t, "ARMOR_CAP", 255)
+        self.armor_def = cap if redux > cap else redux
 
     def gain_xp(self, rng, amt):
         """src/monster_ai.c:37"""
@@ -589,7 +600,7 @@ def level_loot(rng, t, hero, depth, opts):
     o, eff = draw(")")
     hero.offer(")", eff)
     o, eff = draw("[")
-    hero.offer("[", eff)
+    hero.offer("[", eff, o.slot)
     for _ in range(1 if depth < 2 else 2):
         o, _e = draw("!")
         if o.prop > 0 and o.cls == "!":          # a healing kind

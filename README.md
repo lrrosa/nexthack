@@ -85,12 +85,16 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   through the dungeon — and **grows with its kills**, biting harder and taking
   more punishment. **Throw** (`t`) a weapon down a corridor for a ranged
   attack — it lands on the floor to be reclaimed — **search** (`s`) the ground for
-  hidden traps, **rest** (`R`) to let your wounds close, and **pray** (`p`) to your
+  hidden traps, **rest** (`R`) to let your wounds close, **kick** (`K`) a locked
+  door off its hinges, and **pray** (`p`) to your
   god to haul you out of trouble (best at an altar). Resting is no free lunch:
   it stops the moment anything wakes and comes into view, and the dungeon keeps
   sending wanderers while you sit still.
-- **Items and equipment** — weapons, armour (seven grades, from leather up to
-  dragon scale in the deep floors), potions, food, scrolls and rings,
+- **Items and equipment** — weapons, armour worn as a **set** (body suit,
+  shield, helmet, boots and cloak, each in its own slot; seven grades of
+  suit alone, from leather up to dragon scale), potions, food, scrolls,
+  rings and **amulets** — ESP, and life saving, which spends itself instead
+  of you —
   each with its own enchantment, erosion and **blessed/uncursed/cursed** state;
   potions and scrolls start **unidentified**. Wield/wear the best you carry,
   quaff/eat/read, watch acid blobs corrode your gear, beware cursed items that
@@ -283,6 +287,7 @@ used to emit one and no longer does.
 | `.` or Space              | wait a turn |
 | `s`                       | search the ground for nearby hidden traps |
 | `R`                       | rest until healed, disturbed, or hungry |
+| `K`                       | kick a locked door in |
 | `;`                       | look around the map (a cursor describes whatever it rests on) |
 | `,`                       | pick up the item under you |
 | `i`                       | show inventory |

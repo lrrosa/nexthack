@@ -122,6 +122,7 @@ start_game:
             break;
 
         case 's': do_search(); in_wait_nokey(); break;  /* search for nearby traps */
+        case 'K': do_kick(); in_wait_nokey(); break;   /* kick a locked door in */
         case 'R':                                   /* rest until healed or disturbed */
             resting = 1;
             msg("You settle down to rest.");
@@ -172,6 +173,11 @@ start_game:
             draw_status();
             draw_map();
             msg("A new adventure begins!");
+            in_wait_nokey();
+        } else if (dead && life_saved()) {
+            /* the amulet burned out instead: redraw and play on */
+            draw_status();
+            draw_map();
             in_wait_nokey();
         } else if (dead) {
             sfx_die();

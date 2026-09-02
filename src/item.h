@@ -27,7 +27,8 @@ void do_wield(void) __banked;       /* wield the first weapon                   
 void do_wear(void) __banked;        /* wear the first armor                     */
 void do_quaff(void) __banked;       /* drink the first potion                   */
 void do_eat(void) __banked;         /* eat the first food                       */
-void do_puton(void) __banked;       /* put on the first ring                    */
+void do_puton(void) __banked;
+uint8_t life_saved(void) __banked;   /* the amulet spends itself to save you */       /* put on the first ring                    */
 void do_read(void) __banked;        /* read the first scroll                    */
 void do_throw(void) __banked;       /* throw a weapon in a chosen direction     */
 void do_zap(void) __banked;         /* zap a wand (magic, ranged)               */

@@ -8,6 +8,63 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [Unreleased]
+
+Four steps toward NetHack, and one that measurement stopped at the door.
+
+### Added
+- **Armour is worn as a set.** Shield, helmet, boots and cloak join the body
+  suit, each in its own slot, and `W` adds the piece that improves the set
+  most — press it again and the next one goes on. `recompute_gear` had always
+  summed every worn `[` piece; a single `unworn_class('[')` in `do_wear` was
+  all that kept the hero in one suit.
+
+  It is also the largest balance lever measured so far, which is why it was
+  measured first. Five slots each carrying a depth-scaled enchantment reach
+  `armor_def` 17–19 against a single suit's 10 — 30% to 99% of runs won,
+  against 1.4–9.6%. So the total **saturates at 10** (`ARMOR_CAP`), which is
+  NetHack's diminishing returns done cheaply: the displayed **AC keeps
+  falling** with every piece, so a new find still reads as progress even after
+  the reduction has topped out. With the cap, the curve is 1.2's to within a
+  point.
+
+- **Locked doors, and a boot to open them.** About one door in four below
+  Dlvl 3 is locked — a pure side hash, like traps, so the deterministic
+  generation stays byte-identical. Walk into one and it refuses; `K` kicks it,
+  and Strength decides. Forcing is remembered per depth, so a door you break
+  stays broken.
+
+  Monsters and the pet still walk through. That is deliberate: routing the BFS
+  around a locked door would cork the dog behind the first one you kick past,
+  which is the left-behind bug that took three separate fixes to kill. A locked
+  door costs you turns; it does not fortify you.
+
+- **Two amulets you can wear.** The amulet of **ESP** grants telepathy while
+  it is on — the floating eye's gift, without eating one. The amulet of **life
+  saving** spends itself instead of you, checked in the one place the turn loop
+  already looks at `dead`, so every way of dying is covered. `"` on the floor
+  is now one of these anywhere except the bottom, where it is still the Amulet
+  of Yendor.
+
+- **The Oracle.** A sixth hand-drawn level: Delphi's central chamber with
+  fountains at its corners and the seat in the middle, four outer chambers,
+  and the stairs at opposite ends so the level has to be crossed. It cost
+  156 bytes — the LZ packing put six templates in 1020 B.
+
+### Changed
+- `SAVE_VER` 28. **Saves from 1.2 and earlier will not load.** The armour
+  slots pushed the object catalogue past 40 types, which widens the
+  identification bitmap, and the forced-door mask joined the file. 27 had been
+  the format since the 1.0 freeze.
+
+### Not done
+- **Tools (`(`)** — a pick-axe and a lock pick were planned and are blocked,
+  not deferred. A new item class needs a new tile, and the 128K's `udg_bitmap`
+  ends *exactly* at `inv[]`: `NTILES` is 48 and a 49th tile corrupts the
+  inventory. There are 192 free bytes below `SSHADOW` to move the bitmap into,
+  which would buy 24 tiles, but relocating a Bank-5 tenant is its own change
+  with its own emulator pass — not something to bundle here.
+
 ## [1.2.0] — 2026-09-01
 
 **The cliff becomes a climb.** Armour stopped improving on Dlvl 10 while the
