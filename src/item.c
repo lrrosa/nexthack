@@ -366,18 +366,34 @@ static void recompute_gear(void)
 
 /* corrode the worn item of class cls (acid/rust from a monster): bump its
  * erosion up to a cap of 3, weakening it via recompute_gear. */
+/* One worn piece of this class, chosen at random.
+ *
+ * Armour used to be a single suit, so "the first worn '[' in the pack" was
+ * "the only one" and every caller could scan for it. With a set that reading
+ * silently became "always the lowest inventory slot": acid ate the same piece
+ * for ever, and a scroll of enchant armour poured every +1 into one item --
+ * which, once it hit ARMOR_CAP, did nothing at all while the other four
+ * stayed at +0. Both callers now come here. */
+static int pick_worn(char cls)
+{
+    uint8_t i, n = 0;
+    int pick = -1;
+    for (i = 0; i < inv_count; i++)
+        if (inv[i].worn && objtypes[inv[i].otyp].cls == cls) {
+            n++;
+            if (rn2(n) == 0) pick = (int)i;   /* reservoir: one pass, no array */
+        }
+    return pick;
+}
+
 void corrode_worn(char cls) __banked
 {
-    uint8_t i;
-    for (i = 0; i < inv_count; i++) {
-        if (inv[i].worn && objtypes[inv[i].otyp].cls == cls) {
-            if (inv[i].ero < 3) {
-                inv[i].ero++;
-                recompute_gear();
-                msg2("Your ", objtypes[inv[i].otyp].name, " corrodes!");
-            }
-            return;
-        }
+    int i = pick_worn(cls);
+    if (i < 0) return;
+    if (inv[i].ero < 3) {
+        inv[i].ero++;
+        recompute_gear();
+        msg2("Your ", objtypes[inv[i].otyp].name, " corrodes!");
     }
 }
 
@@ -906,7 +922,10 @@ void do_pickup(void) __banked
     if (!inv_add(&o)) { msg("Your pack is full."); return; }
     level_take_item((uint8_t)hero_x, (uint8_t)hero_y);
 
-    if (c == '"') {
+    if (c == '"' && o.otyp == O_AMULET) {
+        /* Only the real one. Since 1.3 a '"' on the floor is usually a
+         * wearable amulet, and picking one up used to set has_amulet -- an
+         * amulet of ESP off Dlvl 6 handed you the victory screen. */
         has_amulet = 1;
         msg("Got the Amulet!  Climb back up!");
         sfx_levelup();
@@ -1594,15 +1613,14 @@ void do_read(void) __banked
     } else if (ot == O_ENCHW || ot == O_ENCHA) {
         /* sharpen the wielded weapon / temper the worn armour (+1, derust) */
         char cls = (ot == O_ENCHW) ? ')' : '[';
-        uint8_t i, hit = 0;
-        for (i = 0; i < inv_count; i++)
-            if (inv[i].worn && objtypes[inv[i].otyp].cls == cls) {
-                if (inv[i].ench < 5) inv[i].ench++;
-                inv[i].ero = 0;
-                recompute_gear();
-                hit = 1;
-                break;
-            }
+        int i = pick_worn(cls);        /* any worn piece, not always the first */
+        uint8_t hit = 0;
+        if (i >= 0) {
+            if (inv[i].ench < 5) inv[i].ench++;
+            inv[i].ero = 0;
+            recompute_gear();
+            hit = 1;
+        }
         if (ot == O_ENCHW) msg(hit ? "Your weapon glows blue!"   : "Your hands itch.");
         else               msg(hit ? "Your armor glows silver!"  : "Your skin itches.");
     } else {                            /* O_RMCURSE */

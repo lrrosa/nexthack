@@ -57,6 +57,29 @@ Four steps toward NetHack, and one that measurement stopped at the door.
   identification bitmap, and the forced-door mask joined the file. 27 had been
   the format since the 1.0 freeze.
 
+### Fixed
+Found by auditing this batch before release, not by playing it — and the two
+worst were invisible to the tests that had already passed, because those poked
+items straight into the pack instead of picking them up off the floor.
+
+- **An ordinary amulet handed over the victory.** Picking up any `"` set
+  `has_amulet`, so an amulet of ESP found on Dlvl 6 won the game on the way
+  back up. Only the real Amulet does that now.
+- **The new amulets were never generated.** They existed in the catalogue and
+  nowhere in the dungeon — no loot block placed a `"`. They now turn up rarely
+  from Dlvl 6. This is what hid the bug above.
+- **A scroll of enchant armour always hit the same piece.** With one suit,
+  "the first worn `[` in the pack" was "the only one"; with a set it silently
+  became "the lowest inventory slot", so every `+1` went into one item — which,
+  once it reached `ARMOR_CAP`, did nothing at all while the other four stayed
+  at +0. Acid corroded the same piece for ever for the same reason. Both now
+  go through one `pick_worn()`, which is the fix for the underlying fault:
+  the "which worn piece" question had three separate answers.
+- **Locked doors could appear on a shop.** The keeper cannot leave to let you
+  in. Same rectangle test traps already use.
+- The `"` on the floor no longer announces itself as the Amulet of Yendor
+  anywhere but the bottom.
+
 ### Not done
 - **Tools (`(`)** — a pick-axe and a lock pick were planned and are blocked,
   not deferred. A new item class needs a new tile, and the 128K's `udg_bitmap`

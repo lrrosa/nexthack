@@ -913,7 +913,8 @@ static void describe(char dest, int moved)
     switch (dest) {
     case '>': msg("There is a staircase down here."); break;
     case '<': msg("There is a staircase up here.");   break;
-    case '"': msg("The Amulet of Yendor! (,get)"); break;
+    case '"': msg(dlvl == DLVL_AMULET ? "The Amulet of Yendor! (,get)"
+                                     : "An amulet. (,get)"); break;
     case ')': case '[': case '!': case '%': case '?': case '=': case '/':
     case '&':
         msg2(floor_item_desc(),
@@ -992,7 +993,8 @@ static void look_at(uint8_t x, uint8_t y)
     case 'v': msg("A hole down to the mines."); break;
     case '$': msg("A pile of gold.");       break;
     case '*': msg("A luckstone.");          break;
-    case '"': msg("The Amulet of Yendor."); break;
+    case '"': msg(dlvl == DLVL_AMULET ? "The Amulet of Yendor."
+                                     : "An amulet."); break;
     default:  msg("");                      break;
     }
 }
@@ -1100,6 +1102,11 @@ static uint8_t door_hash_locked(uint8_t x, uint8_t y)
 {
     uint16_t h;
     if (dlvl < 3 || lvl[y][x] != '+') return 0;
+    /* Never a shop's door: the keeper cannot leave to let you in, and a shop
+     * you have to kick your way into is not a shop. Same rule trap_type uses,
+     * and the same reason -- a pure rect test, no RNG, so generation stays
+     * in sync. */
+    if (shop_in_room(x, y)) return 0;
     h = (uint16_t)(world_seed * 47u + (uint16_t)dlvl * 3571u
                    + (uint16_t)x * 89u + (uint16_t)y * 149u);
     h ^= (uint16_t)(h << 7);

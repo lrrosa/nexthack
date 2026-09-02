@@ -424,6 +424,7 @@ static int special_gen(void)
     if (rn2(2))    place_item('?');     /* scroll */
     if (dlvl >= 3) place_item('=');     /* ring   */
     if (dlvl >= 2 && rn2(3) == 0) place_item('/');   /* wand (uncommon) */
+    if (dlvl >= 6 && rn2(10) == 0) place_item('"');  /* amulet (rare) */
     return 1;
 }
 
@@ -559,6 +560,11 @@ void gen_level(void) __banked
             if (dlvl >= 3 && rn2(2)) place_item('=');   /* ring */
             if (dlvl >= 2 && rn2(3) == 0) place_item('/');  /* wand */
             if (dlvl >= 2 && rn2(4) == 0) place_item('&');  /* spellbook (rare) */
+            /* An amulet, rarely and deep. Without this the two wearable
+             * amulets existed in the catalogue and nowhere in the dungeon --
+             * the feature was dead, which is also what hid the has_amulet bug
+             * (the tests poked one straight into the pack). */
+            if (dlvl >= 6 && rn2(10) == 0) place_item('"');
         }
     }
 
