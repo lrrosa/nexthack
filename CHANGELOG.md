@@ -8,6 +8,26 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.3.1] — 2026-09-03
+
+### Added
+- **An incompatible save is now named, and you decide.** A save from another
+  version used to be deleted without a word: you started the game, saw a fresh
+  dungeon, and only then worked out that a run was gone. The game now says what
+  the file is and asks. Answer **n** and it is left alone — if you still have
+  the older binary, your save is still there for it.
+
+### Changed
+- Fresh README screenshots. The inventory one carries the release: a full
+  armour set worn piece by piece, an amulet round the neck, and `AC:1`.
+
+### Fixed
+- **A worn amulet is now labelled `(on neck)` in the inventory.** Wielded
+  weapons, worn armour and rings on the hand all say so; amulets fell through
+  to no label at all, because before 1.3 the only `"` in the game was the
+  Amulet of Yendor, which is never worn. Same shape as the rest of that
+  batch's defects: a condition that was right until the world grew.
+
 ## [1.3.0] — 2026-09-02
 
 **Four steps toward NetHack, and three passes of looking for what they broke.**

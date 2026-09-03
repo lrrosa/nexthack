@@ -132,7 +132,7 @@ RAM-expansion interface, which is how many people actually have 128 KB.
 
 ![NextHack gameplay: a magically mapped dungeon level drawn in colour 8×8 tiles — rooms and corridors across the level, a stocked shop with warm brick walls, the armoured hero and his dog facing monsters in a lit room, and the full status bar below.](docs/gameplay.png)
 
-*Dlvl 8 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, a shop trades in the corner, and monsters find you anyway. The rat at the hero's elbow just bounced off his dragon scale: armour turns a blow aside, it no longer erases it. The status bar carries the whole character sheet, alignment included.*
+*Dlvl 6 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, a shop trades in the corner, and monsters find you anyway. The rat at the hero's elbow just bounced off his dragon scale: armour turns a blow aside, it no longer erases it. The status bar carries the whole character sheet, alignment included.*
 
 ![The Gnomish Mines: cobblestone chambers and winding tunnels revealed, Minetown's warm-brick shop stocked with wares, and the hero and his dog meeting a monster in a lit chamber, with the status bar reading Mine:2.](docs/mines.png)
 
@@ -306,9 +306,9 @@ used to emit one and no longer does.
 
 Walk into a monster to attack it; walk over gold to pick it up.
 
-![The NextHack inventory screen: a blessed +2 long sword (wielded), +1 dragon scale (worn), an unidentified scroll and potion, the ring of regeneration (on hand), the luckstone, a food ration and a charged wand of cold.](docs/inventory.png)
+![The NextHack inventory screen: a blessed +2 long sword (wielded) above a full armour set — +1 dragon scale, large shield, +1 helmet, boots and cloak, all worn — with the amulet of life on the neck, the ring of regeneration on the hand, the luckstone, a food ration, a charged wand of cold and an unidentified potion and scroll.](docs/inventory.png)
 
-*The inventory screen (`i`): enchantment, blessed/cursed state, unidentified appearances, wand charges — the worn and wielded pieces flagged.*
+*The inventory screen (`i`): a whole armour set worn a piece at a time, enchantment, blessed/cursed state, unidentified appearances and wand charges — everything in use is flagged, down to what is round your neck.*
 
 ## Map & item tiles
 

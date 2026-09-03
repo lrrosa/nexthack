@@ -988,7 +988,8 @@ void do_drop(void) __banked
         if (inv[i].worn) {                /* mark what you're currently using */
             const char *w = (cls == ')') ? " (wielded)" :
                             (cls == '[') ? " (worn)"    :
-                            (cls == '=') ? " (on hand)" : "";
+                            (cls == '=') ? " (on hand)" :
+                            (cls == '"') ? " (on neck)" : "";
             print_str(x, r2, w, C_CYAN | C_BRIGHT);
         }
     }
@@ -1107,7 +1108,8 @@ void show_inventory(void) __banked
             if (inv[i].worn) {
                 const char *w = (cls == ')') ? " (wielded)" :
                                 (cls == '[') ? " (worn)"    :
-                                (cls == '=') ? " (on hand)" : "";
+                                (cls == '=') ? " (on hand)" :
+                            (cls == '"') ? " (on neck)" : "";
                 print_str(x, row, w, C_CYAN | C_BRIGHT);
             }
         }

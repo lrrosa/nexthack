@@ -196,7 +196,35 @@ int load_game(void) __banked
     file_read(h, &hdr, sizeof hdr);
     if (hdr.magic != SAVE_MAGIC || hdr.ver != SAVE_VER) {
         file_close(h);
-        file_remove(SAVE_NAME);     /* discard an incompatible save */
+        /* A save from another version used to be deleted without a word --
+         * you started the game, saw a fresh dungeon, and only then worked out
+         * that a run was gone. Say what it is and ask, because the file is the
+         * player's, not ours: answer n and it is left alone, so going back to
+         * the older binary still finds it. */
+        tm_cls();
+#ifdef __ZXNEXT
+        print_str(20,  9, "This saved game is from another", C_WHITE | C_BRIGHT);
+        print_str(20, 10, "version and cannot be loaded.",   C_WHITE | C_BRIGHT);
+        print_str(20, 12, "Delete it and start fresh?  y/n", C_YELLOW | C_BRIGHT);
+        print_str(20, 14, "n keeps the file for the older", C_CYAN | C_BRIGHT);
+        print_str(20, 15, "version you saved it with.",     C_CYAN | C_BRIGHT);
+#else
+        print_str(1,  6, "This saved game is from",      C_WHITE | C_BRIGHT);
+        print_str(1,  7, "another version and cannot",   C_WHITE | C_BRIGHT);
+        print_str(1,  8, "be loaded.",                   C_WHITE | C_BRIGHT);
+        print_str(1, 10, "Delete it and start fresh?",   C_YELLOW | C_BRIGHT);
+        print_str(1, 11, "y / n",                        C_YELLOW | C_BRIGHT);
+        print_str(1, 13, "n keeps it for the version",   C_CYAN | C_BRIGHT);
+        print_str(1, 14, "that wrote it.",               C_CYAN | C_BRIGHT);
+#endif
+        in_wait_nokey();
+        {   int k;
+            do { k = getkey(); } while (k != 'y' && k != 'Y' &&
+                                        k != 'n' && k != 'N');
+            in_wait_nokey();
+            if (k == 'y' || k == 'Y') file_remove(SAVE_NAME);
+        }
+        map_dirty = 1;              /* the prompt drew over the playfield */
         return 0;
     }
 
