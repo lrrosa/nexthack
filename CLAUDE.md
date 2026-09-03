@@ -2,14 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-NextHack is a NetHack-inspired roguelike written in C for the **ZX Spectrum
-Next** (Z80N), built with **z88dk** (the `zsdcc`/SDCC compiler) and tested in the
-**ZEsarUX** emulator. It is a fresh engine on NetHack's design, not a recompile of
-NetHack's source — sized to fit the Z80.
+NextHack is a NetHack-inspired roguelike written in C, built with **z88dk** (the
+`zsdcc`/SDCC compiler) and tested in the **ZEsarUX** emulator. It is a fresh
+engine on NetHack's design, not a recompile of NetHack's source — sized to fit
+the Z80.
 
-**Project status & roadmap:** see `CHANGELOG.md` (one entry per release; versions
-are 0.x.y until the game earns a 1.0) and `git log --oneline` — each commit is one
-phase. Start a session from this folder so this file is auto-loaded.
+**One codebase builds two targets**: the **ZX Spectrum Next** (Z80N, `+zxn` —
+hardware tilemap, 4bpp colour tiles, Layer 2 art, banked through the MMU) and the
+plain **ZX Spectrum 128K** (`+zx` — ULA bitmap, 1-bit UDGs, a 32-column viewport
+scrolling over the 80-wide map, banked through port `0x7FFD`). They share **all**
+game logic; only the platform/render layer differs, selected at compile time by
+`#ifdef __ZXNEXT`. **A change is not done until it is verified on both** — most
+of the gotchas below are one target behaving differently from the other.
+
+**Project status & roadmap:** see `CHANGELOG.md` (one entry per release) and
+`git log --oneline` — each commit is one phase. **1.0.0 shipped 2026-07-31**, so
+the line is 1.x.y under SemVer now; the 0.x.y tags are the pre-1.0 history. Start
+a session from this folder so this file is auto-loaded.
 
 ## Build & run
 
@@ -236,11 +245,20 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `levelfov.c` | B | field of view + save/restore (owns the fog-of-war pool) |
 | `leveltmpl.c` | B | loader for the hand-drawn special-level templates (generated `leveltmpl_data.h`, LZ-packed and const-banked beside it) |
 | `monster.c/.h` | R | monster arrays + per-monster leaves (`monster_at`, `mon_find`, `mon_tile`, `pick_mon`); catalogue |
-| `monster_ai.c` | B | BFS chase, combat, spawning, kill-persistence |
+| `monster_ai.c` | B | BFS chase and combat (the per-turn half) |
+| `monster_spawn.c` | B | the cold third: level-entry spawning + the killed-monster mask and its save (split off when `monster_ai`'s bank filled) |
+| `classes.c` | B | the class picker; banked *including* its consts and literals |
+| `spells.c` | B | spellbooks and casting (`r` learns a book, `Z` casts) |
+| `music.c` | B | the AY title theme — a 3-voice sequencer, not a tracker replayer |
 | `item.c/.h` | B | inventory and item actions (pick up, wield/wear/quaff/eat/read/put-on) |
 | `sfx.c/.h` | B | beeper sound effects |
 | `titlegfx0/1/2.c`, `victorygfx0/1/2.c` | B | the Layer 2 title / victory images (generated): 3×16 KB framebuffer thirds const-banked into banks 16/17/18 and 19/20/21 (see Title & victory screens) |
 | `titlepal.c`, `victorypal.c` | B | each image's 9-bit palette, const-banked in `PAGE_22_CODE` next to the code that streams it |
+| `scr.c` | B | **128K only** — blitter for the title/victory SCR screens; must sit in the same bank as their consts |
+| `title_scr.c`, `victory_scr.c` | B | **128K only** — the generated 6912 B SCR images (`tools/png2scr.py`), banked consts |
+| `puttile_asm.asm` | R | **128K only** — the ULA cell blits in hand-written Z80 |
+| `esxdetect.asm` | R | **128K only** — probes for a DivMMC/esxDOS before a save is attempted |
+| `banked_call.asm` | R | **128K only** — the vendored banking trampoline (the Next uses the SDK's) |
 | `nexthack.c/.h` | B | game-state globals (resident DATA) + rendering, turn step, save/restore, screens; `.h` declares its `__banked` entry points for `mainentry.c` |
 | `nexthack_lvl.c` | B | the cold level half split off it: `build_level`, the altar/fountain/pet/follower placement, and the stairs |
 | `game.h` | — | shared player/run state (`extern`s defined in `nexthack.c`) |
@@ -336,7 +354,7 @@ tilemap.
   one, so it reads the const in place). It stamps the grid into `lvl[][]`, finds
   `<`/`>`, and fills `r_*[]`/`rcount` from the metadata so FOV lights the chambers.
   To add or edit a template: edit a `.txt`, re-run the tool; the generated `.h` is
-  committed. There are 5 templates (cavern/crypt/fortress/maze/temple).
+  committed. There are 6 templates (cavern/crypt/fortress/maze/temple/oracle).
 - **The grids are LZ-packed** (`tools/lztmpl.py`): 8400 B of ASCII becomes 864 B,
   because `lz_expand()` unpacks each stream straight into `lvl[][]` — the 1680
   bytes `load_template` was going to write anyway, so the destination is free and
@@ -384,8 +402,8 @@ tilemap.
 
 ### Items (`item.c`)
 - The inventory is an `obj_t[]` (an `otyp` into the `objtypes[]` catalogue, an
-  `ench` enchantment, an `ero` erosion level and a `worn` flag) — up to 24,
-  drawn in two columns on the inventory screen.
+  `ench` enchantment, an `ero` erosion level and a `worn` flag) — up to `MAXINV`
+  (26, one per menu letter a..z), drawn in two columns on the inventory screen.
 - The floor only stores an item's **class char** (`)` `[` `!` `%` `?` `=`), so
   generation/persistence stays untouched. The *specific* object (which weapon,
   what enchantment) is resolved when the cell is looked at or picked up,
@@ -431,23 +449,33 @@ tilemap.
 The game **broke the 64 KB ceiling by code-banking**. Layout:
 - **Resident** (`0x8000-0xBFF0`, one 16 KB bank): hot code + **all** data/BSS + the
   512 B stack (`REGISTER_SP=0xBFF0`). This is the tight half.
-- **Banked** (`0xC000-0xFFFF`, `CLIB_BANKING_SEGMENT=3`): cold code in two pages,
-  `PAGE_20_CODE` (Bank 10) and `PAGE_22_CODE` (Bank 11), mapped in on demand by the
-  z88dk `__banked` trampoline. **~19 KB free here for new code.**
+- **Banked** (`0xC000-0xFFFF`, `CLIB_BANKING_SEGMENT=3`): cold code in five pages on
+  the Next — `PAGE_20/22/26/28/30_CODE` (banks 10/11/13/14/15) — and six on the 128K
+  (`BANK_0/1/3/4/6/7`), mapped in on demand by the z88dk `__banked` trampoline. They
+  are **not** interchangeable free space: `banks.json` says which module goes where,
+  and some are full while others are half empty. **Ask `bankmap.py`, never guess.**
 - **Bank 5** (`0x4000-0x7FFF`, always mapped): tilemap + tile defs, and its free tail
   (`0x7400-0x8000`) holds the BFS scratch `dist[]`+`bfsq[]` (data-banked out of resident).
 
 **The resident half is the constraint.** Everything resident (code+data+BSS) must end
-below the stack floor `~0xBDF0`, or the stack corrupts and the machine resets to BASIC.
-Check `__CODE_END_tail` / `__BSS_END_tail` in `nexthack.map` after any change. Current:
-`__CODE_END=$AA5A`, `__BSS_END=$BB69` — about **~650 B** to the stack floor (after
-const-banking `gfx[]`, see below; the Layer 2 title freed a little more by dropping
-the old text-title strings from resident rodata).
+below `0xBDF0` — `REGISTER_SP` is `0xBFF0` and the stack wants the 512 B under it — or
+the stack corrupts and the machine resets to BASIC.
+
+**Do not trust a number written here: run `python tools/bankmap.py`.** It reads both
+`.map` files and prints the resident half, every bank's free tail and the Bank-5
+tenant map. Any figure in this document is a snapshot of the commit that wrote it, and
+this is the one place where a stale number costs a debugging session. Note the tool
+reports headroom to `$BFF0` (the SP) and warns only past `$BDF0`, so subtract the
+512 B stack reserve from what it prints. As of 2026-09-03 the Next sat at
+`__BSS_END=$BCDD` — 275 B of real headroom, tighter than it looks — and the 128K at
+`$B4C8`.
 
 **Adding a feature:**
-- **New code → make it banked** (it has room): put it in a module compiled into
-  `PAGE_20_CODE`/`PAGE_22_CODE`, mark entry points `__banked`. Cold/per-turn code banks
-  freely (the trampoline cost is negligible off the per-cell path).
+- **New code → make it banked** (there is room, though not in every bank): declare the
+  module in `banks.json` and mark its entry points `__banked`. `python
+  tools/bankpack.py plan <target>` picks the bank for you — that is what it is for.
+  Cold/per-turn code banks freely (the trampoline cost is negligible off the per-cell
+  path).
 - **New resident DATA is still the scarce resource.** Banked code's `static` data —
   **and its string/const literals (resident rodata)** — stay resident, so data/text-heavy
   features eat the ~575 B fast (the shops' message strings did). Levers when it overflows:
