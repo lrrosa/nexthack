@@ -3,8 +3,8 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 NextHack is a NetHack-inspired roguelike written in C for the **ZX Spectrum
-Next** (Z80N), built with **z88dk** (the `zsdcc`/SDCC compiler) and tested on the
-**CSpect** emulator. It is a fresh engine on NetHack's design, not a recompile of
+Next** (Z80N), built with **z88dk** (the `zsdcc`/SDCC compiler) and tested in the
+**ZEsarUX** emulator. It is a fresh engine on NetHack's design, not a recompile of
 NetHack's source — sized to fit the Z80.
 
 **Project status & roadmap:** see `CHANGELOG.md` (one entry per release; versions
@@ -265,8 +265,10 @@ DATA — banked code's data is resident too). Modules include `game.h` to read/w
   - offset 1 (indices 16..31) = **dimmed master** (channels halved) for remembered,
     out-of-sight terrain. Half is the dimmest a grey stays neutral on 3-3-2 colour.
   - offsets 2..15 = black-paper/ink pairs for **coloured text** (`inkcol[]`).
-  - The ROM `$` glyph is blank in CSpect's ROM, so a graphic `T_DOLLAR` tile is used
-    for gold in the status bar.
+  - Gold in the status bar draws a graphic `T_DOLLAR` tile instead of the ROM `$`.
+    That started as a workaround for CSpect, whose ROM had no `$` glyph; the ROM
+    ZEsarUX loads does have one (checked), so the tile is now only a colour choice.
+    Don't repeat the claim that the glyph is missing.
 - **Rendering is a single full redraw per turn** (`draw_map` in `nexthack.c`) using a
   running tilemap pointer and inline FOV bit-tests for speed; writing each cell exactly
   once (rather than clear-then-fill) is what keeps it flicker-free. Status/message

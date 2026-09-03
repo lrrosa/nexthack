@@ -822,7 +822,7 @@ void draw_status(void) __banked
     x = put_uint(x, 23, IN_MINES(dlvl) ? (uint16_t)(dlvl - MINES_BASE + 1) : dlvl,
                  C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "  ", C_GREEN | C_BRIGHT);
-    puttile(x, 23, T_DOLLAR); x++;        /* green '$' tile (ROM '$' is blank) */
+    puttile(x, 23, T_DOLLAR); x++;        /* green '$' tile, not the ROM glyph */
     x = print_str(x, 23, ":", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, gold, C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "  HP:", C_GREEN | C_BRIGHT);
@@ -899,7 +899,7 @@ void draw_status(void) __banked
     x = sd_uint(x, 22, IN_MINES(dlvl) ? (uint16_t)(dlvl - MINES_BASE + 1) : dlvl,
                 C_GREEN | C_BRIGHT);
     x = sd_str(x, 22, " ", C_GREEN | C_BRIGHT);
-    sd_putc(x, 22, T_DOLLAR, 0); x++;     /* green '$' tile (ROM '$' is blank) */
+    sd_putc(x, 22, T_DOLLAR, 0); x++;     /* green '$' tile, not the ROM glyph */
     x = sd_str(x, 22, ":", C_GREEN | C_BRIGHT);
     x = sd_uint(x, 22, gold, C_GREEN | C_BRIGHT);
     x = sd_str(x, 22, " HP:", C_GREEN | C_BRIGHT);
