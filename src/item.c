@@ -815,8 +815,16 @@ static void held_dump(void)
 void steal_item(uint8_t mi) __banked
 {
     uint8_t cand[MAXINV], n = 0, i, s;
-    for (i = 0; i < inv_count; i++)
-        if (!inv[i].worn) cand[n++] = i;
+    for (i = 0; i < inv_count; i++) {
+        if (inv[i].worn) continue;
+        /* The win item is barred from drop and from sale for the same reason
+         * -- it must not be possible to hold has_amulet while the Amulet is
+         * elsewhere. She blinks across the level with what she takes, and the
+         * level forgets her when you leave it, so this was the one route out
+         * that stayed open. */
+        if (inv[i].otyp == O_AMULET) continue;
+        cand[n++] = i;
+    }
     if (n == 0 || held_has[mi]) return;     /* nothing loose / her hands are full */
     s = cand[rn2(n)];
     msg2("She steals ", obj_desc(&inv[s]), "!");

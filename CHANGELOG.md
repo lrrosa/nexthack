@@ -8,7 +8,13 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
-## [Unreleased]
+## [1.3.0] — 2026-09-02
+
+**Four steps toward NetHack, and three passes of looking for what they broke.**
+Armour is worn as a set, doors lock, amulets hang round your neck, and the
+Oracle keeps her fountains. Eleven defects were found before release; the two
+worst were invisible to tests that had already passed.
+
 
 Four steps toward NetHack, and one that measurement stopped at the door.
 
@@ -107,6 +113,12 @@ items straight into the pack instead of picking them up off the floor.
   them happen to give the same answer today, which is luck rather than design,
   so they now read `eff_depth()` too — no generated level changes. The rule is
   written down in `game.h` beside the mines' own constants.
+
+- **The nymph could steal the Amulet of Yendor.** Dropping it and selling it
+  were both barred, with the same comment — *never lose the win item* — and
+  the third route out stayed open. She blinks across the level with what she
+  takes and the level forgets her when you leave, while `has_amulet` stays
+  set. Pre-existing, found while auditing the shop path.
 
 ### Not done
 - **Tools (`(`)** — a pick-axe and a lock pick were planned and are blocked,
