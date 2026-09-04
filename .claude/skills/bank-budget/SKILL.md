@@ -12,7 +12,9 @@ ways that all look like something else, so **measure first**:
 python tools/bankmap.py
 ```
 
-Prints, per target: the resident half vs the stack floor, every code bank's
+Prints, per target: the resident half's headroom to the stack floor `$BDF0`
+(`REGISTER_SP` less the 512 B the stack needs, so 0 means the reserve starts
+here — not "you crashed"), every code bank's
 free tail, and the **Bank-5 tenant map with overlap detection**. `--check`
 exits 1 on any problem (usable as a build guard). Sizes are derived from the
 sources (`NTILES`, `FOV_SLOTS`, `MAXINV`, `MAPW/H`, `BFSQ_SIZE`), so the map
@@ -24,8 +26,8 @@ Run it **before** starting, then again after the build.
 
 | Adding | Spends | Room today |
 |---|---|---|
-| Cold code, `__banked` entry points | a **code bank** | Next: PAGE_26 ~9 KB, PAGE_30 ~5 KB, PAGE_20/22 ~2.5 KB; 128K: BANK_1 ~7 KB, BANK_6 ~6.9 KB (uncontended), BANK_7 ~3 KB, BANK_4 ~2.5 KB |
-| `static` data, arrays | the **resident half** | ~1 KB (Next) / ~3 KB (128K) to the stack floor |
+| Cold code, `__banked` entry points | a **code bank** | tens of KB in total, spread **very** unevenly — the tool names the roomy ones, and some sit under 1 KB |
+| `static` data, arrays | the **resident half** | **hundreds of bytes** (2026-09-03: 275 B Next, ~2.3 KB 128K) |
 | **String literals** (`msg()`, screens) | the **resident half** — unless const-banked | the classic silent sink |
 | A Bank-5 array, tiles, the fov pool | the **Bank-5 map** | Next: **full**; 128K: a few small gaps |
 

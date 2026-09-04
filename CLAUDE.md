@@ -464,11 +464,10 @@ the stack corrupts and the machine resets to BASIC.
 **Do not trust a number written here: run `python tools/bankmap.py`.** It reads both
 `.map` files and prints the resident half, every bank's free tail and the Bank-5
 tenant map. Any figure in this document is a snapshot of the commit that wrote it, and
-this is the one place where a stale number costs a debugging session. Note the tool
-reports headroom to `$BFF0` (the SP) and warns only past `$BDF0`, so subtract the
-512 B stack reserve from what it prints. As of 2026-09-03 the Next sat at
-`__BSS_END=$BCDD` — 275 B of real headroom, tighter than it looks — and the 128K at
-`$B4C8`.
+this is the one place where a stale number costs a debugging session. Its headroom
+figure is measured to `$BDF0` and reaches 0 exactly where the stack reserve begins,
+so it is the number you can spend directly. As of 2026-09-03 the Next sat at
+`__BSS_END=$BCDD` — 275 B — and the 128K at `$B4C8`, ~2.3 KB.
 
 **Adding a feature:**
 - **New code → make it banked** (there is room, though not in every bank): declare the

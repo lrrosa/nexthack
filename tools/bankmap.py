@@ -29,8 +29,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'src')
 
 BANK_SIZE = 16384
-STACK_FLOOR = 0xBFF0          # REGISTER_SP (zpragma*.inc); resident must end below
-STACK_WARN = 0xBDF0           # leave ~512 B of stack headroom
+SP_INIT = 0xBFF0              # REGISTER_SP (zpragma*.inc): where SP starts...
+STACK_RESERVE = 512           # ...and grows DOWN into, so this much is spoken for
+STACK_FLOOR = SP_INIT - STACK_RESERVE   # $BDF0 -- what resident must end below.
+# Reporting headroom to SP instead overstated it by the whole reserve (512 B),
+# which is most of what is left: at __BSS_END=$BCDD it read 787 B free when 275
+# was the truth. The printed figure now hits 0 exactly where the reserve begins.
 
 
 # ---------------------------------------------------------------- source scan
@@ -258,15 +262,17 @@ def report_resident(mapfile, label):
         return warn
     free = STACK_FLOOR - bss
     note = ''
-    if bss >= STACK_FLOOR:
-        note = '  <== PAST THE STACK FLOOR -- will corrupt the stack!'
-        warn.append(('resident %s past the stack floor' % label, bss))
-    elif bss >= STACK_WARN:
+    if bss >= SP_INIT:
+        note = '  <== PAST SP -- the stack has nowhere to live!'
+        warn.append(('resident %s past SP' % label, bss))
+    elif bss >= STACK_FLOOR:
         # advice, not a defect: the project has shipped this tight before
-        note = '  (tight: under the %d B stack reserve)' % (STACK_FLOOR - STACK_WARN)
+        note = ('  <== %d B INTO the %d B stack reserve'
+                % (bss - STACK_FLOOR, STACK_RESERVE))
     print('    __CODE_END=$%04X  __BSS_END=$%04X   %d B to the stack floor '
-          '($%04X)%s' % (out.get('__CODE_END_tail', 0), bss, free,
-                         STACK_FLOOR, note))
+          '($%04X = SP $%04X - %d B reserve)%s'
+          % (out.get('__CODE_END_tail', 0), bss, free, STACK_FLOOR, SP_INIT,
+             STACK_RESERVE, note))
 
     # The Next streams the Layer 2 palettes with bank 11 mapped: if PAGE_22
     # grows past 16 KB they spill into bank 12 and the title colours scramble.
