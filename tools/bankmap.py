@@ -63,7 +63,7 @@ def const(name, files, default=None):
 def addr(symbol, filename, zx_variant=False):
     """Address from a `#define <symbol> ((type *)0xNNNNu)` in filename.
 
-    item.c defines `inv` twice behind #ifdef __ZXNEXT; zx_variant picks the
+    item_int.h defines `inv` twice behind #ifdef __ZXNEXT; zx_variant picks the
     128K one (the first of the pair, inside the #ifndef branch is target
     dependent, so both are collected and chosen by value).
     """
@@ -92,7 +92,7 @@ def asm_equ(symbol, filename):
 def bank5_map(target):
     """[(start, size, name, note)] for Bank 5, derived from the sources."""
     ntiles = const('NTILES', ['platform.h'])
-    maxinv = const('MAXINV', ['item.c'])
+    maxinv = const('MAXINV', ['item_int.h', 'item.c'])
     mapw = const('MAPW', ['level.h'])
     maph = const('MAPH', ['level.h'])
     fov_slots = const('FOV_SLOTS', ['levelfov.c'])
@@ -109,7 +109,7 @@ def bank5_map(target):
         items += [
             (0x4000, (128 + ntiles) * 32, 'tile definitions',
              '128 font + %d graphic, 32 B each (4bpp)' % ntiles),
-            (addr('inv', 'item.c'), maxinv * objsz, 'inv[]',
+            (addr('inv', 'item_int.h'), maxinv * objsz, 'inv[]',
              'MAXINV %d x %d B' % (maxinv, objsz)),
             (0x5C00, 0, '-- NextZXOS sysvars --', 'tile defs must end below here'),
             (0x6000, tm_w * tm_h * 2, 'tilemap',
@@ -135,7 +135,7 @@ def bank5_map(target):
             (addr('SSHADOW', 'nexthack.c'), 2 * tm_w * 2, 'SSHADOW',
              'status rows 22-23'),
             (udg, ntiles * 8, 'udg_bitmap', note),
-            (addr('inv', 'item.c', zx_variant=True), maxinv * objsz, 'inv[]',
+            (addr('inv', 'item_int.h', zx_variant=True), maxinv * objsz, 'inv[]',
              'MAXINV %d x %d B' % (maxinv, objsz)),
         ]
         if mir:

@@ -404,7 +404,7 @@ def buc_mod(buc):
 
 
 def potion_heal(rng, prop):
-    """src/item.c:1352 -- heal = rn2(6) + prop"""
+    """src/item_use.c do_quaff -- heal = rn2(6) + prop"""
     return rng.rn2(6) + prop
 
 

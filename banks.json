@@ -49,6 +49,7 @@
     "leveltmpl":     { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "const holds the generated leveltmpl_data.h grids; load_template() reads them in place, so both must share a bank. Moved off PAGE_26 with the 128K half, so monster_ai + levelfov get that bank to themselves" },
     "levelfov":      { "code": "PAGE_26_CODE", "why": "moved off PAGE_20 when bank 10 filled up as item.c grew" },
 
+    "item_use":      { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "the verbs that activate or consume an item (quaff/eat/read/throw/zap), split out of item.c when PAGE_28 fell to 163 B. None needs a pointer into item.c's catalogue -- see item_int.h -- so it can live anywhere; PAGE_30 had the room" },
     "item":          { "code": "PAGE_28_CODE", "const": "PAGE_28_CODE", "why": "bank 14, item.c's own bank: the v0.9 reclaim banked the whole object catalogue with it, ~3.2 KB off the resident half" },
 
     "titlegfx0":     { "const": "BANK_16", "why": "GENERATED. Layer 2 reads this third of the title image IN PLACE from bank 16 -- hardware-pinned, never repack" },
@@ -72,6 +73,7 @@
     "level":         { "why": "resident: terrain/walkable/tile_for are per-cell leaves" },
     "monster":       { "why": "resident: monster_at/mon_find/mon_tile are per-cell leaves" },
 
+    "item_use":      { "code": "BANK_7", "const": "BANK_7", "why": "the verbs that activate or consume an item, split out of item.c when BANK_0 fell to 240 B (see the Next entry). BANK_7 is contended, which suits code that runs once per player action, not per turn" },
     "item":          { "code": "BANK_0", "const": "BANK_0", "why": "item.c's own bank (the v0.9 reclaim) -- the 128K's spare uncontended bank" },
 
     "levelgen":      { "code": "BANK_1", "why": "cold code bank A" },

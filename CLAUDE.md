@@ -142,6 +142,22 @@ shortage from one bank to another. That is the shape of the next such fix too:
 when a colocate group fills a bank, split a module or break the group (reach the
 data through a `__banked` accessor instead of a pointer); never relocate.
 
+**`item.c` was the second (2026-09-21)**: alone in its bank at 163 B (Next) and
+240 B (128K), it gave up the use-verbs to `item_use.c` and went to 4376 / 4465 B
+free. It is the first split that needed the accessor half of that rule. Its
+catalogue is const-banked in `item.c`'s bank, so `item_use.c` may never hold a
+pointer into it: what crosses is **values** -- `item_obj_prop(otyp)`,
+`item_obj_cls(otyp)`, a slot, a class char. The item menu is the instructive
+case. Its callers passed their prompt as a string, which after the split would
+have been a pointer into `item_use.c`'s bank read with `item.c`'s mapped; since
+each class had exactly one prompt, `select_item(cls)` now derives it itself and
+only the char crosses. Two more habits worth keeping: the shared definitions
+went into a private `item_int.h` rather than `item.h` (a `#define inv` in a
+header half the game includes would rewrite any local of that name), and the
+helpers `item.c` calls a lot got thin `__banked` wrappers instead of becoming
+banked themselves -- a `__banked` call is the long trampoline form even inside
+one bank, and `recompute_gear` alone has 14 internal callers.
+
 There are no automated *behaviour* tests, and CI does not add any. Verification is
 manual: build, then run in ZEsarUX and observe. The build agent **can** drive
 ZEsarUX itself over ZRCP (read memory, inject keys) to verify most behaviour; the
@@ -250,7 +266,9 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `classes.c` | B | the class picker; banked *including* its consts and literals |
 | `spells.c` | B | spellbooks and casting (`r` learns a book, `Z` casts) |
 | `music.c` | B | the AY title theme — a 3-voice sequencer, not a tracker replayer |
-| `item.c/.h` | B | inventory and item actions (pick up, wield/wear/quaff/eat/read/put-on) |
+| `item.c/.h` | B | the inventory, the object catalogue and its names, equipment (wield/wear/put-on), the floor and its stashes, pick up/drop |
+| `item_use.c` | B | the verbs that activate or consume an item: quaff (and fountains), eat (and corpses), read, throw, zap |
+| `item_int.h` | — | item.c's internals shared with `item_use.c` only: `obj_t`, `inv`, the `O_*` ids, and the `__banked` value API between the two |
 | `sfx.c/.h` | B | beeper sound effects |
 | `titlegfx0/1/2.c`, `victorygfx0/1/2.c` | B | the Layer 2 title / victory images (generated): 3×16 KB framebuffer thirds const-banked into banks 16/17/18 and 19/20/21 (see Title & victory screens) |
 | `titlepal.c`, `victorypal.c` | B | each image's 9-bit palette, const-banked in `PAGE_22_CODE` next to the code that streams it |

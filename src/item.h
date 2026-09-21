@@ -4,6 +4,10 @@
  * Floor items live in the terrain buffer as single chars:
  *   ')' weapon   '[' armor   '!' potion   '%' food
  *
+ * The verbs that activate or consume an item (quaff/eat/read/throw/zap) are
+ * defined in item_use.c, split off when item.c's bank filled; they are declared
+ * here all the same, since that is where their callers look.
+ *
  * item.c is a BANKED (cold) module with a bank of its own (banks.json), mapped
  * into the 0xC000 window on demand, so every entry point is __banked (called via
  * the

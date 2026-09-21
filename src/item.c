@@ -14,6 +14,7 @@
  */
 
 #include "item.h"
+#include "item_int.h"   /* obj_t, inv, O_* ids -- shared with item_use.c */
 #include "game.h"        /* hero_x/y, php, pmaxhp, weapon_dmg, armor_def, ac */
 #include "platform.h"    /* drawing, messages, getkey, file_*                */
 #include "level.h"       /* terrain, level_take_item, level_random_floor     */
@@ -36,38 +37,10 @@
  * which run with this bank still mapped. Do not pass them into another
  * bank's __banked functions. */
 
-#define MAXINV 26      /* one per menu letter a..z (the hard cap) */
 
 /* ---- object catalogue (like montypes[]) ---- */
 
-enum {
-    O_DAGGER, O_SHORTSW, O_MACE, O_LONGSW,     /* ')' weapons */
-    O_LEATHER, O_RINGMAIL, O_CHAIN, O_PLATE,   /* '[' armour  */
-    O_HEAL, O_EXHEAL, O_CONFUSION, O_SLEEPING, O_BLINDNESS,  /* '!' potions */
-    O_MAPPING, O_TELEPORT, O_IDENTIFY,         /* '?' scrolls */
-    O_PROTECT,                                 /* '=' ring    */
-    O_FOOD,                                    /* '%' food    */
-    O_AMULET,                                  /* '"' amulet  */
-    O_WSTRIKE, O_WCOLD, O_WSLEEP, O_WTELE, O_WDIG,   /* '/' wands (zap with z) */
-    O_CORPSE,      /* '%' a slain monster's remains (its char rides in ench);
-                    * mindep 255 = never generated as loot, only dropped */
-    O_BFORCE, O_BHEAL, O_BSLEEP, O_BTELE,      /* '&' spellbooks ('r' learns,
-                    * 'Z' casts; prop = the spell index in spells.c) */
-    O_EXCALIBUR,   /* ')' the Lady's gift; mindep 255 = only from a fountain */
-    /* the v0.9 arsenal -- APPENDED so no earlier index shifts (classes.c's
-     * kit numbers and saved otyps stay valid) */
-    O_ENCHW, O_ENCHA, O_RMCURSE,               /* '?' scrolls */
-    O_GAINLVL,                                 /* '!' potion  */
-    O_REGEN,                                   /* '=' ring    */
-    O_LUCKSTONE,   /* '*' the mines' prize; mindep 255 = placed, not generated */
-    /* the 1.2 armour ladder -- APPENDED, as ever, so no saved otyp shifts.
-     * (id_known is (NUMOBJ+7)/8 bytes: 36 and 39 types both need 5, so the
-     * save format is untouched.) */
-    O_SPLINT, O_BANDED, O_DRAGSCALE,           /* '[' the deep armour */
-    O_SHIELD, O_HELM, O_BOOTS, O_CLOAK, O_LSHIELD,  /* '[' the other slots */
-    O_AMU_ESP, O_AMU_LIFE,                     /* '"' amulets you can wear  */
-    NUMOBJ
-};
+/* the O_* ids live in item_int.h: item_use.c needs them too */
 
 /* Armour slots. Only '[' uses these; everything else is SL_NONE and the
  * field is ignored. NetHack layers a suit, and recompute_gear was already
@@ -154,33 +127,10 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '"',  0,  400,  12, SL_NONE, "amulet of life" }
 };
 
-typedef struct {
-    uint8_t otyp;
-    int8_t  ench;    /* +N enchantment (weapon dmg / armour class)        */
-    uint8_t ero;     /* erosion level (rust/corrosion); 0 for now         */
-    uint8_t worn;    /* 1 if this is the equipped weapon/armour/ring      */
-    uint8_t buc;     /* bits 0-1: 0 uncursed/1 blessed/2 cursed; bit 2 known */
-} obj_t;
-
-#define BUC_UNC   0
-#define BUC_BLESS 1
-#define BUC_CURSE 2
-#define BUC_KNOWN 4
-#define buc_st(o)   ((o)->buc & 3)         /* the blessed/uncursed/cursed state */
-#define buc_seen(o) ((o)->buc & BUC_KNOWN) /* has the player discovered it?      */
-
-/* The inventory lives in Bank 5 (always mapped at 0x4000-0x7FFF on both targets),
- * so it costs no resident BSS. The 128K places it just past udg_bitmap (0x6800);
- * the Next, whose Bank 5 holds the tilemap at 0x6000, places it in the free tail
- * of the tile-def area (tiles end ~0x53C0, NextZXOS sysvars start at 0x5C00).
- * INV_BYTES is its true size for save/restore (sizeof of the pointer is wrong). */
-#ifndef __ZXNEXT
-#define inv ((obj_t *)0x6800u)
-#else
-#define inv ((obj_t *)0x5800u)
-#endif
-#define INV_BYTES (sizeof(obj_t) * MAXINV)
-static uint8_t inv_count;
+/* obj_t, the BUC bits and inv[] live in item_int.h (item_use.c needs them).
+ * inv_count is no longer static for the same reason; it is BSS, so resident
+ * and readable from any bank. */
+uint8_t inv_count;
 
 /* Items lying loose on the current level's floor -- thrown weapons that you can
  * walk over and pick back up. They override the deterministic floor resolution
@@ -1368,9 +1318,27 @@ static uint8_t cls_match(uint8_t i, char cls)
 /* Pick an item of class cls. Returns its index, -1 if you have none, or -2 if
  * you cancelled. With a single type present it picks it silently; only when two
  * *different* types are carried does it pop a letter menu (NetHack-style). */
-#ifdef __ZXNEXT
-static int select_item(char cls, const char *prompt)
+/* The prompt is a pure function of the class: every caller -- all of them in
+ * item_use.c now -- asked for one class with one fixed question. Deriving it
+ * HERE keeps the literal in this bank. A prompt passed in from item_use.c would
+ * be a pointer into ITS bank, read by this code with this bank mapped: the
+ * "never hand a const-banked literal to another bank" rule, a21f9fe. */
+static const char *pick_prompt(char cls)
 {
+    switch (cls) {
+    case '!': return "Drink which potion?";
+    case '%': return "Eat what?";
+    case '?': return "Read which scroll?";
+    case ')': return "Throw which weapon?";
+    case '/': return "Zap which wand?";
+    }
+    return "Which item?";
+}
+
+#ifdef __ZXNEXT
+int select_item(char cls) __banked
+{
+    const char *prompt = pick_prompt(cls);
     int first = -1;
     uint8_t i, row, multi = 0;
     int k;
@@ -1406,8 +1374,9 @@ static int select_item(char cls, const char *prompt)
     return -2;
 }
 #else
-static int select_item(char cls, const char *prompt)
+int select_item(char cls) __banked
 {
+    const char *prompt = pick_prompt(cls);
     int first = -1;
     uint8_t i, row, multi = 0;
     int k;
@@ -1445,390 +1414,23 @@ static int select_item(char cls, const char *prompt)
 }
 #endif
 
-/* Drink from the fountain the hero stands on. A worthy blade may draw
- * Excalibur from the depths (NetHack's dip, folded into the quaff); else the
- * water blesses or curses at random. Sets acted/turns itself. */
-static void quaff_fountain(void)
-{
-    uint8_t i;
-    acted = 1; turns++;
+/* ---- item.c's API for item_use.c (see item_int.h) ----
+ * Thin __banked wrappers over the static helpers: item.c's own calls stay
+ * direct, and only item_use.c pays for the trampoline. The two accessors hand
+ * back a VALUE from the catalogue, never a pointer into it -- the catalogue is
+ * in this bank, item_use.c is not. */
+void    item_recompute_gear(void) __banked                { recompute_gear(); }
+void    item_inv_remove(uint8_t s) __banked               { inv_remove(s); }
+int     item_floor_drop(uint8_t x, uint8_t y, const obj_t *o) __banked
+                                                          { return floor_drop(x, y, o); }
+int     item_pick_worn(char cls) __banked                 { return pick_worn(cls); }
+void    item_id_set(uint8_t otyp) __banked                { id_set(otyp); }
+uint8_t item_obj_prop(uint8_t otyp) __banked              { return objtypes[otyp].prop; }
+char    item_obj_cls(uint8_t otyp) __banked               { return objtypes[otyp].cls; }
 
-    /* the Lady of the Lake: a Valkyrie of level 5+ wielding a plain long sword
-     * may draw Excalibur (once -- the sword becomes the artifact) */
-    if (pclass == 0 && xlvl >= 5) {
-        for (i = 0; i < inv_count; i++) {
-            if (inv[i].worn && inv[i].otyp == O_LONGSW) {
-                if (rn2(3) == 0) {
-                    inv[i].otyp = O_EXCALIBUR;
-                    inv[i].buc = BUC_BLESS | BUC_KNOWN;
-                    inv[i].ero = 0;
-                    id_set(O_EXCALIBUR);
-                    recompute_gear();
-                    msg("A hand offers up Excalibur!");
-                    return;
-                }
-                break;
-            }
-        }
-    }
+/* The verbs that activate or consume an item -- quaff, eat, read, throw, zap --
+ * are in item_use.c, split off when this bank filled (see item_int.h). */
 
-    switch (rn2(6)) {
-    case 0: case 1:                      /* cool, clear water */
-        php = (uint8_t)(php + rn2(5) + 2);
-        if (php > pmaxhp) php = pmaxhp;
-        msg("The water is cool and clear.");
-        break;
-    case 2:                              /* murky water */
-        if (intrinsics & INTR_POISON_RES) { msg("This water tastes stale."); }
-        else { st_poison = (uint8_t)(st_poison + rn2(4) + 3);
-               msg("Yecch!  Foul, murky water."); }
-        break;
-    case 3:                              /* coins glinting at the bottom */
-        { uint16_t amt = (uint16_t)(rn2(30) + 5);
-          if (gold > (uint16_t)(60000u - amt)) gold = 60000u;  /* clamp, 16-bit */
-          else                                 gold = (uint16_t)(gold + amt);
-          msg_num("You scoop up ", amt, " gold pieces."); }
-        break;
-    case 4:                              /* the fountain dries up */
-        lvl[hero_y][hero_x] = '.';
-        map_flush = 1;                   /* +zx: the '{' cell changed */
-        msg("The fountain dries up!");
-        break;
-    default:
-        msg("The water tastes flat.");
-        break;
-    }
-}
-
-void do_quaff(void) __banked
-{
-    int s;
-    uint8_t ot;
-
-    if (lvl[hero_y][hero_x] == '{') {    /* standing on a fountain: drink it? */
-        int k;
-        msg("Drink from the fountain? y/n");
-        in_wait_nokey();
-        k = getkey();
-        in_wait_nokey();
-        if (k == 'y' || k == 'Y') { quaff_fountain(); return; }
-        /* else fall through to drinking a carried potion */
-    }
-
-    s = select_item('!', "Drink which potion?");
-    if (s == -1) { msg("You have no potions to drink."); return; }
-    if (s == -2) { msg("Never mind."); return; }
-    ot = inv[s].otyp;
-    if (ot == O_CONFUSION) {
-        st_conf = (uint8_t)(st_conf + rn2(15) + 15);
-        msg("Huh?  What?  Where am I?");
-    } else if (ot == O_SLEEPING) {
-        if (intrinsics & INTR_SLEEP_RES) {
-            msg("You yawn.");           /* sleep resistance shrugs it off */
-        } else {
-            st_sleep = (uint8_t)(st_sleep + rn2(8) + 5);
-            msg("You suddenly fall asleep!");
-        }
-    } else if (ot == O_BLINDNESS) {
-        st_blind = (uint8_t)(st_blind + rn2(40) + 30);
-        map_dirty = 1;                      /* redraw: the world goes dark */
-        msg("Darkness falls around you.");
-    } else if (ot == O_GAINLVL) {
-        msg("You feel more experienced!");
-        level_up();     /* monster_ai owns the XP curve ("Welcome to...") */
-    } else {                                /* healing / extra healing */
-        uint8_t heal = (uint8_t)(rn2(6) + objtypes[ot].prop);
-        if (ot == O_EXHEAL) {
-            if (pmaxhp < 250) pmaxhp++;
-            msg("You feel much healthier!");
-        } else {
-            msg("You feel much better.");
-        }
-        php = (uint8_t)(php + heal);
-        if (php > pmaxhp) php = pmaxhp;
-    }
-    id_set(ot);                 /* drinking it identifies the type */
-    inv_remove((uint8_t)s);
-    sfx_quaff();
-    acted = 1; turns++;
-}
-
-/* "You are what you eat": a corpse feeds less than a ration but some flesh
- * teaches the body something -- or punishes it. The NetHack classics. */
-static void eat_corpse(char mch)
-{
-    if (mch == 'S' || mch == 'k') {              /* poisonous flesh */
-        if (intrinsics & INTR_POISON_RES)
-            msg("Ecch.  No harm done.");
-        else if (rn2(3) == 0) {
-            intrinsics |= INTR_POISON_RES;
-            msg("You feel healthy!");
-        } else {
-            st_poison = (uint8_t)(st_poison + 8);
-            msg("Ecch - that was poisonous!");
-        }
-    } else if (mch == 'i') {                     /* homunculus: sleepy flesh */
-        if (intrinsics & INTR_SLEEP_RES)
-            msg("You eat.  Chewy.");
-        else if (rn2(2)) {
-            intrinsics |= INTR_SLEEP_RES;
-            msg("You feel wide awake!");
-        } else {
-            st_sleep = (uint8_t)(st_sleep + rn2(4) + 3);
-            msg("You doze off...");
-        }
-    } else if (mch == 'e') {                     /* floating eye: the classic */
-        intrinsics |= INTR_TELEPATHY;
-        map_dirty = 1;               /* if already blind, sense them at once */
-        msg("You feel a strange awareness!");
-    } else if (mch == 'a') {                     /* acid blob: burns going down */
-        if (php > 2) php = (uint8_t)(php - 2);
-        msg("Acrid!  It burns.");
-    } else if (mch == 'D') {                     /* dragon flesh hardens the blood */
-        intrinsics |= INTR_POISON_RES;
-        msg("You feel healthy!");
-    } else {
-        msg("You eat.  Not bad.");
-    }
-}
-
-void do_eat(void) __banked
-{
-    int s = select_item('%', "Eat what?");
-    if (s == -1) { msg("You have nothing to eat."); return; }
-    if (s == -2) { msg("Never mind."); return; }
-    if (nutrition > 1200) {
-        msg("You are too full to eat now.");
-        return;
-    }
-    if (inv[s].otyp == O_CORPSE) {
-        char mch = (char)inv[s].ench;
-        inv_remove((uint8_t)s);
-        nutrition += 250;                    /* lean fare next to a ration */
-        if (nutrition > 1500) nutrition = 1500;
-        cnt_corpses++;              /* flesh breaks Vegetarian (conducts) */
-        eat_corpse(mch);
-    } else {
-        nutrition += 800;
-        if (nutrition > 1500) nutrition = 1500;
-        inv_remove((uint8_t)s);
-        msg("You eat.  Delicious!");
-    }
-    sfx_eat();
-    acted = 1; turns++;
-}
-
-void do_read(void) __banked
-{
-    int s = select_item('?', "Read which scroll?");
-    uint8_t ot;
-
-    if (s == -1) { msg("You have nothing to read."); return; }
-    if (s == -2) { msg("Never mind."); return; }
-    ot = inv[s].otyp;
-    if (objtypes[ot].cls == '&') {      /* a spellbook: study it (it survives) */
-        cnt_reads++;                    /* studying breaks Illiterate too */
-        learn_spell(objtypes[ot].prop);
-        acted = 1; turns++;
-        return;
-    }
-    cnt_reads++;                /* scrolls break Illiterate (conducts) */
-    id_set(ot);                 /* reading it identifies the type */
-    inv_remove((uint8_t)s);
-    sfx_magic();
-    if (ot == O_MAPPING) {
-        fov_reveal();
-        map_flush = 1;   /* +zx: seen-bits changed but vis didn't -- show the map */
-        msg("The level map fills your mind!");
-    } else if (ot == O_IDENTIFY) {
-        /* NetHack's blessed identify, simplified for the Z80: the whole pack.
-         * Every carried type is learned and every BUC state revealed. */
-        uint8_t i;
-        for (i = 0; i < inv_count; i++) {
-            id_set(inv[i].otyp);
-            inv[i].buc |= BUC_KNOWN;
-        }
-        msg("You feel knowledgeable!");
-    } else if (ot == O_TELEPORT) {
-        uint8_t tx, ty;
-        level_random_floor(&tx, &ty);
-        hero_x = tx; hero_y = ty;
-        msg("You feel a wrenching sensation.");
-    } else if (ot == O_ENCHW || ot == O_ENCHA) {
-        /* sharpen the wielded weapon / temper the worn armour (+1, derust) */
-        char cls = (ot == O_ENCHW) ? ')' : '[';
-        int i = pick_worn(cls);        /* any worn piece, not always the first */
-        uint8_t hit = 0;
-        if (i >= 0) {
-            if (inv[i].ench < 5) inv[i].ench++;
-            inv[i].ero = 0;
-            recompute_gear();
-            hit = 1;
-        }
-        if (ot == O_ENCHW) msg(hit ? "Your weapon glows blue!"   : "Your hands itch.");
-        else               msg(hit ? "Your armor glows silver!"  : "Your skin itches.");
-    } else {                            /* O_RMCURSE */
-        msg(pray_uncurse(1) ? "Your burdens are lifted."
-                            : "Nothing happens.");
-    }
-    acted = 1; turns++;
-}
-
-/* read one movement key into a unit direction; 0 if it was not a direction */
-static int read_dir(int *dx, int *dy)
-{
-    int k;
-    in_wait_nokey();
-    k = getkey();
-    in_wait_nokey();
-    *dx = 0; *dy = 0;
-    switch (k) {
-        case 'h': case  8: *dx = -1; break;
-        case 'l': case  9: *dx = +1; break;
-        case 'j': case 10: *dy = +1; break;
-        case 'k': case 11: *dy = -1; break;
-        case 'y': *dx = -1; *dy = -1; break;
-        case 'u': *dx = +1; *dy = -1; break;
-        case 'b': *dx = -1; *dy = +1; break;
-        case 'n': *dx = +1; *dy = +1; break;
-        default: return 0;
-    }
-    return 1;
-}
-
-/* Throw a carried weapon in a chosen direction. It flies in a straight line up
- * to THROW_RANGE cells, passing over the pet and the shopkeeper, until it
- * strikes the first enemy (damage by the weapon's power) or a wall. It then
- * lands on the floor where it came to rest and can be walked over and picked
- * back up (floor_drop), unless it stopped on rough terrain. Your wielded weapon
- * is thrown only after a confirmation, so you don't disarm yourself by mistake. */
-#define THROW_RANGE 8
-void do_throw(void) __banked
-{
-    int s = select_item(')', "Throw which weapon?");
-    int dx, dy, x, y, r;
-    uint8_t dmg, worn;
-    obj_t thrown;
-
-    if (s == -1) { msg("You have no weapon to throw."); return; }
-    if (s == -2) { msg("Never mind."); return; }
-
-    worn = inv[s].worn;
-    if (worn) {                          /* don't disarm yourself by accident */
-        int k;
-        msg("Throw your wielded weapon?  y/n");
-        in_wait_nokey();
-        k = getkey();
-        if (k != 'y' && k != 'Y') { msg("Never mind."); return; }
-    }
-
-    msg("In what direction?");
-    if (!read_dir(&dx, &dy)) { msg("Never mind."); return; }
-
-    thrown = inv[s];                     /* keep a copy: it lands on the floor */
-    thrown.worn = 0;                     /* a weapon on the floor is not wielded */
-    dmg = (uint8_t)(objtypes[thrown.otyp].prop
-                    + (thrown.ench > 0 ? thrown.ench : 0) + rn2(3));
-
-    x = hero_x; y = hero_y;
-    for (r = 0; r < THROW_RANGE; r++) {
-        int nx = x + dx, ny = y + dy, mi;
-        if (!walkable(terrain(nx, ny))) break;        /* a wall ahead: stop here */
-        x = nx; y = ny;
-        mi = monster_at(x, y);
-        if (mi < 0) continue;
-        if (mi == pet_idx || m_type[mi] == MON_KEEPER) continue;  /* fly past */
-        hit_monster((uint8_t)mi, dmg);
-        break;                                         /* lands at the enemy's feet */
-    }
-    inv_remove((uint8_t)s);
-    if (worn) recompute_gear();          /* you just threw what you were wielding */
-    floor_drop((uint8_t)x, (uint8_t)y, &thrown);       /* leave it to be reclaimed */
-    sfx_hit();
-    acted = 1; turns++;
-}
-
-/* Zap a wand. Digging bores straight down (you drop a level); the others fire a
- * bolt in a chosen direction that flies up to ZAP_RANGE cells, over the pet and
- * the shopkeeper, and acts on the monster(s) it meets: striking damages the
- * first, cold chills every monster in the line, sleep dozes the first, and
- * teleportation whisks the first away. Each zap spends a charge (obj_t.ench). */
-#define ZAP_RANGE 9
-void do_zap(void) __banked
-{
-    int s = select_item('/', "Zap which wand?");
-    int dx, dy, x, y, r, hit = 0;
-    uint8_t ot;
-
-    if (s == -1) { msg("You have no wand to zap."); return; }
-    if (s == -2) { msg("Never mind."); return; }
-    if (inv[s].ench <= 0) { msg("The wand has no charge."); return; }
-    ot = inv[s].otyp;
-
-    if (ot == O_WDIG) {                  /* digging needs no aim -- it goes down */
-        acted = 1; turns++;
-        /* Refuse only where there is no floor below: the win level, and the
-         * mines' bottom. `dlvl >= DLVL_AMULET` looked equivalent and was not
-         * -- the mines run dlvl 51..54, all of them >= 50, so digging was
-         * refused throughout the whole branch. The charge is spent AFTER the
-         * refusal now; it used to burn on a dig that never happened. */
-        if (dlvl == DLVL_AMULET ||
-            dlvl == (uint16_t)(MINES_BASE + MINES_DEPTH - 1)) {
-            msg("The floor here resists digging."); return;
-        }
-        inv[s].ench--;
-        msg("You dig a hole and drop through!");
-        sfx_stairs();
-        dlvl++;
-        build_level();
-        hero_x = up_x; hero_y = up_y;
-        place_pet();
-        return;
-    }
-
-    msg("In what direction?");
-    if (!read_dir(&dx, &dy)) { msg("Never mind."); return; }
-    inv[s].ench--;                       /* a real zap spends a charge */
-    sfx_magic();
-
-    x = hero_x; y = hero_y;
-    for (r = 0; r < ZAP_RANGE; r++) {
-        int mi;
-        x += dx; y += dy;
-        if (!walkable(terrain(x, y))) break;             /* a wall stops the bolt */
-        mi = monster_at(x, y);
-        if (mi < 0) continue;
-        if (mi == pet_idx || m_type[mi] == MON_KEEPER) continue;  /* spare dog/keeper */
-        hit = 1;
-        if (ot == O_WSTRIKE) { hit_monster((uint8_t)mi, (uint8_t)(rn2(8) + 3)); break; }
-        if (ot == O_WCOLD)   { hit_monster((uint8_t)mi, (uint8_t)(rn2(6) + 2)); continue; }
-        if (ot == O_WSLEEP)  { m_sleep[mi] = (uint8_t)(rn2(10) + 8);
-                               msg2("The ", mon_name(m_type[mi]), " falls asleep."); break; }
-        /* O_WTELE: whisk the monster to a random spot, off your back. The
-         * destination needs exactly the guards the nymph's blink already
-         * uses (steal_item): plain floor, nobody standing there, not your
-         * own cell -- and NEVER inside a shop. A monster left in a shop's
-         * interior is frozen for good: both AI paths refuse a shop cell as
-         * a destination, so once every neighbour is one it can never step
-         * again, which turned the wand into a permanent off switch.
-         * If no spot qualifies it simply stays put. */
-        { uint8_t tx, ty, t;
-          for (t = 0; t < 12; t++) {
-              rand_floor((uint8_t)rn2(rcount), &tx, &ty);
-              if (lvl[ty][tx] != '.') continue;
-              if (monster_at((int)tx, (int)ty) >= 0) continue;
-              if (shop_in_room((int)tx, (int)ty)) continue;
-              if ((int)tx == hero_x && (int)ty == hero_y) continue;
-              m_x[mi] = tx; m_y[mi] = ty;
-              break;
-          }
-          msg2("The ", mon_name(m_type[mi]),
-               (t < 12) ? " vanishes!" : " shudders."); }
-        break;
-    }
-    if (!hit) msg("The bolt fizzles out.");
-    acted = 1; turns++;
-}
 
 /* ---- save / restore (the inventory objects) ---- */
 

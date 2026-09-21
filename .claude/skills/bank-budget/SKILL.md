@@ -60,6 +60,9 @@ pressure, and vice versa.
 3. **Coupling traps** (these block the obvious moves — the known ones are
    `colocate` groups in `banks.json`, which the build enforces before compiling;
    **add a group when you create a new coupling**):
+   - `item.c`'s catalogue is pointer-coupled to whatever prints item names, so
+     it stays with `obj_desc`/`item_name`; `item_use.c` reaches it only by
+     value (`item_obj_prop`/`item_obj_cls`, see `item_int.h`).
    - `classes.c` / `spells.c` consts are pointer-coupled to consumers in
      `nexthack.c`'s bank — moving them means moving the consumers too.
    - PAGE_22 (bank 11) must hold **code + const under 16 KB**: `show_layer2`
@@ -93,14 +96,14 @@ Layer 2 images, 15 is `nexthack_lvl` (PAGE_30). Banks 22+ are still free; add a
 
 | Bank | Holds |
 |---|---|
-| 0 | `item.c` + its consts |
+| 0 | `item.c` + its catalogue -- 4.4 KB free since the use-verbs left (2026-09-21) |
 | 1 | `levelgen`, `monster_spawn`, `sfx` |
 | 2 | **the resident half** (0x8000-0xBFFF, not pageable) |
 | 3 | `nexthack.c`, `classes`, `spells` — 2.2 KB free since the 2026-08-31 split |
 | 4 | `scr` + the two SCRs — 2.5 KB free, but the group is 13.9 KB and cannot move |
 | 5 | **the data bank** (0x4000-0x7FFF, always mapped — see the tenant map) |
 | 6 | `monster_ai`, `levelfov` — 6.9 KB free, and UNCONTENDED: per-turn code belongs here |
-| 7 | `platform_init`, `music`, `nexthack_lvl`, `leveltmpl` — 10.4 KB free since the templates were packed; contended, so cold code only |
+| 7 | `platform_init`, `music`, `nexthack_lvl`, `leveltmpl`, `item_use` — ~5.9 KB free; contended, so cold code only |
 
 (That table goes stale every time a bank fills; `banks.json` is authoritative
 and `python tools/bankmap.py` prints what is actually left.)
