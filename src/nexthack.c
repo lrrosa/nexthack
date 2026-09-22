@@ -1220,6 +1220,22 @@ uint8_t door_locked(uint8_t x, uint8_t y) __banked
     return 1;
 }
 
+/* Force the locked door at (x,y) for good -- the boot and the wand of
+ * opening both end here, so a door opened either way is remembered the same.
+ * Returns 1 if there was a locked door to open. */
+static uint8_t door_force(uint8_t x, uint8_t y)
+{
+    int idx;
+    if (!door_locked(x, y)) return 0;
+    idx = locked_index(x, y);
+    if (idx >= 0 && dlvl <= MAXLVL)
+        door_open[dlvl] |= (uint8_t)(1u << idx);
+    map_flush = 1;
+    return 1;
+}
+
+uint8_t door_unlock(uint8_t x, uint8_t y) __banked { return door_force(x, y); }
+
 /* 'K': put a boot through the adjacent locked door. Strength decides. */
 void do_kick(void) __banked
 {
@@ -1227,17 +1243,13 @@ void do_kick(void) __banked
     for (dy = -1; dy <= 1; dy++)
         for (dx = -1; dx <= 1; dx++) {
             int x = hero_x + dx, y = hero_y + dy;
-            int idx;
             if ((dx == 0 && dy == 0)) continue;
             if (x < 0 || y < 0 || x >= MAPW || y >= MAPH) continue;
             if (terrain(x, y) != '+') continue;
             if (!door_locked((uint8_t)x, (uint8_t)y)) continue;
             turns++; acted = 1;
             if (rn2(20) < (uint8_t)(4 + (at_str >> 1))) {
-                idx = locked_index((uint8_t)x, (uint8_t)y);
-                if (idx >= 0 && dlvl <= MAXLVL)
-                    door_open[dlvl] |= (uint8_t)(1u << idx);
-                map_flush = 1;
+                door_force((uint8_t)x, (uint8_t)y);
                 msg("WHAMM!!  The door crashes open!");
                 sfx_kill();
             } else {

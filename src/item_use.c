@@ -357,6 +357,7 @@ void do_zap(void) __banked
             msg("The floor here resists digging."); return;
         }
         inv[s].ench--;
+        item_id_set(O_WDIG);             /* a hole under you: no mystery left */
         msg("You dig a hole and drop through!");
         sfx_stairs();
         dlvl++;
@@ -375,6 +376,15 @@ void do_zap(void) __banked
     for (r = 0; r < ZAP_RANGE; r++) {
         int mi;
         x += dx; y += dy;
+        if (ot == O_WOPEN) {             /* opening seeks the first locked door */
+            if (terrain(x, y) == '+' && door_unlock((uint8_t)x, (uint8_t)y)) {
+                msg("Klick!  The door unlocks.");
+                hit = 1;
+                break;
+            }
+            if (!walkable(terrain(x, y))) break;
+            continue;                    /* and passes every monster by */
+        }
         if (!walkable(terrain(x, y))) break;             /* a wall stops the bolt */
         mi = monster_at(x, y);
         if (mi < 0) continue;
@@ -382,6 +392,9 @@ void do_zap(void) __banked
         hit = 1;
         if (ot == O_WSTRIKE) { hit_monster((uint8_t)mi, (uint8_t)(rn2(8) + 3)); break; }
         if (ot == O_WCOLD)   { hit_monster((uint8_t)mi, (uint8_t)(rn2(6) + 2)); continue; }
+        /* the two new rays pass through the whole line, as cold does */
+        if (ot == O_WFIRE)   { hit_monster((uint8_t)mi, (uint8_t)(rn2(8) + 2)); continue; }
+        if (ot == O_WMMISSILE) { hit_monster((uint8_t)mi, (uint8_t)(rn2(4) + 2)); continue; }
         if (ot == O_WSLEEP)  { m_sleep[mi] = (uint8_t)(rn2(10) + 8);
                                msg2("The ", mon_name(m_type[mi]), " falls asleep."); break; }
         /* O_WTELE: whisk the monster to a random spot, off your back. The
@@ -406,6 +419,10 @@ void do_zap(void) __banked
                (t < 12) ? " vanishes!" : " shudders."); }
         break;
     }
-    if (!hit) msg("The bolt fizzles out.");
+    /* A wand is learned by watching it work, as in NetHack: a bolt that met
+     * something shows what it is; one that fizzled into an empty room keeps
+     * its secret (and its look), so a first zap at nothing tells you nothing. */
+    if (hit) item_id_set(ot);
+    else     msg("The bolt fizzles out.");
     acted = 1; turns++;
 }

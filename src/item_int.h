@@ -56,6 +56,7 @@ enum {
      * last three are the junk that is usually generated cursed. */
     O_RSLOWDIG, O_RFREEACT, O_RTCTRL, O_RSTEALTH,  /* '=' the useful rings */
     O_RHUNGER, O_RAGGR, O_RTPORT,                  /* '=' and the junk     */
+    O_WOPEN, O_WFIRE, O_WMMISSILE,                 /* '/' three more wands */
     NUMOBJ
 };
 

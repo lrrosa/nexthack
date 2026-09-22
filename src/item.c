@@ -146,7 +146,13 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '=',  0,  100,   3, 1, SL_NONE, "ring of stealth" },
     { '=',  0,  100,   3, 1, SL_NONE, "ring of hunger" },
     { '=',  0,  150,   3, 1, SL_NONE, "ring of aggravate monster" },
-    { '=',  0,  200,   4, 1, SL_NONE, "ring of teleportitis" }
+    { '=',  0,  200,   4, 1, SL_NONE, "ring of teleportitis" },
+    /* Three wands, weighted by NetHack's own frequencies against the five
+     * already here (4 each): opening is the second answer to a locked door,
+     * after the boot -- and the key the tools class cannot give yet. */
+    { '/',  0,  150,   3, 2, SL_NONE, "wand of opening" },
+    { '/',  0,  175,   5, 3, SL_NONE, "wand of fire" },
+    { '/',  0,  150,   2, 4, SL_NONE, "wand of magic missile" }
 };
 
 /* obj_t, the BUC bits and inv[] live in item_int.h (item_use.c needs them).
