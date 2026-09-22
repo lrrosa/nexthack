@@ -27,6 +27,7 @@ uint8_t m_face[MAXMON];   /* 1 = last stepped right: directional art (dog/rat)
                            * each spawn, never saved. */
 uint8_t mcount;
 int8_t  pet_idx = -1;     /* the pet's slot this level (see monster.h), -1 = none */
+uint8_t mon_geno[8];            /* genocided types, by char (see monster.h) */
 uint8_t mon_dead[MAXLVL + 1];   /* bit i: monster i killed. Written by combat
                                  * (monster_ai.c), applied/saved by
                                  * monster_spawn.c; defined here because the

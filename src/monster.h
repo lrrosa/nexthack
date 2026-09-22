@@ -36,6 +36,16 @@ extern uint8_t mon_dead[];   /* per-depth kill bitmask (bit i: slot i slain);
  * mon_dead kill-bitmask never tracks (1u<<8 == 0), so it is never marked dead. */
 extern int8_t  pet_idx;
 
+/* The genocided types, one bit per monster char from '@' up (8 bytes cover
+ * '@'..DEL; every monster char is in that range, and '@' -- the shopkeeper
+ * -- is never set). Resident because pick_mon reads it; saved with the kill
+ * masks by monster_save. */
+extern uint8_t mon_geno[8];
+#define mon_gone(c)     ((mon_geno[((uint8_t)(c) - '@') >> 3] >> \
+                          (((uint8_t)(c) - '@') & 7)) & 1u)
+#define mon_geno_set(c) (mon_geno[((uint8_t)(c) - '@') >> 3] |= \
+                         (uint8_t)(1u << (((uint8_t)(c) - '@') & 7)))
+
 /* ---- monster catalogue (the table lives in monster.c, resident) ---- */
 typedef struct {
     char        ch;
@@ -76,5 +86,6 @@ void monsters_turn(void)            __banked;  /* every monster chases + attacks
 void maybe_spawn_wanderer(void)     __banked;  /* small per-turn spawn chance */
 void place_shopkeeper(uint8_t x, uint8_t y) __banked;  /* add the shop's keeper */
 void place_pet(void)                __banked;  /* (re)place the pet beside the hero */
+uint8_t summon_near(char type)      __banked;  /* reverse genocide: a pack beside you */
 
 #endif /* MONSTER_H */

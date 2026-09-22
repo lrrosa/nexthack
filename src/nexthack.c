@@ -92,10 +92,11 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   28     /* v1.3.0: the armour slots widened the object
-                           * catalogue past 40 types (id_known 5 -> 7 bytes)
-                           * and door_open[] joined the file. 27 was the 1.0
-                           * freeze format; this is the first break since. */
+#define SAVE_VER   29     /* v1.4.0: the item batch took the catalogue to
+                           * 60 types (id_known 6 -> 8 bytes) and the genocide
+                           * mask joined the monster block. 28 was 1.3's
+                           * format (armour slots, door_open[]); 27 the 1.0
+                           * freeze. An older save gets the 1.3.1 prompt. */
 #define SAVE_VER_OLD 27   /* v0.10.0: MAXINV 24->26 (INV_BYTES) and the
                            * fog-of-war pool grew to 12 slots */
 

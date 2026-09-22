@@ -241,6 +241,14 @@ void fov_reveal(void) __banked   /* magic mapping: remember the whole level */
         m[i] = 0xFF;
 }
 
+void fov_forget(void) __banked   /* amnesia: this level's map is gone */
+{
+    uint16_t i;
+    uint8_t *m = fov_map();
+    for (i = 0; i < FOV_BYTES; i++)
+        m[i] = 0;
+}
+
 int fov_visible(int x, int y) __banked
 {
     uint16_t idx;

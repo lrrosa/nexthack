@@ -200,10 +200,72 @@ void do_eat(void) __banked
     acted = 1; turns++;
 }
 
+/* The scroll of genocide: name a monster by its letter and the dungeon never
+ * sends another -- those on this level die where they stand, and so does your
+ * dog if you name dogs, as in NetHack. Cursed, it runs backwards: a pack of
+ * whatever you named arrives around you. The shopkeeper and the Amulet's
+ * guardian are beyond it; the mimic's two letters are one monster. */
+static void genocide(uint8_t cursed)
+{
+    uint8_t tries, i;
+    int k;
+    char ch = 0;
+    msg("Genocide what? (a letter)");
+    for (tries = 0; tries < 3 && !ch; tries++) {
+        in_wait_nokey();
+        k = getkey();
+        in_wait_nokey();
+        if (k == MON_KEEPER || k == 'M') {
+            msg("That one is beyond your power.");
+            return;
+        }
+        if (k > ' ' && k < 127 && mon_find((char)k)->ch == (char)k)
+            ch = (char)k;               /* mon_find falls back to the rat */
+        else
+            msg("No such creature.  Which letter?");
+    }
+    if (!ch) { msg("The scroll turns to dust."); return; }
+    if (ch == 'x') ch = 'm';            /* the hidden mimic's letter */
+    if (cursed) {
+        if (summon_near(ch)) msg2("The ", mon_name(ch), " horde arrives!");
+        else                 msg("You hear a distant rumble.");
+        return;
+    }
+    mon_geno_set(ch);
+    if (ch == 'm') mon_geno_set('x');
+    for (i = 0; i < mcount; i++) {
+        if (!m_alive[i]) continue;
+        if (m_type[i] != ch && !(ch == 'm' && m_type[i] == 'x')) continue;
+        m_alive[i] = 0;
+        if ((int8_t)i == pet_idx) { pet_idx = -1; have_pet = 0; pet_hp = 0; }
+    }
+    map_flush = 1;                      /* +zx: they vanish across the map */
+    msg2("Wiped out: ", mon_name(ch), ".");
+}
+
+/* The scroll of charging: blessed fills a wand to the brim, uncursed adds
+ * three to five, cursed drains it dry. With no wand to charge it charges YOU
+ * -- your power comes back, NetHack's confused-reading gift, so the scroll is
+ * never a blank. Nine is the brim: the charges show as one digit. */
+static void charging(uint8_t buc)
+{
+    int w = select_item('C');
+    if (w == -1) { pw = pmaxpw; msg("You feel charged up!"); return; }
+    if (w == -2) { msg("Never mind."); return; }
+    if (buc == BUC_CURSE) { inv[w].ench = 0; msg("The wand is drained!"); return; }
+    if (buc == BUC_BLESS) {
+        inv[w].ench = 9;
+    } else {
+        inv[w].ench = (int8_t)(inv[w].ench + 3 + rn2(3));
+        if (inv[w].ench > 9) inv[w].ench = 9;
+    }
+    msg("Your wand glows blue.");
+}
+
 void do_read(void) __banked
 {
     int s = select_item('?');
-    uint8_t ot;
+    uint8_t ot, buc;
 
     if (s == -1) { msg("You have nothing to read."); return; }
     if (s == -2) { msg("Never mind."); return; }
@@ -215,6 +277,7 @@ void do_read(void) __banked
         return;
     }
     cnt_reads++;                /* scrolls break Illiterate (conducts) */
+    buc = (uint8_t)buc_st(&inv[s]);  /* before it leaves the pack */
     item_id_set(ot);                 /* reading it identifies the type */
     item_inv_remove((uint8_t)s);
     sfx_magic();
@@ -240,16 +303,35 @@ void do_read(void) __banked
         int i = item_pick_worn(cls);        /* any worn piece, not always the first */
         uint8_t hit = 0;
         if (i >= 0) {
-            if (inv[i].ench < 5) inv[i].ench++;
-            inv[i].ero = 0;
+            if (buc == BUC_CURSE) {         /* NetHack's cursed enchantment: -1 */
+                if (inv[i].ench > -3) inv[i].ench--;
+            } else {
+                if (inv[i].ench < 5) inv[i].ench++;
+                inv[i].ero = 0;
+            }
             item_recompute_gear();
             hit = 1;
         }
-        if (ot == O_ENCHW) msg(hit ? "Your weapon glows blue!"   : "Your hands itch.");
-        else               msg(hit ? "Your armor glows silver!"  : "Your skin itches.");
+        if (!hit)                msg(ot == O_ENCHW ? "Your hands itch." : "Your skin itches.");
+        else if (buc == BUC_CURSE) msg(ot == O_ENCHW ? "Your weapon glows black!"
+                                                     : "Your armor glows black!");
+        else                     msg(ot == O_ENCHW ? "Your weapon glows blue!"
+                                                     : "Your armor glows silver!");
+    } else if (ot == O_SGENO) {
+        genocide((uint8_t)(buc == BUC_CURSE));
+    } else if (ot == O_SCHARGE) {
+        charging(buc);
+    } else if (ot == O_SDESTROY) {
+        item_destroy_armor();
+    } else if (ot == O_SAMNESIA) {
+        fov_forget();                   /* this level's map ... */
+        item_forget_ids();              /* ... and a third of the looks */
+        map_dirty = 1;                  /* +zx: repaint the forgotten map */
+        msg("Who was that Maud person anyway?");
     } else {                            /* O_RMCURSE */
-        msg(pray_uncurse(1) ? "Your burdens are lifted."
-                            : "Nothing happens.");
+        if (buc == BUC_CURSE) msg("You feel like you need help.");
+        else msg(pray_uncurse(1) ? "Your burdens are lifted."
+                                 : "Nothing happens.");
     }
     acted = 1; turns++;
 }

@@ -33,11 +33,29 @@ static uint8_t spawns_asleep(uint8_t x, uint8_t y)
     return (uint8_t)(h & 1);
 }
 
+/* pick_mon, minus the genocided. The filter lives HERE, banked, rather than
+ * in the resident pick_mon: three expansions of the mask test there cost the
+ * Next 150 B of a resident half that had 285. Every random spawn -- the
+ * level's, the vault guards', the wanderers' -- is drawn in this file, so this
+ * one wrapper covers them all. A genocided draw is re-rolled (the extra rolls
+ * happen only after a genocide, so the spawn stream is otherwise the old one);
+ * 0 means eight draws all came back genocided, and the caller spawns nothing
+ * rather than resurrect the type. */
+static char pick_living(void)
+{
+    uint8_t t;
+    for (t = 0; t < 8; t++) {
+        char c = pick_mon();
+        if (!mon_gone(c)) return c;
+    }
+    return 0;
+}
+
 static void spawn_monster(char type)
 {
     const MonType *mt = mon_find(type);
     uint8_t i, x, y;
-    if (mcount >= MAXMON) return;
+    if (!type || mcount >= MAXMON) return;
     i = rn2(rcount);
     rand_floor(i, &x, &y);
     if (lvl[y][x] != '.') return;                 /* floor only          */
@@ -69,10 +87,13 @@ static void spawn_monster(char type)
  * stands on top), so no '.'-only check. */
 static void spawn_guard(uint8_t room)
 {
-    char a = pick_mon(), b = pick_mon();
-    const MonType *mt = mon_find(mon_find(a)->hp >= mon_find(b)->hp ? a : b);
+    char a = pick_living(), b = pick_living();
+    const MonType *mt;
     uint8_t x, y;
-    if (mcount >= MAXMON) return;
+    if (!a) a = b;                      /* one genocided draw: take the other */
+    if (!b) b = a;
+    if (!a || mcount >= MAXMON) return;
+    mt = mon_find(mon_find(a)->hp >= mon_find(b)->hp ? a : b);
     rand_floor(room, &x, &y);
     if (x == up_x && y == up_y) return;
     if (monster_at(x, y) >= 0) return;
@@ -120,7 +141,7 @@ void spawn_level_monsters(void) __banked
     }
     for (i = 0; i < count; i++) {
         if (i < guards) spawn_guard((uint8_t)vr);   /* low slots -> persistence-tracked */
-        else            spawn_monster(pick_mon());
+        else            spawn_monster(pick_living());
     }
 }
 
@@ -154,16 +175,62 @@ void monster_reset_persistence(void) __banked
     uint8_t i;
     for (i = 0; i <= MAXLVL; i++)
         mon_dead[i] = 0;
+    for (i = 0; i < sizeof mon_geno; i++)
+        mon_geno[i] = 0;
 }
 
 void monster_save(uint8_t h) __banked
 {
     file_write(h, mon_dead, MAXLVL + 1);
+    file_write(h, mon_geno, sizeof mon_geno);
 }
 
 void monster_load(uint8_t h) __banked
 {
     file_read(h, mon_dead, MAXLVL + 1);
+    file_read(h, mon_geno, sizeof mon_geno);
+}
+
+/* Reverse genocide (a cursed scroll of genocide): a pack of `type` in the
+ * free cells around the hero, awake and hostile, as many as the cells and
+ * the monster slots allow -- NetHack sends four to six. A genocided type
+ * sends none. Dead slots are reused the way the wanderer reuses them.
+ * Returns how many came. */
+uint8_t summon_near(char type) __banked
+{
+    const MonType *mt = mon_find(type);
+    uint8_t n = 0, want = (uint8_t)(4 + rn2(3)), slot, i;
+    int dx, dy;
+    if (mon_gone(type)) return 0;
+    for (dy = -1; dy <= 1; dy++)
+        for (dx = -1; dx <= 1; dx++) {
+            int x = hero_x + dx, y = hero_y + dy;
+            if (n >= want) return n;
+            if (dx == 0 && dy == 0) continue;
+            if (!walkable(terrain(x, y)) || lvl[y][x] == '+' ||
+                monster_at(x, y) >= 0) continue;
+            slot = MAXMON;
+            for (i = 0; i < mcount; i++)
+                if (!m_alive[i] && (int8_t)i != pet_idx) { slot = i; break; }
+            if (slot == MAXMON) {
+                if (mcount >= MAXMON) return n;
+                slot = mcount;
+            }
+            m_x[slot]     = (uint8_t)x;
+            m_y[slot]     = (uint8_t)y;
+            m_hp[slot]    = (uint8_t)(mt->hp + eff_depth() / 2);
+            m_type[slot]  = type;
+            m_alive[slot] = 1;
+            m_sleep[slot] = 1;          /* they act from the NEXT turn: the
+                                         * message line has one line, and a
+                                         * horde biting at once overwrote the
+                                         * news of its own arrival */
+            m_peace[slot] = 0;
+            m_face[slot]  = 0;
+            if (slot == mcount) mcount++;
+            n++;
+        }
+    return n;
 }
 
 /* ---- wandering monsters ----
@@ -193,7 +260,8 @@ void maybe_spawn_wanderer(void) __banked
         slot = mcount;
     }
 
-    type = pick_mon();
+    type = pick_living();
+    if (!type) return;                      /* everything drawn is genocided */
     mt   = mon_find(type);
 
     i = (uint8_t)rn2(rcount);

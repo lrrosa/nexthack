@@ -57,6 +57,7 @@ enum {
     O_RSLOWDIG, O_RFREEACT, O_RTCTRL, O_RSTEALTH,  /* '=' the useful rings */
     O_RHUNGER, O_RAGGR, O_RTPORT,                  /* '=' and the junk     */
     O_WOPEN, O_WFIRE, O_WMMISSILE,                 /* '/' three more wands */
+    O_SGENO, O_SCHARGE, O_SDESTROY, O_SAMNESIA,    /* '?' four more scrolls */
     NUMOBJ
 };
 
@@ -99,6 +100,8 @@ int     item_floor_drop(uint8_t x, uint8_t y, const obj_t *o) __banked;
 int     item_pick_worn(char cls) __banked;
 void    item_id_set(uint8_t otyp) __banked;
 uint8_t item_obj_prop(uint8_t otyp) __banked;  /* objtypes[otyp].prop, by value */
+void    item_destroy_armor(void) __banked;     /* the outermost worn piece goes  */
+void    item_forget_ids(void) __banked;        /* amnesia: a third of the looks  */
 char    item_obj_cls(uint8_t otyp) __banked;   /* objtypes[otyp].cls, by value  */
 
 #endif /* ITEM_INT_H */

@@ -152,7 +152,14 @@ static const objtype_t objtypes[NUMOBJ] = {
      * after the boot -- and the key the tools class cannot give yet. */
     { '/',  0,  150,   3, 2, SL_NONE, "wand of opening" },
     { '/',  0,  175,   5, 3, SL_NONE, "wand of fire" },
-    { '/',  0,  150,   2, 4, SL_NONE, "wand of magic missile" }
+    { '/',  0,  150,   2, 4, SL_NONE, "wand of magic missile" },
+    /* Four scrolls, at NetHack's rarity against the six already here (5
+     * each): genocide and charging are the rare prizes, destroy armor and
+     * amnesia the risks that make reading an unknown scroll a decision. */
+    { '?',  0,  300,   8, 1, SL_NONE, "scroll of genocide" },
+    { '?',  0,  300,   4, 1, SL_NONE, "scroll of charging" },
+    { '?',  0,  100,   2, 2, SL_NONE, "scroll of destroy armor" },
+    { '?',  0,  200,   3, 2, SL_NONE, "scroll of amnesia" }
 };
 
 /* obj_t, the BUC bits and inv[] live in item_int.h (item_use.c needs them).
@@ -499,9 +506,11 @@ static const char *obj_desc(const obj_t *o)
         s = (o->ero >= 2) ? "corroded " : "rusty ";
         while (*s) *p++ = *s++;
     }
-    if (o->ench > 0 && (t->cls == ')' || t->cls == '[')) {
-        *p++ = '+';
-        *p++ = (char)('0' + (o->ench % 10));
+    if (o->ench != 0 && (t->cls == ')' || t->cls == '[')) {
+        /* a cursed scroll of enchantment can drive it below zero now */
+        uint8_t e = (uint8_t)(o->ench < 0 ? -o->ench : o->ench);
+        *p++ = (o->ench < 0) ? '-' : '+';
+        *p++ = (char)('0' + (e % 10));
         *p++ = ' ';
     }
     if (o->otyp == O_CORPSE) {          /* named for the fallen: "rat corpse" */
@@ -850,6 +859,13 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
      * usually stick until a remove curse, a prayer or an altar lets go. */
     if (o->otyp >= O_RHUNGER && o->otyp <= O_RTPORT && ((h >> 7) % 10u) != 0)
         o->buc = BUC_CURSE;
+    /* Scrolls may be blessed or cursed, NetHack's one in eight each. It
+     * matters to four of them: enchantment runs backwards, remove curse
+     * fails, charging drains, genocide summons. */
+    if (c == '?') {
+        uint8_t r = (uint8_t)((h >> 11) & 7);
+        o->buc = (r == 6) ? BUC_CURSE : (r == 7) ? BUC_BLESS : BUC_UNC;
+    }
 }
 
 /* shop value of an object: catalogue base price plus a little per enchant */
@@ -1423,6 +1439,8 @@ static uint8_t cls_match(uint8_t i, char cls)
     char c = objtypes[inv[i].otyp].cls;
     if (cls == 'P')          /* 'P': rings, and every amulet but Yendor's */
         return (uint8_t)(c == '=' || (c == '"' && inv[i].otyp != O_AMULET));
+    if (cls == 'C')          /* 'C': the wand a scroll of charging tops up */
+        return (uint8_t)(c == '/');
     return (uint8_t)(c == cls || (cls == '?' && c == '&'));
 }
 
@@ -1443,6 +1461,7 @@ static const char *pick_prompt(char cls)
     case ')': return "Throw which weapon?";
     case '/': return "Zap which wand?";
     case 'P': return "Put on what?";
+    case 'C': return "Charge which wand?";
     }
     return "Which item?";
 }
@@ -1539,6 +1558,39 @@ int     item_pick_worn(char cls) __banked                 { return pick_worn(cls
 void    item_id_set(uint8_t otyp) __banked                { id_set(otyp); }
 uint8_t item_obj_prop(uint8_t otyp) __banked              { return objtypes[otyp].prop; }
 char    item_obj_cls(uint8_t otyp) __banked               { return objtypes[otyp].cls; }
+
+/* The scroll of destroy armor takes the OUTERMOST piece, as in NetHack: the
+ * cloak first, then the suit, the helmet, the boots and the shield -- so a
+ * cloak is armour for your armour. A cursed piece goes like any other, which
+ * makes the scroll one way out of a welded suit. It lives here, not in
+ * item_use.c, because it needs the slots and names of the catalogue. */
+void item_destroy_armor(void) __banked
+{
+    static const uint8_t order[5] = { SL_CLOAK, SL_SUIT, SL_HELM, SL_BOOTS, SL_SHIELD };
+    uint8_t k;
+    for (k = 0; k < 5; k++) {
+        int w = find_worn_slot(order[k]);
+        if (w >= 0) {
+            /* the bare name, not obj_desc: "Your leather armor crumbles!" is
+             * 28 columns, where a prefixed one would overrun the 128K's 32 */
+            msg2("Your ", objtypes[inv[w].otyp].name, " crumbles!");
+            inv_remove((uint8_t)w);
+            recompute_gear();
+            return;
+        }
+    }
+    msg("Your skin itches.");
+}
+
+/* The scroll of amnesia forgets a third of what you had identified. Only the
+ * classes that wear looks have anything to forget. */
+void item_forget_ids(void) __banked
+{
+    uint8_t i;
+    for (i = 0; i < NUMOBJ; i++)
+        if (has_looks(objtypes[i].cls) && id_is(i) && rn2(3) == 0)
+            id_known[i >> 3] &= (uint8_t)~(1u << (i & 7));
+}
 
 /* The verbs that activate or consume an item -- quaff, eat, read, throw, zap --
  * are in item_use.c, split off when this bank filled (see item_int.h). */
