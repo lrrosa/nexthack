@@ -82,10 +82,37 @@ static void quaff_fountain(void)
     }
 }
 
+/* A potion of gain ability: +1 to one attribute at random -- blessed, all
+ * six -- capped at 18, with NetHack's lines. Cursed does nothing; a floor
+ * potion is never cursed, but an altar can make one so, and bless one too
+ * (drop_at_feet), which is how the blessed kind is had. */
+static void gain_ability(uint8_t buc)
+{
+    static uint8_t *const at[6] = { &at_str, &at_dex, &at_con,
+                                    &at_int, &at_wis, &at_cha };
+    static const char *const feel[6] = {
+        "You feel strong!", "You feel agile!", "You feel tough!",
+        "You feel smart!",  "You feel wise!",  "You feel charismatic!"
+    };
+    uint8_t i, k, n = 0;
+    if (buc != BUC_CURSE) {
+        if (buc == BUC_BLESS) {
+            for (i = 0; i < 6; i++)
+                if (*at[i] < 18) { (*at[i])++; n++; }
+            if (n) { msg("You feel better in every way!"); return; }
+        } else {
+            k = (uint8_t)rn2(6);            /* a random one that has room */
+            for (i = 0; i < 6; i++, k = (uint8_t)(k == 5 ? 0 : k + 1))
+                if (*at[k] < 18) { (*at[k])++; msg(feel[k]); return; }
+        }
+    }
+    msg("You feel no different.");
+}
+
 void do_quaff(void) __banked
 {
     int s;
-    uint8_t ot;
+    uint8_t ot, buc;
 
     if (lvl[hero_y][hero_x] == '{') {    /* standing on a fountain: drink it? */
         int k;
@@ -100,7 +127,8 @@ void do_quaff(void) __banked
     s = select_item('!');
     if (s == -1) { msg("You have no potions to drink."); return; }
     if (s == -2) { msg("Never mind."); return; }
-    ot = inv[s].otyp;
+    ot  = inv[s].otyp;
+    buc = (uint8_t)buc_st(&inv[s]);
     if (ot == O_CONFUSION) {
         st_conf = (uint8_t)(st_conf + rn2(15) + 15);
         msg("Huh?  What?  Where am I?");
@@ -118,6 +146,15 @@ void do_quaff(void) __banked
     } else if (ot == O_GAINLVL) {
         msg("You feel more experienced!");
         level_up();     /* monster_ai owns the XP curve ("Welcome to...") */
+    } else if (ot == O_PGAINABIL) {
+        gain_ability(buc);
+    } else if (ot == O_PGAINENRG) {
+        /* NetHack's +d5-ish to the pool, and the pool refilled; 60 is the
+         * cap the altar's boon already keeps */
+        uint8_t g = (uint8_t)(rn2(4) + 2);
+        pmaxpw = (uint8_t)((uint16_t)pmaxpw + g > 60 ? 60 : pmaxpw + g);
+        pw = pmaxpw;
+        msg("Magic courses through you!");
     } else {                                /* healing / extra healing */
         uint8_t heal = (uint8_t)(rn2(6) + item_obj_prop(ot));
         if (ot == O_EXHEAL) {
@@ -190,6 +227,17 @@ void do_eat(void) __banked
         if (nutrition > 1500) nutrition = 1500;
         cnt_corpses++;              /* flesh breaks Vegetarian (conducts) */
         eat_corpse(mch);
+    } else if (inv[s].otyp == O_CARROT) {
+        item_inv_remove((uint8_t)s);
+        nutrition += 50;                     /* a snack, not a meal */
+        if (nutrition > 1500) nutrition = 1500;
+        if (st_blind) {                      /* NetHack's carrot: the eyes clear */
+            st_blind = 0;
+            map_dirty = 1;                   /* redraw: the world comes back */
+            msg("Your vision clears!");
+        } else {
+            msg("Crunchy.  Good for the eyes.");
+        }
     } else {
         nutrition += 800;
         if (nutrition > 1500) nutrition = 1500;

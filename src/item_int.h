@@ -58,6 +58,8 @@ enum {
     O_RHUNGER, O_RAGGR, O_RTPORT,                  /* '=' and the junk     */
     O_WOPEN, O_WFIRE, O_WMMISSILE,                 /* '/' three more wands */
     O_SGENO, O_SCHARGE, O_SDESTROY, O_SAMNESIA,    /* '?' four more scrolls */
+    O_PGAINABIL, O_PGAINENRG,                      /* '!' two more potions  */
+    O_CARROT,                                      /* '%' good for the eyes */
     NUMOBJ
 };
 

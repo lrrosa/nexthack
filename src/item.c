@@ -159,7 +159,18 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '?',  0,  300,   8, 1, SL_NONE, "scroll of genocide" },
     { '?',  0,  300,   4, 1, SL_NONE, "scroll of charging" },
     { '?',  0,  100,   2, 2, SL_NONE, "scroll of destroy armor" },
-    { '?',  0,  200,   3, 2, SL_NONE, "scroll of amnesia" }
+    { '?',  0,  200,   3, 2, SL_NONE, "scroll of amnesia" },
+    /* Two potions, each as common as the average one (NetHack's own
+     * weighting), so the healing share of potions falls from a third to a
+     * quarter -- tools/balance.py measures what that costs. Restore ability
+     * is not here: nothing in this game ever lowers an attribute, so it would
+     * restore nothing. It waits for a drain to answer. */
+    { '!',  0,  300,   4, 1, SL_NONE, "potion of gain ability" },
+    { '!',  0,  150,   3, 1, SL_NONE, "potion of gain energy" },
+    /* The carrot cures blindness. Rare against the ration (8:1), as in
+     * NetHack, so it does not thin the food supply much: a food drop is
+     * worth 717 nutrition on average instead of 800. */
+    { '%',  0,    7,   1, 1, SL_NONE, "carrot" }
 };
 
 /* obj_t, the BUC bits and inv[] live in item_int.h (item_use.c needs them).
