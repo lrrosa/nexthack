@@ -407,7 +407,11 @@ tilemap.
   deterministically from the restored `world_seed` + persistence bitmasks, exactly
   as a revisit does. Saved state = `world_seed`, the player globals, the inventory
   (`item.c`), and the per-depth `gold_taken`/`item_taken`/`mon_dead` masks plus the
-  `fov_pool` LRU fog-of-war (`level.c`/`monster.c`).
+  `fov_pool` LRU fog-of-war and the genocide mask (`level.c`/`monster.c`).
+- **Any save-format change bumps `SAVE_VER`, and an older save gets the
+  incompatible-save prompt** (1.3.1): name it, ask, and leave it on `n`. The
+  identification bitmap is `(NUMOBJ+7)/8` bytes, so appending catalogue types
+  breaks the format every time `NUMOBJ` crosses a multiple of 8.
 - File I/O lives in the **platform layer** (`file_*` in `platform.c`, wrapping
   esxDOS `esx_f_*`). It needs a mounted writable filesystem, which **`run-next.bat`**
   gives for free: ZEsarUX auto-mounts esxDOS onto the .nex's folder, so `S` saves to
@@ -429,12 +433,36 @@ tilemap.
   **not** touch the RNG stream — so a floor item is always the same thing and
   stays in sync with the deterministic generation. Better/enchanted items appear
   deeper (`mindep` per catalogue entry).
-- `w`/`W`/`P` equip the **best** carried weapon/armour/ring (highest
-  `prop + ench - ero`). The combat globals (`weapon_dmg`, `armor_def`, `ac`) are
-  recomputed by `recompute_gear()` from the worn items.
-- `q`/`e`/`r` use `select_item()`: silent when you carry one type, but it pops a
-  letter menu when two *different* types are present. These three set
-  `acted`/`turns` themselves, so a cancel or a no-op costs no turn.
+- **Generation is weighted** (`prob` per catalogue entry; `resolve_otyp` draws in
+  proportion within the class). A class whose types all weigh 1 resolves exactly
+  as `h % n` — weapons and armour stay that way, so the combat ladder is
+  untouched by new types elsewhere. **When you add a type, choose its weight so
+  the existing ones keep their share, and measure it** with `tools/balance.py`:
+  the healing potions weigh 3 against 2 because equal weights cut their share
+  from a third to a quarter, which alone halved the Valkyrie's wins.
+- **Four classes wear per-game looks** (`!` `?` `=` `/`): a Fisher-Yates shuffle
+  seeded off `world_seed` with its OWN xorshift (never `rn2`, which would shift
+  the game's stream every time an item is named). The pools hold only the word
+  ("ruby"; `obj_desc` adds the noun), must stay at least as long as their class
+  and at most `SHUF_MAX`, and the per-class ordinal is counted, not hand-kept.
+  A type is learned by use, by watching it work (a wand that hit something, a
+  ring that acted — `ring_noticed`), or by a scroll of identify.
+- `w`/`W` equip the **best** carried weapon/armour (highest
+  `prop + ench - ero`). `P` **asks** which ring or amulet — choosing for the
+  player would reveal an unknown ring's worth. The combat globals (`weapon_dmg`,
+  `armor_def`, `ac`) are recomputed by `recompute_gear()` from the worn items;
+  only the ring of protection adds to them. The other rings are pure effects,
+  read through the resident `ring_fx` (`RF_*` bits, whose order IS the order of
+  `O_RSLOWDIG..O_RTPORT`), recomputed with the worn set and never saved.
+- `q`/`e`/`r`/`P` use `select_item()`: silent when you carry one type, but it
+  pops a letter menu when two *different* types are present, and derives its
+  prompt from the class (pseudo-classes: `'P'` rings + wearable amulets, `'C'`
+  wands for charging). These set `acted`/`turns` themselves, so a cancel or a
+  no-op costs no turn.
+- **Every teleport of the hero goes through `hero_teleport()`** (`nexthack.c`):
+  the scroll, the trap, the spell and teleportitis. It is where teleport control
+  asks; assigning `hero_x/y` from `level_random_floor` anywhere else would
+  silently bypass the ring.
 
 ### Monster AI (`monster.c`)
 - Monster types are a table (`montypes[]`: char, hp, damage, xp, min depth, tile,
@@ -442,6 +470,12 @@ tilemap.
   HP/damage scale with depth. A `corr` (corrosive) monster — the acid blob — calls
   `corrode_worn()` (in `item.c`) to rust the hero's armour when it bites and the
   wielded weapon when struck; erosion raises `obj_t.ero`, capped at 3.
+- **Genocide** is a resident 8-byte mask by monster char (`mon_geno`, saved with
+  the kill masks). Its filter is `pick_living()` in `monster_spawn.c`, which
+  re-rolls a genocided `pick_mon()` draw — NOT inside the resident `pick_mon`,
+  where three expansions of the mask test cost the Next 150 B of a resident half
+  that had 285. Every random spawn is drawn in `monster_spawn.c`; a new spawn
+  site must go through `pick_living()` too.
 - Pathfinding is a **per-turn BFS "Dijkstra map"** from the hero (`compute_dist_map`)
   over walkable cells; each monster steps to the lowest-distance neighbour. One search
   serves all monsters. The BFS frontier queue `bfsq` is **bounded** (`BFSQ_SIZE`) with
@@ -495,7 +529,7 @@ so it is the number you can spend directly. As of 2026-09-03 the Next sat at
   path).
 - **New resident DATA is still the scarce resource.** Banked code's `static` data —
   **and its string/const literals (resident rodata)** — stay resident, so data/text-heavy
-  features eat the ~575 B fast (the shops' message strings did). Levers when it overflows:
+  features eat the few hundred bytes fast (the shops' message strings did). Levers when it overflows:
   (a) **const-bank read-once tables** — `gfx[]` (~3 KB, read only by `load_gfx_tiles` at
   startup) lives in `platform_init.c`, whose `const` `banks.json` puts in `PAGE_20_CODE`,
   so it sits next to its reader (which runs with that page mapped); (b) data-bank scratch

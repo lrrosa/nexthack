@@ -96,13 +96,17 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   rings and **amulets** — ESP, and life saving, which spends itself instead
   of you —
   each with its own enchantment, erosion and **blessed/uncursed/cursed** state;
-  potions and scrolls start **unidentified**. Wield/wear the best you carry,
-  quaff/eat/read, watch acid blobs corrode your gear, beware cursed items that
-  won't come off — then **enchant your gear** with the right scroll, **lift
-  your curses** with another, bottle a whole **experience level**, or wear the
-  **ring of regeneration** and mend twice as fast. **Wands** (`z`) zap magic
-  in a chosen direction — a striking bolt, a freezing ray, sleep or
-  teleport-away — or dig straight down a level.
+  potions, scrolls, rings and wands start **unidentified**, each game with its
+  own shuffle of looks. Wield/wear the best you carry, quaff/eat/read, watch
+  acid blobs corrode your gear, beware cursed items that won't come off — then
+  **enchant your gear** with the right scroll, **lift your curses** with
+  another, **genocide** a monster you are tired of, **recharge** a wand, or
+  bottle a whole **experience level**. Nine **rings** — protection,
+  regeneration, slow digestion, free action, teleport control, stealth, and
+  three cursed pieces of junk that make trying on an unknown one a gamble.
+  **Wands** (`z`) zap magic in a chosen direction — a striking bolt, a
+  freezing or burning ray, magic missiles, sleep, teleport-away, a bolt that
+  unlocks doors — or dig straight down a level.
 - **Altars and divinity** — step onto an **altar** (`_`) to reveal the
   blessings on what you carry; drop an item on one and a flash names it, a
   potion taking the altar's own touch (holy water — or worse, on an altar of a
@@ -291,13 +295,13 @@ used to emit one and no longer does.
 | `;`                       | look around the map (a cursor describes whatever it rests on) |
 | `,`                       | pick up the item under you |
 | `i`                       | show inventory |
-| `D`                       | discoveries: which potion/scroll looks you have identified |
+| `D`                       | discoveries: which potion/scroll/ring/wand looks you have identified |
 | `d`                       | drop an item (sells it in a shop; offers a corpse on an altar) |
 | `w` / `W`                 | wield weapon / wear armor |
-| `P`                       | put on a ring |
+| `P`                       | put on a ring or an amulet (asks which) |
 | `q` / `e` / `r`           | quaff potion / eat food / read scroll |
 | `t`                       | throw a weapon in a direction |
-| `z`                       | zap a wand (strike, freeze, sleep, teleport, or dig down) |
+| `z`                       | zap a wand (strike, freeze, burn, sleep, teleport, unlock, or dig down) |
 | `Z`                       | cast a known spell (spends Pw) |
 | `p`                       | pray to your god |
 | `E`                       | engrave Elbereth in the dust (wards off monsters) |

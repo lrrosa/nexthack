@@ -82,11 +82,11 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '[',  3,   40,   3, 1, SL_SUIT, "ring mail" },
     { '[',  4,  100,   6, 1, SL_SUIT, "chain mail" },
     { '[',  5,  200,  10, 1, SL_SUIT, "plate mail" },
-    { '!',  7,   20,   1, 1, SL_NONE, "potion of healing" },
-    { '!', 14,   60,   4, 1, SL_NONE, "potion of extra healing" },
-    { '!',  0,   30,   2, 1, SL_NONE, "potion of confusion" },
-    { '!',  0,   30,   3, 1, SL_NONE, "potion of sleeping" },
-    { '!',  0,   30,   4, 1, SL_NONE, "potion of blindness" },
+    { '!',  7,   20,   1, 3, SL_NONE, "potion of healing" },
+    { '!', 14,   60,   4, 3, SL_NONE, "potion of extra healing" },
+    { '!',  0,   30,   2, 2, SL_NONE, "potion of confusion" },
+    { '!',  0,   30,   3, 2, SL_NONE, "potion of sleeping" },
+    { '!',  0,   30,   4, 2, SL_NONE, "potion of blindness" },
     { '?',  0,   40,   1, 5, SL_NONE, "scroll of magic mapping" },
     { '?',  0,   60,   1, 5, SL_NONE, "scroll of teleportation" },
     { '?',  0,   40,   2, 5, SL_NONE, "scroll of identify" },
@@ -111,7 +111,7 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '?',  0,  100,   3, 5, SL_NONE, "scroll of enchant weapon" },
     { '?',  0,  100,   4, 5, SL_NONE, "scroll of enchant armor" },
     { '?',  0,   80,   3, 5, SL_NONE, "scroll of remove curse" },
-    { '!',  0,   80,   5, 1, SL_NONE, "potion of gain level" },
+    { '!',  0,   80,   5, 2, SL_NONE, "potion of gain level" },
     { '=',  0,  200,   6, 1, SL_NONE, "ring of regeneration" },
     { '*',  0,  300, 255, 1, SL_NONE, "luckstone" },  /* the mines bottom (levelgen) */
     /* The catalogue used to stop at plate mail on Dlvl 10 while the dungeon
@@ -160,13 +160,17 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '?',  0,  300,   4, 1, SL_NONE, "scroll of charging" },
     { '?',  0,  100,   2, 2, SL_NONE, "scroll of destroy armor" },
     { '?',  0,  200,   3, 2, SL_NONE, "scroll of amnesia" },
-    /* Two potions, each as common as the average one (NetHack's own
-     * weighting), so the healing share of potions falls from a third to a
-     * quarter -- tools/balance.py measures what that costs. Restore ability
+    /* Two potions. The potion weights are 3 for the two healing kinds and 2
+     * for the rest, so each healing potion is still exactly 1/6 of all
+     * potions, as when there were six: at equal weights the healing share
+     * fell from a third to a quarter, and tools/balance.py measured that
+     * alone halving the Valkyrie's wins (22% -> 11% with the dog). The room
+     * for the newcomers comes out of confusion, sleeping and blindness.
+     * NetHack weighs healing above the average potion too. Restore ability
      * is not here: nothing in this game ever lowers an attribute, so it would
      * restore nothing. It waits for a drain to answer. */
-    { '!',  0,  300,   4, 1, SL_NONE, "potion of gain ability" },
-    { '!',  0,  150,   3, 1, SL_NONE, "potion of gain energy" },
+    { '!',  0,  300,   4, 2, SL_NONE, "potion of gain ability" },
+    { '!',  0,  150,   3, 2, SL_NONE, "potion of gain energy" },
     /* The carrot cures blindness. Rare against the ration (8:1), as in
      * NetHack, so it does not thin the food supply much: a food drop is
      * worth 717 nutrition on average instead of 800. */

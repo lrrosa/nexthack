@@ -8,6 +8,87 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [Unreleased]
+
+**Seventeen new things to find, and a reason not to trust them.** Rings and
+wands go unidentified; seven rings, three wands, four scrolls, two potions and
+a carrot join the catalogue — each one plugged into something the game
+already had, because in NetHack the interactions are the content.
+
+### Added
+- **Rings and wands are unidentified**, like potions and scrolls — "onyx
+  ring", "iron wand (5)". The looks are a real per-game shuffle now: the old
+  rotation gave a whole class away the moment one look was learned, since the
+  pool order was fixed. Each pool holds more looks than types, so the last
+  unknown one cannot be named by elimination. You learn a type by using it,
+  by watching it work, from a scroll of identify — or from what a shop asks.
+- **Seven rings**, each an effect rather than armour:
+  - **slow digestion** — food lasts sixteen times as long;
+  - **free action** — the floating eye's gaze no longer freezes you;
+  - **teleport control** — every teleport asks where, on the farlook cursor:
+    the scroll, the trap, the spell and the ring all go through one door now;
+  - **stealth** — your footsteps wake no sleeper, and one beside you only
+    stirs one turn in three;
+  - **hunger**, **aggravate monster** and **teleportitis** — the junk. As in
+    NetHack they are cursed nine times in ten, so an unknown ring you try on
+    may be one you cannot take off.
+- **Three wands.** **Opening** unlocks the first locked door in its line —
+  the second answer to a locked door, after the boot. **Fire** and **magic
+  missile** are rays through the whole line. A wand names itself when you see
+  it work; a bolt into an empty room keeps its secret.
+- **Four scrolls.** **Genocide**: name a monster by its letter and the dungeon
+  never sends another — your dog goes with its kind, as in NetHack; cursed, it
+  sends a pack of them to you instead. **Charging** tops up a wand, or with no
+  wand, your power. **Destroy armor** takes the outermost piece, cloak first,
+  which makes a cloak armour for your armour. **Amnesia** takes this level's
+  map and a third of what you had identified.
+- **Two potions and a carrot.** **Gain ability** raises an attribute (blessed:
+  all six). **Gain energy** grows your power. The **carrot** cures blindness.
+- **Scrolls can be blessed or cursed**, one in eight each, and it matters to
+  four of them: cursed enchantment lowers instead of raising (negative
+  enchantment shows now — "-1 chain mail"), cursed remove curse fails, cursed
+  charging drains, cursed genocide summons.
+
+### Changed
+- **`P` asks which ring or amulet to put on**, through the same menu as
+  `q`/`r`/`z`, silent when you carry one kind. It used to choose the best ring
+  itself — with unknown looks that would be an oracle. A cancel costs no turn.
+- **Only the ring of protection adds to AC.** Every ring used to add its
+  blessing, so a blessed ring of regeneration was +1 AC.
+- **Your starting kit is identified**, as in NetHack — the Wizard's potion no
+  longer reads "ruby".
+- **Generation weights.** Each type now has a weight within its class, where
+  before every type was equally likely and each new one silently diluted the
+  rest. Weapons and armour keep equal weights and resolve exactly as before.
+  The potions are weighted so that healing keeps its share: at equal weights
+  the two new potions would have cut it from a third to a quarter, and
+  `tools/balance.py` measured that alone halving the Valkyrie's wins (22% to
+  11% with the dog). With the weights the difficulty curve is 1.3's to within
+  a floor. The seven new rings dilute protection to a ninth of rings, which
+  the same measurement shows costs nothing.
+- **Discoveries (`D`)** list rings and wands too, and page when the list
+  outgrows the screen.
+- `SAVE_VER` 29. **Saves from 1.3 will not load**: the catalogue passed 48
+  types, which widens the identification bitmap, and the genocide mask joined
+  the file. The game names the old save and asks before deleting it — answer
+  `n` and it stays for the 1.3 binary.
+
+### Fixed
+- **Putting on an amulet took two turns.** The dispatcher charged one and the
+  amulet path a second.
+- The discoveries header no longer lingers on the Next's message line after
+  you close the screen.
+
+### Not done
+- **Restore ability** was planned beside gain ability and left out: nothing
+  in this game ever lowers an attribute, so it would restore nothing and ship
+  as a dud. It waits for a drain to answer — NetHack's poison can sap
+  Strength.
+- **One ring at a time.** NetHack has two hands, and teleportitis plus
+  teleport control is its classic pair; here the hand holds one ring, so that
+  pair cannot be worn. Two hands need a remove command and a which-hand
+  prompt — their own change.
+
 ## [1.3.1] — 2026-09-03
 
 ### Added

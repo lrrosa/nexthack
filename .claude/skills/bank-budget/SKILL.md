@@ -157,6 +157,12 @@ silently corrupted two parked levels' fog of war. Also standing: `udg_bitmap`
 ends **exactly** at `inv[]` — a 49th tile corrupts the inventory (the mirrored
 UDG annex dodges this by living at ids 193-195, past the blocked range).
 
+**Moving `udg_bitmap` moves the annex with it**, because the annex is addressed
+`udg_bitmap + (id-128)*8`, not by a fixed address. The 192 B gap above
+`VIEW_SHADOW` looks like 24 more tiles; slide `SSHADOW` down into it and the
+bitmap after it, and ids 193-195 land in the middle of the new range — about 20
+usable tiles, not 24. Work the annex's new address out before claiming any.
+
 ## Guards already in the build
 
 Both build scripts run `python tools/bankmap.py <target> --check` after linking
