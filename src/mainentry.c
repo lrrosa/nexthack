@@ -82,7 +82,7 @@ start_game:
         case ',': do_pickup();      turns++; acted = 1; in_wait_nokey(); break;
         case 'w': do_wield();       turns++; acted = 1; in_wait_nokey(); break;
         case 'W': do_wear();        turns++; acted = 1; in_wait_nokey(); break;
-        case 'P': do_puton();       turns++; acted = 1; in_wait_nokey(); break;
+        case 'P': do_puton();       in_wait_nokey(); break;   /* sets its own turn */
         case 'q': do_quaff();       in_wait_nokey(); break;   /* set acted/turns */
         case 'e': do_eat();         in_wait_nokey(); break;   /* themselves, so a */
         case 'r': do_read();        in_wait_nokey(); break;   /* cancel costs none */

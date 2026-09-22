@@ -182,7 +182,7 @@ class Mon(object):
 
 
 class Obj(object):
-    __slots__ = ("idx", "cls", "prop", "price", "mindep", "slot", "name")
+    __slots__ = ("idx", "cls", "prop", "price", "mindep", "prob", "slot", "name")
 
     def __init__(self, **kw):
         for k, v in kw.items():
@@ -228,13 +228,13 @@ class Tables(object):
         self.objs = []
         for i, row in enumerate(_rows(_body(item_c, "objtypes[NUMOBJ]"))):
             f = _fields(row)
-            if len(f) != 6:
+            if len(f) != 7:
                 raise ParseError("objtypes row has %d fields: %r" % (len(f), row))
             self.objs.append(Obj(
                 idx=i, cls=f[0].strip().strip("'"), prop=int(f[1]),
-                price=int(f[2]), mindep=int(f[3]),
-                slot=_num(f[4], item_consts),
-                name=f[5].strip().strip('"')))
+                price=int(f[2]), mindep=int(f[3]), prob=int(f[4]),
+                slot=_num(f[5], item_consts),
+                name=f[6].strip().strip('"')))
         self.ARMOR_CAP = int(item_consts.get("ARMOR_CAP", "255"))
 
         kc = _defines(cls_c)
@@ -269,9 +269,29 @@ class Tables(object):
         return [m for m in self.mons if m.ch != "@" and m.mindep <= depth]
 
     def eligible(self, cls, depth):
-        """src/item.c:650 resolve_otyp"""
+        """the types src/item.c resolve_otyp draws among"""
         e = [o for o in self.objs if o.cls == cls and o.mindep <= depth]
         return e or [o for o in self.objs if o.cls == cls][:1]
+
+    def pick(self, cls, depth, h):
+        """src/item.c resolve_otyp -- weighted by prob since 1.4.  With every
+        weight 1 this is elig[h % n], which is what ')' and '[' still are."""
+        e = [o for o in self.objs if o.cls == cls and o.mindep <= depth]
+        total = sum(o.prob for o in e)
+        if not total:
+            return [o for o in self.objs if o.cls == cls][0]
+        r = h % total
+        for o in e:
+            if r < o.prob:
+                return o
+            r -= o.prob
+        raise AssertionError("unreachable: r < total")
+
+    def share(self, cls, depth, want):
+        """the weighted fraction of cls draws at depth that satisfy want(o)"""
+        e = self.eligible(cls, depth)
+        total = sum(o.prob for o in e) or 1
+        return sum(o.prob for o in e if want(o)) / float(total)
 
     def cls_by_name(self, name):
         for c in self.classes:
@@ -382,6 +402,13 @@ def spawn_count(depth):
 def armor_redux(eff):
     """src/item.c:303 -- an armour piece shields eff-1 (at least 1)"""
     return 0 if eff <= 0 else (eff - 1 if eff > 1 else 1)
+
+
+def armours(o):
+    """src/item.c recompute_gear -- of the rings, only protection adds to AC
+    and to armor_def (every ring's gear_eff used to, so a blessed ring of
+    anything was +1)"""
+    return o.cls != "=" or o.name == "ring of protection"
 
 
 def floor_ench(h, depth):
@@ -542,8 +569,7 @@ def floor_gear_sample(t, depth, cls, seeds=400, cells=8):
         for c in range(cells):
             x, y = 3 + (c * 7) % 74, 2 + (c * 5) % 19
             h = item_hash(ws, depth, x, y)
-            elig = t.eligible(cls, depth)
-            o = elig[h % len(elig)]
+            o = t.pick(cls, depth, h)
             eff = o.prop + floor_ench(h, depth) + buc_mod(floor_buc(h))
             out.append(max(eff, 0))
     return out
@@ -591,10 +617,11 @@ def level_loot(rng, t, hero, depth, opts):
         cell[0] += 1
         x, y = 3 + (cell[0] * 11) % 74, 2 + (cell[0] * 7) % 19
         h = item_hash(ws, depth, x, y)
-        elig = t.eligible(cls, depth)
-        o = elig[h % len(elig)]
+        o = t.pick(cls, depth, h)
         ench = floor_ench(h, depth) if cls in ")[" else 0
         eff = o.prop + ench + buc_mod(floor_buc(h)) if cls in ")[=" else o.prop
+        if cls == "=" and not armours(o):
+            eff = 0     # src/item.c recompute_gear: only protection armours you
         return o, max(eff, 0)
 
     o, eff = draw(")")
@@ -921,9 +948,8 @@ blessed).  Sampled through the game's own item_hash over real cells.
     print("  %5s %8s  %s" % ("depth", "healing", "eligible potions"))
     for d in a.depths:
         elig = t.eligible("!", d)
-        heals = [o for o in elig if o.prop > 0]
         print("  %5d %7.0f%%  %s" %
-              (d, 100.0 * len(heals) / len(elig),
+              (d, 100.0 * t.share("!", d, lambda o: o.prop > 0),
                ", ".join(o.name.replace("potion of ", "") for o in elig)))
 
 

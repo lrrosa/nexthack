@@ -58,73 +58,83 @@ typedef struct {
     uint8_t     prop;    /* weapon:+dmg  armour:AC bonus  potion:heal base    */
     uint16_t    price;   /* base shop price (used from Phase 20)              */
     uint8_t     mindep;  /* earliest depth at which it is generated           */
+    uint8_t     prob;    /* generation weight within its class (see below)   */
     uint8_t     slot;    /* '[' only: which body slot it occupies (SL_*)      */
     const char *name;
 } objtype_t;
 
+/* `prob` is a type's generation weight within its class: resolve_otyp draws
+ * among the eligible types in proportion to it. Before 1.4 the draw was
+ * uniform, so every new type silently diluted the old ones -- seven new rings
+ * would have made protection a ninth of rings instead of a half, and a carrot
+ * would have halved the food rations. A class whose types all weigh 1 still
+ * resolves exactly as it did (h % n), which is what the weapons and armour
+ * keep: the combat ladder is untouched by this batch. The other weights are
+ * NetHack's own relative frequencies, scaled so the types this game already
+ * had keep their mix among themselves. */
 static const objtype_t objtypes[NUMOBJ] = {
-    /* cls prop price mindep name */
-    { ')',  2,    5,  1, SL_NONE, "dagger" },
-    { ')',  3,   15,  2, SL_NONE, "short sword" },
-    { ')',  4,   40,  5, SL_NONE, "mace" },
-    { ')',  5,   80,  9, SL_NONE, "long sword" },
-    { '[',  2,   10,  1, SL_SUIT, "leather armor" },
-    { '[',  3,   40,  3, SL_SUIT, "ring mail" },
-    { '[',  4,  100,  6, SL_SUIT, "chain mail" },
-    { '[',  5,  200, 10, SL_SUIT, "plate mail" },
-    { '!',  7,   20,  1, SL_NONE, "potion of healing" },
-    { '!', 14,   60,  4, SL_NONE, "potion of extra healing" },
-    { '!',  0,   30,  2, SL_NONE, "potion of confusion" },
-    { '!',  0,   30,  3, SL_NONE, "potion of sleeping" },
-    { '!',  0,   30,  4, SL_NONE, "potion of blindness" },
-    { '?',  0,   40,  1, SL_NONE, "scroll of magic mapping" },
-    { '?',  0,   60,  1, SL_NONE, "scroll of teleportation" },
-    { '?',  0,   40,  2, SL_NONE, "scroll of identify" },
-    { '=',  1,  150,  3, SL_NONE, "ring of protection" },
-    { '%',  0,   10,  1, SL_NONE, "food ration" },
-    { '"',  0,    0, 50, SL_NONE, "the Amulet of Yendor" },
+    /* cls prop price mindep prob slot name */
+    { ')',  2,    5,   1, 1, SL_NONE, "dagger" },
+    { ')',  3,   15,   2, 1, SL_NONE, "short sword" },
+    { ')',  4,   40,   5, 1, SL_NONE, "mace" },
+    { ')',  5,   80,   9, 1, SL_NONE, "long sword" },
+    { '[',  2,   10,   1, 1, SL_SUIT, "leather armor" },
+    { '[',  3,   40,   3, 1, SL_SUIT, "ring mail" },
+    { '[',  4,  100,   6, 1, SL_SUIT, "chain mail" },
+    { '[',  5,  200,  10, 1, SL_SUIT, "plate mail" },
+    { '!',  7,   20,   1, 1, SL_NONE, "potion of healing" },
+    { '!', 14,   60,   4, 1, SL_NONE, "potion of extra healing" },
+    { '!',  0,   30,   2, 1, SL_NONE, "potion of confusion" },
+    { '!',  0,   30,   3, 1, SL_NONE, "potion of sleeping" },
+    { '!',  0,   30,   4, 1, SL_NONE, "potion of blindness" },
+    { '?',  0,   40,   1, 5, SL_NONE, "scroll of magic mapping" },
+    { '?',  0,   60,   1, 5, SL_NONE, "scroll of teleportation" },
+    { '?',  0,   40,   2, 5, SL_NONE, "scroll of identify" },
+    { '=',  1,  150,   3, 1, SL_NONE, "ring of protection" },
+    { '%',  0,   10,   1, 8, SL_NONE, "food ration" },
+    { '"',  0,    0,  50, 1, SL_NONE, "the Amulet of Yendor" },
     /* wands: prop is unused (the effect is by type); zapped with 'z', charges
      * live in obj_t.ench. */
-    { '/',  0,  150,  2, SL_NONE, "wand of striking" },
-    { '/',  0,  200,  4, SL_NONE, "wand of cold" },
-    { '/',  0,  175,  3, SL_NONE, "wand of sleep" },
-    { '/',  0,  200,  5, SL_NONE, "wand of teleportation" },
-    { '/',  0,  150,  6, SL_NONE, "wand of digging" },
-    { '%',  0,    2, 255, SL_NONE, "corpse" },  /* never generated (mindep 255) */
+    { '/',  0,  150,   2, 4, SL_NONE, "wand of striking" },
+    { '/',  0,  200,   4, 4, SL_NONE, "wand of cold" },
+    { '/',  0,  175,   3, 4, SL_NONE, "wand of sleep" },
+    { '/',  0,  200,   5, 4, SL_NONE, "wand of teleportation" },
+    { '/',  0,  150,   6, 4, SL_NONE, "wand of digging" },
+    { '%',  0,    2, 255, 1, SL_NONE, "corpse" },  /* never generated (mindep 255) */
     /* spellbooks: prop = the spell index (spells.c). Read to learn, Z casts. */
-    { '&',  0,  100,  2, SL_NONE, "spellbook of force bolt" },
-    { '&',  1,  120,  3, SL_NONE, "spellbook of healing" },
-    { '&',  2,  150,  4, SL_NONE, "spellbook of sleep" },
-    { '&',  3,  180,  6, SL_NONE, "spellbook of teleportation" },
-    { ')',  8,  400, 255, SL_NONE, "Excalibur" },  /* only from a fountain (mindep 255) */
+    { '&',  0,  100,   2, 1, SL_NONE, "spellbook of force bolt" },
+    { '&',  1,  120,   3, 1, SL_NONE, "spellbook of healing" },
+    { '&',  2,  150,   4, 1, SL_NONE, "spellbook of sleep" },
+    { '&',  3,  180,   6, 1, SL_NONE, "spellbook of teleportation" },
+    { ')',  8,  400, 255, 1, SL_NONE, "Excalibur" },  /* only from a fountain (mindep 255) */
     /* the v0.9 arsenal (appended; see the enum note) */
-    { '?',  0,  100,  3, SL_NONE, "scroll of enchant weapon" },
-    { '?',  0,  100,  4, SL_NONE, "scroll of enchant armor" },
-    { '?',  0,   80,  3, SL_NONE, "scroll of remove curse" },
-    { '!',  0,   80,  5, SL_NONE, "potion of gain level" },
-    { '=',  0,  200,  6, SL_NONE, "ring of regeneration" },
-    { '*',  0,  300, 255, SL_NONE, "luckstone" },  /* the mines bottom (levelgen) */
+    { '?',  0,  100,   3, 5, SL_NONE, "scroll of enchant weapon" },
+    { '?',  0,  100,   4, 5, SL_NONE, "scroll of enchant armor" },
+    { '?',  0,   80,   3, 5, SL_NONE, "scroll of remove curse" },
+    { '!',  0,   80,   5, 1, SL_NONE, "potion of gain level" },
+    { '=',  0,  200,   6, 1, SL_NONE, "ring of regeneration" },
+    { '*',  0,  300, 255, 1, SL_NONE, "luckstone" },  /* the mines bottom (levelgen) */
     /* The catalogue used to stop at plate mail on Dlvl 10 while the dungeon
      * kept scaling for forty more floors -- the hero fought the second half
      * in first-half armour. This continues the cadence the first four set
      * (+1 every three to six floors) instead of inventing a new one. Names
      * stay <= 12 chars so the 32-column inventory still fits a prefix. */
-    { '[',  6,  300,  14, SL_SUIT, "splint mail" },
-    { '[',  7,  450,  20, SL_SUIT, "banded mail" },
-    { '[',  8, 1200,  28, SL_SUIT, "dragon scale" },
+    { '[',  6,  300,  14, 1, SL_SUIT, "splint mail" },
+    { '[',  7,  450,  20, 1, SL_SUIT, "banded mail" },
+    { '[',  8, 1200,  28, 1, SL_SUIT, "dragon scale" },
     /* The trimmings. Each is worth about a point, as in NetHack, where the
      * body suit is most of your protection and the rest is the set. Names
      * stay <= 12 chars for the 32-column inventory. */
-    { '[',  2,   60,   4, SL_SHIELD, "small shield" },
-    { '[',  2,   80,   8, SL_HELM,   "helmet" },
-    { '[',  2,   70,  11, SL_BOOTS,  "boots" },
-    { '[',  2,  120,  15, SL_CLOAK,  "cloak" },
-    { '[',  3,  260,  20, SL_SHIELD, "large shield" },
+    { '[',  2,   60,   4, 1, SL_SHIELD, "small shield" },
+    { '[',  2,   80,   8, 1, SL_HELM, "helmet" },
+    { '[',  2,   70,  11, 1, SL_BOOTS, "boots" },
+    { '[',  2,  120,  15, 1, SL_CLOAK, "cloak" },
+    { '[',  3,  260,  20, 1, SL_SHIELD, "large shield" },
     /* Amulets. The Amulet of Yendor keeps '"' to itself on its own floor
      * (resolve_floor checks the depth), so these are what the class means
      * anywhere else. Neither has a prop: their worth is the effect. */
-    { '"',  0,  180,   6, SL_NONE, "amulet of ESP" },
-    { '"',  0,  400,  12, SL_NONE, "amulet of life" }
+    { '"',  0,  180,   6, 1, SL_NONE, "amulet of ESP" },
+    { '"',  0,  400,  12, 1, SL_NONE, "amulet of life" }
 };
 
 /* obj_t, the BUC bits and inv[] live in item_int.h (item_use.c needs them).
@@ -301,8 +311,14 @@ static void recompute_gear(void)
             if ((uint8_t)eff <= base_ac) base_ac -= (uint8_t)eff;
             if (eff > 0) redux += (uint8_t)(eff > 1 ? eff - 1 : 1);
         } else if (t->cls == '=') {
-            if ((uint8_t)eff <= base_ac) base_ac -= (uint8_t)eff;
-            redux += (uint8_t)eff;
+            /* Only protection armours you. Every ring used to add its
+             * gear_eff, so a BLESSED ring of anything was +1 AC -- harmless
+             * with two ring types, silly once there is a blessed ring of
+             * hunger. (tools/balance.py mirrors this.) */
+            if (inv[i].otyp == O_PROTECT) {
+                if ((uint8_t)eff <= base_ac) base_ac -= (uint8_t)eff;
+                redux += (uint8_t)eff;
+            }
             if (inv[i].otyp == O_REGEN)
                 regen_ring = 1;         /* upkeep() mends twice as fast */
         } else if (t->cls == '"') {
@@ -348,50 +364,96 @@ void corrode_worn(char cls) __banked
 }
 
 /* ---- item identification ----------------------------------------------------
- * Potions and scrolls start unidentified: shown by a per-game random appearance
- * ("ruby potion", "scroll labeled XYZZY") until you use one, which reveals that
- * whole type. The appearance is a deterministic rotation of a small pool keyed
- * on world_seed, so it needs no storage and is stable across save/restore;
- * id_known records which types you have since learned. */
+ * Potions, scrolls, rings and wands start unidentified: shown by a per-game
+ * random appearance ("ruby potion", "scroll labeled XYZZY", "jade ring",
+ * "oak wand") until you learn the type -- by using it, by a scroll of
+ * identify, or by watching it work. The appearance is derived from world_seed,
+ * so it needs no storage and is stable across save/restore; id_known records
+ * which types you have since learned.
+ *
+ * The pools hold the distinctive word only; obj_desc adds the class noun. They
+ * hold more looks than the class has types, as NetHack's do, so the last
+ * unknown one cannot be named by elimination. A pool must stay at least as
+ * long as its class and at most SHUF_MAX. Ring words stay <= 6 letters: the
+ * discoveries line "wooden ring: aggravate monster" is then exactly 32
+ * columns, the 128K's whole width. */
 static const char *const pot_appear[] = {
-    "ruby potion", "blue potion", "fizzy potion", "smoky potion", "cloudy potion",
-    "murky potion"
+    "ruby", "blue", "fizzy", "smoky", "cloudy", "murky",
+    "golden", "milky", "bubbly", "dark", "pink", "violet"
 };
 static const char *const scr_appear[] = {
-    "scroll labeled XYZZY", "scroll labeled ELBERETH",
-    "scroll labeled KIRJE", "scroll labeled VAS CORP",
-    "scroll labeled ANDOVA", "scroll labeled ZELGO MER"
+    "XYZZY", "ELBERETH", "KIRJE", "VAS CORP", "ANDOVA", "ZELGO MER",
+    "READ ME", "TEMOV", "THARR", "YUM YUM", "NR 9", "KERNOD WEL"
 };
-#define NPOT (sizeof pot_appear / sizeof pot_appear[0])   /* 6 */
-#define NSCR (sizeof scr_appear / sizeof scr_appear[0])   /* 6 */
+static const char *const rng_appear[] = {
+    "ruby", "jade", "opal", "coral", "onyx", "topaz",
+    "agate", "bronze", "wooden", "ivory", "garnet", "silver"
+};
+static const char *const wnd_appear[] = {
+    "oak", "pine", "glass", "iron", "brass", "ebony",
+    "maple", "marble", "copper", "runed", "silver", "bone"
+};
+#define NAPPEAR(a) ((uint8_t)(sizeof a / sizeof a[0]))
+#define SHUF_MAX 12
 
 static uint8_t id_known[(NUMOBJ + 7) / 8];   /* one "identified?" bit per otyp */
 static uint8_t id_is(uint8_t otyp)  { return (id_known[otyp >> 3] >> (otyp & 7)) & 1u; }
 static void    id_set(uint8_t otyp) { id_known[otyp >> 3] |= (uint8_t)(1u << (otyp & 7)); }
 
-/* this game's look for a type, identified or not (the discoveries screen
- * needs it for types you HAVE learned; other classes just show their name) */
-static const char *appearance_of(uint8_t otyp)
+/* does this class wear per-game appearances? */
+static uint8_t has_looks(char cls)
 {
-    char cls = objtypes[otyp].cls;
-    /* per-class ordinal: the appended arsenal types sit past their class
-     * block, so map them onto the next pool slots (keeps looks unique) */
-    if (cls == '!') {
-        uint8_t o = (otyp == O_GAINLVL) ? 5 : (uint8_t)(otyp - O_HEAL);
-        return pot_appear[(uint8_t)(o + (world_seed % NPOT)) % NPOT];
-    }
-    if (cls == '?') {
-        uint8_t o = (otyp >= O_ENCHW) ? (uint8_t)(3 + otyp - O_ENCHW)
-                                      : (uint8_t)(otyp - O_MAPPING);
-        return scr_appear[(uint8_t)(o + (world_seed % NSCR)) % NSCR];
-    }
-    return objtypes[otyp].name;
+    return (uint8_t)(cls == '!' || cls == '?' || cls == '=' || cls == '/');
 }
 
-/* display name: the true name once identified, else this game's appearance */
-static const char *item_name(uint8_t otyp)
+/* which of its class's types this is, counting in catalogue order. The old
+ * mapping was kept by hand (the appended arsenal types "sit past their class
+ * block"); counting makes every future append correct for free. */
+static uint8_t cls_ordinal(uint8_t otyp)
 {
-    return id_is(otyp) ? objtypes[otyp].name : appearance_of(otyp);
+    uint8_t i, o = 0;
+    char cls = objtypes[otyp].cls;
+    for (i = 0; i < otyp; i++)
+        if (objtypes[i].cls == cls) o++;
+    return o;
+}
+
+/* Position o of this game's shuffle of an n-look pool.
+ *
+ * It used to be a rotation, pool[(o + seed) % n], and a rotation gives the
+ * whole class away the moment one look is learned: know that ruby is healing
+ * and the fixed pool order names every other potion. A Fisher-Yates shuffle,
+ * seeded off world_seed and the class (so the four do not share one pattern),
+ * keeps each look independent. It runs its OWN xorshift -- an rn2 here would
+ * shift the game's stream every time an item is named. */
+static uint8_t shuffled(uint8_t o, uint8_t n, char salt)
+{
+    uint8_t perm[SHUF_MAX], i, j, t;
+    uint16_t x = (uint16_t)((world_seed ^ ((uint16_t)(uint8_t)salt * 40503u)) | 1u);
+    for (i = 0; i < n; i++) perm[i] = i;
+    for (i = (uint8_t)(n - 1); i > 0; i--) {
+        x ^= (uint16_t)(x << 7);
+        x ^= (uint16_t)(x >> 9);
+        x ^= (uint16_t)(x << 8);
+        j = (uint8_t)(x % (uint8_t)(i + 1));
+        t = perm[i]; perm[i] = perm[j]; perm[j] = t;
+    }
+    return perm[o < n ? o : (uint8_t)(o % n)];   /* a too-short pool repeats
+                                                  * a look rather than reading
+                                                  * past perm[] */
+}
+
+/* this game's look word for a type ("ruby", "XYZZY", "oak"), identified or
+ * not -- the discoveries screen needs it for the types you HAVE learned */
+static const char *appearance_of(uint8_t otyp)
+{
+    char    cls = objtypes[otyp].cls;
+    uint8_t o   = cls_ordinal(otyp);
+    if (cls == '!') return pot_appear[shuffled(o, NAPPEAR(pot_appear), cls)];
+    if (cls == '?') return scr_appear[shuffled(o, NAPPEAR(scr_appear), cls)];
+    if (cls == '=') return rng_appear[shuffled(o, NAPPEAR(rng_appear), cls)];
+    if (cls == '/') return wnd_appear[shuffled(o, NAPPEAR(wnd_appear), cls)];
+    return objtypes[otyp].name;
 }
 
 /* a printable description with an erosion prefix and +N enchantment, e.g.
@@ -423,8 +485,15 @@ static const char *obj_desc(const obj_t *o)
         s = mon_name((char)o->ench);
         while (*s) *p++ = *s++;
         s = " corpse";
+    } else if (has_looks(t->cls) && !id_is(o->otyp)) {
+        /* unidentified: this game's look plus the class noun */
+        if (t->cls == '?') { s = "scroll labeled "; while (*s) *p++ = *s++; }
+        s = appearance_of(o->otyp);
+        while (*s) *p++ = *s++;
+        s = (t->cls == '!') ? " potion" : (t->cls == '=') ? " ring" :
+            (t->cls == '/') ? " wand"   : "";
     } else {
-        s = item_name(o->otyp); /* true name if identified, else appearance */
+        s = t->name;
     }
     while (*s) *p++ = *s++;
     if (t->cls == '/') {        /* a wand shows its remaining charges: " (N)" */
@@ -533,6 +602,8 @@ void give_item(uint8_t otyp, uint8_t worn) __banked
     o.ero  = 0;
     o.worn = worn;
     o.buc  = BUC_UNC;
+    id_set(otyp);            /* you know what you packed, as in NetHack --
+                              * the Wizard's potion no longer reads "ruby" */
     if (inv_add(&o) && worn) recompute_gear();
 }
 
@@ -664,19 +735,29 @@ static uint16_t item_hash(uint8_t x, uint8_t y)
  * more enchantment, so a treasure vault really is worth breaking into. */
 #define VAULT_DEPTH_BONUS 8
 
-/* pick a concrete object of class cls that may appear by the given depth */
+/* pick a concrete object of class cls that may appear by the given depth,
+ * weighted by `prob` (see the catalogue). With every weight 1 this is the old
+ * elig[h % n] exactly. Two passes instead of an elig[NUMOBJ] array: the
+ * catalogue grew past sixty and that array sat on the 512 B stack. */
 static uint8_t resolve_otyp(char cls, uint16_t h, uint8_t depth)
 {
-    uint8_t i, elig[NUMOBJ], n = 0;
+    uint8_t i;
+    uint16_t sum = 0, r;
     for (i = 0; i < NUMOBJ; i++)
         if (objtypes[i].cls == cls && objtypes[i].mindep <= depth)
-            elig[n++] = i;
-    if (n == 0) {
+            sum += objtypes[i].prob;
+    if (sum == 0) {
         for (i = 0; i < NUMOBJ; i++)
             if (objtypes[i].cls == cls) return i;
         return O_FOOD;
     }
-    return elig[h % n];
+    r = (uint16_t)(h % sum);
+    for (i = 0; i < NUMOBJ; i++)
+        if (objtypes[i].cls == cls && objtypes[i].mindep <= depth) {
+            if (r < objtypes[i].prob) return i;
+            r = (uint16_t)(r - objtypes[i].prob);
+        }
+    return O_FOOD;                      /* unreachable: r < sum */
 }
 
 /* resolve the concrete object lying at (x,y) - shared by the "you see here"
@@ -1107,16 +1188,14 @@ void show_inventory(void) __banked
 }
 #endif
 
-/* ---- discoveries ('\'): the potion and scroll looks you have decoded ----
- * Only those two classes wear per-game appearances (everything else shows
- * its true name from day one), so the screen maps look -> meaning for each
- * type you have identified. One 32-col layout for both targets, like the
- * shared help screen; the main loop repaints the map afterwards. */
-void show_discoveries(void) __banked
+/* ---- discoveries ('D'): the looks you have decoded ----
+ * The four classes that wear per-game appearances, each look beside what it
+ * turned out to be. One 32-col layout for both targets, like the shared help
+ * screen; the main loop repaints the map afterwards. A full list (40-odd
+ * lines once rings and wands joined) no longer fits one screen, so it pages. */
+static void disc_top(void)
 {
-    static const char cls_of[2] = { '!', '?' };
-    uint8_t i, y, c, row = 2, any = 0;
-
+    uint8_t y;
     for (y = 0; y <= 21; y++)
         clear_line(y, C_BLACK);
 #ifndef __ZXNEXT
@@ -1124,24 +1203,43 @@ void show_discoveries(void) __banked
     map_dirty = 1;                   /* restore the map + status on return */
 #endif
     print_str(0, 0, "Discoveries  (any key)", C_WHITE | C_BRIGHT);
+}
 
-    for (c = 0; c < 2; c++) {
+static void disc_wait(void)
+{
+    in_wait_nokey();
+    getkey();
+    in_wait_nokey();
+}
+
+void show_discoveries(void) __banked
+{
+    static const char cls_of[4] = { '!', '?', '=', '/' };
+    static const char *const head[4] = { "Potions:", "Scrolls:", "Rings:", "Wands:" };
+    uint8_t i, c, row = 2, any = 0;
+
+    disc_top();
+    for (c = 0; c < 4; c++) {
         uint8_t shown = 0;
         for (i = 0; i < NUMOBJ; i++) {
-            const char *ap;
             uint8_t x;
             if (objtypes[i].cls != cls_of[c] || !id_is(i)) continue;
+            /* never strand a heading on the last line of a page */
+            if (row > (uint8_t)(shown ? 20 : 19)) {
+                print_str(1, 21, "--More--", C_CYAN | C_BRIGHT);
+                disc_wait();
+                disc_top();
+                row = 2; shown = 0;
+            }
             if (!shown) {
-                print_str(1, row, c ? "Scrolls:" : "Potions:", C_CYAN | C_BRIGHT);
+                print_str(1, row, head[c], C_CYAN | C_BRIGHT);
                 row++; shown = 1;
             }
-            /* the look, then the true name's tail ("potion of "/"scroll of "
-             * = 10 chars); scroll looks drop their "scroll labeled " prefix
-             * (15 chars) so the longest pair stays inside 32 columns */
-            ap = appearance_of(i);
-            x = print_str(2, row, c ? ap + 15 : ap, C_YELLOW | C_BRIGHT);
+            /* the look, then the true name's tail: "potion of "/"scroll of "
+             * are 10 chars, "ring of "/"wand of " 8 */
+            x = print_str(2, row, appearance_of(i), C_YELLOW | C_BRIGHT);
             x = print_str(x, row, ": ", C_WHITE);
-            print_str(x, row, objtypes[i].name + 10, C_WHITE | C_BRIGHT);
+            print_str(x, row, objtypes[i].name + (c < 2 ? 10 : 8), C_WHITE | C_BRIGHT);
             row++; any = 1;
         }
         if (shown) row++;
@@ -1149,12 +1247,9 @@ void show_discoveries(void) __banked
     if (!any)
         print_str(2, 2, "Nothing identified yet.", C_WHITE);
 
-    in_wait_nokey();
-    getkey();
-    in_wait_nokey();
-#ifndef __ZXNEXT
-    clear_line(0, C_BLACK);   /* no message follows: wipe the header row */
-#endif
+    disc_wait();
+    clear_line(0, C_BLACK);   /* no message follows: wipe the header row, or
+                               * "(any key)" lingers on the Next's msg line */
 }
 
 /* ---- equip / use ---- */
@@ -1245,66 +1340,40 @@ uint8_t life_saved(void) __banked
     return 1;
 }
 
-/* The best amulet you can actually put on.
- *
- * find_best() cannot do this job: every amulet has prop 0, so it returns
- * whichever sits first in the pack -- and one of them is the Amulet of Yendor,
- * which is carried for the whole climb out and is not wearable. 'P' then found
- * it, failed the "not Yendor" guard and put nothing on at all, so life saving
- * was unreachable exactly during the ascent, which is when it matters most. */
-static int find_best_amulet(void)
-{
-    int best = -1, bestval = -999;
-    uint8_t i;
-    for (i = 0; i < inv_count; i++) {
-        int v;
-        if (objtypes[inv[i].otyp].cls != '"') continue;
-        if (inv[i].otyp == O_AMULET || inv[i].worn) continue;
-        v = (int)inv[i].ench - inv[i].ero;
-        if (buc_st(&inv[i]) == BUC_CURSE) v -= 2;   /* prefer a clean one */
-        if (v > bestval) { bestval = v; best = (int)i; }
-    }
-    return best;
-}
-
+/* 'P' puts on a ring or an amulet -- one key for all the jewellery, as in
+ * NetHack. It used to choose "the best ring" by itself, which was harmless
+ * while both rings wore their names and would now be an oracle: with the
+ * looks unknown, choosing for the player tells him which ruby ring is worth
+ * wearing. So it asks, through the same menu as q/r/z (silent when you carry
+ * one type). One ring on the hand at a time. It charges its own turn, like
+ * q/e/r, so a cancel costs none -- mainentry used to charge one and the
+ * amulet path a second. */
 void do_puton(void) __banked
 {
-    int w = find_worn('='), s;
+    int s = select_item('P'), w;
+    char cls;
+    if (s == -1) { msg("You have nothing to put on."); return; }
+    if (s == -2) { msg("Never mind."); return; }
+    if (inv[s].worn) { msg("You are already wearing that."); return; }
+    cls = objtypes[inv[s].otyp].cls;
+    w = find_worn(cls);
     if (w >= 0 && buc_st(&inv[w]) == BUC_CURSE && buc_seen(&inv[w])) {
-        msg("Your ring is stuck fast!"); return;
+        msg(cls == '=' ? "Your ring is stuck fast!" : "Your amulet is stuck fast!");
+        return;
     }
-    s = find_best('=');
-    if (s < 0 || inv[s].worn) {
-        /* nothing to gain on the hand: hang an amulet round the neck instead,
-         * so one key still covers all the jewellery as it does in NetHack */
-        int a = find_best_amulet();
-        if (a >= 0) {
-            /* A cursed amulet holds on, the way a cursed ring and a cursed
-             * suit do -- unworn_class() used to swap it off for free. */
-            int wa = find_worn('"');
-            if (wa >= 0 && buc_st(&inv[wa]) == BUC_CURSE && buc_seen(&inv[wa])) {
-                msg("Your amulet is stuck fast!"); return;
-            }
-            if (wa >= 0) inv[wa].worn = 0;
-            inv[a].worn = 1;
-            inv[a].buc |= BUC_KNOWN;
-            recompute_gear();
-            id_set(inv[a].otyp);
-            msg2("You wear ", obj_desc(&inv[a]), ".");
-            sfx_magic();
-            acted = 1; turns++;
-            return;
-        }
-    }
-    if (s < 0) { msg("You have no ring to put on."); return; }
-    if (inv[s].worn) { msg("You are already wearing a ring."); return; }
-    unworn_class('=');
+    if (w >= 0) inv[w].worn = 0;        /* only that hand, or that neck */
     inv[s].worn = 1;
-    inv[s].buc |= BUC_KNOWN;
+    inv[s].buc |= BUC_KNOWN;             /* putting it on reveals a curse */
     recompute_gear();
+    /* A look is learned when the effect shows: an amulet at once (it has no
+     * look to learn), protection because the AC moves. The other rings keep
+     * their secret until they act, or until a scroll of identify. */
+    if (cls == '"' || (inv[s].otyp == O_PROTECT && gear_eff(&inv[s]) > 0))
+        id_set(inv[s].otyp);
     if (buc_st(&inv[s]) == BUC_CURSE) msg2("Stuck!  ", obj_desc(&inv[s]), ".");
-    else                             msg("The ring tingles.  Protected!");
+    else                             msg2("Put on ", obj_desc(&inv[s]), ".");
     sfx_magic();
+    acted = 1; turns++;
 }
 
 /* does inventory item i match the command's class?  'r' reads both scrolls
@@ -1312,6 +1381,8 @@ void do_puton(void) __banked
 static uint8_t cls_match(uint8_t i, char cls)
 {
     char c = objtypes[inv[i].otyp].cls;
+    if (cls == 'P')          /* 'P': rings, and every amulet but Yendor's */
+        return (uint8_t)(c == '=' || (c == '"' && inv[i].otyp != O_AMULET));
     return (uint8_t)(c == cls || (cls == '?' && c == '&'));
 }
 
@@ -1331,6 +1402,7 @@ static const char *pick_prompt(char cls)
     case '?': return "Read which scroll?";
     case ')': return "Throw which weapon?";
     case '/': return "Zap which wand?";
+    case 'P': return "Put on what?";
     }
     return "Which item?";
 }
