@@ -672,6 +672,53 @@ static void inv_remove(uint8_t s)
     inv_count--;
 }
 
+/* A cursed piece you have on stays on. There is no remove command, so `d` is
+ * how anything comes off -- and it used to take a stuck ring or a welded suit
+ * off as freely as a clean one, which made every curse a formality: P said
+ * "stuck fast" and d dropped it. 1 = it is stuck (and the curse is now seen). */
+static uint8_t cursed_on(uint8_t s)
+{
+    char cls;
+    if (!inv[s].worn || buc_st(&inv[s]) != BUC_CURSE) return 0;
+    inv[s].buc |= BUC_KNOWN;
+    cls = objtypes[inv[s].otyp].cls;
+    msg(cls == ')' ? "Your weapon is welded fast!" :
+        cls == '[' ? "Your armor is welded on!"    :
+        cls == '=' ? "Your ring is stuck fast!"    : "Your amulet is stuck fast!");
+    return 1;
+}
+
+#ifndef __ZXNEXT
+/* The ULA has 23 rows under a list's header and the pack holds 26. The
+ * inventory and the drop list simply stopped at the 23rd item, so x, y and z
+ * were in the pack and on no screen; select_item did not stop at all, and a
+ * long enough menu drew its tail below row 23 -- over the attributes, the
+ * printer buffer and the system variables. So a list pages instead: call this
+ * before each entry, and past `last` it shows --More--, waits, and starts a
+ * fresh page on row 1. */
+static uint8_t list_row(uint8_t row, uint8_t last)
+{
+    if (row <= last) return row;
+    print_str(0, 23, "--More--", C_CYAN | C_BRIGHT);
+    in_wait_nokey();
+    getkey();
+    in_wait_nokey();
+    for (row = 1; row <= 23; row++) clear_line(row, C_BLACK);
+    return 1;
+}
+#else
+/* The Next's menus list one item a row from row 4, so a long one runs past
+ * the status bar (rows 22-23, which the next draw_status repaints) into rows
+ * 24-31, which nothing repaints: the help pointer was overwritten and the
+ * tail of the list stayed on screen for the rest of the game. */
+static void menu_tail_clear(void)
+{
+    uint8_t row;
+    for (row = 24; row < TM_H; row++) clear_line(row, C_BLACK);
+    draw_help();
+}
+#endif
+
 /* Offer the corpse in inventory slot s on the altar the hero stands on: the
  * NetHack #offer, folded into `d` (drop) since we have no extended commands.
  * The god's mood scales with how well the altar's alignment matches yours;
@@ -819,6 +866,27 @@ static uint8_t resolve_otyp(char cls, uint16_t h, uint8_t depth)
     return O_FOOD;                      /* unreachable: r < sum */
 }
 
+/* The two curse rules the 1.4 batch brought, for every ring and scroll the
+ * game makes -- the floor's (resolve_floor) and a kill's loot (death_drop),
+ * which used to hand out every junk ring uncursed, so it came off as easily
+ * as it went on.
+ *
+ * NetHack curses the bad rings nine times in ten, and that is what makes an
+ * unknown ring a gamble rather than a free sample: the junk ones usually stick
+ * until a remove curse, a prayer or an altar lets go. Scrolls may be blessed
+ * or cursed, NetHack's one in eight each. It matters to four of them:
+ * enchantment runs backwards, remove curse fails, charging drains, genocide
+ * summons. */
+static void gen_buc(obj_t *o, uint16_t h)
+{
+    if (o->otyp >= O_RHUNGER && o->otyp <= O_RTPORT && ((h >> 7) % 10u) != 0)
+        o->buc = BUC_CURSE;
+    if (objtypes[o->otyp].cls == '?') {
+        uint8_t r = (uint8_t)((h >> 11) & 7);
+        o->buc = (r == 6) ? BUC_CURSE : (r == 7) ? BUC_BLESS : BUC_UNC;
+    }
+}
+
 /* resolve the concrete object lying at (x,y) - shared by the "you see here"
  * look and by pickup, so they always agree. The cell's identity hash stays
  * tied to the real dlvl (so the item is stable across visits), but inside a
@@ -869,18 +937,7 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
         uint8_t r = (uint8_t)((h >> 11) & 7);  /* 5/8 uncursed, 2/8 cursed, 1/8 blessed */
         o->buc = (r < 5) ? BUC_UNC : (r < 7) ? BUC_CURSE : BUC_BLESS;
     }
-    /* NetHack curses the bad rings nine times in ten, and that is what makes
-     * an unknown ring a gamble rather than a free sample: the junk ones
-     * usually stick until a remove curse, a prayer or an altar lets go. */
-    if (o->otyp >= O_RHUNGER && o->otyp <= O_RTPORT && ((h >> 7) % 10u) != 0)
-        o->buc = BUC_CURSE;
-    /* Scrolls may be blessed or cursed, NetHack's one in eight each. It
-     * matters to four of them: enchantment runs backwards, remove curse
-     * fails, charging drains, genocide summons. */
-    if (c == '?') {
-        uint8_t r = (uint8_t)((h >> 11) & 7);
-        o->buc = (r == 6) ? BUC_CURSE : (r == 7) ? BUC_BLESS : BUC_UNC;
-    }
+    gen_buc(o, h);
 }
 
 /* shop value of an object: catalogue base price plus a little per enchant */
@@ -955,6 +1012,7 @@ void death_drop(uint8_t x, uint8_t y) __banked
     uint16_t h = rng_next();
     o.otyp = resolve_otyp(pool[h & 7], (uint16_t)(h >> 3), (uint8_t)eff_depth());
     o.ench = 0; o.ero = 0; o.worn = 0; o.buc = BUC_UNC;
+    gen_buc(&o, rng_next());            /* a fresh draw: h already chose the type */
     floor_drop(x, y, &o);
 }
 
@@ -1099,12 +1157,14 @@ void do_drop(void) __banked
     in_wait_nokey();
     k = getkey();
     in_wait_nokey();
+    menu_tail_clear();                  /* a long list ran past the status bar */
     s = (k >= 'a' && (uint8_t)(k - 'a') < inv_count) ? (k - 'a') : -1;
     if (s < 0) return;                  /* cancelled; the caller redraws */
     if (inv[s].otyp == O_AMULET) {      /* never lose the win item by drop/sale */
         msg("You dare not part with it!");
         return;
     }
+    if (cursed_on((uint8_t)s)) return;  /* stuck on: not dropped, not sold */
     if (inv[s].otyp == O_CORPSE && terrain(hero_x, hero_y) == '_') {
         sacrifice((uint8_t)s);          /* a corpse on an altar is an offering */
         return;
@@ -1137,10 +1197,12 @@ void do_drop(void) __banked
     map_dirty = 1;                                              /* restore the map on return */
     print_str(0, 0, in_shop ? "Sell which?  (else cancel)"
                             : "Drop which?  (else cancel)", C_WHITE | C_BRIGHT);
-    for (i = 0; i < inv_count && i < 23; i++) {    /* one item per row, rows 1..23 */
+    row = 1;
+    for (i = 0; i < inv_count; i++) {    /* one item per row, paged (list_row) */
         char     cls = objtypes[inv[i].otyp].cls;
-        uint8_t  r2  = (uint8_t)(1 + i);
+        uint8_t  r2  = list_row(row, 22);
         uint8_t  x;
+        row = (uint8_t)(r2 + 1);
         puttile(0, r2, tile_for(cls));    /* the item's graphic tile */
         putcell(2, r2, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
         x = print_str(3, r2, " ", C_WHITE);
@@ -1165,6 +1227,7 @@ void do_drop(void) __banked
         msg("You dare not part with it!");
         return;
     }
+    if (cursed_on((uint8_t)s)) return;  /* stuck on: not dropped, not sold */
     if (inv[s].otyp == O_CORPSE && terrain(hero_x, hero_y) == '_') {
         sacrifice((uint8_t)s);          /* a corpse on an altar is an offering */
         return;
@@ -1236,10 +1299,12 @@ void show_inventory(void) __banked
     if (inv_count == 0) {
         print_str(2, 2, "Your pack is empty.", C_WHITE);
     } else {
-        for (i = 0; i < inv_count && i < 23; i++) {   /* one column, rows 1..23 */
+        y = 1;
+        for (i = 0; i < inv_count; i++) {   /* one column, paged (list_row) */
             char cls = objtypes[inv[i].otyp].cls;
-            uint8_t row = (uint8_t)(1 + i);
+            uint8_t row = list_row(y, 22);
             uint8_t x;
+            y = (uint8_t)(row + 1);
             puttile(0, row, tile_for(cls));    /* the item's graphic tile */
             putcell(2, row, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
             x = print_str(3, row, " ", C_WHITE);
@@ -1514,6 +1579,7 @@ int select_item(char cls) __banked
     in_wait_nokey();
     k = getkey();
     in_wait_nokey();
+    menu_tail_clear();
     if (k >= 'a' && (uint8_t)(k - 'a') < inv_count &&
         cls_match((uint8_t)(k - 'a'), cls))
         return k - 'a';
@@ -1535,13 +1601,15 @@ int select_item(char cls) __banked
     if (first < 0) return -1;
     if (!multi)    return first;
 
-    for (row = 0; row <= 21; row++) clear_line(row, C_BLACK);
-    map_dirty = 1;                   /* restore the map on return */
+    for (row = 0; row <= 23; row++) clear_line(row, C_BLACK);   /* status too: a
+                                     * long menu pages over row 23 (list_row) */
+    map_dirty = 1;                   /* restore the map + status on return */
     print_str(0, 0, prompt, C_WHITE | C_BRIGHT);
     row = 2;
     for (i = 0; i < inv_count; i++) {
         uint8_t x;
         if (!cls_match(i, cls)) continue;
+        row = list_row(row, 21);         /* the prompt below needs row + 1 */
         putcell(0, row, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
         x = print_str(1, row, " ", C_WHITE);
         print_str(x, row, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);

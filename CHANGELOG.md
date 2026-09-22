@@ -78,6 +78,39 @@ already had, because in NetHack the interactions are the content.
   amulet path a second.
 - The discoveries header no longer lingers on the Next's message line after
   you close the screen.
+- **A bug-hunting pass before release** found eight more, each proven in the
+  emulator before it was fixed and after:
+  - **A cursed ring, suit or weapon came off with `d`.** `P` said *stuck
+    fast* and `d` dropped the same ring a keypress later — or sold it in a
+    shop — and `t` threw a welded weapon. Every curse since blessed/cursed
+    gear arrived was a formality, and the junk rings this release curses nine
+    times in ten would have been free samples. A cursed piece you have on now
+    stays on until a remove curse, a prayer, an altar's offering or a scroll
+    of destroy armor lets go; the refusal costs no turn.
+  - **128K: a full pack did not fit the screen.** The inventory and the drop
+    list stopped at the 23rd item, so the last three were in the pack and on
+    no screen; an item menu did not stop at all, and a long one drew past the
+    bottom of the screen into the printer buffer and the system variables
+    (430 bytes, measured). Lists page with `--More--` now.
+  - **Next: a long drop or item menu left its tail on screen** below the
+    status bar, over the help pointer, for the rest of the game.
+  - **A monster's loot was never cursed.** Junk rings dropped by a kill came
+    off as easily as they went on; rings and scrolls from kills now follow the
+    same curse rules as the ones on the floor.
+  - **A potion of gain energy could lower your maximum power** — from the 61
+    an altar's boon can leave it at, down to its own cap of 60.
+  - **A genocided nymph kept what she had stolen.** It now drops where she
+    stood, as when she is killed.
+  - **A cursed scroll of genocide read in a shop** put the horde inside it,
+    where the monster AI never lets anything move — a pack that could bite
+    you and never leave. It stays out of shops now, like the wand of
+    teleportation already did.
+  - **Killing a floating eye still froze you.** Its gaze needs it alive, as in
+    NetHack; the freeze also buried the kill message.
+
+  `tools/balance.py`'s source references — the `file:line` beside each
+  formula — had drifted: 37 of its 40 pointed at the wrong line. Re-anchored.
+  None of the fixes touches anything the model draws, so its numbers stand.
 
 ### Not done
 - **Restore ability** was planned beside gain ability and left out: nothing

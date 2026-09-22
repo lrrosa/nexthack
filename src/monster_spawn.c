@@ -207,8 +207,11 @@ uint8_t summon_near(char type) __banked
             int x = hero_x + dx, y = hero_y + dy;
             if (n >= want) return n;
             if (dx == 0 && dy == 0) continue;
+            /* never into a shop: the AI refuses a shop cell as a step, so a
+             * horde summoned there could bite while you stood by it and then
+             * never move again (the wand of teleportation's rule too) */
             if (!walkable(terrain(x, y)) || lvl[y][x] == '+' ||
-                monster_at(x, y) >= 0) continue;
+                shop_in_room(x, y) || monster_at(x, y) >= 0) continue;
             slot = MAXMON;
             for (i = 0; i < mcount; i++)
                 if (!m_alive[i] && (int8_t)i != pet_idx) { slot = i; break; }

@@ -193,7 +193,9 @@ Three rules make its numbers trustworthy, and any change to the tool must keep
 them: (1) `montypes[]`, `objtypes[]` and `classes[]` are **parsed out of the C**,
 never retyped, and a table that stops parsing makes the tool refuse to run
 rather than report stale numbers; (2) every formula carries the `file:line` it
-mirrors (`balance.py formulas` prints them side by side); (3) the dice are the
+mirrors (`balance.py formulas` prints them side by side) -- line numbers, so they
+rot whenever code above them moves (by 1.4, 37 of the 40 pointed at the wrong
+line); re-point them in the commit that moves the code; (3) the dice are the
 game's own xorshift16 and item hashes, bit-exact. So **after tuning a table,
 re-running the tool measures the change immediately** -- that is the point of it.
 
@@ -463,6 +465,17 @@ tilemap.
   the scroll, the trap, the spell and teleportitis. It is where teleport control
   asks; assigning `hero_x/y` from `level_random_floor` anywhere else would
   silently bypass the ring.
+- **A cursed piece the hero has on stays on.** There is no remove command, so
+  every way an item leaves the pack is a way out of a curse: `d` (drop and
+  sell) asks `cursed_on()` in `item.c`, and `t` checks the weld itself in
+  `item_use.c`. A new verb that parts with an item must ask too. From BUC's
+  arrival until the 1.4 bug hunt, `d` did not, and every curse was a formality.
+- **Any 128K list goes through `list_row()`.** The ULA has 23 rows under a
+  header and the pack holds 26: the inventory and drop lists used to stop at
+  the 23rd item, and an item menu with no stop drew below row 23, into the
+  printer buffer and the system variables. `list_row` pages with `--More--`.
+  The Next's one-per-row menus run past the status bar into rows 24-31, which
+  nothing repaints, so they end with `menu_tail_clear()`.
 
 ### Monster AI (`monster.c`)
 - Monster types are a table (`montypes[]`: char, hp, damage, xp, min depth, tile,

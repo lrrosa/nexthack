@@ -130,10 +130,12 @@ void attack_monster(uint8_t mi) __banked
     hit_monster(mi, dmg);
     if (mt->corr && rn2(2))         /* acid eats the weapon you strike it with */
         corrode_worn(')');
-    if (mt->ch == 'e' && !st_blind) {
+    if (mt->ch == 'e' && m_alive[mi] && !st_blind) {
         /* you met the floating eye's gaze mid-swing -- the classic freeze.
          * A blind hero can't meet it (and telepathy makes blind-fighting
-         * eyes the NetHack-approved trick). */
+         * eyes the NetHack-approved trick). A dead eye has no gaze: the blow
+         * that killed it used to freeze you all the same, and bury the kill
+         * message under "You are frozen" -- NetHack's passive needs it alive. */
         if (ring_fx & RF_FREEACT) {     /* free action holds: NetHack's line */
             ring_noticed(RF_FREEACT);
             msg("You momentarily stiffen.");

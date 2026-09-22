@@ -152,7 +152,8 @@ void do_quaff(void) __banked
         /* NetHack's +d5-ish to the pool, and the pool refilled; 60 is the
          * cap the altar's boon already keeps */
         uint8_t g = (uint8_t)(rn2(4) + 2);
-        pmaxpw = (uint8_t)((uint16_t)pmaxpw + g > 60 ? 60 : pmaxpw + g);
+        if (pmaxpw < 60)     /* the altar's boon can leave it at 61: never lower it */
+            pmaxpw = (uint8_t)(pmaxpw + g > 60 ? 60 : pmaxpw + g);
         pw = pmaxpw;
         msg("Magic courses through you!");
     } else {                                /* healing / extra healing */
@@ -285,6 +286,8 @@ static void genocide(uint8_t cursed)
         if (!m_alive[i]) continue;
         if (m_type[i] != ch && !(ch == 'm' && m_type[i] == 'x')) continue;
         m_alive[i] = 0;
+        drop_held(i);           /* a nymph's pocket empties where she stood --
+                                 * or the next monster to take her slot held it */
         if ((int8_t)i == pet_idx) { pet_idx = -1; have_pet = 0; pet_hp = 0; }
     }
     map_flush = 1;                      /* +zx: they vanish across the map */
@@ -424,6 +427,13 @@ void do_throw(void) __banked
     if (s == -2) { msg("Never mind."); return; }
 
     worn = inv[s].worn;
+    if (worn && buc_st(&inv[s]) == BUC_CURSE) {
+        /* a welded blade does not leave your hand -- the throw was the other
+         * way out of a curse besides drop (see item.c cursed_on) */
+        inv[s].buc |= BUC_KNOWN;
+        msg("It is welded to your hand!");
+        return;
+    }
     if (worn) {                          /* don't disarm yourself by accident */
         int k;
         msg("Throw your wielded weapon?  y/n");
