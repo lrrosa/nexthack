@@ -18,6 +18,7 @@
 #include "sfx.h"
 #include "rng.h"
 #include "spells.h"
+#include "nexthack.h"    /* hero_teleport (SP_TELE)                          */
 
 #define NSPELL 4
 #define SP_FORCE 0
@@ -145,10 +146,7 @@ void do_cast(void) __banked
         if (php > pmaxhp) php = pmaxhp;
         msg("You feel better.");
     } else {                             /* SP_TELE: whisk yourself away */
-        uint8_t tx, ty;
-        level_random_floor(&tx, &ty);
-        hero_x = tx; hero_y = ty;
-        map_dirty = 1;                   /* +zx: recenter on the new spot */
         msg("You blink across the level.");
+        hero_teleport();                 /* control asks; recentres the +zx */
     }
 }

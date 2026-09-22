@@ -134,7 +134,19 @@ static const objtype_t objtypes[NUMOBJ] = {
      * (resolve_floor checks the depth), so these are what the class means
      * anywhere else. Neither has a prop: their worth is the effect. */
     { '"',  0,  180,   6, 1, SL_NONE, "amulet of ESP" },
-    { '"',  0,  400,  12, 1, SL_NONE, "amulet of life" }
+    { '"',  0,  400,  12, 1, SL_NONE, "amulet of life" },
+    /* The 1.4 rings. None armours you (recompute_gear): each is an effect,
+     * read through ring_fx by whoever it concerns. Equal weights, as in
+     * NetHack -- which makes protection a ninth of rings instead of a half;
+     * tools/balance.py measures what that costs. Prices are NetHack's, so
+     * a shop's price still says something about an unknown ring. */
+    { '=',  0,  200,   3, 1, SL_NONE, "ring of slow digestion" },
+    { '=',  0,  200,   5, 1, SL_NONE, "ring of free action" },
+    { '=',  0,  300,   6, 1, SL_NONE, "ring of teleport control" },
+    { '=',  0,  100,   3, 1, SL_NONE, "ring of stealth" },
+    { '=',  0,  100,   3, 1, SL_NONE, "ring of hunger" },
+    { '=',  0,  150,   3, 1, SL_NONE, "ring of aggravate monster" },
+    { '=',  0,  200,   4, 1, SL_NONE, "ring of teleportitis" }
 };
 
 /* obj_t, the BUC bits and inv[] live in item_int.h (item_use.c needs them).
@@ -298,6 +310,7 @@ static void recompute_gear(void)
 
     weapon_dmg = 0;
     regen_ring = 0;         /* re-derived from what is worn (never saved) */
+    ring_fx = 0;
     amu_esp = amu_life = 0;
     for (i = 0; i < inv_count; i++) {
         const objtype_t *t;
@@ -321,6 +334,10 @@ static void recompute_gear(void)
             }
             if (inv[i].otyp == O_REGEN)
                 regen_ring = 1;         /* upkeep() mends twice as fast */
+            /* the 1.4 rings are pure effects; a cursed one still works (it
+             * is only stuck), as in NetHack */
+            if (inv[i].otyp >= O_RSLOWDIG && inv[i].otyp <= O_RTPORT)
+                ring_fx |= (uint8_t)(1u << (inv[i].otyp - O_RSLOWDIG));
         } else if (t->cls == '"') {
             if (inv[i].otyp == O_AMU_ESP)  amu_esp = 1;
             if (inv[i].otyp == O_AMU_LIFE) amu_life = 1;
@@ -503,6 +520,18 @@ static const char *obj_desc(const obj_t *o)
     }
     *p = 0;
     return buf;
+}
+
+/* A worn ring's effect just showed -- teleport control asked where to go,
+ * free action shrugged off a gaze, teleportitis blinked you away -- so its
+ * look is learned, as NetHack learns it. rf is the one RF_* bit that acted;
+ * the ring behind it is O_RSLOWDIG + that bit's position. */
+void ring_noticed(uint8_t rf) __banked
+{
+    uint8_t b = 0;
+    if (!(ring_fx & rf) || rf == 0) return;
+    while (!(rf & 1u)) { rf >>= 1; b++; }
+    id_set((uint8_t)(O_RSLOWDIG + b));
 }
 
 /* An altar senses the blessed/cursed state of everything you carry. Stepping
@@ -810,6 +839,11 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
         uint8_t r = (uint8_t)((h >> 11) & 7);  /* 5/8 uncursed, 2/8 cursed, 1/8 blessed */
         o->buc = (r < 5) ? BUC_UNC : (r < 7) ? BUC_CURSE : BUC_BLESS;
     }
+    /* NetHack curses the bad rings nine times in ten, and that is what makes
+     * an unknown ring a gamble rather than a free sample: the junk ones
+     * usually stick until a remove curse, a prayer or an altar lets go. */
+    if (o->otyp >= O_RHUNGER && o->otyp <= O_RTPORT && ((h >> 7) % 10u) != 0)
+        o->buc = BUC_CURSE;
 }
 
 /* shop value of an object: catalogue base price plus a little per enchant */

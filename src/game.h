@@ -66,6 +66,18 @@ extern uint8_t  ac;           /* displayed armour class                   */
 extern uint8_t  regen_ring;   /* wearing the ring of regeneration: upkeep
                                * mends HP twice as fast (recomputed from
                                * the worn set by recompute_gear, not saved) */
+extern uint8_t  ring_fx;      /* RF_* bits from the worn ring: what the turn
+                               * loop, the AI and every teleport ask about it.
+                               * Recomputed like regen_ring, never saved. */
+/* The bit order IS the order of O_RSLOWDIG..O_RTPORT in item_int.h:
+ * recompute_gear sets 1 << (otyp - O_RSLOWDIG). Keep the two in step. */
+#define RF_SLOWDIG  0x01      /* slow digestion: food lasts 16x as long     */
+#define RF_FREEACT  0x02      /* free action: the floating eye can't freeze */
+#define RF_TCTRL    0x04      /* teleport control: you pick the spot        */
+#define RF_STEALTH  0x08      /* stealth: your footsteps wake no sleeper    */
+#define RF_HUNGER   0x10      /* hunger: you eat half again as fast (junk)  */
+#define RF_AGGR     0x20      /* aggravate monster: nothing sleeps (junk)   */
+#define RF_TPORT    0x40      /* teleportitis: you blink about (junk)       */
 extern uint16_t xp;           /* experience points                        */
 extern uint8_t  xlvl;         /* experience level                         */
 

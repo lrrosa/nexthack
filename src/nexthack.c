@@ -53,6 +53,7 @@ uint8_t  weapon_dmg = 0;
 uint8_t  armor_def = 0;
 uint8_t  ac = 10;
 uint8_t  regen_ring = 0;     /* worn ring of regeneration (see game.h) */
+uint8_t  ring_fx = 0;        /* RF_* effects of the worn ring (see game.h) */
 uint16_t xp = 0;
 uint8_t  xlvl = 1;
 int16_t  nutrition = 900;
@@ -616,7 +617,12 @@ void upkeep(void) __banked
 {
     uint8_t hs;
 
-    if (nutrition > -50)
+    /* slow digestion eats a sixteenth as fast, a ring of hunger half again
+     * as fast -- NetHack's one-in-twenty and every-other-turn, rounded to
+     * what a mask can say */
+    if (nutrition > -50 && (!(ring_fx & RF_SLOWDIG) || (turns & 15) == 0))
+        nutrition--;
+    if ((ring_fx & RF_HUNGER) && (turns & 1) && nutrition > -50)
         nutrition--;
 
     hs = hunger_now();
@@ -665,6 +671,13 @@ void upkeep(void) __banked
     if (st_sleep && !--st_sleep) msg("You wake up.");
     if (el_life && !--el_life)   msg("The engraving fades away.");
     if (pray_timeout) pray_timeout--;
+
+    /* teleportitis blinks you about, NetHack's one turn in eighty-five */
+    if ((ring_fx & RF_TPORT) && !dead && rn2(85) == 0) {
+        msg("You feel a wrenching sensation.");
+        ring_noticed(RF_TPORT);
+        hero_teleport();
+    }
 
     maybe_spawn_wanderer();                     /* the dungeon refills over time */
 }
@@ -750,7 +763,7 @@ void show_help(void) __banked
     print_str(2,  9, ", pick up",            C_CYAN | C_BRIGHT);
     print_str(2,  10, "i inventory  D found", C_CYAN | C_BRIGHT);
     print_str(2, 11, "w wield    W wear",    C_CYAN | C_BRIGHT);
-    print_str(2, 12, "P ring     t throw",   C_CYAN | C_BRIGHT);
+    print_str(2, 12, "P put on   t throw",   C_CYAN | C_BRIGHT);
     print_str(2, 13, "q quaff    e eat",     C_CYAN | C_BRIGHT);
     print_str(2, 14, "r read     p pray",    C_CYAN | C_BRIGHT);
     print_str(2, 15, "E engrave Elbereth",   C_CYAN | C_BRIGHT);
@@ -1027,12 +1040,15 @@ static void look_at(uint8_t x, uint8_t y)
     }
 }
 
-/* The cursor is a yellow 'X' drawn OVER the screen cell, the original cell
- * restored on every step -- no draw_map pass runs while looking. The Next
- * saves and rewrites the two tilemap bytes in place; the 128K re-blits the
- * cell from VIEW_SHADOW (which always mirrors the screen) and keeps the
- * cursor inside the current viewport (looking never scrolls). */
-void do_farlook(void) __banked
+/* The farlook cursor, shared with teleport control. It is a yellow 'X' drawn
+ * OVER the screen cell, the original cell restored on every step -- no
+ * draw_map pass runs while it moves. The Next saves and rewrites the two
+ * tilemap bytes in place; the 128K re-blits the cell from VIEW_SHADOW (which
+ * always mirrors the screen) and keeps the cursor inside the current viewport
+ * (it never scrolls, so a controlled teleport there reaches what is on
+ * screen). Enter, '.' or ',' picks the cell and returns 1; any other key
+ * gives up with 0. `look` narrates each step -- that is farlook. */
+static uint8_t cursor_pick(uint8_t look, uint8_t *px, uint8_t *py)
 {
     uint8_t cx = (uint8_t)hero_x, cy = (uint8_t)hero_y;
     uint8_t x0, x1;
@@ -1047,7 +1063,6 @@ void do_farlook(void) __banked
     uint16_t si;
     x0 = vx_origin; x1 = (uint8_t)(vx_origin + TM_W - 1);
 #endif
-    msg("Look where? (moves; Enter ends)");
     in_wait_nokey();
     key_rpt_slow(1);         /* the cursor glides gentler than the walk (Next) */
     for (;;) {
@@ -1073,14 +1088,49 @@ void do_farlook(void) __banked
         case 'u': if (cx < x1) cx++; if (cy > 0) cy--; break;
         case 'b': if (cx > x0) cx--; if (cy < MAPH - 1) cy++; break;
         case 'n': if (cx < x1) cx++; if (cy < MAPH - 1) cy++; break;
-        default:                       /* any other key ends the look */
+        default:                       /* any other key ends it */
             key_rpt_slow(0);
-            msg("");
             in_wait_nokey();
+            *px = cx; *py = cy;
+            return (uint8_t)(k == 13 || k == '.' || k == ',');
+        }
+        if (look) look_at(cx, cy);
+    }
+}
+
+void do_farlook(void) __banked
+{
+    uint8_t x, y;
+    msg("Look where? (moves; Enter ends)");
+    cursor_pick(1, &x, &y);
+    msg("");
+}
+
+/* Every way the hero is teleported -- the scroll, the trap, the spell and a
+ * ring of teleportitis -- comes through here, so a ring of teleport control
+ * governs all four from one place. The callers print their own line first.
+ * With control you pick the spot on the farlook cursor; a spot you cannot
+ * stand on (rock, a wall, a door, a monster) gets NetHack's "Sorry..." and
+ * the random blink you would have had anyway. */
+void hero_teleport(void) __banked
+{
+    uint8_t tx, ty;
+    resting = 0;                        /* teleportitis may fire mid-rest */
+    if (ring_fx & RF_TCTRL) {
+        ring_noticed(RF_TCTRL);         /* being asked gives the ring away */
+        msg("Teleport where? (Enter picks)");
+        if (cursor_pick(0, &tx, &ty) && walkable(terrain(tx, ty)) &&
+            lvl[ty][tx] != '+' && monster_at(tx, ty) < 0) {
+            hero_x = tx; hero_y = ty;
+            map_dirty = 1;              /* +zx: recentre on the new spot */
+            msg("");
             return;
         }
-        look_at(cx, cy);
+        msg("Sorry...");
     }
+    level_random_floor(&tx, &ty);
+    hero_x = tx; hero_y = ty;
+    map_dirty = 1;                      /* +zx: recentre on the new spot */
 }
 
 /* Per-visit set of traps that have already been sprung (so they don't re-fire).
@@ -1241,11 +1291,9 @@ static void spring_trap(int t, uint8_t x, uint8_t y)
         }
     } else if (t == 3) {                /* teleport trap: whisked away (the
                                          * runtime rn2 is safe, like the scroll) */
-        uint8_t tx, ty;
         msg("A teleport trap!");
         sfx_magic();
-        level_random_floor(&tx, &ty);
-        hero_x = tx; hero_y = ty;
+        hero_teleport();
     } else {                            /* rust trap: a gush from above */
         msg("A gush of water hits you!");
         corrode_worn('[');

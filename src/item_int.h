@@ -51,6 +51,11 @@ enum {
     O_SPLINT, O_BANDED, O_DRAGSCALE,           /* '[' the deep armour */
     O_SHIELD, O_HELM, O_BOOTS, O_CLOAK, O_LSHIELD,  /* '[' the other slots */
     O_AMU_ESP, O_AMU_LIFE,                     /* '"' amulets you can wear  */
+    /* the 1.4 item batch -- appended, as ever. The rings' order is the RF_*
+     * bit order in game.h (recompute_gear shifts by otyp - O_RSLOWDIG); the
+     * last three are the junk that is usually generated cursed. */
+    O_RSLOWDIG, O_RFREEACT, O_RTCTRL, O_RSTEALTH,  /* '=' the useful rings */
+    O_RHUNGER, O_RAGGR, O_RTPORT,                  /* '=' and the junk     */
     NUMOBJ
 };
 

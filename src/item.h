@@ -44,6 +44,7 @@ void steal_item(uint8_t mi) __banked; /* the nymph lifts an item + blinks away  
 void drop_held(uint8_t mi) __banked;  /* a slain thief drops its stolen loot    */
 void death_drop(uint8_t x, uint8_t y) __banked; /* a kill may leave random loot */
 void altar_sense(void) __banked;      /* an altar reveals carried items' BUC    */
+void ring_noticed(uint8_t rf) __banked; /* a worn ring gave itself away (RF_*)  */
 uint8_t pray_uncurse(uint8_t all) __banked; /* a prayer lifts curses (worn/all) */
 
 void item_save(uint8_t h) __banked; /* serialise inventory + equipment          */

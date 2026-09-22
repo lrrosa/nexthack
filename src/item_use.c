@@ -232,10 +232,8 @@ void do_read(void) __banked
         }
         msg("You feel knowledgeable!");
     } else if (ot == O_TELEPORT) {
-        uint8_t tx, ty;
-        level_random_floor(&tx, &ty);
-        hero_x = tx; hero_y = ty;
         msg("You feel a wrenching sensation.");
+        hero_teleport();                /* where a ring of control asks */
     } else if (ot == O_ENCHW || ot == O_ENCHA) {
         /* sharpen the wielded weapon / temper the worn armour (+1, derust) */
         char cls = (ot == O_ENCHW) ? ')' : '[';

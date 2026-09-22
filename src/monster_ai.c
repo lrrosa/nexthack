@@ -134,8 +134,13 @@ void attack_monster(uint8_t mi) __banked
         /* you met the floating eye's gaze mid-swing -- the classic freeze.
          * A blind hero can't meet it (and telepathy makes blind-fighting
          * eyes the NetHack-approved trick). */
-        st_sleep = (uint8_t)(st_sleep + rn2(5) + 2);
-        msg("You are frozen by its gaze!");
+        if (ring_fx & RF_FREEACT) {     /* free action holds: NetHack's line */
+            ring_noticed(RF_FREEACT);
+            msg("You momentarily stiffen.");
+        } else {
+            st_sleep = (uint8_t)(st_sleep + rn2(5) + 2);
+            msg("You are frozen by its gaze!");
+        }
     }
 }
 
@@ -222,9 +227,16 @@ static uint8_t still_asleep(uint8_t i)
 {
     int dx, dy;
     if (m_sleep[i] != 255) return 0;
+    /* A ring of aggravate monster: nothing sleeps through you. A ring of
+     * stealth: your footsteps wake nobody, and even a sleeper you stand
+     * beside only stirs one turn in three -- time for the sneak attack.
+     * Without either ring the rn2 calls are exactly the old ones. */
+    if (ring_fx & RF_AGGR) { m_sleep[i] = 0; return 0; }
     dx = iabs((int)m_x[i] - hero_x);
     dy = iabs((int)m_y[i] - hero_y);
-    if ((dx <= 1 && dy <= 1) || (dx <= 5 && dy <= 5 && rn2(3) == 0)) {
+    if ((dx <= 1 && dy <= 1) ? (!(ring_fx & RF_STEALTH) || rn2(3) == 0)
+                             : (dx <= 5 && dy <= 5 &&
+                                !(ring_fx & RF_STEALTH) && rn2(3) == 0)) {
         m_sleep[i] = 0;              /* it stirs awake */
         return 0;
     }
