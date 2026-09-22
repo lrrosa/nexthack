@@ -8,7 +8,7 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
-## [Unreleased]
+## [1.4.0] — 2026-09-22
 
 **Seventeen new things to find, and a reason not to trust them.** Rings and
 wands go unidentified; seven rings, three wands, four scrolls, two potions and
@@ -72,6 +72,9 @@ already had, because in NetHack the interactions are the content.
   types, which widens the identification bitmap, and the genocide mask joined
   the file. The game names the old save and asks before deleting it — answer
   `n` and it stays for the 1.3 binary.
+- A fresh inventory screenshot in the README carries the release: a ring of
+  teleport control on the hand beside a cursed ring and a wand that are still
+  only their looks, a wand of opening, a scroll of genocide and a carrot.
 
 ### Fixed
 - **Putting on an amulet took two turns.** The dispatcher charged one and the

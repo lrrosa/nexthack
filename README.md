@@ -310,9 +310,9 @@ used to emit one and no longer does.
 
 Walk into a monster to attack it; walk over gold to pick it up.
 
-![The NextHack inventory screen: a blessed +2 long sword (wielded) above a full armour set — +1 dragon scale, large shield, +1 helmet, boots and cloak, all worn — with the amulet of life on the neck, the ring of regeneration on the hand, the luckstone, a food ration, a charged wand of cold and an unidentified potion and scroll.](docs/inventory.png)
+![The NextHack inventory screen: a blessed +2 long sword (wielded), +1 dragon scale, large shield and +1 helmet (worn), the amulet of life on the neck and a ring of teleport control on the hand — then a cursed agate ring and a copper wand (6) still known only by their looks, a wand of opening (4), a scroll of genocide, a murky potion, a carrot and the luckstone.](docs/inventory.png)
 
-*The inventory screen (`i`): a whole armour set worn a piece at a time, enchantment, blessed/cursed state, unidentified appearances and wand charges — everything in use is flagged, down to what is round your neck.*
+*The inventory screen (`i`): an armour set worn a piece at a time, enchantment, blessed/cursed state and wand charges, everything in use flagged. Rings and wands you have not learned yet show only this game's look — that agate ring is cursed, and nothing yet says what it does.*
 
 ## Map & item tiles
 
