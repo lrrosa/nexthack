@@ -75,6 +75,8 @@ static const uint16_t periods[48] = {
 #define DH  (Q * 3)
 #define W   (Q * 4)
 #define BAR (Q * 4)
+#define SONG (BAR * 16)  /* one pass: every voice is 16 bars long, so all
+                          * three wrap together (1152 ticks, ~23 s) */
 
 typedef struct { uint8_t note, ticks; } ev_t;
 
@@ -271,12 +273,16 @@ void music_silence(void) __banked
     ay(8, 0); ay(9, 0); ay(10, 0);     /* all three volumes off */
 }
 
-/* Play the theme until a key is pressed, and return the entropy gathered
- * while waiting. The title screen has always seeded the world from how long
- * the player took to press -- keeping that is why the inner wait spins on
- * in_inkey() and stirs the counter every poll rather than sleeping: a 50 Hz
- * loop alone would leave only a few hundred distinguishable outcomes. */
-uint16_t music_title_wait(void) __banked
+/* Play the theme from the top, `plays` times through, until a key is pressed,
+ * and return the entropy gathered while waiting -- never 0 -- or 0 if every
+ * pass played out untouched: the title then runs its attract demo, and plays
+ * the theme again from the top when it comes back.
+ *
+ * The title screen has always seeded the world from how long the player took
+ * to press -- keeping that is why the inner wait spins on in_inkey() and stirs
+ * the counter every poll rather than sleeping: a 50 Hz loop alone would leave
+ * only a few hundred distinguishable outcomes. */
+uint16_t music_title_wait(uint8_t plays) __banked
 {
     /* Volumes near the chip's ceiling of 15. The AY's steps are roughly
      * logarithmic, so the audible lift comes less from the last step or two
@@ -285,10 +291,10 @@ uint16_t music_title_wait(void) __banked
     voice_t lv = { lead, 0, 0, 0, 0, 15, 12 };
     voice_t bv = { bass, 0, 0, 0, 0, 15, 0 };
     voice_t av = { arp,  0, 0, 0, 0,  9, 0 };   /* support, not sparkle */
-    uint16_t s = 1;
+    uint16_t s = 1, t;
     uint8_t  phase = 0, beat = 0;
 
-    for (;;) {
+    for (t = (uint16_t)(plays * SONG); t; t--) {
         tick(&lv, &bv, &av, phase, beat);
         if (++phase > 2) phase = 0;
         if (++beat >= BAR) beat = 0;
@@ -298,7 +304,7 @@ uint16_t music_title_wait(void) __banked
              * the poll loop IS the clock, calibrated like getkey_rpt's guard */
             uint16_t guard = 370;
             while (--guard) {
-                if (in_inkey()) { music_silence(); return s; }
+                if (in_inkey()) { music_silence(); return s ? s : 1; }
                 s += 0x9E37u;
             }
         }
@@ -307,10 +313,12 @@ uint16_t music_title_wait(void) __banked
             volatile uint8_t *fr = (volatile uint8_t *)23672;
             uint8_t f = *fr;
             while (*fr == f) {
-                if (in_inkey()) { music_silence(); return s; }
+                if (in_inkey()) { music_silence(); return s ? s : 1; }
                 s += 0x9E37u;
             }
         }
 #endif
     }
+    music_silence();        /* the last note has had its full length */
+    return 0;
 }

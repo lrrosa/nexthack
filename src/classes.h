@@ -7,6 +7,7 @@
 #define NCLASS 4
 
 void pick_class(void) __banked;         /* menu; fills the character sheet   */
+void class_apply(uint8_t k) __banked;   /* the sheet of class k, no menu     */
 void give_kit(void) __banked;           /* starting gear + gold (post-reset) */
 const char *class_name(void) __banked;  /* display name; SAME-BANK callers only */
 

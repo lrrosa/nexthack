@@ -273,7 +273,8 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `monster_spawn.c` | B | the cold third: level-entry spawning + the killed-monster mask and its save (split off when `monster_ai`'s bank filled) |
 | `classes.c` | B | the class picker; banked *including* its consts and literals |
 | `spells.c` | B | spellbooks and casting (`r` learns a book, `Z` casts) |
-| `music.c` | B | the AY title theme — a 3-voice sequencer, not a tracker replayer |
+| `music.c` | B | the AY title theme — a 3-voice sequencer, not a tracker replayer; the title plays it twice through before the demo |
+| `attract.c/.h` | B | the title's attract demo: ~15 s of magic-mapped levels walked to the stairs by a random class (see Title & victory screens) |
 | `item.c/.h` | B | the inventory, the object catalogue and its names, equipment (wield/wear/put-on), the floor and its stashes, pick up/drop |
 | `item_use.c` | B | the verbs that activate or consume an item: quaff (and fountains), eat (and corpses), read, throw, zap |
 | `item_int.h` | — | item.c's internals shared with `item_use.c` only: `obj_t`, `inv`, the `O_*` ids, and the `__banked` value API between the two |
@@ -340,6 +341,24 @@ tilemap.
   bank (NextReg 0x12), turns the tilemap off (0x6B=0) + Layer 2 on (0x69 bit7);
   `hide_layer2()` reverses it (0x69=0, 0x6B=0xC0). Each palette **must** live in
   `PAGE_22_CODE` (bank 11) because the code that streams it runs from there.
+- **The attract loop** (`title_screen`, both targets): the title plays the
+  whole theme `TITLE_PLAYS` (2) times (`music_title_wait(plays)` returns 0 when
+  it runs out), then `attract_demo()` (`attract.c`) shows about 15 s
+  (`DEMO_FRAMES`) of consecutive levels of a random world -- magic-mapped, a
+  random class with its kit on, the dog at heel, walking to `>` down
+  monster_ai's own chase field flooded from the stairs, under a blinking DEMO
+  line -- then the art returns. The 128K times the showing by FRAMES; the Next,
+  which has no frame clock the code trusts, by a count of the frames it waited
+  plus a per-step estimate calibrated under ZEsarUX. A key at either begins the
+  game and seeds the world; the demo also reads the ROM's key latch (FLAGS
+  bit 5), so a tap during a slow redraw is not lost. The
+  demo draws with the real `build_level`/`fov_update`/`draw_map` on the real
+  globals, which is safe only because the title is never reached with an
+  unsaved run in RAM (boot, or after `S`); it never calls
+  `try_move`/`monsters_turn`/`upkeep`, so no mask, pack or conduct moves, and it
+  puts back what `main()`'s fresh start takes at boot values (`dlvl`,
+  `max_dlvl`, `turns`, `hero_face`, `st_blind`). Extend that list if the demo
+  ever calls gameplay code.
 - **Two banking gotchas this exposed:** (a) a translation unit gets **one** const
   section, so each bank's array needs its **own `.c`** (hence three files); which
   bank that is comes from `banks.json`, not from a pragma in the file. (b) z88dk

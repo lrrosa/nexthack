@@ -46,6 +46,7 @@
     "music":         { "code": "PAGE_20_CODE", "const": "PAGE_20_CODE", "why": "the AY title theme + its score tables" },
 
     "monster_ai":    { "code": "PAGE_26_CODE", "const": "PAGE_26_CODE", "why": "bank 13, a third code bank opened when PAGE_20 filled up" },
+    "attract":       { "code": "PAGE_26_CODE", "const": "PAGE_26_CODE", "why": "the title's attract demo: cold (it runs only at the title), and every call out of it is __banked or resident -- its one literal goes only to the resident msg() -- so it may live anywhere with room. Bank 13 had the most" },
     "leveltmpl":     { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "const holds the generated leveltmpl_data.h grids; load_template() reads them in place, so both must share a bank. Moved off PAGE_26 with the 128K half, so monster_ai + levelfov get that bank to themselves" },
     "levelfov":      { "code": "PAGE_26_CODE", "why": "moved off PAGE_20 when bank 10 filled up as item.c grew" },
 
@@ -77,6 +78,7 @@
     "item":          { "code": "BANK_0", "const": "BANK_0", "why": "item.c's own bank (the v0.9 reclaim) -- the 128K's spare uncontended bank" },
 
     "levelgen":      { "code": "BANK_1", "why": "cold code bank A" },
+    "attract":       { "code": "BANK_1", "const": "BANK_1", "why": "the title's attract demo: cold, and every call out of it is __banked or resident (its one literal goes only to the resident msg()), so any bank with room will do. BANK_1 had the most; contended RAM costs nothing to code that waits a tenth of a second per step" },
     "monster_spawn": { "code": "BANK_1", "const": "BANK_1", "why": "split out of monster_ai.c when BANK_6 filled up" },
     "sfx":           { "code": "BANK_1", "why": "moved BACK here from BANK_3 when the 0.12 batch (farlook + mirroring + traps) filled BANK_3. All sfx_* entries are __banked and bit_beepfx + its tables are resident, so the move costs nothing" },
 

@@ -85,6 +85,7 @@ int  fov_visible(int x, int y) __banked;
 const uint8_t *fov_bitmap(void) __banked;   /* current level's explored bitmap */
 const uint8_t *vis_bitmap(void) __banked;   /* cells visible this turn (1 bit/cell) */
 void fov_reveal(void) __banked;             /* mark the whole current level as explored */
+void fov_reveal_built(void) __banked;       /* ...all but its solid rock (attract demo) */
 void fov_forget(void) __banked;             /* amnesia: forget the current level's map  */
 extern uint16_t fov_vis_sum;                /* rolling hash of vis_now; unchanged = FOV static */
 

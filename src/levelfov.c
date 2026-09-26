@@ -241,6 +241,25 @@ void fov_reveal(void) __banked   /* magic mapping: remember the whole level */
         m[i] = 0xFF;
 }
 
+/* The attract demo's map: everything but solid rock. It draws exactly like
+ * fov_reveal -- rock is a black tile seen or not -- but a remembered rock
+ * cell sends the Next's draw_map through tile_for's whole switch, and the
+ * demo redraws every step: marking the rock too made each step cost about
+ * twice as much. MAPW*MAPH is exactly FOV_BYTES*8 cells, so this is a
+ * byte-at-a-time walk of lvl[][]. */
+void fov_reveal_built(void) __banked
+{
+    uint8_t *m = fov_map();
+    const char *c = (const char *)lvl;
+    uint8_t b, bit, v;
+    for (b = 0; b < FOV_BYTES; b++) {
+        v = 0;
+        for (bit = 1; bit; bit <<= 1)       /* 1, 2 .. 128, then 0 ends it */
+            if (*c++ != ' ') v |= bit;
+        m[b] |= v;
+    }
+}
+
 void fov_forget(void) __banked   /* amnesia: this level's map is gone */
 {
     uint16_t i;

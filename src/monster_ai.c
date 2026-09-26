@@ -307,7 +307,9 @@ static void peace_amble(uint8_t i)
 extern void dist_clear(uint8_t *p);
 #endif
 
-static void compute_dist_map(void)
+/* The field is flooded from (sx,sy): the hero, every turn -- or the down
+ * stairs, for the title's attract demo (dist_map_from, below). */
+static void compute_dist_map(uint8_t sx, uint8_t sy)
 {
     uint16_t head = 0, tail = 0;
     uint8_t *d = (uint8_t *)dist;      /* flat view, fast indexing */
@@ -319,12 +321,12 @@ static void compute_dist_map(void)
     dist_clear(d);
 #endif
 
-    if (hero_x < 0 || hero_y < 0 || hero_x >= MAPW || hero_y >= MAPH)
+    if (sx >= MAPW || sy >= MAPH)       /* an int hero_x < 0 casts to >= 128 */
         return;
 
     /* queue entries are packed as (y << 8) | x to avoid div/mod on dequeue */
-    d[(uint16_t)hero_y * MAPW + hero_x] = 0;
-    bfsq[tail++] = (uint16_t)(((uint16_t)hero_y << 8) | (uint8_t)hero_x);
+    d[(uint16_t)sy * MAPW + sx] = 0;
+    bfsq[tail++] = (uint16_t)(((uint16_t)sy << 8) | sx);
 
     while (head < tail) {
         uint16_t p     = bfsq[head++];
@@ -696,7 +698,7 @@ void monsters_turn(void) __banked
          * everywhere instead of letting the gap grow turn by turn through bends. */
         if (pet_idx < 0 || !m_alive[(uint8_t)pet_idx]) return;
         if (pet_heel_greedy((uint8_t)pet_idx)) return;
-        compute_dist_map();
+        compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y);
         pet_step((uint8_t)pet_idx);
         return;
     }
@@ -733,7 +735,7 @@ void monsters_turn(void) __banked
             if (!enemy_chase_greedy(i)) blocked |= (uint16_t)(1u << i);
         }
         if (blocked) {                          /* route only the wall-boxed ones */
-            compute_dist_map();
+            compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y);
             for (i = 0; i < mcount; i++) {
                 if (!(blocked & (uint16_t)(1u << i)) || !m_alive[i]) continue;
                 if (i == (uint8_t)pet_idx) pet_step(i);
@@ -743,7 +745,7 @@ void monsters_turn(void) __banked
     }
     return;
 #endif
-    compute_dist_map();
+    compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y);
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i]) continue;
         if (mimic_hidden(i)) continue;    /* posing as an item */
@@ -758,3 +760,32 @@ void monsters_turn(void) __banked
 
 /* maybe_spawn_wanderer (the per-turn wandering-monster roll) moved to
  * monster_spawn.c with the rest of the spawning. */
+
+/* ---- the title's attract demo (attract.c) ----
+ * The demo hero walks to the down stairs down the same field a monster walks
+ * to you: flooded once from the stairs, then read a cell at a time. It is only
+ * ever run while no game is, so borrowing the per-turn field is free; on the
+ * 128K it stops at MAXDIST like the chase's, which is why the demo starts its
+ * hero within that reach. dist[] stays private to this file -- the demo
+ * reads it by value. */
+void dist_map_from(uint8_t x, uint8_t y) __banked { compute_dist_map(x, y); }
+
+uint8_t dist_at(uint8_t x, uint8_t y) __banked
+{
+    return dist[(uint16_t)y * MAPW + x];
+}
+
+/* No hostile turn runs in the demo -- nobody fights there -- so every awake
+ * monster mills about like a townsman instead. Sleepers sleep on, the keeper
+ * keeps his shop, the eye floats and the mimic holds its pose; the demo walks
+ * the pet itself. */
+void monsters_amble(void) __banked
+{
+    uint8_t i;
+    for (i = 0; i < mcount; i++) {
+        if (!m_alive[i] || (int8_t)i == pet_idx || m_sleep[i]) continue;
+        if (m_type[i] == MON_KEEPER || m_type[i] == 'e' || m_type[i] == 'x')
+            continue;
+        peace_amble(i);
+    }
+}

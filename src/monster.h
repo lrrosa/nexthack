@@ -88,4 +88,9 @@ void place_shopkeeper(uint8_t x, uint8_t y) __banked;  /* add the shop's keeper 
 void place_pet(void)                __banked;  /* (re)place the pet beside the hero */
 uint8_t summon_near(char type)      __banked;  /* reverse genocide: a pack beside you */
 
+/* ---- the title's attract demo (attract.c) -- never while a game runs ---- */
+void    dist_map_from(uint8_t x, uint8_t y) __banked; /* flood the chase field from x,y */
+uint8_t dist_at(uint8_t x, uint8_t y) __banked;       /* steps to it; 255 = no route    */
+void    monsters_amble(void)        __banked;  /* the awake mill about, nobody fights */
+
 #endif /* MONSTER_H */

@@ -68,17 +68,26 @@ void pick_class(void) __banked
     do { k = getkey(); } while (k < 'a' || k >= 'a' + NCLASS);
     in_wait_nokey();
 
-    pclass = (uint8_t)(k - 'a');
-    at_str = classes[pclass].at[0];
-    at_dex = classes[pclass].at[1];
-    at_con = classes[pclass].at[2];
-    at_int = classes[pclass].at[3];
-    at_wis = classes[pclass].at[4];
-    at_cha = classes[pclass].at[5];
-    php = pmaxhp = classes[pclass].hp;
-    pw  = pmaxpw = classes[pclass].pw;
-    alignment = classes[pclass].align;
+    class_apply((uint8_t)(k - 'a'));
     map_dirty = 1;                  /* the menu drew over everything */
+}
+
+/* Fill the character sheet from class k. Split out of pick_class so the
+ * title's attract demo (attract.c) can field a hero of any class -- sheet,
+ * then give_kit -- without the menu. */
+void class_apply(uint8_t k) __banked
+{
+    const class_t *c = &classes[k];
+    pclass = k;
+    at_str = c->at[0];
+    at_dex = c->at[1];
+    at_con = c->at[2];
+    at_int = c->at[3];
+    at_wis = c->at[4];
+    at_cha = c->at[5];
+    php = pmaxhp = c->hp;
+    pw  = pmaxpw = c->pw;
+    alignment = c->align;
 }
 
 /* Hand out the class's starting gear + purse (call right after item_reset). */

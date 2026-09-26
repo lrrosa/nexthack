@@ -26,6 +26,7 @@
 #include "sfx.h"
 #include "music.h"
 #include "classes.h"
+#include "attract.h"
 #ifndef __ZXNEXT
 #include "scr.h"
 #endif
@@ -1595,6 +1596,8 @@ void score_screen(uint8_t victory) __banked
 /* The seed comes from how long the player takes to press a key, which gives
  * far more variety than reading the machine state at the same instant on
  * every cold boot. */
+#define TITLE_PLAYS 2   /* the title holds for the whole theme twice (~46 s on
+                         * the 128K) before the attract demo takes over */
 #ifdef __ZXNEXT
 /* ---- Layer 2 pixel-art screens (title + victory) -------------------------
  * Each 256x192 image lives in three banks (title 16/17/18, victory 19/20/21),
@@ -1629,12 +1632,20 @@ static void hide_layer2(void)
 
 void title_screen(void) __banked
 {
-    uint16_t s = 1;
+    uint16_t s;
 
-    show_layer2(title_pal, 16);
-    s = music_title_wait();          /* the theme plays until a key -- and the
-                                      * seed still comes from how long that
-                                      * took, stirred inside its wait loop */
+    /* The attract loop: the theme twice over the art, then the demo walks a
+     * few levels (attract.c), then the art again. A key at either begins the
+     * game -- and the seed still comes from how long that took, stirred
+     * inside both waits. */
+    for (;;) {
+        show_layer2(title_pal, 16);
+        s = music_title_wait(TITLE_PLAYS);
+        if (s) break;
+        hide_layer2();               /* the demo draws on the tilemap */
+        s = attract_demo();
+        if (s) break;
+    }
     s ^= (uint16_t)(((uint16_t)ZXN_READ_REG(0x1F) << 8) ^ ZXN_READ_REG(0x1E));
     world_seed = s ? s : 0xACE1u;
     rng_set(world_seed);
@@ -1663,12 +1674,18 @@ void victory_screen(void) __banked
  * the machine state at the same instant on every cold boot. */
 void title_screen(void) __banked
 {
-    uint16_t s = 1;
+    uint16_t s;
 
-    show_title_scr();                /* the hand-drawn SCR loading screen */
-    s = music_title_wait();          /* the theme plays until a key -- and the
-                                      * seed still comes from how long that
-                                      * took, stirred inside its wait loop */
+    /* The attract loop, as on the Next: the theme twice over the hand-drawn
+     * SCR, then the demo (attract.c). A key at either begins the game, and
+     * the seed still comes from how long that took. */
+    for (;;) {
+        show_title_scr();
+        s = music_title_wait(TITLE_PLAYS);
+        if (s) break;
+        s = attract_demo();
+        if (s) break;
+    }
     s ^= *(volatile uint16_t *)0x5C78u;   /* mix in the FRAMES counter */
     world_seed = s ? s : 0xACE1u;
     rng_set(world_seed);
