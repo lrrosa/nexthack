@@ -1364,7 +1364,6 @@ uint8_t rest_step(void) __banked
         if (m_type[i] == 'e') continue;        /* the floating eye never comes   */
         if (!fov_visible(m_x[i], m_y[i])) continue;
         resting = 0;
-    { uint8_t i; for (i = 0; i <= MAXLVL; i++) door_open[i] = 0; }
         /* <= 32 columns on the 128K: "You stop: " + the longest name we
          * can reach here ("yellow light") + " nearby!" is exactly 30 */
         msg2("You stop: ", mon_name(m_type[i]), " nearby!");
@@ -1462,6 +1461,8 @@ void try_move(int dx, int dy) __banked
 
 void new_game(void) __banked
 {
+    uint8_t i;
+
     pmaxhp = 12;
     php = pmaxhp;
     gold = 0;
@@ -1490,6 +1491,8 @@ void new_game(void) __banked
     give_kit();                   /* the class's starting gear + purse */
     level_reset_persistence();
     monster_reset_persistence();
+    for (i = 0; i <= MAXLVL; i++)
+        door_open[i] = 0;        /* the old world's forced doors */
     fov_reset();                 /* forget exploration of the old world */
     rng_seed();                  /* a brand new world */
     build_level();
