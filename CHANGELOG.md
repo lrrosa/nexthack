@@ -8,6 +8,42 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.4.1] — 2026-09-25
+
+**Left alone, the title plays itself** — and resting no longer undoes the
+doors you kicked in.
+
+### Added
+- **An attract demo.** The title holds for its theme twice through (about 46
+  seconds), then hands the screen to fifteen seconds of play: a hero of a
+  random class, kit and all, walks with the dog through consecutive levels of
+  a random dungeon — magic-mapped, so each level shows whole — down to the
+  stairs and on to the next, now and then in the Gnomish Mines, under a
+  blinking *DEMO - press any key to begin*. Then the title again. Any key, on
+  the title or in the demo, begins the game.
+- The demo is the game's own generator and renderer, but nobody in it fights,
+  picks anything up or dies, so nothing it shows reaches your game: a new run,
+  and a save restored after the demo has played over it, start exactly as they
+  did before. It also reads the ROM's key latch, so a quick tap is caught even
+  while a level is being built.
+
+### Fixed
+- **Resting could re-lock every door you had forced.** When a monster came
+  into view and ended an `R` rest, the game forgot every locked door you had
+  kicked open or unlocked with a wand of opening — on every level, not just
+  that one. One misplaced line from 1.3's locked doors, meant for the new-game
+  reset, which in turn never had it: **a new game after a death inherited the
+  last run's forced doors**, in a world where they named different doors. Both
+  fixed.
+
+### Changed
+- `tools/balance.py` and the notes beside it described a game with no rest
+  command; they now price `R` as it is: it saves keypresses, not HP, and each
+  wanderer it attracts is one ordinary fight, so resting pays through Dlvl 25
+  for every class and stops paying by 30–40.
+
+Save-compatible with 1.4.0.
+
 ## [1.4.0] — 2026-09-22
 
 **Seventeen new things to find, and a reason not to trust them.** Rings and
