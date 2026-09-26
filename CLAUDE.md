@@ -206,8 +206,14 @@ to show how much a conclusion depends on the three things the model has to guess
 whenever quoting a death depth. The 2026-08-29 findings are in the *Armour
 cliff* report: defence plateaus at `armor_def` 7-8 by Dlvl 10 while the bite's
 `+eff_depth()/4` grows forever, so absorption falls from 86% of blows to zero by
-Dlvl 28; no monster can kill a full-HP hero one-on-one at any depth, and there
-is no rest command to convert time into HP.
+Dlvl 28; no monster can kill a full-HP hero one-on-one at any depth, and
+nothing converted time into HP. `R` (rest, `rest_step` in `nexthack.c`) answered
+that the next day, and `balance.py rest` prices it: it mends no faster than
+waiting, and every rested turn rolls a wanderer, so it pays only while an
+average fight costs under `wander_period / regen_period` (3.5-5 HP by Co). That
+holds through Dlvl 25 for every class and fails by Dlvl 30 (Wizard, Tourist) or
+40 (Valkyrie, Rogue): deeper, the wanderers a rest attracts cost more HP than
+it heals.
 
 ### The 128K target must also run on RAM-expansion interfaces
 The `.tap` is expected to work not only on a real 128K but on a **48K + external

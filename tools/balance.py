@@ -330,6 +330,12 @@ FORMULAS = [
     ("regeneration", "src/nexthack.c:643",
      "1 HP every 14/17/20 turns (Co>=16 / Co>=13 / else), halved by ring",
      "regen_period(con, ring)"),
+    ("wandering monster", "src/monster_spawn.c:256",
+     "upkeep() rolls rn2(has_amulet ? 25 : 70) == 0 each turn; spawns awake (:289)",
+     "WANDER_P / WANDER_P_AMULET"),
+    ("rest ('R')", "src/nexthack.c:1350",
+     "rest_step: pass turns until full HP, Weak, a key, or an awake hostile in view",
+     "rest_breakeven(con, ring, amulet) = wander_period / regen_period"),
     ("monsters per level", "src/monster_spawn.c:125",
      "count = 2 + eff_depth(), capped at 8",
      "spawn_count(depth)"),
@@ -715,14 +721,21 @@ WANDER_P_AMULET = 25
 def rest_breakeven(con, ring=False, amulet=False):
     """How much a fight may cost before resting stops paying for itself.
 
-    There is no rest command: 's' (search) is the only way to pass a turn
-    (src/nexthack.c:1441 turns++), so recovery is 1 HP every regen_period
-    turns.  Meanwhile every turn rolls a wandering monster.  Resting is
-    profitable only while
+    'R' (src/nexthack.c:1350 rest_step) passes turns through the same
+    upkeep() (src/mainentry.c:151) as a wait ('.', src/mainentry.c:135) or a
+    search ('s', src/nexthack.c:1334), so whichever key spends the time,
+    recovery is 1 HP every regen_period turns (src/nexthack.c:643).
+    Meanwhile every turn rolls a wandering monster (src/monster_spawn.c:256).
+    Resting is profitable only while
 
         1 / regen_period  >  hp_cost_per_fight / wander_period
 
-    i.e. while a fight costs less than wander_period / regen_period HP."""
+    i.e. while a fight costs less than wander_period / regen_period HP.
+
+    'R' does not dodge that cost, it only times it: an awake hostile coming
+    into view ends the rest before the turn is charged (src/nexthack.c:1361),
+    so each wanderer is one ordinary fight with the hero swinging first --
+    the fight cmd_rest prices -- rather than free hits on a sleeper."""
     return (WANDER_P_AMULET if amulet else WANDER_P) / float(regen_period(con, ring))
 
 
@@ -942,8 +955,9 @@ blessed).  Sampled through the game's own item_hash over real cells.
     print("""
   Potions are drawn from the whole eligible pool, so the share of them that
   actually heal falls as the pool widens with depth -- while the damage
-  rises.  This is the supply curve for the only recovery that is not a
-  thousand keypresses (see the rest command).""")
+  rises.  This is the supply curve for the recovery that costs one turn
+  rather than hundreds, and so draws no wandering monsters (see the rest
+  command).""")
     print("")
     print("  %5s %8s  %s" % ("depth", "healing", "eligible potions"))
     for d in a.depths:
@@ -956,13 +970,17 @@ blessed).  Sampled through the game's own item_hash over real cells.
 def cmd_rest(t, a):
     h1("Rest economics: can you heal up between fights?")
     print("""
-There is no rest command.  Search is the only key that passes a turn without
-moving (src/nexthack.c:1441 turns++), and regeneration is 1 HP every 14-20
-turns (src/nexthack.c:643).  Every turn also rolls a wandering monster at
+'R' rests (src/nexthack.c:1350 rest_step): the turn loop keeps passing turns
+(src/mainentry.c:65) through the same upkeep() as a wait or a search, so it
+saves keypresses, not HP.  Regeneration is 1 HP every 14-20 turns
+(src/nexthack.c:643), and every turn also rolls a wandering monster at
 1/%d -- 1/%d once you carry the Amulet (src/monster_spawn.c:256).
 
-So resting pays only while an average fight costs less than
-wander_period / regen_period HP:
+The rest ends before the turn is charged when an awake hostile comes into
+view (src/nexthack.c:1361), so a wanderer costs one ordinary fight, not free
+hits -- and wanderers spawn awake (src/monster_spawn.c:289), so the fights
+below get no sneak attack.  Resting therefore pays only while an average
+fight costs less than wander_period / regen_period HP:
 """.strip() % (WANDER_P, WANDER_P_AMULET))
     print("")
     print("  %-24s %10s %12s %14s" %
@@ -990,14 +1008,20 @@ wander_period / regen_period HP:
             h = _clone(hero)
             h.hp = h.maxhp
             m = pool[rng.rn2(len(pool))]
-            _w, l, _n = fight(rng, h, m, d)
+            _w, l, _n = fight(rng, h, m, d, asleep=False)  # a wanderer: awake
             lost.append(l)
         be = rest_breakeven(hero.con)
         print("  %5d %10.1f %12s" %
               (d, mean(lost), "pays" if mean(lost) < be else "LOSES"))
     print("""
   LOSES means the wandering monsters a rest attracts cost more HP than the
-  rest restores: past that depth the only recovery is potions.""")
+  rest restores: past that depth the only recovery is potions.
+
+  Left out, and pulling opposite ways: 1/%d is the roll, not the arrival
+  rate -- a spawn in view, in a shop or onto a full monster list is dropped
+  (src/monster_spawn.c:258-278), so resting is a little cheaper than shown;
+  but each HP also costs 14-20 turns of food, and 'R' stops at Weak
+  (src/nexthack.c:1355), which this table does not price.""" % WANDER_P)
 
 
 def cmd_runs(t, a):
@@ -1046,10 +1070,10 @@ absolute rate -- the assumptions are listed at the end.
   Model assumptions (each is a knob: --turns, --engage, --pet):
     * %d turns walked per level, so regeneration between fights is about
       %d turns, i.e. %.1f HP, at depth 8;
-    * the hero never flees a fight it has started, and never rests;
+    * the hero never flees a fight it has started, and never rests ('R');
     * no wands, spells, altars, Excalibur or gain-level potions (all of
-      which help the hero) -- and no traps, hunger, dragon breath, poison,
-      blindness or cursed gear (all of which hurt it);
+      which help the hero) -- and no wandering monsters, traps, hunger,
+      dragon breath, poison, blindness or cursed gear (all of which hurt it);
     * every level's weapon and armour is found and worn.
   The first and last bullets make this OPTIMISTIC about gear and
   PESSIMISTIC about tactics; the shape of the curve is the finding.""" %
@@ -1085,8 +1109,11 @@ guesses, the wall would be an artefact of the guessing.  It does not.
   past the Amulet (800 turns a level, fight half, dog alive).  So the wall
   itself is not an artefact of the guessing -- but its DEPTH is, and the
   thing it is most sensitive to is turns per level, i.e. how much
-  regeneration the player collects by walking.  That is the same lever as
-  resting, and it is the one the game gives the player no command for.""")
+  regeneration the player collects by walking.  That is the lever 'R'
+  pulls, so a larger --turns reads as a hero who rests -- generously: the
+  run model sends no wandering monsters, so it books a rest's HP without
+  the fights the rest attracts, and below the depth where the rest table
+  says LOSES it gets even the sign wrong.""")
 
 
 def cmd_gauntlet(t, a):
