@@ -62,6 +62,10 @@ foreach ($m in $csrcs) {
         $log = & zcc $zargs 2>&1
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path $o)) {
             $fail += [pscustomobject]@{ Mod = "$m.c"; Log = ($log -join "`n") }
+        } elseif (($log -join "`n") -match '2147483647') {
+            # z80asm clamped a literal: miscompiled (see build.ps1, CLAUDE.md)
+            Remove-Item $o -ErrorAction SilentlyContinue
+            $fail += [pscustomobject]@{ Mod = "$m.c"; Log = "z80asm clamped a literal to 2147483647 (see CLAUDE.md, Gotchas):`n" + ($log -join "`n") }
         } else { Set-Content $seg $bank[$m].Stamp -NoNewline; "  ok  $m.c" }
     } else { "  --  $m.c (up to date)" }
 }

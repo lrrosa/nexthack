@@ -62,6 +62,16 @@ if ($todo) {
         $log = & zcc $zargs 2>&1
         [pscustomobject]@{ Mod = $_; Code = $LASTEXITCODE; Log = ($log -join "`n") }
     }
+    # z80asm clamps a hex literal above 0x7FFFFFFF to 2147483647, and SDCC can
+    # write a NEGATIVE constant offset as one (`+((0xffffffaf) & 0xFF)`): the
+    # BFS flood's `p[-81]` assembled as p[-1], with one warning as the only
+    # sign (2026-09-27). Such a module is miscompiled -- treat it as failed,
+    # and drop its .o so a later build cannot quietly link it.
+    $results | Where-Object { $_.Code -eq 0 -and $_.Log -match '2147483647' } | ForEach-Object {
+        $_.Code = 1
+        $_.Log = "z80asm clamped a literal to 2147483647 (see CLAUDE.md, Gotchas):`n" + $_.Log
+        Remove-Item "src/$($_.Mod).o" -ErrorAction SilentlyContinue
+    }
     $failed = $results | Where-Object { $_.Code -ne 0 -or -not (Test-Path "src/$($_.Mod).o") }
     # Stamp only what actually built, so a failed module stays stale next time.
     $results | Where-Object { $_ -notin $failed } |

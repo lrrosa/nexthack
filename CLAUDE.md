@@ -243,6 +243,15 @@ standing rules, both already satisfied — do not regress them:
 - SDCC's `warning 110 ... "EVELYN the modified DOG"` is a **harmless** peephole-optimizer
   message; ignore it.
 - SDCC `int` is **16-bit**. Watch for overflow; `long` works but is slow.
+- **A pointer plus a negative constant can assemble WRONG, with only a warning.**
+  SDCC sometimes writes `p[-81]` as `ld a,+((0xffffffaf) & 0xFF)` /
+  `ld a,+((0xffffffaf) / 256)`, and this z80asm clamps any literal above
+  `0x7FFFFFFF` to 2147483647 -- so the offset came out as -1, not -81 (and a
+  plain `(-81)/256` divides signed, giving 0 for the high byte). The BFS flood
+  read the wrong wall byte and leaked through rock until ZEsarUX caught it
+  (2026-09-27). The assembler's warning names `2147483647`; both build scripts
+  now refuse a module whose log has one. Write such offsets from a lower base
+  pointer (`base + 0/1/2`, see `FLOOD_TRY`) instead of a negative index.
 - In PowerShell, `Set-Location` does **not** change .NET's cwd: `[IO.File]::ReadAllBytes`
   needs an absolute path.
 
