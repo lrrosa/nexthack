@@ -278,11 +278,18 @@ static void peace_amble(uint8_t i)
 #define MAXDIST  30
 #define MON_WAKE 22
 #endif
-/* BFS frontier queue. A level has far fewer walkable cells than MAPW*MAPH, so
- * a bounded queue saves RAM; enqueues are guarded so it can never overflow.
- * 696 (was 700) so it packs exactly behind dist[] in Bank 5: dist is 1680 B at
- * 0x7400, bfsq is 696*2=1392 B at 0x7A90, ending exactly at 0x8000. */
-#define BFSQ_SIZE 696
+/* BFS frontier queue: a RING. A flood only ever holds what is left of one
+ * distance layer plus the start of the next, and on these maps that is small
+ * -- 67 cells at most, measured over the Big Room and all six templates --
+ * while the flood itself reaches up to 1292 cells. The old queue was linear
+ * and counted every cell EVER enqueued against its 696 entries, so on the
+ * Big Room, the cavern and the maze it simply stopped: 101 to 578 walkable
+ * cells kept UNREACH, and a monster standing on one had no way to you.
+ * 256 entries so the uint8_t head/tail wrap by themselves -- it MUST stay
+ * 256 -- and the enqueue is still guarded, so a map drawn to defeat it
+ * leaves cells unexpanded instead of overflowing. In Bank 5 behind dist[]:
+ * 0x7A90-0x7C90, which frees the 880 B above it up to 0x8000. */
+#define BFSQ_SIZE 256
 
 /* dist[] lives in Bank 5's free space (after the 80x32x2 tilemap, 0x7400),
  * which the CPU always sees at 0x4000-0x7FFF (segment 1) and which code banking
@@ -307,13 +314,56 @@ static void peace_amble(uint8_t i)
 extern void dist_clear(uint8_t *p);
 #endif
 
+#define TARGET 254      /* a cell whose monster reads the field this turn */
+
+/* One neighbour of the cell being expanded: `off` (0..2) is its step from
+ * the row base dq/lq, `poff` the same step in the packed (y << 8) | x queue
+ * word. Unrolled -- the eight neighbours as straight-line code -- because the
+ * dx/dy loops kept their ints in memory, most of each neighbour's cost being
+ * IX-indexed loop bookkeeping around a one-byte test. The test order is the
+ * loops' old order.
+ *
+ * Every pointer offset here is 0, 1 or 2, never negative, and that is load-
+ * bearing: for `lc[-81]` SDCC emitted the high byte as `+((0xffffffaf)/256)`,
+ * which z80asm divides SIGNED -- -81/256 = 0 -- so the wall test read a byte
+ * two rows BELOW and the flood leaked through rock (caught in ZEsarUX on the
+ * maze). Row bases one cell left of the column, from integer arithmetic,
+ * keep the constants non-negative. */
+#ifdef __ZXNEXT
+#define ENQ_OK(nd) ((uint16_t)(tail - head) < BFSQ_SIZE - 1)
+#else
+#define ENQ_OK(nd) ((nd) < MAXDIST && (uint16_t)(tail - head) < BFSQ_SIZE - 1)
+#endif
+#define FLOOD_TRY(off, poff)                                                  \
+    do {                                                                      \
+        uint8_t *q = dq + (off);                                              \
+        if (*q >= TARGET) {                          /* not labelled yet */   \
+            char c = lq[off];                        /* walkable? */          \
+            if (c != '|' && c != '-' && c != ' ') {                           \
+                if (*q == TARGET && --want == 0) { *q = nd; return; }         \
+                *q = nd;                                                      \
+                if (ENQ_OK(nd)) bfsq[(uint8_t)tail++] = (uint16_t)(p + (poff)); \
+            }                                                                 \
+        }                                                                     \
+    } while (0)
+
 /* The field is flooded from (sx,sy): the hero, every turn -- or the down
- * stairs, for the title's attract demo (dist_map_from, below). */
-static void compute_dist_map(uint8_t sx, uint8_t sy)
+ * stairs, for the title's attract demo (dist_map_from, below).
+ *
+ * `who` names the monster slots that will READ the field this turn. Their
+ * cells are marked TARGET, and the flood stops the moment the last of them
+ * is labelled. By then every closer layer is complete, and step_to_hero only
+ * ever moves to a LOWER neighbour, so each of them steps exactly as a whole-
+ * map field would send it -- the flood just skips whatever lies beyond the
+ * farthest reader. That is what pays for flooding the Big Room at all: its
+ * whole ring is 1292 cells, where the old queue stopped at 696 and left the
+ * rest UNREACH. who == 0 floods everything in reach (the demo reads it all).
+ * head/tail run free; the ring slot is their low byte (BFSQ_SIZE 256). */
+static void compute_dist_map(uint8_t sx, uint8_t sy, uint16_t who)
 {
     uint16_t head = 0, tail = 0;
+    uint8_t  want = 0, i;
     uint8_t *d = (uint8_t *)dist;      /* flat view, fast indexing */
-    const char *lf = (const char *)lvl;
 
 #ifdef __ZXNEXT
     { uint16_t k; for (k = 0; k < (uint16_t)(MAPH * MAPW); k++) d[k] = UNREACH; }
@@ -324,41 +374,42 @@ static void compute_dist_map(uint8_t sx, uint8_t sy)
     if (sx >= MAPW || sy >= MAPH)       /* an int hero_x < 0 casts to >= 128 */
         return;
 
+    for (i = 0; i < mcount; i++)
+        if (who & (1u << i)) {
+            uint8_t *c = &d[(uint16_t)m_y[i] * MAPW + m_x[i]];
+            if (*c == UNREACH) { *c = TARGET; want++; }
+        }
+
     /* queue entries are packed as (y << 8) | x to avoid div/mod on dequeue */
     d[(uint16_t)sy * MAPW + sx] = 0;
-    bfsq[tail++] = (uint16_t)(((uint16_t)sy << 8) | sx);
+    bfsq[(uint8_t)tail++] = (uint16_t)(((uint16_t)sy << 8) | sx);
 
-    while (head < tail) {
-        uint16_t p     = bfsq[head++];
-        uint8_t  cx    = (uint8_t)(p & 0xFF);
-        uint8_t  cy    = (uint8_t)(p >> 8);
-        uint16_t cbase = (uint16_t)cy * MAPW;
-        uint8_t  nd    = (uint8_t)(d[cbase + cx] + 1);
-        int dx, dy;
-        for (dy = -1; dy <= 1; dy++) {
-            int ny = (int)cy + dy;
-            uint16_t rbase;
-            if (ny < 0 || ny >= MAPH) continue;
-            rbase = (uint16_t)((int)cbase + dy * MAPW);
-            for (dx = -1; dx <= 1; dx++) {
-                int nx;
-                uint16_t np;
-                char c;
-                if (dx == 0 && dy == 0) continue;
-                nx = (int)cx + dx;
-                if (nx < 0 || nx >= MAPW) continue;
-                np = (uint16_t)(rbase + nx);
-                if (d[np] != UNREACH) continue;
-                c = lf[np];                       /* inline walkable check */
-                if (c == '|' || c == '-' || c == ' ') continue;
-                d[np] = nd;
-#ifdef __ZXNEXT
-                if (tail < BFSQ_SIZE)
-#else
-                if (nd < MAXDIST && tail < BFSQ_SIZE)   /* don't expand past MAXDIST */
-#endif
-                    bfsq[tail++] = (uint16_t)(((uint16_t)ny << 8) | (uint8_t)nx);
-            }
+    while (head != tail) {
+        uint16_t    p  = bfsq[(uint8_t)head++];
+        uint8_t     cx = (uint8_t)p, cy = (uint8_t)(p >> 8);
+        uint16_t    k  = (uint16_t)cy * MAPW + cx;
+        uint16_t    kb;                            /* row base: one cell left */
+        uint8_t    *dq;
+        const char *lq;
+        uint8_t     nd = (uint8_t)(d[k] + 1);
+        /* The horizon: labels stay below TARGET. The whole-map flood reaches
+         * 238 across the maze, so a long enough winding level could get
+         * there; cells past it simply stay unset. */
+        if (nd >= TARGET) continue;
+        if (cy) {                                  /* the row above */
+            kb = k - (MAPW + 1); dq = d + kb; lq = (const char *)lvl + kb;
+            if (cx)            FLOOD_TRY(0, -257);
+                               FLOOD_TRY(1, -256);
+            if (cx < MAPW - 1) FLOOD_TRY(2, -255);
+        }
+        kb = k - 1; dq = d + kb; lq = (const char *)lvl + kb;   /* this row */
+        if (cx)                FLOOD_TRY(0, -1);
+        if (cx < MAPW - 1)     FLOOD_TRY(2, 1);
+        if (cy < MAPH - 1) {                       /* the row below */
+            kb = k + (MAPW - 1); dq = d + kb; lq = (const char *)lvl + kb;
+            if (cx)            FLOOD_TRY(0, 255);
+                               FLOOD_TRY(1, 256);
+            if (cx < MAPW - 1) FLOOD_TRY(2, 257);
         }
     }
 }
@@ -698,7 +749,8 @@ void monsters_turn(void) __banked
          * everywhere instead of letting the gap grow turn by turn through bends. */
         if (pet_idx < 0 || !m_alive[(uint8_t)pet_idx]) return;
         if (pet_heel_greedy((uint8_t)pet_idx)) return;
-        compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y);
+        compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y,
+                         (uint16_t)(1u << (uint8_t)pet_idx));   /* for the dog alone */
         pet_step((uint8_t)pet_idx);
         return;
     }
@@ -735,7 +787,7 @@ void monsters_turn(void) __banked
             if (!enemy_chase_greedy(i)) blocked |= (uint16_t)(1u << i);
         }
         if (blocked) {                          /* route only the wall-boxed ones */
-            compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y);
+            compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y, blocked);
             for (i = 0; i < mcount; i++) {
                 if (!(blocked & (uint16_t)(1u << i)) || !m_alive[i]) continue;
                 if (i == (uint8_t)pet_idx) pet_step(i);
@@ -745,7 +797,25 @@ void monsters_turn(void) __banked
     }
     return;
 #endif
-    compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y);
+    {   /* Who reads the field this turn -- mon_step's own rules, so the flood
+         * can stop at the farthest of them (compute_dist_map) or not run at
+         * all. A spawn sleeper can only stir within 5 cells, or under
+         * aggravate monster (still_asleep); a wand's doze just counts down;
+         * the keeper, the eye, a posing mimic and the peaceful never chase. */
+        uint16_t who = 0;
+        for (i = 0; i < mcount; i++) {
+            uint8_t s = m_sleep[i];
+            char    t = m_type[i];
+            if (!m_alive[i] || m_peace[i] || t == MON_KEEPER || t == 'e' || t == 'x')
+                continue;
+            if (s == 255 && !(ring_fx & RF_AGGR) &&
+                (iabs((int)m_x[i] - hero_x) > 5 || iabs((int)m_y[i] - hero_y) > 5))
+                continue;
+            if (s && s != 255) continue;
+            who |= (uint16_t)(1u << i);
+        }
+        if (who) compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y, who);
+    }
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i]) continue;
         if (mimic_hidden(i)) continue;    /* posing as an item */
@@ -768,7 +838,7 @@ void monsters_turn(void) __banked
  * 128K it stops at MAXDIST like the chase's, which is why the demo starts its
  * hero within that reach. dist[] stays private to this file -- the demo
  * reads it by value. */
-void dist_map_from(uint8_t x, uint8_t y) __banked { compute_dist_map(x, y); }
+void dist_map_from(uint8_t x, uint8_t y) __banked { compute_dist_map(x, y, 0); }
 
 uint8_t dist_at(uint8_t x, uint8_t y) __banked
 {
