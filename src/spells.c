@@ -83,6 +83,12 @@ static void spell_ray(uint8_t sp, int dx, int dy)
         if (c == '|' || c == '-' || c == ' ' || c == '+') break;  /* stops */
         mi = monster_at(x, y);
         if (mi < 0) continue;
+        /* Over the dog and the shopkeeper, as a thrown weapon or a wand's
+         * bolt flies. The dog's health lives in pet_hp, not m_hp[], so
+         * hit_monster wounded a copy the next level restored -- or killed
+         * it with have_pet still set, and the dog came back from the dead
+         * on the stairs; the kill even counted against your conduct. */
+        if (mi == pet_idx || m_type[mi] == MON_KEEPER) continue;
         if (sp == SP_FORCE) {
             hit_monster((uint8_t)mi, (uint8_t)(rn2(6) + 4));
         } else {                     /* SP_SLEEP */
