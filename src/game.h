@@ -25,6 +25,15 @@
 #define MINES_BASE      (DLVL_AMULET + 1)
 #define MINES_DEPTH     4
 #define IN_MINES(d)     ((d) >= MINES_BASE)
+/* The two floors with nothing below them: the Amulet's level and the mines'
+ * bottom. No way down may exist there -- the Amulet and the luckstone take
+ * the would-be '>' cells, digging is refused, and no trap door is generated
+ * (trap_type). A trap door on Dlvl 50 used to drop the hero to internal
+ * level 51, i.e. Mine:1, one climb from Dlvl 2 with the Amulet in the pack;
+ * one on Mine:4 made a Mine:5 that does not exist. IN_MINES needs no upper
+ * bound as long as nothing can move dlvl past MAXLVL -- keep it that way. */
+#define AT_BOTTOM(d)    ((d) == DLVL_AMULET || \
+                         (d) == (uint16_t)(MINES_BASE + MINES_DEPTH - 1))
 
 /* deepest level id for which per-level mutations (gold/monsters/fog-of-war)
  * are remembered: the main shaft plus the mines branch. */

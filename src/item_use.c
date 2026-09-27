@@ -488,12 +488,12 @@ void do_zap(void) __banked
     if (ot == O_WDIG) {                  /* digging needs no aim -- it goes down */
         acted = 1; turns++;
         /* Refuse only where there is no floor below: the win level, and the
-         * mines' bottom. `dlvl >= DLVL_AMULET` looked equivalent and was not
-         * -- the mines run dlvl 51..54, all of them >= 50, so digging was
-         * refused throughout the whole branch. The charge is spent AFTER the
+         * mines' bottom (AT_BOTTOM, which the trap doors obey too).
+         * `dlvl >= DLVL_AMULET` looked equivalent and was not -- the mines
+         * run dlvl 51..54, all of them >= 50, so digging was refused
+         * throughout the whole branch. The charge is spent AFTER the
          * refusal now; it used to burn on a dig that never happened. */
-        if (dlvl == DLVL_AMULET ||
-            dlvl == (uint16_t)(MINES_BASE + MINES_DEPTH - 1)) {
+        if (AT_BOTTOM(dlvl)) {
             msg("The floor here resists digging."); return;
         }
         inv[s].ench--;

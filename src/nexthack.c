@@ -1266,6 +1266,7 @@ void do_kick(void) __banked
 static int trap_type(uint8_t x, uint8_t y)
 {
     uint16_t h;
+    int t;
     if (eff_depth() < 2) return -1;
     if (shop_in_room(x, y)) return -1;  /* NetHack rule: no traps inside a shop
                                          * (a trap door mid-shopping is cruel).
@@ -1274,7 +1275,12 @@ static int trap_type(uint8_t x, uint8_t y)
     h = (uint16_t)(world_seed * 31u + (uint16_t)dlvl * 2179u
                    + (uint16_t)x * 71u + (uint16_t)y * 131u);
     if ((h % 47u) != 0) return -1;
-    return (int)((h >> 6) % NTRAP);
+    t = (int)((h >> 6) % NTRAP);
+    /* Where there is no level below (game.h AT_BOTTOM) a trap door becomes a
+     * dart trap, as NetHack's mktrap swaps in a rock trap: the cell still
+     * hides a trap, it just cannot drop you out of the dungeon. */
+    if (t == 0 && AT_BOTTOM(dlvl)) t = 1;
+    return t;
 }
 
 static void spring_trap(int t, uint8_t x, uint8_t y)
