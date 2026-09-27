@@ -412,9 +412,10 @@ static int read_dir(int *dx, int *dy)
 /* Throw a carried weapon in a chosen direction. It flies in a straight line up
  * to THROW_RANGE cells, passing over the pet and the shopkeeper, until it
  * strikes the first enemy (damage by the weapon's power) or a wall. It then
- * lands on the floor where it came to rest and can be walked over and picked
- * back up (floor_drop), unless it stopped on rough terrain. Your wielded weapon
- * is thrown only after a confirmation, so you don't disarm yourself by mistake. */
+ * lands on the floor where it came to rest -- or, if that cell cannot hold it
+ * (stairs, a door, a corpse), beside it -- and can be walked over and picked
+ * back up. Your wielded weapon is thrown only after a confirmation, so you
+ * don't disarm yourself by mistake. */
 #define THROW_RANGE 8
 void do_throw(void) __banked
 {
@@ -461,9 +462,15 @@ void do_throw(void) __banked
         hit_monster((uint8_t)mi, dmg);
         break;                                         /* lands at the enemy's feet */
     }
-    item_inv_remove((uint8_t)s);
-    if (worn) item_recompute_gear();          /* you just threw what you were wielding */
-    item_floor_drop((uint8_t)x, (uint8_t)y, &thrown);       /* leave it to be reclaimed */
+    /* It leaves the pack only once it is down. A killing hit drops its
+     * corpse or loot on the very cell the weapon lands on, and the "no"
+     * from the floor used to come after the weapon was already gone --
+     * most killing throws lost it. item_floor_place tries the neighbours
+     * too and makes room; if even that fails, you still have it. */
+    if (item_floor_place((uint8_t)x, (uint8_t)y, &thrown)) {
+        item_inv_remove((uint8_t)s);
+        if (worn) item_recompute_gear();      /* you just threw what you were wielding */
+    }
     sfx_hit();
     acted = 1; turns++;
 }

@@ -98,7 +98,7 @@ extern uint8_t inv_count;
 int     select_item(char cls) __banked;   /* the prompt follows from the class */
 void    item_recompute_gear(void) __banked;
 void    item_inv_remove(uint8_t s) __banked;
-int     item_floor_drop(uint8_t x, uint8_t y, const obj_t *o) __banked;
+int     item_floor_place(uint8_t x, uint8_t y, const obj_t *o) __banked;  /* an owned item: finds room */
 int     item_pick_worn(char cls) __banked;
 void    item_id_set(uint8_t otyp) __banked;
 uint8_t item_obj_prop(uint8_t otyp) __banked;  /* objtypes[otyp].prop, by value */

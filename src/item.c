@@ -297,6 +297,36 @@ static void floor_pick(uint8_t i)    /* remove entry i, restoring its terrain */
     floor_n--;
 }
 
+/* Put down something the HERO owned -- a thrown weapon, a nymph's loot -- so
+ * that it cannot simply vanish. floor_drop says no to a taken cell, and a
+ * killing throw drops its corpse or loot on the very cell the weapon was
+ * about to land on; the weapon was then gone, and so was a nymph's prize
+ * when she died on a doorway. So: the cell, else the first free neighbour,
+ * and a floor already holding MAXFLOOR things gives up its OLDEST CORPSE --
+ * generated remains, which NetHack would have rotted by now -- before the
+ * answer is no. Corpses and death loot themselves keep plain floor_drop:
+ * they were nobody's, and may be lost. */
+static int floor_place(uint8_t x, uint8_t y, const obj_t *o)
+{
+    int dx, dy;
+    uint8_t i, pass;
+    for (pass = 0; pass < 2; pass++) {
+        if (floor_drop(x, y, o)) return 1;
+        for (dy = -1; dy <= 1; dy++)
+            for (dx = -1; dx <= 1; dx++) {
+                int nx = (int)x + dx, ny = (int)y + dy;
+                if ((dx | dy) == 0 || nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH)
+                    continue;
+                if (floor_drop((uint8_t)nx, (uint8_t)ny, o)) return 1;
+            }
+        if (floor_n < MAXFLOOR) return 0;    /* full floor is not the problem */
+        for (i = 0; i < floor_n && floor_obj[i].o.otyp != O_CORPSE; i++) ;
+        if (i == floor_n) return 0;          /* nothing that may make room */
+        floor_pick(i);                       /* oldest first: floor_drop appends */
+    }
+    return 0;
+}
+
 /* A slain monster may leave its corpse where it fell: a '%' floor item whose
  * ench carries the monster's char. floor_drop validates the cell (plain
  * floor/corridor, list not full) -- when it can't rest there, no corpse. */
@@ -953,8 +983,13 @@ static uint16_t item_price(const obj_t *o)
 static void drop_held_1(uint8_t mi)
 {
     if (!held_has[mi]) return;
-    held_has[mi] = 0;
-    floor_drop(m_x[mi], m_y[mi], &held_obj[mi]);  /* lost only if the cell is taken */
+    /* Her pocket empties only once the loot is somewhere: at her feet or
+     * beside her, else -- a floor crammed with your own things -- back in
+     * your pack. Only with the pack full too does she hold on to it, and
+     * tries again at her death or the level's end. It used to be cleared
+     * first and lost whenever her cell could not take it. */
+    if (floor_place(m_x[mi], m_y[mi], &held_obj[mi]) || inv_add(&held_obj[mi]))
+        held_has[mi] = 0;
 }
 
 void drop_held(uint8_t mi) __banked { drop_held_1(mi); }   /* a kill's return */
@@ -1635,8 +1670,8 @@ int select_item(char cls) __banked
  * in this bank, item_use.c is not. */
 void    item_recompute_gear(void) __banked                { recompute_gear(); }
 void    item_inv_remove(uint8_t s) __banked               { inv_remove(s); }
-int     item_floor_drop(uint8_t x, uint8_t y, const obj_t *o) __banked
-                                                          { return floor_drop(x, y, o); }
+int     item_floor_place(uint8_t x, uint8_t y, const obj_t *o) __banked
+                                                          { return floor_place(x, y, o); }
 int     item_pick_worn(char cls) __banked                 { return pick_worn(cls); }
 void    item_id_set(uint8_t otyp) __banked                { id_set(otyp); }
 uint8_t item_obj_prop(uint8_t otyp) __banked              { return objtypes[otyp].prop; }
