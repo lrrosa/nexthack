@@ -45,7 +45,7 @@ M16 = 0xFFFF
 
 
 class Rng(object):
-    """src/rng.c:35 rng_next / :43 rn2 -- bit-exact, 16-bit wrap included."""
+    """src/rng.c:40 rng_next / :48 rn2 -- bit-exact, 16-bit wrap included."""
 
     def __init__(self, seed=1):
         self.s = (seed & M16) or 0xACE1
@@ -63,7 +63,7 @@ class Rng(object):
 
 
 def item_hash(world_seed, dlvl, x, y):
-    """src/item.c:830 -- pure; never touches the RNG stream."""
+    """src/item.c:860 -- pure; never touches the RNG stream."""
     h = (world_seed + dlvl * 2657 + x * 131 + y * 1009) & M16
     h ^= (h << 7) & M16
     h ^= h >> 9
@@ -263,7 +263,7 @@ class Tables(object):
         return self.mons[0]
 
     def pool(self, depth):
-        """src/monster.c:115 pick_mon -- types eligible at this depth.
+        """src/monster.c:116 pick_mon -- types eligible at this depth.
         The shopkeeper is skipped; mines natives (mindep 255) are injected
         directly by pick_mon, never pooled."""
         return [m for m in self.mons if m.ch != "@" and m.mindep <= depth]
@@ -327,13 +327,13 @@ FORMULAS = [
     ("level-up HP", "src/monster_ai.c:34",
      "gain = rn2(4) + 2 + (at_con >= 14), capped so pmaxhp <= 250",
      "level_gain(rng, con)"),
-    ("regeneration", "src/nexthack.c:644",
+    ("regeneration", "src/nexthack.c:480",
      "1 HP every 14/17/20 turns (Co>=16 / Co>=13 / else), halved by ring",
      "regen_period(con, ring)"),
-    ("wandering monster", "src/monster_spawn.c:256",
-     "upkeep() rolls rn2(has_amulet ? 25 : 70) == 0 each turn; spawns awake (:289)",
+    ("wandering monster", "src/monster_spawn.c:262",
+     "upkeep() rolls rn2(has_amulet ? 25 : 70) == 0 each turn; spawns awake (:296)",
      "WANDER_P / WANDER_P_AMULET"),
-    ("rest ('R')", "src/nexthack.c:1351",
+    ("rest ('R')", "src/nexthack.c:1193",
      "rest_step: pass turns until full HP, Weak, a key, or an awake hostile in view",
      "rest_breakeven(con, ring, amulet) = wander_period / regen_period"),
     ("monsters per level", "src/monster_spawn.c:125",
@@ -345,13 +345,13 @@ FORMULAS = [
     ("worn set", "src/item.c recompute_gear",
      "every worn '[' piece adds; armor_def saturates at ARMOR_CAP",
      "Hero.recompute() -- one piece per SL_* slot since 1.3"),
-    ("floor enchantment", "src/item.c:930",
+    ("floor enchantment", "src/item.c:960",
      "roll = (h >> 5) % 100; +1 if roll < depth, +2 if roll < depth/3",
      "floor_ench(h, depth)"),
-    ("floor BUC", "src/item.c:937",
+    ("floor BUC", "src/item.c:967",
      "r = (h >> 11) & 7 -- 5/8 uncursed, 2/8 cursed, 1/8 blessed",
      "floor_buc(h)"),
-    ("amulet gauntlet", "src/monster.c:122",
+    ("amulet gauntlet", "src/monster.c:123",
      "pool depth = has_amulet ? eff_depth() + 15 : eff_depth()",
      "pool(depth + 15) -- note the BITE still uses the real depth"),
 ]
@@ -406,7 +406,7 @@ def spawn_count(depth):
 
 
 def armor_redux(eff):
-    """src/item.c:353 -- an armour piece shields eff-1 (at least 1)"""
+    """src/item.c:383 -- an armour piece shields eff-1 (at least 1)"""
     return 0 if eff <= 0 else (eff - 1 if eff > 1 else 1)
 
 
@@ -473,7 +473,7 @@ class Hero(object):
                 self.offer(o.cls, o.prop, o.slot)
         self.recompute()
 
-    # -- src/item.c:1424 find_best_gain + :335 recompute_gear -------------------------
+    # -- src/item.c:1459 find_best_gain + :365 recompute_gear -------------------------
     def offer(self, cls, eff, slot=0):
         """consider a piece of gear.  Armour is per SLOT since 1.3 (do_wear
         takes off only the piece that slot already holds), so a shield and a
@@ -612,7 +612,7 @@ class RunOpts(object):
 
 
 def level_loot(rng, t, hero, depth, opts):
-    """The loot block of one ordinary level (src/levelgen.c:557) resolved
+    """The loot block of one ordinary level (src/levelgen.c:576) resolved
     through the game's own item hash, then offered to the hero."""
     if not opts.pickup:
         return
@@ -684,7 +684,7 @@ def simulate_run(rng, t, cls, opts, log=None):
     if not opts.ascend:
         return "survived", t.DLVL_AMULET
     # the gauntlet: with the Amulet the pool is 15 floors deeper than the
-    # ground under your feet (src/monster.c:122) -- but the BITE bonus still
+    # ground under your feet (src/monster.c:123) -- but the BITE bonus still
     # keys off the real depth, which is the whole point of measuring it.
     opts.amulet = True
     for depth in range(t.DLVL_AMULET, 0, -1):
@@ -714,18 +714,18 @@ def run_batch(t, cls, opts, trials, seed=1):
 # 8. Rest economics.
 # ---------------------------------------------------------------------------
 
-WANDER_P = 70       # src/monster_spawn.c:256 -- rn2(70), or rn2(25) with the Amulet
+WANDER_P = 70       # src/monster_spawn.c:262 -- rn2(70), or rn2(25) with the Amulet
 WANDER_P_AMULET = 25
 
 
 def rest_breakeven(con, ring=False, amulet=False):
     """How much a fight may cost before resting stops paying for itself.
 
-    'R' (src/nexthack.c:1351 rest_step) passes turns through the same
-    upkeep() (src/mainentry.c:151) as a wait ('.', src/mainentry.c:135) or a
-    search ('s', src/nexthack.c:1335), so whichever key spends the time,
-    recovery is 1 HP every regen_period turns (src/nexthack.c:644).
-    Meanwhile every turn rolls a wandering monster (src/monster_spawn.c:256).
+    'R' (src/nexthack.c:1193 rest_step) passes turns through the same
+    upkeep() (src/mainentry.c:144) as a wait ('.', src/mainentry.c:128) or a
+    search ('s', src/nexthack.c:1177), so whichever key spends the time,
+    recovery is 1 HP every regen_period turns (src/nexthack.c:480).
+    Meanwhile every turn rolls a wandering monster (src/monster_spawn.c:262).
     Resting is profitable only while
 
         1 / regen_period  >  hp_cost_per_fight / wander_period
@@ -733,7 +733,7 @@ def rest_breakeven(con, ring=False, amulet=False):
     i.e. while a fight costs less than wander_period / regen_period HP.
 
     'R' does not dodge that cost, it only times it: an awake hostile coming
-    into view ends the rest before the turn is charged (src/nexthack.c:1362),
+    into view ends the rest before the turn is charged (src/nexthack.c:1204),
     so each wanderer is one ordinary fight with the hero swinging first --
     the fight cmd_rest prices -- rather than free hits on a sleeper."""
     return (WANDER_P_AMULET if amulet else WANDER_P) / float(regen_period(con, ring))
@@ -935,7 +935,7 @@ def _clone(h):
 def cmd_gear(t, a):
     h1("What the floor actually offers")
     print("""
-Every ordinary level drops one weapon and one armour (src/levelgen.c:557).
+Every ordinary level drops one weapon and one armour (src/levelgen.c:576).
 Their power is resolve_floor's: the eligible type pool at that depth, plus a
 depth-scaled enchantment and a BUC roll (5/8 uncursed, 2/8 cursed, 1/8
 blessed).  Sampled through the game's own item_hash over real cells.
@@ -970,15 +970,15 @@ blessed).  Sampled through the game's own item_hash over real cells.
 def cmd_rest(t, a):
     h1("Rest economics: can you heal up between fights?")
     print("""
-'R' rests (src/nexthack.c:1351 rest_step): the turn loop keeps passing turns
-(src/mainentry.c:65) through the same upkeep() as a wait or a search, so it
+'R' rests (src/nexthack.c:1193 rest_step): the turn loop keeps passing turns
+(src/mainentry.c:58) through the same upkeep() as a wait or a search, so it
 saves keypresses, not HP.  Regeneration is 1 HP every 14-20 turns
-(src/nexthack.c:644), and every turn also rolls a wandering monster at
-1/%d -- 1/%d once you carry the Amulet (src/monster_spawn.c:256).
+(src/nexthack.c:480), and every turn also rolls a wandering monster at
+1/%d -- 1/%d once you carry the Amulet (src/monster_spawn.c:262).
 
 The rest ends before the turn is charged when an awake hostile comes into
-view (src/nexthack.c:1362), so a wanderer costs one ordinary fight, not free
-hits -- and wanderers spawn awake (src/monster_spawn.c:289), so the fights
+view (src/nexthack.c:1204), so a wanderer costs one ordinary fight, not free
+hits -- and wanderers spawn awake (src/monster_spawn.c:296), so the fights
 below get no sneak attack.  Resting therefore pays only while an average
 fight costs less than wander_period / regen_period HP:
 """.strip() % (WANDER_P, WANDER_P_AMULET))
@@ -1019,9 +1019,9 @@ fight costs less than wander_period / regen_period HP:
 
   Left out, and pulling opposite ways: 1/%d is the roll, not the arrival
   rate -- a spawn in view, in a shop or onto a full monster list is dropped
-  (src/monster_spawn.c:258-278), so resting is a little cheaper than shown;
+  (src/monster_spawn.c:264-284), so resting is a little cheaper than shown;
   but each HP also costs 14-20 turns of food, and 'R' stops at Weak
-  (src/nexthack.c:1356), which this table does not price.""" % WANDER_P)
+  (src/nexthack.c:1198), which this table does not price.""" % WANDER_P)
 
 
 def cmd_runs(t, a):
@@ -1119,8 +1119,8 @@ guesses, the wall would be an artefact of the guessing.  It does not.
 def cmd_gauntlet(t, a):
     h1("The Amulet gauntlet: is the climb back out actually harder?")
     print("""
-Carrying the Amulet widens the spawn pool by 15 floors (src/monster.c:122)
-and triples the wandering-monster rate (src/monster_spawn.c:256).  But the
+Carrying the Amulet widens the spawn pool by 15 floors (src/monster.c:123)
+and triples the wandering-monster rate (src/monster_spawn.c:262).  But the
 bite bonus keys off the REAL depth, not the pool depth -- so near the
 surface the dungeon sends its deep servants with shallow teeth.
 """.strip())

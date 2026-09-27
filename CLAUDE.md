@@ -295,7 +295,8 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `puttile_asm.asm` | R | **128K only** — the ULA cell blits in hand-written Z80 |
 | `esxdetect.asm` | R | **128K only** — probes for a DivMMC/esxDOS before a save is attempted |
 | `banked_call.asm` | R | **128K only** — the vendored banking trampoline (the Next uses the SDK's) |
-| `nexthack.c/.h` | B | game-state globals (resident DATA) + rendering, turn step, save/restore, screens; `.h` declares its `__banked` entry points for `mainentry.c` |
+| `nexthack.c/.h` | B | game-state globals (resident DATA) + rendering, turn step, screens; `.h` declares its `__banked` entry points for `mainentry.c` (and `save.c`'s) |
+| `save.c` | B | save & restore, split off it (2026-09-27): the file format, its length+sum trailer, the two-pass load and the prompt for a save that cannot be loaded |
 | `nexthack_lvl.c` | B | the cold level half split off it: `build_level`, the altar/fountain/pet/follower placement, and the stairs |
 | `game.h` | — | shared player/run state (`extern`s defined in `nexthack.c`) |
 
@@ -365,9 +366,11 @@ tilemap.
   globals, which is safe only because the title is never reached with an
   unsaved run in RAM (boot, or after `S`); it never calls
   `try_move`/`monsters_turn`/`upkeep`, so no mask, pack or conduct moves, and it
-  puts back what `main()`'s fresh start takes at boot values (`dlvl`,
-  `max_dlvl`, `turns`, `hero_face`, `st_blind`). Extend that list if the demo
-  ever calls gameplay code.
+  puts back `dlvl`, `max_dlvl`, `turns`, `hero_face` and `st_blind`. Since
+  2026-09-27 `main()`'s fresh start is a whole `new_game(0)`, so a failed
+  restore after `S` (or after the demo) can no longer begin a "new" game on
+  the saved run's depth with its gold and kill masks; `hero_face` is the one
+  value there that `new_game` does not set.
 - **Two banking gotchas this exposed:** (a) a translation unit gets **one** const
   section, so each bank's array needs its **own `.c`** (hence three files); which
   bank that is comes from `banks.json`, not from a pragma in the file. (b) z88dk
@@ -426,6 +429,11 @@ tilemap.
   sets `has_amulet`; climbing `<` on Dlvl 1 while carrying it sets `won` (victory
   screen, then restart). The amulet is placed **without RNG** (on the would-be
   down-stairs cell), so it cannot desync the deterministic per-depth generation.
+  **No way down may exist on `AT_BOTTOM` levels** (Dlvl 50 and Mine:4, `game.h`):
+  no `>`, digging is refused, and a trap door hashes into a dart trap there. A
+  trap door on Dlvl 50 used to drop the hero into internal level 51 = Mine:1,
+  one climb from Dlvl 2 with the Amulet. `IN_MINES` has no upper bound, so any
+  new way to change `dlvl` must keep it inside 1..54.
 - **FOV** remembers explored cells in an **LRU pool** (`fov_pool`: the `FOV_SLOTS`
   most recently visited levels' 1-bit-per-cell maps; entering a new level evicts and
   forgets the least-recently-used one) plus a recomputed-each-turn `vis_now` bitmap.
@@ -434,11 +442,24 @@ tilemap.
   rooms are only revealed on entry). `draw_map` shows unseen=black, in-sight=full,
   seen-but-not-visible=dimmed.
 
-### Save / restore (`nexthack.c` + per-module `*_save`/`*_load`)
+### Save / restore (`save.c` + per-module `*_save`/`*_load`)
 - **Model**: NetHack-style *save & quit*. `S` writes the whole game to
   `nexthack.sav` (a magic+version header, the player struct, then each module's
-  state) and returns to the title; the boot path calls `load_game()`, which
-  restores and then **deletes** the file (no save-scumming), else starts fresh.
+  state, then a 4-byte trailer: the count and 16-bit sum of every byte before it)
+  and returns to the title; the boot path calls `load_game()`, which restores and
+  then **deletes** the file (no save-scumming), else starts fresh.
+- **Nothing is trusted until the whole file is.** `load_game` first reads the file
+  through once (`save_check`) and compares length and sum with the trailer; only
+  then does a second pass read into the live globals. A short or damaged file
+  gets the same y/n as another version's (`save_refused`), and on `n` stays on the
+  card. On the save side `file_write` latches a short write and `file_close` a
+  failed flush (`file_bad`, `platform.c`); a failed save deletes its stump and
+  reports, and the run in RAM plays on. There is no temp-file+rename: the load
+  consumes the file, so at `S` time there is no older good save to protect.
+- The **play RNG** is saved (`SAVE_VER` 30) and `build_level` sets it aside
+  around the deterministic part (`gen_level` reseeds per depth; the spawns that
+  follow draw from that stream). Before, every level entry and every restore left
+  the play dice at the same per-level point.
 - The *current* level is **not** saved: `build_level()` regenerates it
   deterministically from the restored `world_seed` + persistence bitmasks, exactly
   as a revisit does. Saved state = `world_seed`, the player globals, the inventory
@@ -498,7 +519,15 @@ tilemap.
 - **Every teleport of the hero goes through `hero_teleport()`** (`nexthack.c`):
   the scroll, the trap, the spell and teleportitis. It is where teleport control
   asks; assigning `hero_x/y` from `level_random_floor` anywhere else would
-  silently bypass the ring.
+  silently bypass the ring. `level_random_floor` only returns a square `tele_ok`
+  accepts -- ground, no door, nobody there -- because a room rect is FOV metadata,
+  not a promise: the cavern/crypt/temple rects hold rock and walls, and the mines
+  scatter pillars. Twelve refused rolls fall back to a map sweep.
+- **Items the hero owned never just vanish.** `floor_drop` says no to a taken
+  cell or a full floor (`MAXFLOOR` 8); for a thrown weapon or a nymph's loot use
+  `floor_place` (`item_floor_place` from `item_use.c`), which tries the
+  neighbours and evicts the oldest corpse before failing -- and callers keep the
+  object until it is down. Corpses and death loot stay on plain `floor_drop`.
 - **A cursed piece the hero has on stays on.** There is no remove command, so
   every way an item leaves the pack is a way out of a curse: `d` (drop and
   sell) asks `cursed_on()` in `item.c`, and `t` checks the weld itself in
@@ -525,8 +554,22 @@ tilemap.
   site must go through `pick_living()` too.
 - Pathfinding is a **per-turn BFS "Dijkstra map"** from the hero (`compute_dist_map`)
   over walkable cells; each monster steps to the lowest-distance neighbour. One search
-  serves all monsters. The BFS frontier queue `bfsq` is **bounded** (`BFSQ_SIZE`) with
-  guarded enqueues — do not size it to `MAPW*MAPH` (see memory budget).
+  serves all monsters. The frontier queue `bfsq` is a **ring** of 256 (`BFSQ_SIZE`,
+  uint8_t slot) -- a flood only ever holds about two distance layers, at most 67
+  cells on any shipped map, where the old linear 696-entry queue counted every cell
+  ever enqueued and stopped: 101-578 walkable cells of the maze, the cavern and the
+  Big Room never got a distance. The flood takes a mask of the monsters that will
+  READ it this turn (`who`), marks their cells `TARGET` and **stops when the last is
+  labelled** -- every closer layer is complete by then, so the moves are exactly a
+  whole-map field's; no reader, no flood. The eight neighbours are unrolled
+  (`FLOOD_TRY`) -- the dx/dy loops kept their ints in IX memory. Measured on the
+  128K Big Room, a wall-boxed chaser 10 squares off: 0.9 s of flood before,
+  ~0.25 s after (FRAMES-timed under ZEsarUX); 20 squares off, 0.5 s where the old
+  flood never reached it at all.
+- **Kill persistence names spawn identities, not slot numbers.** `m_track` (bit i:
+  slot i holds the monster the level spawned there) gates every `mon_dead` write:
+  keeper, pet and followers are appended above the spawns, and a wanderer or summon
+  that moves into a dead slot clears its bit. A new spawn or kill site must keep it.
 
 ### Turn loop & input (`nexthack.c main`)
 - Loop: read key (`getkey_rpt`) → act → if the action took a turn, `upkeep()`
@@ -554,7 +597,9 @@ The game **broke the 64 KB ceiling by code-banking**. Layout:
   are **not** interchangeable free space: `banks.json` says which module goes where,
   and some are full while others are half empty. **Ask `bankmap.py`, never guess.**
 - **Bank 5** (`0x4000-0x7FFF`, always mapped): tilemap + tile defs, and its free tail
-  (`0x7400-0x8000`) holds the BFS scratch `dist[]`+`bfsq[]` (data-banked out of resident).
+  holds the BFS scratch `dist[]`+`bfsq[]` (`0x7400-0x7C90`, data-banked out of
+  resident); `0x7C90-0x8000` (880 B) has been free on both targets since the queue
+  became a ring.
 
 **The resident half is the constraint.** Everything resident (code+data+BSS) must end
 below `0xBDF0` — `REGISTER_SP` is `0xBFF0` and the stack wants the 512 B under it — or
@@ -565,8 +610,8 @@ the stack corrupts and the machine resets to BASIC.
 tenant map. Any figure in this document is a snapshot of the commit that wrote it, and
 this is the one place where a stale number costs a debugging session. Its headroom
 figure is measured to `$BDF0` and reaches 0 exactly where the stack reserve begins,
-so it is the number you can spend directly. As of 2026-09-03 the Next sat at
-`__BSS_END=$BCDD` — 275 B — and the 128K at `$B4C8`, ~2.3 KB.
+so it is the number you can spend directly. As of 2026-09-27 the Next sat at
+`__BSS_END=$BCFE` — 242 B — and the 128K at `$B4E9`, ~2.3 KB.
 
 **Adding a feature:**
 - **New code → make it banked** (there is room, though not in every bank): declare the

@@ -8,6 +8,74 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [Unreleased]
+
+**A code audit's ten findings, fixed** — every one confirmed in the code
+first, and every fix proven in ZEsarUX on both machines.
+
+### Fixed
+- **A trap door on Dlvl 50 dropped you into the Gnomish Mines.** The level
+  below 50 is, inside the game, Mine:1 — one climb from Dlvl 2 with the Amulet
+  in your pack and the whole ascent skipped; a trap door on Mine:4 made a
+  Mine:5 that does not exist. Where there is no level below, a trap door is
+  now a dart trap (NetHack swaps in a rock trap for the same reason).
+- **Healing near 255 HP could leave you on 1**, and a fourth potion of
+  blindness could cut the darkness short: HP and the status timers wrapped
+  past 255 instead of stopping there. Every heal and every lengthened status
+  now stops at the top.
+- **Force Bolt and the sleep spell hit your dog and the shopkeeper**, which
+  thrown weapons and wand bolts fly past. A wounded dog came back whole on the
+  next level; a killed one came back from the dead, and counted as your kill.
+  The spells fly past them now too.
+- **A killing throw usually lost the weapon.** The corpse or loot fell on the
+  very square the weapon was about to land on, and the weapon was already out
+  of your pack. A thrown weapon now lands beside a taken square, and a floor
+  already holding eight things gives up its oldest corpse to make room; only
+  if even that fails does the weapon stay in your hand. The same goes for a
+  nymph's loot when she dies on a doorway or you leave her level: it lands
+  beside her, or else comes back to your pack, instead of vanishing.
+- **Killing a wanderer, a summoned monster or a follower could mark one of
+  the level's own monsters dead** for your next visit: the kill memory named a
+  monster slot, not a monster. It only remembers the level's own now.
+- **Monsters in the Big Room, the cavern and the maze could lose track of
+  you.** The pathfinding flood stopped after 696 cells and left up to 578
+  walkable cells with no way to you — a monster twenty squares off round a
+  wall in the Big Room simply stood there. It now reaches every cell, and
+  stops as soon as the last monster that will use it has its route. It is
+  cheaper, too: on the 128K a turn that routes a monster round a wall in the
+  Big Room took 0.9 s of pathfinding and now takes about 0.25 s; on the Next
+  the difference stays below what can be measured.
+- **Teleporting could put you inside rock or a wall** on the cavern, crypt
+  and temple levels (their rooms are drawn around the rock), inside a Mines
+  pillar, or on top of a monster when every try failed. Every random teleport
+  now lands on open ground.
+- **A save cut short or damaged on the card was loaded anyway** — and then
+  deleted — and a full or write-protected card still said *Game saved*. A save
+  is now sealed with its length and a checksum, written with every transfer
+  checked, and read through once before anything of it is loaded; a bad one is
+  named and left for you to keep or delete, like another version's save.
+- **Saving and restoring rewound the dice**, and so did every trip up and down
+  the stairs: generating a level reset the random stream to the same point
+  each time. The stream is saved now, and generating a level leaves it alone.
+- **A restore that failed after `S`** — the card pulled out after *You may
+  switch off* — began a "new" game on the saved run's depth, with its gold and
+  its kill memory. It starts clean now. And a new game after a death or a win
+  no longer inherits the last run's spell-power regeneration.
+
+### Changed
+- `SAVE_VER` 30 (the dice and the checksum). **Saves from 1.4 will not load**;
+  the game names the old save and asks before deleting it — answer `n` and it
+  stays for the 1.4 binary.
+- Save & restore moved out of `nexthack.c` into its own `save.c`, which gave
+  the fullest bank on the 128K 1.2 KB back. The pathfinding queue shrank from
+  696 entries to a ring of 256, freeing 880 bytes of Bank 5 on both machines.
+- `tools/balance.py`'s source references point at the moved lines again.
+- **The build refuses a module the assembler had to mangle.** On the way this
+  toolchain showed a trap: a pointer plus a negative constant can come out of
+  z80asm with the wrong offset, and only a warning says so. Both build
+  scripts now treat that warning as a failed compile. A scan of every module
+  of both builds found no other case — nothing released was affected.
+
 ## [1.4.1] — 2026-09-25
 
 **Left alone, the title plays itself** — and resting no longer undoes the
