@@ -1307,7 +1307,7 @@ static void spring_trap(int t, uint8_t x, uint8_t y)
             msg("A whiff of gas.  You yawn.");
         } else {
             msg("Sleeping gas!");
-            st_sleep = (uint8_t)(st_sleep + rn2(4) + 3);
+            ADD_SAT8(st_sleep, rn2(4) + 3);
         }
     } else if (t == 3) {                /* teleport trap: whisked away (the
                                          * runtime rn2 is safe, like the scroll) */
@@ -1484,6 +1484,7 @@ void new_game(void) __banked
     xlvl = 1;
     nutrition = 900;
     heal_timer = 0;
+    pw_timer = 0;          /* power regrows from scratch too, not mid-phase */
     hunger_state = 0;
     st_conf = st_blind = st_sleep = st_poison = 0;
     resting = 0;

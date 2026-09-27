@@ -140,7 +140,7 @@ void attack_monster(uint8_t mi) __banked
             ring_noticed(RF_FREEACT);
             msg("You momentarily stiffen.");
         } else {
-            st_sleep = (uint8_t)(st_sleep + rn2(5) + 2);
+            ADD_SAT8(st_sleep, rn2(5) + 2);
             msg("You are frozen by its gaze!");
         }
     }
@@ -187,11 +187,11 @@ static void monster_hits_player(uint8_t i)
         switch (mt->atk) {          /* special on-hit effects (status-effect layer) */
         case ATK_POISON:
             if (intrinsics & INTR_POISON_RES) break;   /* immune flesh */
-            if (rn2(2)) { st_poison = (uint8_t)(st_poison + rn2(4) + 3);
+            if (rn2(2)) { ADD_SAT8(st_poison, rn2(4) + 3);
                           msg("You feel poisoned!"); }
             break;
         case ATK_BLIND:
-            if (rn2(2)) { st_blind = (uint8_t)(st_blind + rn2(15) + 10);
+            if (rn2(2)) { ADD_SAT8(st_blind, rn2(15) + 10);
                           map_dirty = 1; msg("You are blinded!"); }
             break;
         case ATK_STEAL:
@@ -203,7 +203,7 @@ static void monster_hits_player(uint8_t i)
             break;
         case ATK_SLEEP:
             if (intrinsics & INTR_SLEEP_RES) break;    /* wide awake */
-            if (rn2(3) == 0) { st_sleep = (uint8_t)(st_sleep + rn2(4) + 3);
+            if (rn2(3) == 0) { ADD_SAT8(st_sleep, rn2(4) + 3);
                                msg("You are put to sleep!"); }
             break;
         case ATK_DRAIN:

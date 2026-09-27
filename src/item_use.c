@@ -56,13 +56,13 @@ static void quaff_fountain(void)
 
     switch (rn2(6)) {
     case 0: case 1:                      /* cool, clear water */
-        php = (uint8_t)(php + rn2(5) + 2);
+        ADD_SAT8(php, rn2(5) + 2);
         if (php > pmaxhp) php = pmaxhp;
         msg("The water is cool and clear.");
         break;
     case 2:                              /* murky water */
         if (intrinsics & INTR_POISON_RES) { msg("This water tastes stale."); }
-        else { st_poison = (uint8_t)(st_poison + rn2(4) + 3);
+        else { ADD_SAT8(st_poison, rn2(4) + 3);
                msg("Yecch!  Foul, murky water."); }
         break;
     case 3:                              /* coins glinting at the bottom */
@@ -130,17 +130,17 @@ void do_quaff(void) __banked
     ot  = inv[s].otyp;
     buc = (uint8_t)buc_st(&inv[s]);
     if (ot == O_CONFUSION) {
-        st_conf = (uint8_t)(st_conf + rn2(15) + 15);
+        ADD_SAT8(st_conf, rn2(15) + 15);
         msg("Huh?  What?  Where am I?");
     } else if (ot == O_SLEEPING) {
         if (intrinsics & INTR_SLEEP_RES) {
             msg("You yawn.");           /* sleep resistance shrugs it off */
         } else {
-            st_sleep = (uint8_t)(st_sleep + rn2(8) + 5);
+            ADD_SAT8(st_sleep, rn2(8) + 5);
             msg("You suddenly fall asleep!");
         }
     } else if (ot == O_BLINDNESS) {
-        st_blind = (uint8_t)(st_blind + rn2(40) + 30);
+        ADD_SAT8(st_blind, rn2(40) + 30);
         map_dirty = 1;                      /* redraw: the world goes dark */
         msg("Darkness falls around you.");
     } else if (ot == O_GAINLVL) {
@@ -164,7 +164,7 @@ void do_quaff(void) __banked
         } else {
             msg("You feel much better.");
         }
-        php = (uint8_t)(php + heal);
+        ADD_SAT8(php, heal);
         if (php > pmaxhp) php = pmaxhp;
     }
     item_id_set(ot);                 /* drinking it identifies the type */
@@ -184,7 +184,7 @@ static void eat_corpse(char mch)
             intrinsics |= INTR_POISON_RES;
             msg("You feel healthy!");
         } else {
-            st_poison = (uint8_t)(st_poison + 8);
+            ADD_SAT8(st_poison, 8);
             msg("Ecch - that was poisonous!");
         }
     } else if (mch == 'i') {                     /* homunculus: sleepy flesh */
@@ -194,7 +194,7 @@ static void eat_corpse(char mch)
             intrinsics |= INTR_SLEEP_RES;
             msg("You feel wide awake!");
         } else {
-            st_sleep = (uint8_t)(st_sleep + rn2(4) + 3);
+            ADD_SAT8(st_sleep, rn2(4) + 3);
             msg("You doze off...");
         }
     } else if (mch == 'e') {                     /* floating eye: the classic */

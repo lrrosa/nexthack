@@ -108,6 +108,15 @@ extern int8_t   luck;         /* hidden fortune, -5..+5: pleased gods raise it,
 #define INTR_SLEEP_RES  0x02  /* sleep attacks and gas traps do nothing   */
 #define INTR_TELEPATHY  0x04  /* sense monsters while blind               */
 
+/* Add n to the uint8_t v, pinning at 255 instead of wrapping. Every heal and
+ * every status extension goes through it: HP reaches 252 and the timers are
+ * extended by adding to what is left, so a plain (uint8_t)(v + n) came back
+ * SMALLER -- 250 HP healed by 7 left the hero on 1, a fourth potion of
+ * blindness cut the darkness short. v must be a plain lvalue (it is read
+ * twice); n is evaluated once, so an rn2() in it rolls once. */
+#define ADD_SAT8(v, n) do { uint8_t sat8_ = (uint8_t)((v) + (n)); \
+                            (v) = (sat8_ < (v)) ? 255u : sat8_; } while (0)
+
 /* transient status effects (per-turn countdowns; 0 = inactive). Defined in
  * nexthack.c, ticked in upkeep(). The foundation other systems hook into --
  * potions set them now; monsters and traps will later. */

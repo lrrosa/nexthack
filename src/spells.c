@@ -142,7 +142,7 @@ void do_cast(void) __banked
     if (idx == SP_FORCE || idx == SP_SLEEP) {
         spell_ray(idx, dx, dy);
     } else if (idx == SP_HEAL) {
-        php = (uint8_t)(php + rn2(8) + 6);
+        ADD_SAT8(php, rn2(8) + 6);
         if (php > pmaxhp) php = pmaxhp;
         msg("You feel better.");
     } else {                             /* SP_TELE: whisk yourself away */
