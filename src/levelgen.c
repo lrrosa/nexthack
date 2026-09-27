@@ -187,37 +187,56 @@ void rand_floor(uint8_t i, uint8_t *px, uint8_t *py) __banked
     *py = (uint8_t)(r_y[i] + 1 + rn2((uint8_t)(r_h[i] - 2)));
 }
 
+/* Can the hero arrive at (x,y) by teleport? What controlled teleport already
+ * asks (hero_teleport): ground to stand on, no door, nobody there, and not
+ * the square you are leaving. The ground test is not a formality: a room
+ * rect is FOV metadata, not a promise -- the cavern's, the crypt's and the
+ * temple's hold rock and walls (14%, 12% and 5% of their interiors), and the
+ * mines scatter rock pillars through their rooms. Arriving ON a monster puts
+ * two creatures on one square, where monster_at only ever finds one. (A shop
+ * is a fine destination for the HERO: you may walk in freely.) */
+static uint8_t tele_ok(uint8_t x, uint8_t y)
+{
+    char c = lvl[y][x];
+    return walkable(c) && c != '+' && monster_at((int)x, (int)y) < 0 &&
+           !((int)x == hero_x && (int)y == hero_y);
+}
+
 /* A teleport destination: a random interior cell, but in a DIFFERENT room from
  * the one the hero stands in (when there's a choice), so reading a scroll of
  * teleportation actually relocates you instead of possibly dumping you back in
- * the same room -- or, worse, on your own square. A one-room level (e.g. the Big
- * Room) can only re-roll the cell. Runtime-only (reading a scroll), so the extra
- * rn2() calls don't touch the deterministic per-depth generation. */
+ * the same room. A one-room level (e.g. the Big Room) can only re-roll the
+ * cell. Runtime-only (reading a scroll), so the extra rn2() calls don't touch
+ * the deterministic per-depth generation. Leaves *px/*py on the hero only if
+ * the whole level has no square that will do. */
 void level_random_floor(uint8_t *px, uint8_t *py) __banked
 {
-    uint8_t cur = rcount, i, r, tries;
+    uint8_t cur = rcount, i, r, tries, x, y;
 
+    *px = (uint8_t)hero_x; *py = (uint8_t)hero_y;
     for (i = 0; i < rcount; i++)        /* which room (if any) is the hero in? */
         if ((uint8_t)hero_x >= r_x[i] && (uint8_t)hero_x < r_x[i] + r_w[i] &&
             (uint8_t)hero_y >= r_y[i] && (uint8_t)hero_y < r_y[i] + r_h[i]) {
             cur = i; break;
         }
 
-    /* Re-roll off an occupied cell: arriving ON a monster puts two creatures
-     * on one square, where monster_at only ever finds one and you would have
-     * to step away and back to fight it. After enough tries take the last
-     * roll anyway -- a crowded level should still teleport you somewhere.
-     * (A shop is a fine destination for the HERO: you may walk in freely.) */
     for (tries = 0; tries < 12; tries++) {
         if (rcount > 1) {
             do { r = (uint8_t)rn2(rcount); } while (r == cur);   /* a different room */
-            rand_floor(r, px, py);
+            rand_floor(r, &x, &y);
         } else {                        /* only one room: just avoid your own cell */
-            rand_floor(0, px, py);
+            rand_floor(0, &x, &y);
         }
-        if (*px == (uint8_t)hero_x && *py == (uint8_t)hero_y) continue;
-        if (monster_at((int)*px, (int)*py) >= 0) continue;
-        return;
+        if (tele_ok(x, y)) { *px = x; *py = y; return; }
+    }
+    /* Twelve refusals -- a crowded level, or bad luck in the cavern: sweep the
+     * map from a random row for the first square that will do. The last
+     * refused roll used to be taken anyway, rock and monsters included. */
+    y = rn2(MAPH);
+    for (i = 0; i < MAPH; i++) {
+        for (x = 0; x < MAPW; x++)
+            if (tele_ok(x, y)) { *px = x; *py = y; return; }
+        if (++y == MAPH) y = 0;
     }
 }
 
