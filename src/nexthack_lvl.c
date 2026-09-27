@@ -96,8 +96,8 @@ static void place_fountain(void)
 /* (Re)place the pet next to the hero. Called after the hero's position is set
  * on every level entry (new game, descend/ascend, trap-door fall, restore), so
  * the dog always tags along. It takes the tail monster slot (after the random
- * mobs and any keeper), which the uint8_t mon_dead bitmask never tracks, and is
- * never persisted -- pet_idx/pet_hp carry it instead. Adjacent cells first; if
+ * mobs and any keeper), which m_track never names -- no kill mask remembers
+ * it -- and is never persisted: pet_idx/pet_hp carry it. Adjacent cells first; if
  * they are all blocked (a cramped stairs room whose one other floor cell holds
  * a spawned monster), the radius-2 ring is tried before giving up, so the dog
  * only sits a level out when your whole arrival neighbourhood is packed.
@@ -134,8 +134,8 @@ void place_pet(void) __banked
  * your side after it. Transient by design (never saved) -- it simply IS the
  * monster at your heel this instant. The shopkeeper keeps his shop, a posing
  * mimic holds its pose, the floating eye floats where it is, sleepers sleep
- * on and the peaceful stay home. Like the wanderers, a follower shares the
- * mon_dead bitmask space of the level it arrives on. */
+ * on and the peaceful stay home. Appended above the level's own spawns, a
+ * follower is never in m_track, so its death marks no one dead there. */
 static char    follow_type;
 static uint8_t follow_hp;
 

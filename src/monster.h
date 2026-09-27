@@ -14,7 +14,9 @@
 
 #include <stdint.h>
 
-#define MAXMON 10         /* slots 0-7 random mobs (mon_dead-tracked) + 8 keeper + 9 pet */
+#define MAXMON 10         /* the level's own spawns first (at most 8, which the uint8_t
+                          * mon_dead can track), then the keeper, the pet, followers,
+                          * wanderers and summons -- see m_track for which is which */
 #define MON_KEEPER '@'   /* the shopkeeper (drawn as the hero tile, stationary) */
 
 extern uint8_t mcount;
@@ -29,11 +31,20 @@ extern char    m_type[];
 extern uint8_t mon_dead[];   /* per-depth kill bitmask (bit i: slot i slain);
                               * shared by monster_ai.c (combat sets bits) and
                               * monster_spawn.c (applies/saves it) */
+/* Bit i: slot i still holds the monster the LEVEL spawned there -- the only
+ * kind a mon_dead bit may name, because only it is spawned again, in that
+ * slot, when the level is rebuilt. The deterministic spawns set it
+ * (spawn_level_monsters); a wanderer or summon moving into a dead slot
+ * clears it; keeper, pet and followers are appended above them and never
+ * have it. A kill writes mon_dead only through it -- before, the slot NUMBER
+ * was the identity, so a transient killed in a low slot could mark a
+ * different monster dead on the next visit. Rebuilt each level, not saved. */
+extern uint8_t m_track;
 
 /* The pet's live monster slot this level, or -1 if none is placed. Re-derived
  * every level by place_pet (the pet is never a persisted map monster), so it is
- * not saved. The pet always sits in the highest occupied slot, which the uint8_t
- * mon_dead kill-bitmask never tracks (1u<<8 == 0), so it is never marked dead. */
+ * not saved. It is appended after the level's spawns, so m_track never names
+ * its slot and no kill mask can remember it. */
 extern int8_t  pet_idx;
 
 /* The genocided types, one bit per monster char from '@' up (8 bytes cover

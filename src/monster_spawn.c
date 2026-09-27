@@ -127,9 +127,11 @@ void spawn_level_monsters(void) __banked
     uint8_t guards = (vr >= 0) ? 3 : 0;    /* a few tough guards inside it       */
     uint8_t i;
     /* Keep every random mob in slots 0..7, which the uint8_t mon_dead kill-
-     * bitmask can track; the two slots above (MAXMON=10) are reserved for the
-     * shopkeeper and the pet, which are never persistence-tracked, so even a
-     * crowded shop level always has room for the dog. */
+     * bitmask can track; that leaves at least two slots (MAXMON=10) for the
+     * shopkeeper and the pet, so even a crowded shop level has room for the
+     * dog. Fewer than eight may land, and then the keeper and the pet sit in
+     * slots the mask CAN name -- which is why a kill asks m_track, below,
+     * and not the slot number. */
     if (count > 8) count = 8;
     if (guards > count) guards = count;
     mcount = 0;
@@ -143,6 +145,8 @@ void spawn_level_monsters(void) __banked
         if (i < guards) spawn_guard((uint8_t)vr);   /* low slots -> persistence-tracked */
         else            spawn_monster(pick_living());
     }
+    /* every slot filled so far is the level's own (mcount <= 8 here) */
+    m_track = (uint8_t)((1u << mcount) - 1u);
 }
 
 /* Append the shopkeeper at (x,y). Called from build_level AFTER the random
@@ -219,6 +223,7 @@ uint8_t summon_near(char type) __banked
                 if (mcount >= MAXMON) return n;
                 slot = mcount;
             }
+            m_track &= (uint8_t)~(1u << slot);   /* not the level's own any more */
             m_x[slot]     = (uint8_t)x;
             m_y[slot]     = (uint8_t)y;
             m_hp[slot]    = (uint8_t)(mt->hp + eff_depth() / 2);
@@ -242,7 +247,8 @@ uint8_t summon_near(char type) __banked
  * carrying the Amulet) to add one.  A freed (dead) slot is reused when one is
  * available, else a new slot is appended up to MAXMON; the newcomer always
  * arrives off-screen (never in the hero's lap).  Wanderers are not persisted:
- * they share the mon_dead bitmask space but live only on the current visit.
+ * they live only on the current visit, and a slot one takes over stops being
+ * the level's own (m_track), so killing it marks no one dead for next time.
  *
  * This rolls rn2(), so it must run only from the turn loop -- never inside
  * gen_level(), which reseeds the RNG per depth; an extra roll there would
@@ -281,6 +287,7 @@ void maybe_spawn_wanderer(void) __banked
                                               * rendering ghost (the header
                                               * always promised off-screen) */
 
+    m_track &= (uint8_t)~(1u << slot);   /* not the level's own any more */
     m_x[slot]    = x;
     m_y[slot]    = y;
     m_hp[slot]   = (uint8_t)(mt->hp + eff_depth() / 2);

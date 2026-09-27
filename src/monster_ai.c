@@ -83,8 +83,8 @@ void hit_monster(uint8_t mi, uint8_t dmg) __banked
     }
     if (m_hp[mi] <= dmg) {
         m_alive[mi] = 0;
-        if (dlvl <= MAXLVL)
-            mon_dead[dlvl] |= (uint8_t)(1u << mi);   /* remember the kill */
+        if (dlvl <= MAXLVL)     /* remember the kill -- of the level's own only */
+            mon_dead[dlvl] |= (uint8_t)(m_track & (1u << mi));
         drop_held(mi);                               /* stolen goods return */
         if (m_type[mi] != MON_KEEPER) {
             if (rn2(4) == 0)                         /* it may leave loot... */
@@ -417,7 +417,7 @@ static void pet_hits(uint8_t pi, uint8_t ti)
     if (m_hp[ti] <= dmg) {
         m_alive[ti] = 0;
         if (dlvl <= MAXLVL)
-            mon_dead[dlvl] |= (uint8_t)(1u << ti);
+            mon_dead[dlvl] |= (uint8_t)(m_track & (1u << ti));
         drop_held(ti);                     /* stolen goods return */
         if (rn2(4) == 0)                   /* the dog's kill may leave loot... */
             death_drop(m_x[ti], m_y[ti]);
