@@ -33,6 +33,8 @@
 
     "nexthack_lvl":  { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "the cold level half split out of nexthack.c: build_level, the altar/fountain/pet/follower placement and the stairs. Deliberately NOT in nexthack.c's bank -- the point of the split was to get these bytes out of the classes+spells colocate group. In its own bank 15 rather than PAGE_20, which it would have squeezed to 344 B: the Next has spare banks, so the split buys headroom instead of moving the shortage" },
 
+    "save":          { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "save & restore, split out of nexthack.c (2026-09-27) when its checked I/O and two-pass load had to grow inside the full nexthack+classes+spells group. Cold, and pointer-coupled to nothing: it copies resident globals, reaches each module's block through a __banked *_save/*_load, and its literals go only to the resident print_str/file_* -- so it can live anywhere with room. PAGE_30 holds the other cold halves" },
+
     "nexthack":      { "code": "PAGE_22_CODE", "const": "PAGE_22_CODE", "why": "the game core; const banks every message/label literal next to the code that prints it" },
     "classes":       { "code": "PAGE_22_CODE", "const": "PAGE_22_CODE", "why": "shares nexthack.c's bank on purpose -- draw_status/show_help read its tables in place" },
     "spells":        { "code": "PAGE_22_CODE", "const": "PAGE_22_CODE", "why": "shares nexthack.c's bank like classes.c; spell names/messages cost zero resident bytes" },
@@ -83,6 +85,8 @@
     "sfx":           { "code": "BANK_1", "why": "moved BACK here from BANK_3 when the 0.12 batch (farlook + mirroring + traps) filled BANK_3. All sfx_* entries are __banked and bit_beepfx + its tables are resident, so the move costs nothing" },
 
     "nexthack_lvl":  { "code": "BANK_7", "const": "BANK_7", "why": "the cold level half split out of nexthack.c (see the Next entry). BANK_7 because it had ~14 KB free and this code runs once per level entry, so its contended RAM costs nothing" },
+
+    "save":          { "code": "BANK_1", "const": "BANK_1", "why": "save & restore, split out of nexthack.c (see the Next entry) -- ~1.3 KB that BANK_3 could no longer spare. Cold (it runs on S and at boot), so BANK_1's contended RAM costs it nothing; BANK_1 had the most room" },
 
     "nexthack":      { "hot": true, "code": "BANK_3", "const": "BANK_3", "why": "the game core; const banks every message/label literal next to the code that prints it" },
     "classes":       { "code": "BANK_3", "const": "BANK_3", "why": "shares nexthack.c's bank on purpose -- draw_status/show_help read its tables in place" },

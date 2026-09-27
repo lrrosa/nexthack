@@ -39,15 +39,8 @@ start_game:
         draw_map();
         msg("Game restored.  Welcome back!");
     } else {                        /* no save: start a fresh adventure  */
-        pick_class();               /* who are you? (fills the sheet, hp, pw) */
-        item_reset();
-        give_kit();                 /* the class's starting gear + purse */
-        fov_reset();
-        have_pet = 1; pet_hp = 8;   /* the first adventure begins with a dog */
-        build_level();
-        hero_x = up_x; hero_y = up_y;
-        place_pet();
-        fov_update(hero_x, hero_y);
+        new_game(0);                /* ALL of it -- after S the RAM holds the
+                                     * saved run -- in the world the title seeded */
         tm_cls();
         draw_help();
         draw_status();
@@ -167,7 +160,7 @@ start_game:
         if (won) {
             victory_screen();
             score_screen(1);
-            new_game();
+            new_game(1);
             tm_cls();
             draw_help();
             draw_status();
@@ -184,7 +177,7 @@ start_game:
             msg("You die...");
             in_wait_nokey();
             score_screen(0);
-            new_game();
+            new_game(1);
             tm_cls();
             draw_help();
             draw_status();

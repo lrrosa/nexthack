@@ -15,6 +15,11 @@ void rng_set(uint16_t s)
     rng = s ? s : 0xACE1u;
 }
 
+uint16_t rng_get(void)
+{
+    return rng;
+}
+
 void rng_seed(void)
 {
 #ifdef __ZXNEXT

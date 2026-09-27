@@ -191,13 +191,22 @@ static void place_follower(void)
 
 void build_level(void) __banked
 {
+    uint16_t play;
     if (dlvl > max_dlvl && !IN_MINES(dlvl))
         max_dlvl = dlvl;                    /* deepest point, for the score */
     el_life = 0;             /* a dust engraving does not survive a level change */
     traps_reset();           /* sprung-trap set is per visit (level regenerates) */
     floor_reset();           /* loose thrown items don't survive a level change  */
+    /* gen_level reseeds from the depth, which is what makes a level the same
+     * on every visit -- and the spawns below draw from that same stream. But
+     * the PLAY stream (every fight, drop and wanderer roll) was left wherever
+     * generation stopped: the same point each time a level was entered, and
+     * after every restore, whatever the dice had done before. Set it aside
+     * and put it back once the deterministic part is over. */
+    play = rng_get();
     gen_level();
     spawn_level_monsters();
+    rng_set(play);
     { uint8_t kx, ky; if (shop_keeper_xy(&kx, &ky)) place_shopkeeper(kx, ky); }
     apply_gold_persistence();
     apply_monster_persistence();

@@ -128,7 +128,9 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   play: a hero of a random class and his dog walk magic-mapped levels of a
   random dungeon down to the stairs — any key begins the game), and
   **save & quit** to the SD card, NetHack-style (reloaded once on the next
-  boot, then deleted — no save-scumming).
+  boot, then deleted — no save-scumming). The file is checked whole before
+  anything is loaded: a save cut short or damaged on the card is named and
+  left for you to delete or keep, never half-loaded.
 - **Death and glory** — a score screen on death or victory sums up your run
   (class, depth reached, turns, gold) and weighs it against the **best run so
   far**, which persists on disk between games — and it honours your
@@ -181,7 +183,8 @@ same minus the Layer 2 images.
 | `spells.c` / `.h` | B | spellbooks and spellcasting |
 | `sfx.c` / `.h` | B | beeper sound effects |
 | `attract.c` / `.h` | B | the title's attract demo |
-| `nexthack.c` / `.h` | B | game-state globals (resident data), rendering, turn step, level orchestration, save/restore, screens |
+| `nexthack.c` / `.h` | B | game-state globals (resident data), rendering, turn step, level orchestration, screens |
+| `save.c` | B | save & restore: the file format, its length+sum check, the prompt for a save that cannot be loaded |
 | `game.h` | — | shared player/run state used across modules |
 
 ## Build

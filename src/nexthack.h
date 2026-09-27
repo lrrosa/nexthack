@@ -3,8 +3,9 @@
 /* nexthack.h - entry points into the game module (nexthack.c).
  *
  * nexthack.c holds the shared game-state globals (resident DATA) and the game
- * logic: rendering, the turn step, level orchestration, save/restore and the
- * screens. All of that CODE is banked (see banks.json); only main() stays
+ * logic: rendering, the turn step and the screens; level orchestration is in
+ * nexthack_lvl.c and save/restore in save.c, whose entry points are declared
+ * here too. All of that CODE is banked (see banks.json); only main() stays
  * resident (mainentry.c). The functions main() calls are therefore __banked,
  * reached through the trampoline. Their inner loops touch only resident leaves
  * (terrain/tile_for/FOV in level.c, the platform primitives) and resident DATA,
@@ -17,7 +18,7 @@ void title_screen(void)   __banked;
 int  load_game(void)      __banked;
 int  save_game(void)      __banked;
 void build_level(void)    __banked;
-void new_game(void)       __banked;
+void new_game(uint8_t reseed) __banked;   /* 0: keep the world the title seeded */
 void victory_screen(void) __banked;
 void score_screen(uint8_t victory) __banked;  /* death/win summary + hi-score */
 void draw_help(void)      __banked;

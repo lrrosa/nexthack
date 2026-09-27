@@ -145,8 +145,13 @@ void key_rpt_slow(uint8_t on);
 uint8_t file_create(const char *name);       /* create/truncate for writing */
 uint8_t file_open(const char *name);         /* open an existing file to read */
 void    file_write(uint8_t h, const void *src, uint16_t n);
-void    file_read(uint8_t h, void *dst, uint16_t n);
+uint16_t file_read(uint8_t h, void *dst, uint16_t n);   /* bytes actually read */
 void    file_close(uint8_t h);
 void    file_remove(const char *name);
+/* What the writes did, for save.c: file_bad latches a short write or a failed
+ * close; file_len and file_sum count and add up every byte written. The
+ * caller zeroes all three before it starts. */
+extern uint8_t  file_bad;
+extern uint16_t file_len, file_sum;
 
 #endif /* PLATFORM_H */

@@ -171,19 +171,30 @@ uint8_t file_open(const char *name)
     return esx_f_open(name, (uint8_t)(ESX_MODE_R | ESX_MODE_OPEN_EXIST));
 }
 
+/* esxDOS reports how many bytes it moved, and these used to drop it: a full
+ * card's short write was a "Game saved". file_write latches the shortfall
+ * and keeps the count and sum save.c seals the file with; file_read hands
+ * the count back, which is how the load finds the end of the file. */
+uint8_t  file_bad;
+uint16_t file_len, file_sum;
+
 void file_write(uint8_t h, const void *src, uint16_t n)
 {
-    esx_f_write(h, (void *)src, n);
+    const uint8_t *s = (const uint8_t *)src;
+    uint16_t k;
+    for (k = 0; k < n; k++) file_sum += s[k];
+    file_len += n;
+    if (esx_f_write(h, (void *)src, n) != n) file_bad = 1;
 }
 
-void file_read(uint8_t h, void *dst, uint16_t n)
+uint16_t file_read(uint8_t h, void *dst, uint16_t n)
 {
-    esx_f_read(h, dst, n);
+    return esx_f_read(h, dst, n);
 }
 
 void file_close(uint8_t h)
 {
-    esx_f_close(h);
+    if (esx_f_close(h)) file_bad = 1;   /* a write's last sectors go out here */
 }
 
 void file_remove(const char *name)

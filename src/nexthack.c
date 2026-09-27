@@ -87,48 +87,6 @@ static uint8_t heal_timer = 0;
 static uint8_t pw_timer = 0;   /* spell power regeneration (see upkeep) */
 static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
 
-/* ============================================================
- * Save / restore (NetHack-style: save & quit, consumed on load)
- * ============================================================ */
-
-#define SAVE_NAME  "nexthack.sav"
-#define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   29     /* v1.4.0: the item batch took the catalogue to
-                           * 60 types (id_known 6 -> 8 bytes) and the genocide
-                           * mask joined the monster block. 28 was 1.3's
-                           * format (armour slots, door_open[]); 27 the 1.0
-                           * freeze. An older save gets the 1.3.1 prompt. */
-#define SAVE_VER_OLD 27   /* v0.10.0: MAXINV 24->26 (INV_BYTES) and the
-                           * fog-of-war pool grew to 12 slots */
-
-struct save_hdr {
-    uint16_t magic;
-    uint8_t  ver;
-};
-
-struct save_player {
-    uint16_t world_seed;
-    int16_t  hero_x, hero_y;
-    uint16_t dlvl, turns;
-    uint8_t  php, pmaxhp;
-    uint16_t gold;
-    int16_t  nutrition;
-    uint16_t xp;
-    uint8_t  xlvl;
-    uint8_t  has_amulet;
-    uint8_t  st_conf, st_blind, st_sleep, st_poison;
-    uint16_t pray_timeout;
-    uint8_t  have_pet, pet_hp, pet_kills;
-    uint8_t  luckstone_taken;
-    uint16_t cnt_kills, cnt_corpses, cnt_reads, cnt_prayers;
-    uint8_t  at_str, at_dex, at_con, at_int, at_wis, at_cha;
-    uint8_t  pclass, intrinsics, pw, pmaxpw;
-    uint8_t  known_spells;
-    uint16_t max_dlvl;
-    uint8_t  alignment;
-    int8_t   luck;
-};
-
 /* From here down, all of nexthack.c's CODE is banked (banks.json says which
  * bank per target; it is mapped into the 0xC000 window on demand). The globals
  * above are DATA and stay resident. The functions main() calls are __banked
@@ -142,128 +100,6 @@ struct save_player {
  * and the only string pointers that leave the file (hunger_label to
  * draw_status) stay same-bank. Do NOT pass this file's literals as arguments
  * to another bank's __banked function -- the trampoline swaps this bank out. */
-
-/* Write seed + player + each module's state. Returns 1 on success. */
-int save_game(void) __banked
-{
-    uint8_t h = file_create(SAVE_NAME);
-    struct save_hdr    hdr;
-    struct save_player p;
-
-    if (h == FILE_ERR) return 0;
-
-    hdr.magic = SAVE_MAGIC; hdr.ver = SAVE_VER;
-    file_write(h, &hdr, sizeof hdr);
-
-    p.world_seed = world_seed;
-    p.hero_x = (int16_t)hero_x; p.hero_y = (int16_t)hero_y;
-    p.dlvl = dlvl;   p.turns = turns;
-    p.php = php;     p.pmaxhp = pmaxhp;
-    p.gold = gold;   p.nutrition = nutrition;
-    p.xp = xp;       p.xlvl = xlvl; p.has_amulet = has_amulet;
-    p.st_conf = st_conf;   p.st_blind = st_blind;
-    p.st_sleep = st_sleep; p.st_poison = st_poison;
-    p.pray_timeout = pray_timeout;
-    p.have_pet = have_pet; p.pet_hp = pet_hp; p.pet_kills = pet_kills;
-    p.luckstone_taken = luckstone_taken;
-    p.cnt_kills = cnt_kills; p.cnt_corpses = cnt_corpses;
-    p.cnt_reads = cnt_reads; p.cnt_prayers = cnt_prayers;
-    p.at_str = at_str; p.at_dex = at_dex; p.at_con = at_con;
-    p.at_int = at_int; p.at_wis = at_wis; p.at_cha = at_cha;
-    p.pclass = pclass; p.intrinsics = intrinsics;
-    p.pw = pw; p.pmaxpw = pmaxpw;
-    p.known_spells = known_spells;
-    p.max_dlvl = max_dlvl;
-    p.alignment = alignment;
-    p.luck = luck;
-    file_write(h, &p, sizeof p);
-
-    file_write(h, door_open, sizeof door_open);
-    item_save(h);
-    level_save(h);
-    monster_save(h);
-    file_close(h);
-    return 1;
-}
-
-/* Load a saved game and delete the file (so it cannot be reloaded - the
- * NetHack anti-save-scum rule). Returns 1 if a valid save was restored. */
-int load_game(void) __banked
-{
-    uint8_t h = file_open(SAVE_NAME);
-    struct save_hdr    hdr;
-    struct save_player p;
-
-    if (h == FILE_ERR) return 0;
-
-    file_read(h, &hdr, sizeof hdr);
-    if (hdr.magic != SAVE_MAGIC || hdr.ver != SAVE_VER) {
-        file_close(h);
-        /* A save from another version used to be deleted without a word --
-         * you started the game, saw a fresh dungeon, and only then worked out
-         * that a run was gone. Say what it is and ask, because the file is the
-         * player's, not ours: answer n and it is left alone, so going back to
-         * the older binary still finds it. */
-        tm_cls();
-#ifdef __ZXNEXT
-        print_str(20,  9, "This saved game is from another", C_WHITE | C_BRIGHT);
-        print_str(20, 10, "version and cannot be loaded.",   C_WHITE | C_BRIGHT);
-        print_str(20, 12, "Delete it and start fresh?  y/n", C_YELLOW | C_BRIGHT);
-        print_str(20, 14, "n keeps the file for the older", C_CYAN | C_BRIGHT);
-        print_str(20, 15, "version you saved it with.",     C_CYAN | C_BRIGHT);
-#else
-        print_str(1,  6, "This saved game is from",      C_WHITE | C_BRIGHT);
-        print_str(1,  7, "another version and cannot",   C_WHITE | C_BRIGHT);
-        print_str(1,  8, "be loaded.",                   C_WHITE | C_BRIGHT);
-        print_str(1, 10, "Delete it and start fresh?",   C_YELLOW | C_BRIGHT);
-        print_str(1, 11, "y / n",                        C_YELLOW | C_BRIGHT);
-        print_str(1, 13, "n keeps it for the version",   C_CYAN | C_BRIGHT);
-        print_str(1, 14, "that wrote it.",               C_CYAN | C_BRIGHT);
-#endif
-        in_wait_nokey();
-        {   int k;
-            do { k = getkey(); } while (k != 'y' && k != 'Y' &&
-                                        k != 'n' && k != 'N');
-            in_wait_nokey();
-            if (k == 'y' || k == 'Y') file_remove(SAVE_NAME);
-        }
-        map_dirty = 1;              /* the prompt drew over the playfield */
-        return 0;
-    }
-
-    file_read(h, &p, sizeof p);
-    world_seed = p.world_seed;
-    hero_x = p.hero_x; hero_y = p.hero_y;
-    dlvl = p.dlvl;     turns = p.turns;
-    php = p.php;       pmaxhp = p.pmaxhp;
-    gold = p.gold;     nutrition = p.nutrition;
-    xp = p.xp;         xlvl = p.xlvl; has_amulet = p.has_amulet;
-    st_conf = p.st_conf;   st_blind = p.st_blind;
-    st_sleep = p.st_sleep; st_poison = p.st_poison;
-    pray_timeout = p.pray_timeout;
-    have_pet = p.have_pet; pet_hp = p.pet_hp; pet_kills = p.pet_kills;
-    luckstone_taken = p.luckstone_taken;
-    cnt_kills = p.cnt_kills; cnt_corpses = p.cnt_corpses;
-    cnt_reads = p.cnt_reads; cnt_prayers = p.cnt_prayers;
-    at_str = p.at_str; at_dex = p.at_dex; at_con = p.at_con;
-    at_int = p.at_int; at_wis = p.at_wis; at_cha = p.at_cha;
-    pclass = p.pclass; intrinsics = p.intrinsics;
-    pw = p.pw; pmaxpw = p.pmaxpw;
-    known_spells = p.known_spells;
-    max_dlvl = p.max_dlvl;
-    alignment = p.alignment;
-    luck = p.luck;
-    dead = 0; won = 0;
-
-    file_read(h, door_open, sizeof door_open);
-    item_load(h);
-    level_load(h);
-    monster_load(h);
-    file_close(h);
-    file_remove(SAVE_NAME);
-    return 1;
-}
-
 
 /* ============================================================
  * Rendering
@@ -1466,7 +1302,14 @@ void try_move(int dx, int dy) __banked
 }
 
 
-void new_game(void) __banked
+/* A whole run from scratch. main() calls it for the first game too, not only
+ * after a death or a win: its fresh start used to make only the class-and-
+ * kit part of these resets and take the rest at their boot values -- but
+ * after S the RAM still holds the run that was saved (the attract demo even
+ * puts its dlvl back), so a restore that failed there began a "new" game on
+ * that run's depth, with its gold, its kill masks and its luck. reseed is 0
+ * from the title, which has already seeded the world from the key press. */
+void new_game(uint8_t reseed) __banked
 {
     uint8_t i;
 
@@ -1502,7 +1345,7 @@ void new_game(void) __banked
     for (i = 0; i <= MAXLVL; i++)
         door_open[i] = 0;        /* the old world's forced doors */
     fov_reset();                 /* forget exploration of the old world */
-    rng_seed();                  /* a brand new world */
+    if (reseed) rng_seed();      /* a brand new world */
     build_level();
     hero_x = up_x; hero_y = up_y;
     place_pet();                 /* the dog starts at your side */
