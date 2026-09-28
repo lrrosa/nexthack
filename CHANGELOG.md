@@ -8,7 +8,7 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
-## [Unreleased]
+## [1.5.0] — 2026-09-27
 
 **A code audit's ten findings, fixed** — every one confirmed in the code
 first, and every fix proven in ZEsarUX on both machines.
@@ -65,7 +65,7 @@ first, and every fix proven in ZEsarUX on both machines.
 ### Changed
 - `SAVE_VER` 30 (the dice and the checksum). **Saves from 1.4 will not load**;
   the game names the old save and asks before deleting it — answer `n` and it
-  stays for the 1.4 binary.
+  stays for the 1.4.x binary.
 - Save & restore moved out of `nexthack.c` into its own `save.c`, which gave
   the fullest bank on the 128K 1.2 KB back. The pathfinding queue shrank from
   696 entries to a ring of 256, freeing 880 bytes of Bank 5 on both machines.
