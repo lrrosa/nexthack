@@ -176,7 +176,9 @@ the emulator.
 - **`zrcp-verify`** — the emulator harness (`zrcp.ps1`: launch per target,
   symbol lookup from the `.map`, read/poke, key injection, message-line decode
   on both renderers) plus the trap list. Use it to prove any change; do not
-  hand-roll the plumbing.
+  hand-roll the plumbing. It also carries `mame.ps1`, a headless MAME harness
+  (scripted steps, both targets): the second emulator, and the one that loads
+  the real `.tap` through the 128 ROM and reads memory without stretching time.
 - **`bank-budget`** — `python tools/bankmap.py` prints the resident half, every
   code bank's free tail and the **Bank-5 tenant map with overlap detection**;
   the skill holds the relocation procedure for a full bank. Run it *before*

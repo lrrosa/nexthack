@@ -1,6 +1,6 @@
 ---
 name: zrcp-verify
-description: Verify NextHack behaviour by driving it inside ZEsarUX over ZRCP (read/poke memory, inject keys, decode the screen) on the Next and/or the 128K. Use whenever a change needs proving in the emulator rather than by reading code — new commands, tiles, AI/movement, traps, save/restore, rendering — and before calling any feature done. There are no automated tests in this repo; this IS the test harness.
+description: Verify NextHack behaviour by driving it inside ZEsarUX over ZRCP (read/poke memory, inject keys, decode the screen) on the Next and/or the 128K, or headless inside MAME (mame.ps1) as a second emulator. Use whenever a change needs proving in the emulator rather than by reading code — new commands, tiles, AI/movement, traps, save/restore, rendering, the 128K tape loader, timing — and before calling any feature done. There are no automated tests in this repo; this IS the test harness.
 ---
 
 # Verifying NextHack in the emulator (ZRCP)
@@ -102,3 +102,72 @@ Staging richer scenes: poke stats, read a **scroll of magic mapping**
 (`Set-Bytes (Sym inv_count) @(1)` with `otyp 13` in `inv[]`, then `r`) to
 reveal the level, and pull monsters into frame before `Save-EmuScreenshot`.
 `inv[]` is Bank-5 resident: `0x5800` (Next) / `0x6800` (128K).
+
+## Second emulator: MAME (`mame.ps1`)
+
+MAME 0.289 (`F:\jogos\emuladores\mame`, or `$env:NEXTHACK_MAME`) runs both
+targets. It has no debug socket, so a MAME test is a **script of steps
+written up front** and played by `mame.lua` (its `-autoboot_script`); the
+step vocabulary is at the top of `mame.lua`. Reach for it when:
+
+- the **128K tape** matters: it loads the real `.tap` through the real 128 ROM
+  (menu -> Tape Loader -> LD-BYTES -> every bank block -> boot stub), which
+  ZEsarUX's autoload shortcuts;
+- **timing** matters: reads happen between frames, outside emulated time, so
+  unlike ZRCP they do not stretch what they measure;
+- a second opinion on hardware fidelity (MAME emulates 128K contention).
+
+It runs **headless** by default (`-video none`, host keyboard/mouse/joystick
+off) with `-nothrottle`: the Next test takes ~3 s wall, the 128K ~30 s (the
+tape is ~616 s of emulated time). Nothing is written to the MAME folder: cfg,
+nvram, the SD's diff and the snapshots go under `-OutDir`
+(default `%TEMP%\nexthack-mame\<Tag>`, with `log.txt` and `mame.out`).
+
+```powershell
+. 'G:\nethackNext\port\.claude\skills\zrcp-verify\mame.ps1'
+$r = Invoke-Mame next -Tag pickup -Steps ((Get-MameBoot next) + (Get-MameNewGame) + @(
+         'peek @turns 2', 'poke @php 200', 'key ,', 'wait 1', 'msg', 'peek @turns 2', 'snap after'))
+Get-MameMsg $r                      # 'Nothing here to pick up.'
+Get-MamePeek $r turns               # every read of that label, oldest first
+```
+
+| Call | Does |
+|---|---|
+| `Invoke-Mame next\|zx128 -Steps @(...)` | runs the script, returns `.Log` + `.Dir` (snapshots); `-Tag`, `-OutDir`, `-Visible`, `-Throttle`, `-MaxSeconds`, `-Sd`, `-FreshSd`, `-ExtraArgs` |
+| `Get-MameBoot next\|zx128` | steps up to the title (the 128K's includes the whole tape load) |
+| `Get-MameNewGame [-Class a]` | title -> class pick -> playable |
+| `Get-MamePeek $r label` / `Get-MameMsg $r` | parse the log |
+
+In steps, addresses are `@sym`, `@sym+N` (from the CURRENT `.map`), `0xHEX` or
+decimal; poke values are decimal. `peek <addr> [n] [label]`, `msg` decodes row
+0 on both targets, `snap <name>` saves a PNG, `time` logs emulated time.
+
+**What each target can and cannot do in MAME:**
+- **128K (`spec128`)**: everything but saving -- MAME's 128K has no DivMMC, so
+  the game correctly finds no esxDOS.
+- **Next (`specnext_ks2`, `.nex` via `-dump`)**: game logic, tilemap, Layer 2
+  and keys are real, but with no SD card the ROM at `0x0000` is the TBBlue boot
+  loader, so the font the game copies from `0x3C00` is **garbage on screen** --
+  judge text with `msg` (a tile id IS its ASCII code), not with snapshots -- and
+  there is no esxDOS, so no saves.
+- **Next `-Sd`** (boot NextZXOS off `roms\specnext_sd\sys2411.chd`, then mount
+  the `.nex`): **unverified**. The only card tried, the 2020 CSpect image
+  converted to CHD, freezes the boot ROM at PC `0192` as it sets up the zxnDMA
+  to read the card, before `TBBLUE.FW` ever runs. MAME's software list expects
+  System/Next 24.11 (`hash\specnext_sd.xml`); that image is untried.
+
+**MAME traps:**
+- **Never type during the tape load**: SPACE is BREAK to LD-BYTES and silently
+  kills it. `Get-MameBoot zx128` waits for `PC >= 0x8000` before handing over.
+- **The Next driver's natural keyboard has no SYMBOL SHIFT**: MAME silently
+  drops `,` `<` `>` `;` `?` `:` `\` and friends. `mame.lua` presses a lone
+  symbol as its chord on the matrix fields (SYMBOL SHIFT + key, ~100 ms), on
+  both targets. Typing a symbol inside a longer `key` string is still dropped.
+- **Keep it headless.** A visible MAME window takes the focus when it opens,
+  and whatever the user types then lands in the emulated keyboard: identical
+  scripts produced different worlds until the host input was cut off.
+  Headless, identical scripts reproduce the same world run after run -- but a
+  different script (one extra frame before the key press) seeds a different
+  one, so never hard-code positions: read `hero_x`, or poke.
+- A script that stalls (a `waitpc` never met) is killed by `-MaxSeconds` of
+  emulated time; the log then lacks `exit` and `Invoke-Mame` warns.
