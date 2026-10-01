@@ -151,10 +151,17 @@ decimal; poke values are decimal. `peek <addr> [n] [label]`, `msg` decodes row
   judge text with `msg` (a tile id IS its ASCII code), not with snapshots -- and
   there is no esxDOS, so no saves.
 - **Next `-Sd`** (boot NextZXOS off `roms\specnext_sd\sys2411.chd`, then mount
-  the `.nex`): **unverified**. The only card tried, the 2020 CSpect image
-  converted to CHD, freezes the boot ROM at PC `0192` as it sets up the zxnDMA
-  to read the card, before `TBBLUE.FW` ever runs. MAME's software list expects
-  System/Next 24.11 (`hash\specnext_sd.xml`); that image is untried.
+  the `.nex`): **does not boot in MAME 0.289**, so saves cannot be tested there.
+  `sys2411.chd` is System/Next 24.11 (`cspect-next-1gb.img` from
+  `sn-emulator-24.11.zip`, CHD SHA1 `fe6e1078...`; not the software list's
+  `947b7598...`). The boot ROM loads `TBBLUE.FW`, whose configuration screen
+  then stops on "Error opening 'menu.ini/.def'!" although
+  `/machines/next/menu.def` is on the card: it opens files in the root but not
+  in a subdirectory. Same on ks1/ks2/ks3/tbblue. ZEsarUX boots the same image
+  through the same firmware, so the fault is MAME's SD/DMA emulation (its SD
+  card is SDSC at this size, and `spi_sdcard.cpp` carries TODOs on multi-block
+  reads). The 2020 CSpect 2 GB image (`cspect-2020-2gb.chd`) is worse: the boot
+  ROM freezes at PC `0192`. Prove saves on ZEsarUX.
 
 **MAME traps:**
 - **Never type during the tape load**: SPACE is BREAK to LD-BYTES and silently

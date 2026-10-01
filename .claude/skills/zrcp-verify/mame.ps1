@@ -47,8 +47,8 @@ function Resolve-MameAddr([string]$a, $syms) {
 # kills the load -- hence waitpc. The Next without -Sd starts the .nex at power
 # on (-dump), so the ROM is the TBBlue boot loader: the game logic, the tilemap
 # and Layer 2 are real, the font is garbage and there is no esxDOS. With -Sd it
-# boots NextZXOS off the card first, then mounts the .nex (UNVERIFIED: the only
-# card tried, the 2020 CSpect image, freezes the boot ROM -- see SKILL.md).
+# boots NextZXOS off the card first, then mounts the .nex -- which MAME 0.289
+# cannot do yet: the firmware fails to open /machines/next/menu.def (SKILL.md).
 function Get-MameBoot([ValidateSet('zx128', 'next')][string]$Target, [switch]$Sd) {
     if ($Target -eq 'zx128') {
         return @('wait 3', 'key \r', 'wait 1', 'play', 'waitpc 0x8000', 'wait 2')
