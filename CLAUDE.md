@@ -316,7 +316,15 @@ DATA — banked code's data is resident too). Modules include `game.h` to read/w
   per cell via the attribute's palette **offset** (see palette below). Tiles 128+
   (`T_*` in `platform.h`) are **4bpp colour graphic tiles** (`gfx[]` in `platform_init.c`,
   const-banked) for map cells. Adding a graphic tile: add a `T_*` number, an entry in
-  `gfx[]`, and bump the count in `load_gfx_tiles()`.
+  `gfx[]`, and bump the count in `load_gfx_tiles()`. In 80-column mode every pixel is
+  **half-width**, so a tile shows 1:2 (a tall cell, like a text glyph): judge art at
+  that aspect -- a shield drawn square read as a tombstone. The 128K draws its own
+  1-bit `udg_src[]` at 1:1, so each tile is designed twice.
+- **The tilemap's transparent pixel value is 0** (NextReg 0x4C in `tm_init`). A
+  transparent pixel shows the fallback colour (NextReg 0x4A, black), and index 0 is
+  black in every palette offset, so that is invisible. It was the reset value 0x0F
+  until 2026-10-04 -- and index 15 is skin, so every face rendered black (the
+  shopkeeper had no head). Don't move it back to 15 or give index 0 a colour.
 - **Palette offsets** (tilemap palette, NextReg 0x43=0x30):
   - offset 0 (indices 0..15) = full-colour **master palette** for graphic tiles in view.
   - offset 1 (indices 16..31) = **dimmed master** (channels halved) for remembered,

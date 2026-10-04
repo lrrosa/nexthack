@@ -72,27 +72,33 @@ const uint8_t gfx[NTILES][64] = {
   { /* T_WEAPON (dagger: white blade, brown hilt) */
     0,0,0,0,0,0,4,0, 0,0,0,0,0,4,4,0, 0,0,0,0,4,4,0,0, 0,0,0,4,4,0,0,0,
     0,0,6,4,4,0,0,0, 0,6,6,6,0,0,0,0, 6,6,0,6,0,0,0,0, 0,0,0,0,0,0,0,0 },
-  { /* T_ARMOR (shield: grey rim, light interior) */
-    0,2,2,2,2,2,2,0, 0,2,3,3,3,3,2,0, 0,2,3,2,2,3,2,0, 0,2,3,3,3,3,2,0,
-    0,0,2,3,3,2,0,0, 0,0,2,3,3,2,0,0, 0,0,0,2,2,0,0,0, 0,0,0,0,0,0,0,0 },
+  { /* T_ARMOR (a mail shirt: sleeves, checkered links, dark belt -- the old
+     * shield read as a tombstone once the 80-column mode halved its width) */
+    0,0,0,0,0,0,0,0, 0,3,3,0,0,3,3,0, 2,3,2,3,2,3,2,3, 2,0,3,2,3,2,0,2,
+    0,0,2,3,2,3,0,0, 0,0,1,1,1,1,0,0, 0,0,3,2,3,2,0,0, 0,0,0,0,0,0,0,0 },
   { /* T_POTION (flask with blue liquid) */
     0,0,0,3,3,0,0,0, 0,0,0,3,3,0,0,0, 0,0,3,3,3,3,0,0, 0,0,3,11,11,3,0,0,
     0,3,11,11,11,11,3,0, 0,3,11,11,11,11,3,0, 0,3,11,11,11,11,3,0, 0,0,3,3,3,3,0,0 },
-  { /* T_KOBOLD (small orange/brown humanoid) */
-    0,0,0,14,14,0,0,0, 0,0,0,14,14,0,0,0, 0,0,14,14,14,14,0,0, 0,0,0,5,5,0,0,0,
-    0,5,5,5,5,5,5,0, 0,0,5,5,5,5,0,0, 0,0,5,0,0,5,0,0, 0,0,5,0,0,5,0,0 },
+  { /* T_KOBOLD (short and orange: pointed ears, snout to the left, red eye,
+     * a grey spear held upright -- the old one read as a torch) */
+    0,0,0,0,0,0,0,3, 0,0,0,0,0,0,0,2, 0,0,14,0,14,0,0,2, 14,14,8,14,14,0,0,2,
+    0,0,14,14,14,14,14,14, 0,0,5,5,5,0,0,2, 0,0,14,0,14,0,0,2, 0,14,14,0,14,14,0,2 },
   { /* T_ORC (green brute) */
     0,0,9,9,9,9,0,0, 0,9,10,9,9,10,9,0, 0,9,9,9,9,9,9,0, 0,0,9,8,8,9,0,0,
     9,9,9,9,9,9,9,9, 0,9,9,9,9,9,9,0, 0,9,0,9,9,0,9,0, 0,9,0,0,0,0,9,0 },
-  { /* T_SNAKE (coiled green serpent) */
-    0,0,0,0,0,0,0,0, 0,0,9,9,0,0,0,0, 0,9,10,10,9,0,0,0, 0,9,9,9,0,0,0,0,
-    0,0,0,9,9,0,0,0, 0,0,0,0,9,9,0,0, 0,0,9,9,9,9,0,0, 0,9,9,0,0,9,0,0 },
-  { /* T_BAT (grey, wings spread) */
-    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 2,0,2,2,2,2,0,2, 2,2,1,2,2,1,2,2,
-    0,2,2,2,2,2,2,0, 0,0,2,0,0,2,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0 },
-  { /* T_ZOMBIE (rotting dark-green humanoid) */
-    0,0,0,10,10,0,0,0, 0,0,0,10,9,0,0,0, 0,0,10,10,10,10,0,0, 0,0,0,10,10,0,0,0,
-    0,10,10,10,10,10,0,0, 0,0,10,10,10,0,0,0, 0,0,10,0,10,0,0,0, 0,0,10,0,10,0,0,0 },
+  { /* T_SNAKE (an upright S: head with a yellow eye and a red tongue on top,
+     * dark scales down the body, the tail flicking out at the bottom -- the
+     * old coil sat on a flat base and read as a boot) */
+    0,0,9,9,9,0,0,0, 8,9,9,13,9,9,0,0, 0,0,10,9,9,0,0,0, 0,0,0,9,10,9,0,0,
+    0,0,0,0,9,10,9,0, 0,0,0,9,10,9,0,0, 0,0,9,10,9,0,0,0, 0,9,9,0,0,0,0,0 },
+  { /* T_BAT (dark membranes, grey body, red eyes; no legs -- the old pair of
+     * legs under the wings made it a crab) */
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 1,0,0,2,2,0,0,1, 1,1,0,8,8,0,1,1,
+    1,1,2,2,2,2,2,1, 1,0,1,2,2,1,0,1, 0,0,0,2,2,0,0,0, 0,0,0,0,0,0,0,0 },
+  { /* T_ZOMBIE (pale head, brown rags, one arm reaching left in its sleeve
+     * with only the hand bare -- it was a dark-green twin of the orc) */
+    0,0,0,0,3,3,0,0, 0,0,0,0,1,3,0,0, 3,6,6,6,6,6,6,0, 0,0,0,6,6,6,6,0,
+    0,0,0,6,5,6,0,0, 0,0,0,5,0,5,0,0, 0,0,0,5,0,5,0,0, 0,0,5,5,0,0,5,0 },
   { /* T_SCROLL (parchment with tan rolled ends) */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 7,4,4,4,4,4,4,7, 7,4,3,3,3,3,4,7,
     7,4,4,4,4,4,4,7, 7,4,3,3,3,3,4,7, 7,4,4,4,4,4,4,7, 0,0,0,0,0,0,0,0 },
@@ -145,9 +151,11 @@ const uint8_t gfx[NTILES][64] = {
     0,0,0,0,0,0,0,0, 0,2,2,2,2,2,2,0, 0,2,12,12,12,12,2,0,
     0,2,12,12,12,12,2,0, 0,0,2,12,12,2,0,0, 0,0,0,2,2,0,0,0,
     0,0,0,2,2,0,0,0, 0,0,2,2,2,2,0,0 },
-  { /* T_TROLL (hulking dark-green brute: red eyes, white tusks, huge arms) */
-    0,0,10,10,10,10,0,0, 0,10,8,10,10,8,10,0, 0,4,10,10,10,10,4,0, 0,0,10,10,10,10,0,0,
-    10,10,10,10,10,10,10,10, 10,0,10,10,10,10,0,10, 0,0,10,0,0,10,0,0, 0,10,10,0,0,10,10,0 },
+  { /* T_TROLL (hulking brown brute, NetHack's troll colour: red eyes, white
+     * tusks, arms hanging to the knees -- no longer one of three green
+     * humanoids with the orc and the zombie) */
+    0,0,6,6,6,6,0,0, 0,6,8,6,6,8,6,0, 0,4,5,5,5,5,4,0, 6,6,6,6,6,6,6,6,
+    6,0,6,6,6,6,0,6, 6,0,5,5,5,5,0,6, 5,0,6,0,0,6,0,5, 0,6,6,0,0,6,6,0 },
   { /* T_VAMPIRE (pale face, red eyes, white fangs, dark spread cape) */
     0,0,1,15,15,1,0,0, 0,0,8,15,15,8,0,0, 0,0,15,4,4,15,0,0, 0,1,15,15,15,15,1,0,
     1,1,8,1,1,8,1,1, 0,1,1,1,1,1,1,0, 0,1,1,0,0,1,1,0, 0,1,0,0,0,0,1,0 },
@@ -261,7 +269,13 @@ void tm_init(void) __banked
     ZXN_WRITE_REG(0x4A, 0x00);   /* fallback colour = black (border area)   */
     ZXN_WRITE_REG(0x6F, 0x00);   /* tile definitions base -> 0x4000         */
     ZXN_WRITE_REG(0x6E, 0x20);   /* tilemap base          -> 0x6000         */
-    ZXN_WRITE_REG(0x4C, 0x0F);   /* tilemap transparency index              */
+    /* The tilemap's transparent pixel value. NOT 0x0F (the reset value):
+     * master[15] is skin, and a transparent pixel shows the black fallback,
+     * so every face -- hero, keeper, vampire, priest, gnome, dwarf, nymph --
+     * rendered as a black hole (the keeper had no head). Index 0 is black in
+     * every palette here and so is the fallback (0x4A), so making IT the
+     * transparent one changes nothing else on screen. */
+    ZXN_WRITE_REG(0x4C, 0x00);
     ZXN_WRITE_REG(0x6C, 0x00);   /* default attribute                       */
 
     tm_init_font();
@@ -311,11 +325,17 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x18,0x18,0x18,0x18,0x18,0x7E,0x18,0x18 }, /* WEAPON   (dagger)       */
     { 0x7E,0xFF,0xFF,0xFF,0x7E,0x3C,0x18,0x00 }, /* ARMOR    (shield)       */
     { 0x18,0x18,0x3C,0x7E,0x7E,0x7E,0x7E,0x3C }, /* POTION   (flask)        */
-    { 0x18,0x18,0x3C,0x18,0x3C,0x24,0x24,0x00 }, /* KOBOLD   (small humanoid)*/
+    { 0x01,0x01,0x29,0xD9,0x3F,0x39,0x29,0x6C }, /* KOBOLD (ears, snout left,
+                                                  * eye hole, upright spear) */
     { 0x3C,0x7E,0x5A,0x7E,0x3C,0x3C,0x66,0x66 }, /* ORC      (brute)        */
-    { 0x0C,0x12,0x0C,0x18,0x30,0x48,0x30,0x00 }, /* SNAKE    (serpent)      */
+    { 0x00,0x06,0x0B,0x19,0x98,0xD0,0x60,0x00 }, /* SNAKE (lying in a wave,
+                                                  * head raised right with an
+                                                  * eye hole -- the old pair
+                                                  * of loops read as an 8)   */
     { 0x00,0xC3,0xE7,0xFF,0xDB,0x99,0x00,0x00 }, /* BAT  spread wings+head   */
-    { 0x18,0x18,0x3C,0x3C,0x18,0x3C,0x24,0x24 }, /* ZOMBIE   (shambler)     */
+    { 0x0C,0x04,0xFC,0x9C,0x1C,0x14,0x14,0x32 }, /* ZOMBIE (arm reaching left,
+                                                  * the hand drooping, feet
+                                                  * shuffling)               */
     { 0x7E,0x81,0xBD,0x81,0xBD,0x81,0xBD,0x7E }, /* SCROLL   (parchment)    */
     { 0x00,0x3C,0x42,0x42,0x42,0x42,0x3C,0x00 }, /* RING     (hollow ring)  */
     { 0x18,0x24,0x42,0x3C,0x18,0x3C,0x24,0x00 }, /* AMULET   (pendant)      */
@@ -340,7 +360,10 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x18,0x99,0xDB,0xFF,0x7E,0x3C,0x18,0x08 }, /* DRAGON  (on the wing)    */
     { 0x18,0x3C,0x24,0x3C,0x7E,0xFF,0xFF,0x66 }, /* PRIEST  (mitred, robed)  */
     { 0x7E,0x5A,0xFF,0xAA,0x55,0xFF,0x7E,0x00 }, /* MIMIC   (toothy chest)   */
-    { 0x3C,0x42,0x99,0xBD,0xBD,0x99,0x42,0x3C }, /* MINEHOLE (rimmed pit)    */
+    { 0x3C,0x7E,0xE7,0xC3,0xC3,0xE7,0x7E,0x3C }, /* MINEHOLE (a thick rim
+                                                  * round an empty pit; it
+                                                  * was FEYE's bitmap exactly,
+                                                  * told apart by ink alone) */
     { 0x08,0x1C,0x3C,0x18,0x3C,0x18,0x24,0x24 }, /* GNOME   (pointy cap)     */
     { 0x3C,0x7E,0x3C,0x7E,0x5A,0x7E,0x24,0x66 }, /* DWARF   (helm + beard)   */
     { 0x00,0x38,0x7C,0x74,0x7C,0x38,0x00,0x00 }, /* LUCKSTONE (gleaming rock)*/
