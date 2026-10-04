@@ -174,8 +174,25 @@ static const objtype_t objtypes[NUMOBJ] = {
     /* The carrot cures blindness. Rare against the ration (8:1), as in
      * NetHack, so it does not thin the food supply much: a food drop is
      * worth 717 nutrition on average instead of 800. */
-    { '%',  0,    7,   1, 1, SL_NONE, "carrot" }
+    { '%',  0,    7,   1, 1, SL_NONE, "carrot" },
+    /* The artifacts the gods give for a sacrifice (art_gift), never generated
+     * (mindep 255). Each is a fine blade -- 6-7, between the long sword and
+     * Excalibur -- with a power over something this dungeon really holds
+     * (art_fx, monster_ai.c). Names stay <= 12 chars for the inventory. */
+    { ')',  6,  300, 255, 1, SL_NONE, "Sting" },
+    { ')',  7,  400, 255, 1, SL_NONE, "Sunsword" },
+    { ')',  7,  300, 255, 1, SL_NONE, "Trollsbane" },
+    { ')',  7,  400, 255, 1, SL_NONE, "Dragonbane" },
+    { ')',  7,  400, 255, 1, SL_NONE, "Stormbringer" }
 };
+
+/* Each gift's alignment (as in NetHack: 0 Lawful, 1 Neutral, 2 Chaotic,
+ * ART_ANY none) and powers, in O_STING order. Excalibur is the fountain's and
+ * has no row here; its one power is resisting drain. */
+#define ART_ANY 3
+static const uint8_t art_align[5] = { 2, 0, ART_ANY, ART_ANY, 2 };
+static const uint8_t art_pow[5]   = { AF_ORCS, AF_UNDEAD, AF_TROLLS, AF_DRAGONS,
+                                      AF_DRAIN | AF_DRAINRES };
 
 /* obj_t, the BUC bits and inv[] live in item_int.h (item_use.c needs them).
  * inv_count is no longer static for the same reason; it is BSS, so resident
@@ -369,6 +386,7 @@ static void recompute_gear(void)
     weapon_dmg = 0;
     regen_ring = 0;         /* re-derived from what is worn (never saved) */
     ring_fx = 0;
+    art_fx = 0;
     amu_esp = amu_life = 0;
     for (i = 0; i < inv_count; i++) {
         const objtype_t *t;
@@ -378,6 +396,10 @@ static void recompute_gear(void)
         eff = gear_eff(&inv[i]);
         if (t->cls == ')') {
             weapon_dmg = (uint8_t)eff;
+            if (inv[i].otyp == O_EXCALIBUR)
+                art_fx = AF_DRAINRES;
+            else if (inv[i].otyp >= O_STING && inv[i].otyp <= O_STORMB)
+                art_fx = art_pow[inv[i].otyp - O_STING];
         } else if (t->cls == '[') {
             if ((uint8_t)eff <= base_ac) base_ac -= (uint8_t)eff;
             if (eff > 0) redux += (uint8_t)(eff > 1 ? eff - 1 : 1);
@@ -431,6 +453,7 @@ void corrode_worn(char cls) __banked
 {
     int i = pick_worn(cls);
     if (i < 0) return;
+    if (is_artifact(inv[i].otyp)) return;   /* NetHack's gifts are erodeproof */
     if (inv[i].ero < 3) {
         inv[i].ero++;
         recompute_gear();
@@ -644,7 +667,12 @@ static int find_class(char cls)
 }
 
 /* index of the strongest item of a class (highest prop + ench - erosion), so
- * 'w'/'W'/'P' equip the best you carry regardless of inventory order */
+ * 'w'/'W'/'P' equip the best you carry regardless of inventory order.
+ *
+ * An artifact outranks every ordinary weapon. 'w' chooses for the player, and
+ * a number cannot see what an artifact is for: a +2 long sword (7) would tie
+ * Sunsword and could beat Sting, so the god's gift might never be wielded.
+ * Among artifacts the number decides again. */
 static int find_best(char cls)
 {
     int best = -1, bestval = -999;
@@ -653,6 +681,7 @@ static int find_best(char cls)
         int v;
         if (objtypes[inv[i].otyp].cls != cls) continue;
         v = (int)objtypes[inv[i].otyp].prop + inv[i].ench - inv[i].ero;
+        if (is_artifact(inv[i].otyp)) v += 100;
         if (v > bestval) { bestval = v; best = i; }
     }
     return best;
@@ -749,6 +778,41 @@ static void menu_tail_clear(void)
 }
 #endif
 
+/* The gods' gift, NetHack's sacrifice gift: a pleased god on your own altar may
+ * hand you an artifact instead of the usual boon. NetHack gives one in
+ * 10 + 2 * gifts * artifacts; offerings are much rarer here -- an altar on
+ * one level in five, one in three of them yours -- so one in 4, then 12, 20.
+ * Only from experience level 3 and with luck not below zero, as there. The
+ * gift is one of yours or nobody's (alignment ART_ANY), never one this game
+ * already holds. 1 = given (the caller skips the ordinary boon). */
+static uint8_t art_gift(void)
+{
+    uint8_t cand[5], n = 0, k, gifts = 0;
+    obj_t o;
+    for (k = 0; k < 5; k++)
+        if (art_given & (uint8_t)(1u << k)) gifts++;
+    if (xlvl < 3 || luck < 0 || rn2((uint8_t)(4 + 8 * gifts)) != 0) return 0;
+    for (k = 0; k < 5; k++)
+        if (!(art_given & (uint8_t)(1u << k)) &&
+            (art_align[k] == alignment || art_align[k] == ART_ANY))
+            cand[n++] = k;
+    if (n == 0) return 0;
+    k = cand[rn2(n)];
+    o.otyp = (uint8_t)(O_STING + k);
+    o.ench = 0; o.ero = 0; o.worn = 0;
+    o.buc  = BUC_UNC | BUC_KNOWN;           /* uncursed, as NetHack makes it */
+    if (inv_add(&o))
+        msg2("You receive ", objtypes[o.otyp].name, "!");
+    else if (floor_drop((uint8_t)hero_x, (uint8_t)hero_y, &o))
+        msg2("", objtypes[o.otyp].name, " lies at your feet!");
+    else
+        return 0;                           /* nowhere to put it: no gift */
+    art_given |= (uint8_t)(1u << k);
+    id_set(o.otyp);
+    sfx_levelup();
+    return 1;
+}
+
 /* Offer the corpse in inventory slot s on the altar the hero stands on: the
  * NetHack #offer, folded into `d` (drop) since we have no extended commands.
  * The god's mood scales with how well the altar's alignment matches yours;
@@ -773,6 +837,7 @@ static void sacrifice(uint8_t s)
 
     /* the god is pleased -- a boon, richer on a co-aligned altar */
     if (luck < 5) luck++;
+    if (favour >= 2 && art_gift()) return;  /* or, on your own altar, a gift */
     switch (rn2((uint8_t)(favour >= 2 ? 5 : 4))) {
     case 0: {                       /* lift every curse you carry */
         uint8_t n = pray_uncurse(1);

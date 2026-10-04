@@ -55,6 +55,8 @@ uint8_t  armor_def = 0;
 uint8_t  ac = 10;
 uint8_t  regen_ring = 0;     /* worn ring of regeneration (see game.h) */
 uint8_t  ring_fx = 0;        /* RF_* effects of the worn ring (see game.h) */
+uint8_t  art_fx = 0;         /* AF_* powers of the wielded artifact (see game.h) */
+uint8_t  art_given = 0;      /* which artifacts exist this game (see game.h) */
 uint16_t xp = 0;
 uint8_t  xlvl = 1;
 int16_t  nutrition = 900;
@@ -1336,6 +1338,7 @@ void new_game(uint8_t reseed) __banked
     known_spells = 0;
     max_dlvl = 1;
     luck = 0;
+    art_given = 0;                /* the old world's artifacts are not this one's */
     pick_class();                 /* who are you? (fills the sheet, hp, pw) */
     have_pet = 1; pet_hp = 8; pet_kills = 0;  /* you start with a faithful puppy */
     item_reset();

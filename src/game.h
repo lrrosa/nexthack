@@ -87,6 +87,23 @@ extern uint8_t  ring_fx;      /* RF_* bits from the worn ring: what the turn
 #define RF_HUNGER   0x10      /* hunger: you eat half again as fast (junk)  */
 #define RF_AGGR     0x20      /* aggravate monster: nothing sleeps (junk)   */
 #define RF_TPORT    0x40      /* teleportitis: you blink about (junk)       */
+/* The wielded artifact's powers (1.6): AF_* bits, recomputed with the worn set
+ * by recompute_gear like ring_fx, never saved. Read by the melee code (the
+ * slaying double damage and Stormbringer's drain), by the drain attack, by
+ * the troll's regeneration and by Sting's glow (all in monster_ai.c). */
+extern uint8_t  art_fx;
+#define AF_ORCS     0x01      /* Sting: double damage to orcs, glows near them  */
+#define AF_UNDEAD   0x02      /* Sunsword: double damage to Z, W and V          */
+#define AF_TROLLS   0x04      /* Trollsbane: double damage, and no troll mends  */
+#define AF_DRAGONS  0x08      /* Dragonbane: double damage to the dragon        */
+#define AF_DRAIN    0x10      /* Stormbringer: each blow heals you by half      */
+#define AF_DRAINRES 0x20      /* Excalibur, Stormbringer: drain attacks fail    */
+/* Which artifacts exist in this game -- each is unique, as in NetHack. Bit k
+ * is O_STING + k (item_int.h); ART_EXCAL is the fountain's, which does not
+ * count as a gift. Saved; cleared by new_game. */
+extern uint8_t  art_given;
+#define ART_GIFTS   0x1F      /* the five sacrifice gifts                       */
+#define ART_EXCAL   0x80      /* the Lady of the Lake has given her sword        */
 extern uint16_t xp;           /* experience points                        */
 extern uint8_t  xlvl;         /* experience level                         */
 

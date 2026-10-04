@@ -60,8 +60,14 @@ enum {
     O_SGENO, O_SCHARGE, O_SDESTROY, O_SAMNESIA,    /* '?' four more scrolls */
     O_PGAINABIL, O_PGAINENRG,                      /* '!' two more potions  */
     O_CARROT,                                      /* '%' good for the eyes */
+    /* the 1.6 artifacts -- the gods' sacrifice gifts (item.c art_gift), never
+     * generated (mindep 255). Their order IS the order of the ART_* bits in
+     * game.h (bit = 1 << (otyp - O_STING)); Excalibur keeps its old id. */
+    O_STING, O_SUNSWORD, O_TROLLSB, O_DRAGONB, O_STORMB,   /* ')' artifacts */
     NUMOBJ
 };
+/* Excalibur and the five gifts: unique, wielded first by 'w', never eroded */
+#define is_artifact(t) ((t) == O_EXCALIBUR || ((t) >= O_STING && (t) <= O_STORMB))
 
 typedef struct {
     uint8_t otyp;

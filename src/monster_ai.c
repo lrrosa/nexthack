@@ -26,6 +26,40 @@
  * combat below sets mon_dead's kill bits directly (defined in monster.c).
  * place_pet lives in nexthack.c's bank to keep this one under its 16 KB. */
 
+static int iabs(int v) { return v < 0 ? -v : v; }
+
+/* ---- the wielded artifact (art_fx, recomputed in item.c) ---- */
+
+/* does the artifact in your hand hunt this kind? Then the blow lands double,
+ * NetHack's slaying bonus at its simplest */
+static uint8_t art_slays(char ch)
+{
+    if (!art_fx) return 0;
+    return (uint8_t)(((art_fx & AF_ORCS)    && ch == 'o') ||
+                     ((art_fx & AF_UNDEAD)  && (ch == 'Z' || ch == 'W' || ch == 'V')) ||
+                     ((art_fx & AF_TROLLS)  && ch == 'T') ||
+                     ((art_fx & AF_DRAGONS) && ch == 'D'));
+}
+
+/* Sting glows blue while an orc is within eight squares, seen or not, as
+ * NetHack's elven blades warn of orcs -- one message as it lights and one as
+ * it goes out, so it says something only when the news changes. */
+static uint8_t sting_lit;
+static void sting_glow(void)
+{
+    uint8_t i, near = 0;
+    if (art_fx & AF_ORCS)
+        for (i = 0; i < mcount; i++)
+            if (m_alive[i] && m_type[i] == 'o' &&
+                iabs((int)m_x[i] - hero_x) <= 8 && iabs((int)m_y[i] - hero_y) <= 8) {
+                near = 1;
+                break;
+            }
+    if (near == sting_lit) return;
+    sting_lit = near;
+    if (art_fx & AF_ORCS) msg(near ? "Sting glows blue!" : "Sting stops glowing.");
+}
+
 /* ---- experience ---- */
 static void gain_xp(uint8_t amt)
 {
@@ -127,7 +161,12 @@ void attack_monster(uint8_t mi) __banked
     dmg = (uint8_t)(rn2(4) + 1 + weapon_dmg);   /* 1..4 + weapon */
     if (at_str >= 17)      dmg = (uint8_t)(dmg + 2);   /* strength bonus */
     else if (at_str >= 14) dmg++;
+    if (art_slays(mt->ch)) dmg = (uint8_t)(dmg << 1);  /* the artifact's quarry */
     hit_monster(mi, dmg);
+    if (art_fx & AF_DRAIN) {        /* Stormbringer drinks: half the blow is yours */
+        ADD_SAT8(php, dmg >> 1);
+        if (php > pmaxhp) php = pmaxhp;
+    }
     if (mt->corr && rn2(2))         /* acid eats the weapon you strike it with */
         corrode_worn(')');
     if (mt->ch == 'e' && m_alive[mi] && !st_blind) {
@@ -147,8 +186,6 @@ void attack_monster(uint8_t mi) __banked
 }
 
 /* ---- monster turn: chase the hero, attack when adjacent ---- */
-
-static int iabs(int v) { return v < 0 ? -v : v; }
 
 static void monster_hits_player(uint8_t i)
 {
@@ -207,6 +244,7 @@ static void monster_hits_player(uint8_t i)
                                msg("You are put to sleep!"); }
             break;
         case ATK_DRAIN:
+            if (art_fx & AF_DRAINRES) break;    /* Excalibur, Stormbringer: as in NetHack */
             if (rn2(2) && pmaxhp > 2) {         /* a wraith saps your life force */
                 pmaxhp--;
                 if (php > pmaxhp) php = pmaxhp;
@@ -704,12 +742,15 @@ static uint8_t mimic_hidden(uint8_t i)
 void monsters_turn(void) __banked
 {
     uint8_t i;
-    /* trolls knit their wounds shut as they come for you (cap = spawn HP) */
-    for (i = 0; i < mcount; i++)
-        if (m_alive[i] && m_type[i] == 'T') {
-            uint8_t cap = (uint8_t)(mon_find('T')->hp + eff_depth() / 2);
-            if (m_hp[i] < cap) m_hp[i]++;
-        }
+    /* trolls knit their wounds shut as they come for you (cap = spawn HP) --
+     * unless Trollsbane is in your hand */
+    if (!(art_fx & AF_TROLLS))
+        for (i = 0; i < mcount; i++)
+            if (m_alive[i] && m_type[i] == 'T') {
+                uint8_t cap = (uint8_t)(mon_find('T')->hp + eff_depth() / 2);
+                if (m_hp[i] < cap) m_hp[i]++;
+            }
+    sting_glow();
 #ifndef __ZXNEXT
     /* +zx: skip the whole chase when no ENEMY is near. The pet (always at your
      * heel) and the stationary shopkeeper must NOT count here -- otherwise the

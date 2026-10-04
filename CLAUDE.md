@@ -521,6 +521,17 @@ tilemap.
   only the ring of protection adds to them. The other rings are pure effects,
   read through the resident `ring_fx` (`RF_*` bits, whose order IS the order of
   `O_RSLOWDIG..O_RTPORT`), recomputed with the worn set and never saved.
+- **Artifacts** (1.6) are unique and never generated (`mindep` 255): Excalibur
+  from the fountain, and five sacrifice gifts (`art_gift` in `item.c`: a pleased
+  god on your own altar, from XL 3 with luck >= 0, one in 4, then 12, 20 --
+  always one of your alignment or unaligned). `art_given` (resident, saved)
+  names those this game holds; any new way to make one must set its bit. The
+  wielded one's powers are `art_fx` (`AF_*`), recomputed like `ring_fx` and read
+  by `monster_ai.c`: double damage to its quarry, Stormbringer's drain, drain
+  resistance, Trollsbane stopping troll regeneration, Sting's glow. `w` ranks
+  any artifact above every ordinary weapon -- it chooses for the player, and a
+  bare number would let a +2 long sword shadow the god's gift for good. Acid
+  never erodes one (`corrode_worn`).
 - `q`/`e`/`r`/`P` use `select_item()`: silent when you carry one type, but it
   pops a letter menu when two *different* types are present, and derives its
   prompt from the class (pseudo-classes: `'P'` rings + wearable amulets, `'C'`

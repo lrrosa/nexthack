@@ -35,8 +35,11 @@
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   30     /* 30: the play RNG's state joined the player block
-                           * and a length+sum trailer closes the file. 29 was
+#define SAVE_VER   31     /* 31: the artifacts -- art_given joined the player
+                           * block, and 68+ types grew id_known to 9 bytes.
+                           * 30 was 1.5's: the play RNG's state joined the
+                           * player block and a length+sum trailer closes the
+                           * file. 29 was
                            * 1.4's (the item batch: 60 types, id_known 8 bytes,
                            * the genocide mask); 28 1.3's; 27 the 1.0 freeze.
                            * An older save gets the 1.3.1 prompt. */
@@ -70,6 +73,7 @@ struct save_player {
     uint16_t rng;         /* the PLAY stream, so a restore picks up the dice
                            * where the save left them (build_level no longer
                            * rewinds it either -- see nexthack_lvl.c) */
+    uint8_t  art_given;   /* which artifacts exist: each is unique */
 };
 
 /* Write seed + player + each module's state. Returns 1 on success. */
@@ -108,6 +112,7 @@ int save_game(void) __banked
     p.alignment = alignment;
     p.luck = luck;
     p.rng = rng_get();
+    p.art_given = art_given;
     file_write(h, &p, sizeof p);
 
     file_write(h, door_open, sizeof door_open);
@@ -242,6 +247,7 @@ int load_game(void) __banked
     max_dlvl = p.max_dlvl;
     alignment = p.alignment;
     luck = p.luck;
+    art_given = p.art_given;
     rng_set(p.rng);             /* main's build_level keeps it (nexthack_lvl.c) */
     dead = 0; won = 0;
 

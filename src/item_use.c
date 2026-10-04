@@ -36,14 +36,16 @@ static void quaff_fountain(void)
     acted = 1; turns++;
 
     /* the Lady of the Lake: a Valkyrie of level 5+ wielding a plain long sword
-     * may draw Excalibur (once -- the sword becomes the artifact) */
-    if (pclass == 0 && xlvl >= 5) {
+     * may draw Excalibur -- once a game, as in NetHack. Before art_given, a
+     * second long sword dipped made a second Excalibur. */
+    if (pclass == 0 && xlvl >= 5 && !(art_given & ART_EXCAL)) {
         for (i = 0; i < inv_count; i++) {
             if (inv[i].worn && inv[i].otyp == O_LONGSW) {
                 if (rn2(3) == 0) {
                     inv[i].otyp = O_EXCALIBUR;
                     inv[i].buc = BUC_BLESS | BUC_KNOWN;
                     inv[i].ero = 0;
+                    art_given |= ART_EXCAL;
                     item_id_set(O_EXCALIBUR);
                     item_recompute_gear();
                     msg("A hand offers up Excalibur!");
