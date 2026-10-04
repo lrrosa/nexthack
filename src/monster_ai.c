@@ -45,6 +45,11 @@ static uint8_t art_slays(char ch)
  * NetHack's elven blades warn of orcs -- one message as it lights and one as
  * it goes out, so it says something only when the news changes. */
 static uint8_t sting_lit;
+
+/* No monster strikes you this turn: you stand on a live Elbereth or on a
+ * scroll of scare monster (item.c). Worked out once per monsters_turn --
+ * the scroll means a look at the floor under you -- for both chase paths. */
+static uint8_t ward;
 static void sting_glow(void)
 {
     uint8_t i, near = 0;
@@ -223,7 +228,7 @@ static void monster_hits_player(uint8_t i)
             corrode_worn('[');
         switch (mt->atk) {          /* special on-hit effects (status-effect layer) */
         case ATK_POISON:
-            if (intrinsics & INTR_POISON_RES) break;   /* immune flesh */
+            if (poison_res()) break;   /* immune flesh, or the amulet */
             if (rn2(2)) { ADD_SAT8(st_poison, rn2(4) + 3);
                           msg("You feel poisoned!"); }
             break;
@@ -678,8 +683,8 @@ static void mon_step(uint8_t i)
     ddy = hero_y - (int)m_y[i];
 
     if (iabs(ddx) <= 1 && iabs(ddy) <= 1) {   /* adjacent -> attack */
-        if (el_life && hero_x == el_x && hero_y == el_y)
-            return;                           /* Elbereth: it dares not strike */
+        if (ward) return;                     /* Elbereth or the scroll: it dares
+                                               * not strike */
         monster_hits_player(i);
         return;
     }
@@ -751,6 +756,8 @@ void monsters_turn(void) __banked
                 if (m_hp[i] < cap) m_hp[i]++;
             }
     sting_glow();
+    ward = (uint8_t)((el_life && hero_x == el_x && hero_y == el_y) ||
+                     item_scare_here());
 #ifndef __ZXNEXT
     /* +zx: skip the whole chase when no ENEMY is near. The pet (always at your
      * heel) and the stationary shopkeeper must NOT count here -- otherwise the
@@ -816,7 +823,7 @@ void monsters_turn(void) __banked
             if (iabs((int)m_x[i] - hero_x) > MON_WAKE ||
                 iabs((int)m_y[i] - hero_y) > MON_WAKE) continue;   /* still dormant */
             if (iabs(hero_x - (int)m_x[i]) <= 1 && iabs(hero_y - (int)m_y[i]) <= 1) {
-                if (el_life && hero_x == el_x && hero_y == el_y) continue;  /* Elbereth */
+                if (ward) continue;   /* Elbereth, or scare monster underfoot */
                 monster_hits_player(i);
                 if (dead) return;
                 continue;

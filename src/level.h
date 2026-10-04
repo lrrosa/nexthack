@@ -87,6 +87,7 @@ const uint8_t *vis_bitmap(void) __banked;   /* cells visible this turn (1 bit/ce
 void fov_reveal(void) __banked;             /* mark the whole current level as explored */
 void fov_reveal_built(void) __banked;       /* ...all but its solid rock (attract demo) */
 void fov_forget(void) __banked;             /* amnesia: forget the current level's map  */
+uint8_t fov_reveal_char(char c) __banked;  /* remember every cell holding c; how many */
 extern uint16_t fov_vis_sum;                /* rolling hash of vis_now; unchanged = FOV static */
 
 uint8_t altar_align(uint8_t x, uint8_t y);  /* 0 Law / 1 Neu / 2 Cha (resident, pure hash) */

@@ -506,7 +506,13 @@ tilemap.
   untouched by new types elsewhere. **When you add a type, choose its weight so
   the existing ones keep their share, and measure it** with `tools/balance.py`:
   the healing potions weigh 3 against 2 because equal weights cut their share
-  from a third to a quarter, which alone halved the Valkyrie's wins.
+  from a third to a quarter, which alone halved the Valkyrie's wins. A type
+  stronger than everything it joins needs the measuring most: full healing
+  (1.6) refills the whole bar, and at one potion in 19 from Dlvl 10 it took
+  the Valkyrie's modelled wins with the dog from 25% to 94%. So the older
+  potions' weights were tripled (9 and 6, every ratio kept) to give it weight
+  1 from Dlvl 15 -- one in 55 there, 25% -> 49%. A rarer thing needs the
+  others multiplied, never a weight below 1.
 - **Four classes wear per-game looks** (`!` `?` `=` `/`): a Fisher-Yates shuffle
   seeded off `world_seed` with its OWN xorshift (never `rn2`, which would shift
   the game's stream every time an item is named). The pools hold only the word
@@ -532,6 +538,13 @@ tilemap.
   any artifact above every ordinary weapon -- it chooses for the player, and a
   bare number would let a +2 long sword shadow the god's gift for good. Acid
   never erodes one (`corrode_worn`).
+- **Rules other code must keep asking** (1.6): poison resistance is
+  `poison_res()` (the flesh's intrinsic OR the worn amulet versus poison) --
+  a new poison source must ask it, not `INTR_POISON_RES` alone. Teleportitis
+  is the ring's `RF_TPORT` OR the fey-flesh `INTR_TPORT`. No monster strikes
+  a hero on a live Elbereth or on a scroll of scare monster lying underfoot:
+  both chase paths read `ward`, worked out once per `monsters_turn`. That
+  scroll's `ench` is its "picked up before" mark (dust on the next pickup).
 - `q`/`e`/`r`/`P` use `select_item()`: silent when you carry one type, but it
   pops a letter menu when two *different* types are present, and derives its
   prompt from the class (pseudo-classes: `'P'` rings + wearable amulets, `'C'`

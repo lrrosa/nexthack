@@ -63,7 +63,7 @@ static void quaff_fountain(void)
         msg("The water is cool and clear.");
         break;
     case 2:                              /* murky water */
-        if (intrinsics & INTR_POISON_RES) { msg("This water tastes stale."); }
+        if (poison_res()) { msg("This water tastes stale."); }
         else { ADD_SAT8(st_poison, rn2(4) + 3);
                msg("Yecch!  Foul, murky water."); }
         break;
@@ -158,6 +158,15 @@ void do_quaff(void) __banked
             pmaxpw = (uint8_t)(pmaxpw + g > 60 ? 60 : pmaxpw + g);
         pw = pmaxpw;
         msg("Magic courses through you!");
+    } else if (ot == O_PFULLHEAL) {
+        /* NetHack's: every HP back, and the overflow raises the maximum by
+         * 4 (8 blessed, none cursed); unless cursed it clears the eyes */
+        uint8_t up = (uint8_t)(buc == BUC_BLESS ? 8 : buc == BUC_CURSE ? 0 : 4);
+        pmaxhp = (uint8_t)(pmaxhp + up > 250 ? (pmaxhp > 250 ? pmaxhp : 250)
+                                             : pmaxhp + up);
+        php = pmaxhp;
+        if (st_blind && buc != BUC_CURSE) { st_blind = 0; map_dirty = 1; }
+        msg("You feel completely healed.");
     } else {                                /* healing / extra healing */
         uint8_t heal = (uint8_t)(rn2(6) + item_obj_prop(ot));
         if (ot == O_EXHEAL) {
@@ -180,7 +189,7 @@ void do_quaff(void) __banked
 static void eat_corpse(char mch)
 {
     if (mch == 'S' || mch == 'k') {              /* poisonous flesh */
-        if (intrinsics & INTR_POISON_RES)
+        if (poison_res())
             msg("Ecch.  No harm done.");
         else if (rn2(3) == 0) {
             intrinsics |= INTR_POISON_RES;
@@ -209,6 +218,14 @@ static void eat_corpse(char mch)
     } else if (mch == 'D') {                     /* dragon flesh hardens the blood */
         intrinsics |= INTR_POISON_RES;
         msg("You feel healthy!");
+    } else if (mch == 'W') {                     /* the wraith: NetHack's prize */
+        msg("You feel more experienced!");
+        level_up();                              /* "Welcome to a new level!" */
+    } else if ((mch == 'l' || mch == 'n') &&     /* fey flesh: teleportitis, at */
+               !(intrinsics & INTR_TPORT) &&     /* NetHack's level/10 odds --  */
+               rn2(10) < (uint8_t)(mch == 'l' ? 5 : 3)) {  /* 5 and 3 */
+        intrinsics |= INTR_TPORT;
+        msg("You feel very jumpy.");
     } else {
         msg("You eat.  Not bad.");
     }
@@ -315,6 +332,25 @@ static void charging(uint8_t buc)
     msg("Your wand glows blue.");
 }
 
+/* Reading scare monster (NetHack's seffects): every monster within seven
+ * squares is frozen in terror for a few turns -- this game has no fleeing, so
+ * the fright is a short doze (m_sleep counts it down; any blow ends it).
+ * Confused or cursed, it does the opposite: everything near wakes. The pet,
+ * the peaceful and the shopkeeper are not its business. */
+static void scare_read(uint8_t bad)
+{
+    uint8_t i;
+    for (i = 0; i < mcount; i++) {
+        int dx = (int)m_x[i] - hero_x, dy = (int)m_y[i] - hero_y;
+        if (!m_alive[i] || (int8_t)i == pet_idx || m_peace[i] ||
+            m_type[i] == MON_KEEPER) continue;
+        if (dx < -7 || dx > 7 || dy < -7 || dy > 7) continue;
+        if (bad)               m_sleep[i] = 0;
+        else if (!m_sleep[i])  m_sleep[i] = (uint8_t)(rn2(4) + 3);
+    }
+    msg(bad ? "You hear sad wailing." : "You hear maniacal laughter.");
+}
+
 void do_read(void) __banked
 {
     int s = select_item('?');
@@ -381,6 +417,18 @@ void do_read(void) __banked
         item_forget_ids();              /* ... and a third of the looks */
         map_dirty = 1;                  /* +zx: repaint the forgotten map */
         msg("Who was that Maud person anyway?");
+    } else if (ot == O_SSCARE) {
+        scare_read((uint8_t)(st_conf || buc == BUC_CURSE));
+    } else if (ot == O_SGOLD) {
+        /* every '$' on the level joins the map; confused or cursed, NetHack's
+         * gold detection finds the traps instead */
+        if (st_conf || buc == BUC_CURSE)
+            msg(trap_detect() ? "You feel entrapped." : "Your toes stop itching.");
+        else {
+            uint8_t n = fov_reveal_char('$');
+            map_flush = 1;              /* +zx: seen-bits changed, as mapping */
+            msg(n ? "You feel greedy, and sense gold!" : "You feel materially poor.");
+        }
     } else {                            /* O_RMCURSE */
         if (buc == BUC_CURSE) msg("You feel like you need help.");
         else msg(pray_uncurse(1) ? "Your burdens are lifted."

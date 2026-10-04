@@ -82,11 +82,11 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '[',  3,   40,   3, 1, SL_SUIT, "ring mail" },
     { '[',  4,  100,   6, 1, SL_SUIT, "chain mail" },
     { '[',  5,  200,  10, 1, SL_SUIT, "plate mail" },
-    { '!',  7,   20,   1, 3, SL_NONE, "potion of healing" },
-    { '!', 14,   60,   4, 3, SL_NONE, "potion of extra healing" },
-    { '!',  0,   30,   2, 2, SL_NONE, "potion of confusion" },
-    { '!',  0,   30,   3, 2, SL_NONE, "potion of sleeping" },
-    { '!',  0,   30,   4, 2, SL_NONE, "potion of blindness" },
+    { '!',  7,   20,   1, 9, SL_NONE, "potion of healing" },
+    { '!', 14,   60,   4, 9, SL_NONE, "potion of extra healing" },
+    { '!',  0,   30,   2, 6, SL_NONE, "potion of confusion" },
+    { '!',  0,   30,   3, 6, SL_NONE, "potion of sleeping" },
+    { '!',  0,   30,   4, 6, SL_NONE, "potion of blindness" },
     { '?',  0,   40,   1, 5, SL_NONE, "scroll of magic mapping" },
     { '?',  0,   60,   1, 5, SL_NONE, "scroll of teleportation" },
     { '?',  0,   40,   2, 5, SL_NONE, "scroll of identify" },
@@ -111,7 +111,7 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '?',  0,  100,   3, 5, SL_NONE, "scroll of enchant weapon" },
     { '?',  0,  100,   4, 5, SL_NONE, "scroll of enchant armor" },
     { '?',  0,   80,   3, 5, SL_NONE, "scroll of remove curse" },
-    { '!',  0,   80,   5, 2, SL_NONE, "potion of gain level" },
+    { '!',  0,   80,   5, 6, SL_NONE, "potion of gain level" },
     { '=',  0,  200,   6, 1, SL_NONE, "ring of regeneration" },
     { '*',  0,  300, 255, 1, SL_NONE, "luckstone" },  /* the mines bottom (levelgen) */
     /* The catalogue used to stop at plate mail on Dlvl 10 while the dungeon
@@ -134,7 +134,10 @@ static const objtype_t objtypes[NUMOBJ] = {
      * (resolve_floor checks the depth), so these are what the class means
      * anywhere else. Neither has a prop: their worth is the effect. */
     { '"',  0,  180,   6, 1, SL_NONE, "amulet of ESP" },
-    { '"',  0,  400,  12, 1, SL_NONE, "amulet of life" },
+    /* weight 2 since 1.6: versus poison (weight 1) joins the class, and an
+     * extra life is the amulet that decides runs -- it stays half of every
+     * amulet from Dlvl 12, where ESP goes from a half to a quarter */
+    { '"',  0,  400,  12, 2, SL_NONE, "amulet of life" },
     /* The 1.4 rings. None armours you (recompute_gear): each is an effect,
      * read through ring_fx by whoever it concerns. Equal weights, as in
      * NetHack -- which makes protection a ninth of rings instead of a half;
@@ -161,7 +164,8 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '?',  0,  100,   2, 2, SL_NONE, "scroll of destroy armor" },
     { '?',  0,  200,   3, 2, SL_NONE, "scroll of amnesia" },
     /* Two potions. The potion weights are 3 for the two healing kinds and 2
-     * for the rest, so each healing potion is still exactly 1/6 of all
+     * for the rest (all tripled in 1.6 to make room for a rare full healing,
+     * which keeps every ratio below), so each healing potion is still exactly 1/6 of all
      * potions, as when there were six: at equal weights the healing share
      * fell from a third to a quarter, and tools/balance.py measured that
      * alone halving the Valkyrie's wins (22% -> 11% with the dog). The room
@@ -169,8 +173,8 @@ static const objtype_t objtypes[NUMOBJ] = {
      * NetHack weighs healing above the average potion too. Restore ability
      * is not here: nothing in this game ever lowers an attribute, so it would
      * restore nothing. It waits for a drain to answer. */
-    { '!',  0,  300,   4, 2, SL_NONE, "potion of gain ability" },
-    { '!',  0,  150,   3, 2, SL_NONE, "potion of gain energy" },
+    { '!',  0,  300,   4, 6, SL_NONE, "potion of gain ability" },
+    { '!',  0,  150,   3, 6, SL_NONE, "potion of gain energy" },
     /* The carrot cures blindness. Rare against the ration (8:1), as in
      * NetHack, so it does not thin the food supply much: a food drop is
      * worth 717 nutrition on average instead of 800. */
@@ -183,7 +187,24 @@ static const objtype_t objtypes[NUMOBJ] = {
     { ')',  7,  400, 255, 1, SL_NONE, "Sunsword" },
     { ')',  7,  300, 255, 1, SL_NONE, "Trollsbane" },
     { ')',  7,  400, 255, 1, SL_NONE, "Dragonbane" },
-    { ')',  7,  400, 255, 1, SL_NONE, "Stormbringer" }
+    { ')',  7,  400, 255, 1, SL_NONE, "Stormbringer" },
+    /* The 1.6 odds and ends, at NetHack's rarity against what is here:
+     * - versus poison wards off what the snake, the kobold's flesh and the
+     *   murky fountain do (poison_res); NetHack's price.
+     * - full healing is the deep potion: prop is the heal base like the other
+     *   two's, and 250 tops up any hero (balance.py reads it the same way).
+     *   It is a whole HP bar, and no monster kills a full-HP hero one-on-one,
+     *   so its rarity IS its balance: measured over 600 lives, one in 19 from
+     *   Dlvl 10 took the Valkyrie's modelled wins with the dog from 25% to
+     *   94%. So every older potion weight is tripled -- the mix among them is
+     *   untouched, each healing kind still 9/54 = 1/6 -- and full healing
+     *   weighs 1 from Dlvl 15: one potion in 55 there, 25% -> 49%.
+     * - scare monster and gold detection weigh 2, as NetHack's ~35 and 33
+     *   sit beside destroy armor's 32 and amnesia's 35. */
+    { '"',  0,  150,   6, 1, SL_NONE, "amulet versus poison" },
+    { '!', 250, 200,  15, 1, SL_NONE, "potion of full healing" },
+    { '?',  0,  100,   3, 2, SL_NONE, "scroll of scare monster" },
+    { '?',  0,  100,   1, 2, SL_NONE, "scroll of gold detection" }
 };
 
 /* Each gift's alignment (as in NetHack: 0 Lawful, 1 Neutral, 2 Chaotic,
@@ -387,7 +408,7 @@ static void recompute_gear(void)
     regen_ring = 0;         /* re-derived from what is worn (never saved) */
     ring_fx = 0;
     art_fx = 0;
-    amu_esp = amu_life = 0;
+    amu_esp = amu_life = amu_pois = 0;
     for (i = 0; i < inv_count; i++) {
         const objtype_t *t;
         int eff;
@@ -421,6 +442,7 @@ static void recompute_gear(void)
         } else if (t->cls == '"') {
             if (inv[i].otyp == O_AMU_ESP)  amu_esp = 1;
             if (inv[i].otyp == O_AMU_LIFE) amu_life = 1;
+            if (inv[i].otyp == O_AMU_POIS) amu_pois = 1;
         }
     }
     ac = base_ac;
@@ -481,7 +503,8 @@ static const char *const pot_appear[] = {
 };
 static const char *const scr_appear[] = {
     "XYZZY", "ELBERETH", "KIRJE", "VAS CORP", "ANDOVA", "ZELGO MER",
-    "READ ME", "TEMOV", "THARR", "YUM YUM", "NR 9", "KERNOD WEL"
+    "READ ME", "TEMOV", "THARR", "YUM YUM", "NR 9", "KERNOD WEL",
+    "ELAM EBOW", "VELOX NEB"      /* 1.6: twelve scrolls need a 13th look */
 };
 static const char *const rng_appear[] = {
     "ruby", "jade", "opal", "coral", "onyx", "topaz",
@@ -492,7 +515,7 @@ static const char *const wnd_appear[] = {
     "maple", "marble", "copper", "runed", "silver", "bone"
 };
 #define NAPPEAR(a) ((uint8_t)(sizeof a / sizeof a[0]))
-#define SHUF_MAX 12
+#define SHUF_MAX 14
 
 static uint8_t id_known[(NUMOBJ + 7) / 8];   /* one "identified?" bit per otyp */
 static uint8_t id_is(uint8_t otyp)  { return (id_known[otyp >> 3] >> (otyp & 7)) & 1u; }
@@ -1127,6 +1150,33 @@ const char *floor_item_desc_at(uint8_t x, uint8_t y) __banked
     return obj_desc(&o);
 }
 
+/* Is a scroll of scare monster lying under the hero? Then no monster strikes
+ * you there (monster_ai.c's ward, beside Elbereth) -- a scroll on the FLOOR,
+ * as in NetHack, never one in the pack; a strong Elbereth that does not fade. */
+uint8_t item_scare_here(void) __banked
+{
+    obj_t o;
+    int fi = floor_find((uint8_t)hero_x, (uint8_t)hero_y);
+    if (fi >= 0) return (uint8_t)(floor_obj[fi].o.otyp == O_SSCARE);
+    if (terrain(hero_x, hero_y) != '?') return 0;
+    resolve_floor((uint8_t)hero_x, (uint8_t)hero_y, &o);
+    return (uint8_t)(o.otyp == O_SSCARE);
+}
+
+/* NetHack's price for carrying one: picked up, a blessed scroll of scare
+ * monster loses its blessing and an uncursed one remembers it was touched (ench
+ * 1 -- a scroll's ench is otherwise unused); one picked up before, or cursed,
+ * turns to dust in your hand. So dropping it to stand on is a decision you make
+ * about twice. 1 = it crumbled. */
+static uint8_t scare_touch(obj_t *o)
+{
+    if (o->otyp != O_SSCARE) return 0;
+    if (buc_st(o) == BUC_BLESS) { o->buc = (uint8_t)(o->buc & ~3u); return 0; }
+    if (o->ench == 0 && buc_st(o) != BUC_CURSE) { o->ench = 1; return 0; }
+    msg("The scroll turns to dust!");
+    return 1;
+}
+
 /* description of the item on the hero's cell (for the "You see here" message) */
 const char *floor_item_desc(void) __banked
 {
@@ -1148,6 +1198,10 @@ void do_pickup(void) __banked
 
     fi = floor_find((uint8_t)hero_x, (uint8_t)hero_y);
     if (fi >= 0) {                          /* a loose item you threw -- reclaim it */
+        if (inv_count < MAXINV && scare_touch(&floor_obj[fi].o)) {
+            floor_pick((uint8_t)fi);        /* dust: gone, the floor restored */
+            return;
+        }
         if (!inv_add(&floor_obj[fi].o)) { msg("Your pack is full."); return; }
         msg2("Got ", obj_desc(&floor_obj[fi].o), ".");
         sfx_pick();
@@ -1156,6 +1210,10 @@ void do_pickup(void) __banked
     }
 
     resolve_floor((uint8_t)hero_x, (uint8_t)hero_y, &o);
+    if (inv_count < MAXINV && scare_touch(&o)) {   /* a cursed one, fresh */
+        level_take_item((uint8_t)hero_x, (uint8_t)hero_y);
+        return;
+    }
 
     /* In a shop, picking an item up buys it: confirm first (so you don't waste
      * gold by accident), pay on the spot, refuse if you can't afford it. (The

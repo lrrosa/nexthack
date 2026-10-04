@@ -64,6 +64,10 @@ enum {
      * generated (mindep 255). Their order IS the order of the ART_* bits in
      * game.h (bit = 1 << (otyp - O_STING)); Excalibur keeps its old id. */
     O_STING, O_SUNSWORD, O_TROLLSB, O_DRAGONB, O_STORMB,   /* ')' artifacts */
+    /* the 1.6 odds and ends: each plugs into something the game already does */
+    O_AMU_POIS,                                    /* '"' versus poison       */
+    O_PFULLHEAL,                                   /* '!' full healing        */
+    O_SSCARE, O_SGOLD,                             /* '?' scare monster, gold */
     NUMOBJ
 };
 /* Excalibur and the five gifts: unique, wielded first by 'w', never eroded */

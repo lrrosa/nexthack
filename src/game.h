@@ -59,6 +59,8 @@ extern uint8_t  amu_esp;   /* wearing the amulet of ESP: telepathy while it
                             * is on, like regen_ring re-derived from the worn
                             * set by recompute_gear, never saved            */
 extern uint8_t  amu_life;  /* wearing the amulet of life saving             */
+extern uint8_t  amu_pois;  /* wearing the amulet versus poison (1.6), like
+                            * amu_esp re-derived by recompute_gear          */
 extern uint8_t  door_open[MAXLVL + 1];
                            /* bit i: the i-th locked door of that depth has
                             * been forced. Locked-ness itself is a pure side
@@ -124,6 +126,11 @@ extern int8_t   luck;         /* hidden fortune, -5..+5: pleased gods raise it,
 #define INTR_POISON_RES 0x01  /* poison no longer drains you              */
 #define INTR_SLEEP_RES  0x02  /* sleep attacks and gas traps do nothing   */
 #define INTR_TELEPATHY  0x04  /* sense monsters while blind               */
+#define INTR_TPORT      0x08  /* teleportitis, from a leprechaun's or a
+                               * nymph's flesh: upkeep blinks you as the ring
+                               * does (and the ring of control still steers) */
+/* poison resistance, from the flesh or the amulet: every poisoning asks this */
+#define poison_res() ((intrinsics & INTR_POISON_RES) || amu_pois)
 
 /* Add n to the uint8_t v, pinning at 255 instead of wrapping. Every heal and
  * every status extension goes through it: HP reaches 252 and the timers are

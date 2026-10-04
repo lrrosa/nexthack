@@ -45,7 +45,7 @@ uint8_t  won = 0;
 uint8_t  acted = 0;
 uint8_t  resting = 0;     /* 'R' rest: see rest_step (game.h) */
 uint8_t  door_open[MAXLVL + 1];   /* forced locked doors (see game.h) */
-uint8_t  amu_esp = 0, amu_life = 0;   /* worn amulets (see game.h) */
+uint8_t  amu_esp = 0, amu_life = 0, amu_pois = 0;   /* worn amulets (see game.h) */
 uint8_t  map_dirty = 1;   /* +zx renderer flag (unused on Next) */
 uint8_t  map_flush = 0;   /* +zx: skip draw_map's fast path once (a cell changed
                            * at a distance: a throw landed, search revealed a
@@ -512,8 +512,10 @@ void upkeep(void) __banked
     if (el_life && !--el_life)   msg("The engraving fades away.");
     if (pray_timeout) pray_timeout--;
 
-    /* teleportitis blinks you about, NetHack's one turn in eighty-five */
-    if ((ring_fx & RF_TPORT) && !dead && rn2(85) == 0) {
+    /* teleportitis blinks you about, NetHack's one turn in eighty-five -- from
+     * the ring or from fey flesh (ring_noticed names a worn ring only) */
+    if (((ring_fx & RF_TPORT) || (intrinsics & INTR_TPORT)) && !dead &&
+        rn2(85) == 0) {
         msg("You feel a wrenching sensation.");
         ring_noticed(RF_TPORT);
         hero_teleport();
@@ -1177,6 +1179,20 @@ void do_search(void) __banked
     if (found) map_flush = 1;   /* +zx: the revealed '^' isn't the hero's cell */
     msg(found ? "You find a trap!" : "You search around.");
     turns++; acted = 1;
+}
+
+/* Every hidden trap on the level, revealed as '^' and remembered on the map --
+ * the confused (or cursed) scroll of gold detection, as in NetHack. Like a
+ * search it reveals without springing. Returns how many traps the map now
+ * shows. */
+uint8_t trap_detect(void) __banked
+{
+    uint8_t x, y;
+    for (y = 0; y < MAPH; y++)
+        for (x = 0; x < MAPW; x++)
+            if (lvl[y][x] == '.' && trap_type(x, y) >= 0) lvl[y][x] = '^';
+    map_flush = 1;
+    return fov_reveal_char('^');
 }
 
 /* 'R' rest: pass turns until the body has mended or something interrupts.

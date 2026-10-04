@@ -260,6 +260,24 @@ void fov_reveal_built(void) __banked
     }
 }
 
+/* Remember every cell of the current level that holds c, wherever it is: the
+ * scroll of gold detection ('$') and its confused reading, the traps ('^').
+ * The cells then draw as the rest of the remembered map does, dimmed. Returns
+ * how many there are (saturating). */
+uint8_t fov_reveal_char(char c) __banked
+{
+    uint8_t *m = fov_map();
+    const char *p = (const char *)lvl;
+    uint16_t i;
+    uint8_t n = 0;
+    for (i = 0; i < (uint16_t)(MAPW * MAPH); i++)
+        if (p[i] == c) {
+            m[i >> 3] |= (uint8_t)(1u << (i & 7));
+            if (n < 255) n++;
+        }
+    return n;
+}
+
 void fov_forget(void) __banked   /* amnesia: this level's map is gone */
 {
     uint16_t i;
