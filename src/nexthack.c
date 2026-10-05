@@ -184,7 +184,8 @@ static uint8_t  mon_bm[(MAPH * TM_W + 7) / 8];   /* viewport cells a monster cov
  * XOR (210 B). In Bank 5's free gap AFTER fov_pool -- the 12-slot pool runs
  * 0x68A0..0x7278 (the old 0x6C00 home sat INSIDE it once the pool grew 4->12
  * slots, so the repaint copy was silently corrupting two parked levels' fog
- * of war) -- and below the BFS scratch at 0x7400 (0x7280+210=0x7352). Synced
+ * of war) -- and below inv[] (0x7360) and the BFS scratch at 0x7400
+ * (0x7280+210=0x7352). Synced
  * only when a path repaints by vis (mid/full), so it always mirrors the
  * screen -- a vis-hash collision that leaves stale cells self-repairs on the
  * next mid pass. */

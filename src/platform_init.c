@@ -189,7 +189,11 @@ const uint8_t gfx[NTILES][64] = {
     6,0,6,6,6,0,0,6, 6,0,6,7,6,6,0,6, 6,0,0,6,6,0,0,0, 0,0,0,0,0,0,6,0 },
   { /* T_NYMPH (golden hair, fair face, green gown, arms reaching out) */
     0,0,13,13,13,13,0,0, 0,13,15,15,15,15,13,0, 0,0,15,1,1,15,0,0, 0,0,9,9,9,9,0,0,
-    0,9,9,9,9,9,9,0, 0,0,9,9,9,9,0,0, 0,0,9,9,9,9,0,0, 0,0,9,0,0,9,0,0 }
+    0,9,9,9,9,9,9,0, 0,0,9,9,9,9,0,0, 0,0,9,9,9,9,0,0, 0,0,9,0,0,9,0,0 },
+  { /* T_TOOL (1.6: a pick-axe for the whole '(' class -- a curved grey head
+     * over a brown handle, upright so it never reads as the diagonal dagger) */
+    0,0,3,3,3,3,0,0, 0,3,0,6,6,0,3,0, 3,0,0,6,6,0,0,3, 0,0,0,6,6,0,0,0,
+    0,0,0,6,6,0,0,0, 0,0,0,6,6,0,0,0, 0,0,0,6,6,0,0,0, 0,0,0,5,5,0,0,0 }
 };
 
 static void pack_tile(uint8_t tilenum, const uint8_t *px)
@@ -371,8 +375,10 @@ static const uint8_t udg_src[NTILES][8] = {
                                                   * from the user's mock,
                                                   * round-2 markup applied --
                                                   * see the Next gfx entry)   */
-    { 0x3C,0x7E,0x5A,0x3C,0x7E,0x3C,0x3C,0x24 }  /* NYMPH (haired face, gown,
+    { 0x3C,0x7E,0x5A,0x3C,0x7E,0x3C,0x3C,0x24 }, /* NYMPH (haired face, gown,
                                                   * arms out for your pack)  */
+    { 0x3C,0x5A,0x99,0x18,0x18,0x18,0x18,0x18 }  /* TOOL (a pick-axe: curved
+                                                  * head, upright handle)    */
 };
 
 /* Copy the hand-drawn tiles into udg_bitmap[] (Bank 5, see platform.h) that the

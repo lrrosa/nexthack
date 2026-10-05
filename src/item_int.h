@@ -91,12 +91,15 @@ typedef struct {
 #define buc_seen(o) ((o)->buc & BUC_KNOWN) /* has the player discovered it?      */
 
 /* The inventory lives in Bank 5 (always mapped at 0x4000-0x7FFF on both targets),
- * so it costs no resident BSS. The 128K places it just past udg_bitmap (0x6800);
- * the Next, whose Bank 5 holds the tilemap at 0x6000, places it in the free tail
- * of the tile-def area (tiles end ~0x53C0, NextZXOS sysvars start at 0x5C00).
- * INV_BYTES is its true size for save/restore (sizeof of the pointer is wrong). */
+ * so it costs no resident BSS. The 128K places it in the gap between PREV_VIS
+ * (ends 0x7352) and the BFS scratch (0x7400): 0x7360..0x73E2. It sat at 0x6800,
+ * right after udg_bitmap, until 1.6 needed a 49th tile there -- moving it out
+ * gave the bitmap 17 more ids (176..192). The Next, whose Bank 5 holds the
+ * tilemap at 0x6000, places it in the free tail of the tile-def area (tiles
+ * end 0x5620, NextZXOS sysvars start at 0x5C00). INV_BYTES is its true size
+ * for save/restore (sizeof of the pointer is wrong). */
 #ifndef __ZXNEXT
-#define inv ((obj_t *)0x6800u)
+#define inv ((obj_t *)0x7360u)
 #else
 #define inv ((obj_t *)0x5800u)
 #endif

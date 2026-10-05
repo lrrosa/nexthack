@@ -77,13 +77,14 @@ const uint8_t udg_ink[NTILES] = {
        6,     4,     4,     1,     7,     7,     6,     6,     4,  /* bat: blue */
     /* SHOPWALL KEEPER  LEPRECHAUN YELLOWLIGHT TRAP HOMUNCULUS WRAITH ALTAR WAND FEYE BOOK FOUNTAIN */
        6,       3,          4,          6,        2,      2,        7,     7,    5,   1,   2,   5,
-    /* TROLL  VAMPIRE  DRAGON  PRIEST  MIMIC  MINEHOLE GNOME DWARF LUCKSTONE MINEWALL NYMPH */
-       6,     7,       2,      3,      3,     6,       1,    7,    7,        6,       3
+    /* TROLL  VAMPIRE  DRAGON  PRIEST  MIMIC  MINEHOLE GNOME DWARF LUCKSTONE MINEWALL NYMPH TOOL */
+       6,     7,       2,      3,      3,     6,       1,    7,    7,        6,       3,    6
     /* zombie white (NetHack's human zombie); keeper magenta; leprechaun green; yellow light
      * yellow; trap+imp red; wraith+altar white; wand cyan; eye blue; book red; fountain cyan;
      * troll yellow (NetHack's brown, as the Next draws it); vampire white; dragon red;
      * high priest + mimic magenta; mine hole yellow; gnome blue (the Next's smock);
-     * dwarf + luckstone white; nymph magenta (the charm reads at a glance). Seven
+     * dwarf + luckstone white; nymph magenta (the charm reads at a glance); tool
+     * yellow (the Next's brown handle). Seven
      * monsters were green, three of them humanoids sharing the same floors (orc,
      * zombie, troll); four are now. */
 };

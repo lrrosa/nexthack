@@ -35,7 +35,7 @@ extern uint8_t gold_taken[], item_taken[];   /* persistence masks (levelgen.c) *
 
 /* Where the LRU explored bitmaps live differs per target:
  *  - 128K: data-banked in Bank 5 (always mapped at 0x4000-0x7FFF) at 0x68A0,
- *    just past the 26-slot inv (0x6800..0x6882); 12 slots end at 0x7278,
+ *    just past the mirrored-UDG annex (0x6888..0x68A0); 12 slots end at 0x7278,
  *    below the renderer's PREV_VIS copy (0x7280) and the BFS scratch at
  *    0x7400 -- zero resident cost. FLAT view
  *    (SDCC rejects pointer-to-array casts): index as

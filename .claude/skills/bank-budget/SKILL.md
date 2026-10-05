@@ -153,9 +153,11 @@ and none of them move when a neighbour grows.
 
 This is not hypothetical: `FOV_SLOTS` 4→12 (0.10.0) grew `fov_pool` over
 `PREV_VIS` at `0x6C00`, and for two releases the renderer's repaint copy
-silently corrupted two parked levels' fog of war. Also standing: `udg_bitmap`
-ends **exactly** at `inv[]` — a 49th tile corrupts the inventory (the mirrored
-UDG annex dodges this by living at ids 193-195, past the blocked range).
+silently corrupted two parked levels' fog of war. Until 1.6 `udg_bitmap` ended
+**exactly** at `inv[]` (0x6800), so a 49th tile would have corrupted the
+inventory; 1.6 moved `inv[]` to the gap under the BFS scratch (0x7360-0x73E2),
+which gave the bitmap ids 176-192 -- up to 0x6888, where the mirrored annex
+(ids 193-195) begins. A 66th tile needs the annex moved or the bitmap slid.
 
 **Moving `udg_bitmap` moves the annex with it**, because the annex is addressed
 `udg_bitmap + (id-128)*8`, not by a fixed address. The 192 B gap above

@@ -75,12 +75,14 @@
 #define T_LUCKSTONE   173  /* the mines' prize ('*' at the bottom)            */
 #define T_MINEWALL    174  /* mines walls: hewn brown rock (vs built brick)   */
 #define T_NYMPH       175  /* the nymph: steals an item and blinks away       */
+#define T_TOOL        176  /* a tool ('(', 1.6): a pick-axe for the class     */
 
-#define NTILES   48      /* T_ROCK..T_NYMPH: the graphic tiles.
-                          * 128K WARNING: udg_bitmap (0x6680, 8 B/tile) now ends
-                          * EXACTLY at 0x6800, where item.c places inv[] -- a
-                          * 49th tile would corrupt the inventory. Move inv[]
-                          * (or the bitmap) before adding another tile. */
+#define NTILES   49      /* T_ROCK..T_TOOL: the graphic tiles.
+                          * 128K: udg_bitmap (0x6680, 8 B/tile) may run to
+                          * 0x6888 -- ids up to 192 -- where the mirrored annex
+                          * (193..195) begins; inv[] moved out of 0x6800 in 1.6
+                          * to make that room. The Next's tile defs end at
+                          * 0x4000 + (128 + NTILES) * 32, below inv[] at 0x5800. */
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT
@@ -111,10 +113,10 @@ void    puttile_attr(uint8_t x, uint8_t y, uint8_t tile, uint8_t attr); /* UDG +
 #define udg_bitmap ((uint8_t *)0x6680u)
 extern const uint8_t udg_ink[NTILES];
 /* Mirrored companions (hero/dog/rat facing RIGHT): bit-reversed copies built
- * by build_udgs at startup. Their ids are NOT consecutive with the 48 base
- * tiles: ids 176..192 would land the blit's 0x6680+(id-128)*8 address inside
- * inv[] at 0x6800, so they live in the free gap ABOVE it -- 0x6888..0x68A0
- * (ids 193..195), reached by the same formula, ending exactly at fov_pool.
+ * by build_udgs at startup. Their ids are NOT consecutive with the base tiles:
+ * they sit at 0x6888..0x68A0 (ids 193..195), reached by the same
+ * 0x6680+(id-128)*8 formula, ending exactly at fov_pool. Ids 176..192 below
+ * them are the base tiles' room to grow (inv[] used to block them at 0x6800).
  * Never index udg_ink[] with these ids (compute the attr from the base tile,
  * as the renderer's face_tile callers do). */
 #define T_HERO_R 193

@@ -101,7 +101,8 @@ Disconnect-Zrcp
 Staging richer scenes: poke stats, read a **scroll of magic mapping**
 (`Set-Bytes (Sym inv_count) @(1)` with `otyp 13` in `inv[]`, then `r`) to
 reveal the level, and pull monsters into frame before `Save-EmuScreenshot`.
-`inv[]` is Bank-5 resident: `0x5800` (Next) / `0x6800` (128K).
+`inv[]` is Bank-5 resident: `0x5800` (Next) / `0x7360` (128K; it was `0x6800`
+before 1.6 -- an old script poking there now writes the UDG bitmap).
 
 ## Second emulator: MAME (`mame.ps1`)
 
