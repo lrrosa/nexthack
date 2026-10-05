@@ -32,6 +32,7 @@ void go_up(void)          __banked;
 void do_pray(void)        __banked;
 void do_search(void)      __banked;
 uint8_t trap_detect(void) __banked;   /* every hidden trap on the level, shown */
+void dig_start(void) __banked;         /* 'a' a pick-axe: rest_step digs down   */
 uint8_t rest_step(void)   __banked;   /* 'R': 1 = spend another resting turn */
 uint8_t door_locked(uint8_t x, uint8_t y) __banked;  /* a '+' that won't open */
 uint8_t door_unlock(uint8_t x, uint8_t y) __banked;  /* 1 = it was locked, now open */

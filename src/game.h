@@ -61,6 +61,10 @@ extern uint8_t  amu_esp;   /* wearing the amulet of ESP: telepathy while it
 extern uint8_t  amu_life;  /* wearing the amulet of life saving             */
 extern uint8_t  amu_pois;  /* wearing the amulet versus poison (1.6), like
                             * amu_esp re-derived by recompute_gear          */
+extern uint8_t  blindfolded; /* wearing the blindfold (1.6): upkeep keeps
+                            * st_blind topped up while it is on, so every
+                            * "blind?" test in the game holds unchanged.
+                            * Re-derived by recompute_gear, never saved.    */
 extern uint8_t  door_open[MAXLVL + 1];
                            /* bit i: the i-th locked door of that depth has
                             * been forced. Locked-ness itself is a pure side

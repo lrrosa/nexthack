@@ -70,6 +70,8 @@ enum {
     O_SSCARE, O_SGOLD,                             /* '?' scare monster, gold */
     /* the 1.6 weapon ladder: past the long sword, as 1.2 did for armour */
     O_SILVSABER, O_BATTLEAXE, O_MATTOCK,           /* ')' deeper blades     */
+    /* the 1.6 tools, '(' -- 'a' applies them (item_use.c do_apply) */
+    O_SKELKEY, O_PICKAXE, O_UHORN, O_MWHISTLE, O_BLINDFOLD,
     NUMOBJ
 };
 /* Excalibur and the five gifts: unique, wielded first by 'w', never eroded */

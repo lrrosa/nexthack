@@ -81,6 +81,7 @@ start_game:
         case 'r': do_read();        in_wait_nokey(); break;   /* cancel costs none */
         case 't': do_throw();       in_wait_nokey(); break;   /* throw a weapon   */
         case 'z': do_zap();         in_wait_nokey(); break;   /* zap a wand       */
+        case 'a': do_apply();       in_wait_nokey(); break;   /* apply a tool     */
         case 'Z': do_cast();        in_wait_nokey(); break;   /* cast a spell     */
         case 'i': show_inventory(); break;          /* viewing costs no turn */
         case '\\':                                  /* NetHack's key -- but no

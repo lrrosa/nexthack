@@ -459,6 +459,136 @@ static int read_dir(int *dx, int *dy)
     return 1;
 }
 
+/* ---- the tools ('a', 1.6) ---- */
+
+/* The skeleton key on a locked door: NetHack's odds for it, 70 + Dex in a
+ * hundred a try, each try a turn. The door is forced for good, as the boot
+ * and the wand of opening force it (door_unlock). */
+static void apply_key(void)
+{
+    int dx, dy, x, y;
+    msg("In what direction?");
+    if (!read_dir(&dx, &dy)) { msg("Never mind."); return; }
+    x = hero_x + dx; y = hero_y + dy;
+    acted = 1; turns++;
+    if (terrain(x, y) != '+')                 { msg("You see no door there."); return; }
+    if (!door_locked((uint8_t)x, (uint8_t)y)) { msg("This door is not locked."); return; }
+    if (rn2(100) < (uint8_t)(70 + at_dex)) {
+        door_unlock((uint8_t)x, (uint8_t)y);
+        msg("Klick!  The door unlocks.");
+    } else {
+        msg("You fail to unlock the door.");
+    }
+}
+
+/* The pick-axe digs DOWN: the wand of digging's hole, but five turns of work
+ * that the rest loop carries (dig_start, nexthack.c) -- a monster coming into
+ * view stops it, as it stops a rest. Sideways digging would have to be
+ * remembered by a level that is regenerated on every visit, so it is not. */
+static void apply_pick(void)
+{
+    char c = terrain(hero_x, hero_y);
+    if (AT_BOTTOM(dlvl) || shop_in_room(hero_x, hero_y)) {
+        msg("The floor here is too hard."); return;
+    }
+    if (c != '.' && c != '#') { msg("You cannot dig here."); return; }
+    acted = 1; turns++;
+    msg("You start digging downward.");
+    dig_start();
+}
+
+/* The magic whistle brings your dog to your side, wherever it is on the
+ * level. */
+static void apply_whistle(void)
+{
+    int dx, dy;
+    msg("You blow a strange whistle.");
+    if (pet_idx < 0 || !m_alive[(uint8_t)pet_idx]) return;
+    for (dy = -1; dy <= 1; dy++)
+        for (dx = -1; dx <= 1; dx++) {
+            int x = hero_x + dx, y = hero_y + dy;
+            char t = terrain(x, y);
+            if ((dx | dy) == 0 || !walkable(t) || t == '+' || monster_at(x, y) >= 0)
+                continue;
+            m_x[(uint8_t)pet_idx] = (uint8_t)x;
+            m_y[(uint8_t)pet_idx] = (uint8_t)y;
+            map_flush = 1;              /* +zx: it may come from far away */
+            return;
+        }
+}
+
+/* The unicorn horn mends what ails you -- confusion, poison, blindness that
+ * is not a blindfold's -- every ailment when blessed, each two times in
+ * three otherwise. Cursed, it is NetHack's: it makes you ill instead. */
+static void apply_horn(uint8_t buc)
+{
+    uint8_t n = 0;
+    if (buc == BUC_CURSE) {
+        if (rn2(2)) { ADD_SAT8(st_conf, rn2(10) + 10); msg("You feel rather light-headed."); }
+        else        { ADD_SAT8(st_blind, rn2(20) + 10); map_dirty = 1;
+                      msg("Darkness falls around you."); }
+        return;
+    }
+    if (st_conf   && (buc == BUC_BLESS || rn2(3))) { st_conf = 0;   n++; }
+    if (st_poison && (buc == BUC_BLESS || rn2(3))) { st_poison = 0; n++; }
+    if (st_blind && !blindfolded && (buc == BUC_BLESS || rn2(3))) {
+        st_blind = 0; map_dirty = 1; n++;
+    }
+    msg(n ? "You feel better." : "Nothing seems to happen.");
+}
+
+/* The blindfold goes on and comes off with 'a'. On, you are blind for as
+ * long as you wear it (upkeep keeps st_blind topped up): no floating eye can
+ * catch your gaze, and with telepathy every monster on the level shows. A
+ * cursed one stays on, as any cursed thing you wear. */
+static void apply_blindfold(uint8_t s)
+{
+    if (inv[s].worn) {
+        if (buc_st(&inv[s]) == BUC_CURSE) {
+            inv[s].buc |= BUC_KNOWN;
+            msg("The blindfold will not come off!");
+            return;
+        }
+        inv[s].worn = 0;
+        item_recompute_gear();
+        if (st_blind <= 2) { st_blind = 0; map_dirty = 1; }   /* not a potion's */
+        msg("You take off the blindfold.");
+    } else {
+        inv[s].worn = 1;
+        inv[s].buc |= BUC_KNOWN;
+        item_recompute_gear();
+        if (st_blind < 2) st_blind = 2;
+        map_dirty = 1;                  /* +zx: the world goes dark now */
+        msg("You are now wearing a blindfold.");
+    }
+}
+
+/* 'a': apply a tool. The key and the pick-axe charge their own turn (a
+ * cancelled direction or a refused dig costs none); the rest always act. */
+void do_apply(void) __banked
+{
+    int s = select_item('(');
+    uint8_t ot;
+    if (s == -1) { msg("You have nothing to apply."); return; }
+    if (s == -2) { msg("Never mind."); return; }
+    ot = inv[s].otyp;
+    if (ot == O_SKELKEY) { apply_key();  return; }
+    if (ot == O_PICKAXE) { apply_pick(); return; }
+    acted = 1; turns++;
+    if (ot == O_BLINDFOLD)     apply_blindfold((uint8_t)s);
+    else if (ot == O_MWHISTLE) apply_whistle();
+    else                       apply_horn((uint8_t)buc_st(&inv[s]));
+}
+
+/* A slain dwarf may leave its pick-axe, as NetHack's dwarves carry one: the
+ * Mines are where you find it (monster_ai.c's kill, one dwarf in three). */
+void dwarf_pick(uint8_t x, uint8_t y) __banked
+{
+    obj_t o;
+    o.otyp = O_PICKAXE; o.ench = 0; o.ero = 0; o.worn = 0; o.buc = BUC_UNC;
+    item_floor_place(x, y, &o);
+}
+
 /* Throw a carried weapon in a chosen direction. It flies in a straight line up
  * to THROW_RANGE cells, passing over the pet and the shopkeeper, until it
  * strikes the first enemy (damage by the weapon's power) or a wall. It then

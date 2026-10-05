@@ -132,6 +132,8 @@ void hit_monster(uint8_t mi, uint8_t dmg) __banked
                 death_drop(m_x[mi], m_y[mi]);
             else if (rn2(2))                         /* ...or its corpse     */
                 corpse_drop(m_x[mi], m_y[mi], m_type[mi]);
+            if (m_type[mi] == 'h' && rn2(3) == 0)    /* a dwarf's pick-axe   */
+                dwarf_pick(m_x[mi], m_y[mi]);
         }
         {   /* the killing blow gets a little colour (runtime rn2: gen-safe) */
             static const char *const killv[3] =

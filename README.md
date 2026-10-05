@@ -304,11 +304,12 @@ used to emit one and no longer does.
 | `i`                       | show inventory |
 | `D`                       | discoveries: which potion/scroll/ring/wand looks you have identified |
 | `d`                       | drop an item (sells it in a shop; offers a corpse on an altar) |
-| `w` / `W`                 | wield weapon / wear armor |
+| `w` / `W`                 | wield weapon / wear armor (a two-handed weapon and a shield exclude each other) |
 | `P`                       | put on a ring or an amulet (asks which) |
 | `q` / `e` / `r`           | quaff potion / eat food / read scroll |
 | `t`                       | throw a weapon in a direction |
 | `z`                       | zap a wand (strike, freeze, burn, sleep, teleport, unlock, or dig down) |
+| `a`                       | apply a tool (unlock a door, dig down, call your dog, put on a blindfold, cure with a unicorn horn) |
 | `Z`                       | cast a known spell (spends Pw) |
 | `p`                       | pray to your god |
 | `E`                       | engrave Elbereth in the dust (wards off monsters) |

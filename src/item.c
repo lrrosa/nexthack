@@ -228,7 +228,20 @@ static const objtype_t objtypes[NUMOBJ] = {
      * as the weapons always have: the draw stays h % n. */
     { ')',  5,  300,  24, 1, SL_NONE,    "silver saber" },
     { ')',  6,  250,  20, 1, SL_TWOHAND, "battle-axe" },
-    { ')',  7,  400,  28, 1, SL_TWOHAND, "mattock" }
+    { ')',  7,  400,  28, 1, SL_TWOHAND, "mattock" },
+    /* The tools, '(' -- 'a' applies them (item_use.c do_apply). Each answers
+     * a question the game already asks: the key a locked door (beside the
+     * boot and the wand of opening), the pick-axe the floor (the wand of
+     * digging's hole, dug in five turns that a monster can interrupt), the
+     * whistle your dog, the blindfold a gaze -- and, with telepathy, the
+     * whole level -- and the unicorn horn your ailments. Weights after
+     * NetHack's (key 80, whistle 30, blindfold 50, pick 20); the horn only
+     * comes from unicorns there, so here it is the rare one. */
+    { '(',  0,   10,   1, 4, SL_NONE, "skeleton key" },
+    { '(',  0,   50,   3, 2, SL_NONE, "pick-axe" },
+    { '(',  0,  100,   8, 1, SL_NONE, "unicorn horn" },
+    { '(',  0,   10,   2, 3, SL_NONE, "magic whistle" },
+    { '(',  0,   20,   1, 3, SL_NONE, "blindfold" }
 };
 
 /* Each gift's alignment (as in NetHack: 0 Lawful, 1 Neutral, 2 Chaotic,
@@ -433,6 +446,7 @@ static void recompute_gear(void)
     ring_fx = 0;
     art_fx = 0;
     amu_esp = amu_life = amu_pois = 0;
+    blindfolded = 0;
     for (i = 0; i < inv_count; i++) {
         const objtype_t *t;
         int eff;
@@ -469,6 +483,8 @@ static void recompute_gear(void)
             if (inv[i].otyp == O_AMU_ESP)  amu_esp = 1;
             if (inv[i].otyp == O_AMU_LIFE) amu_life = 1;
             if (inv[i].otyp == O_AMU_POIS) amu_pois = 1;
+        } else if (inv[i].otyp == O_BLINDFOLD) {
+            blindfolded = 1;
         }
     }
     ac = base_ac;
@@ -815,7 +831,8 @@ static uint8_t cursed_on(uint8_t s)
     cls = objtypes[inv[s].otyp].cls;
     msg(cls == ')' ? "Your weapon is welded fast!" :
         cls == '[' ? "Your armor is welded on!"    :
-        cls == '=' ? "Your ring is stuck fast!"    : "Your amulet is stuck fast!");
+        cls == '=' ? "Your ring is stuck fast!"    :
+        cls == '(' ? "The blindfold will not come off!" : "Your amulet is stuck fast!");
     return 1;
 }
 
@@ -1100,7 +1117,7 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
     }
     if (c == '/')                            /* a wand arrives with 3..7 charges */
         o->ench = (int8_t)(3 + ((h >> 5) % 5u));
-    if (c == ')' || c == '[' || c == '=') {   /* equipment may be blessed or cursed */
+    if (c == ')' || c == '[' || c == '=' || c == '(') {   /* gear may be blessed or cursed */
         uint8_t r = (uint8_t)((h >> 11) & 7);  /* 5/8 uncursed, 2/8 cursed, 1/8 blessed */
         o->buc = (r < 5) ? BUC_UNC : (r < 7) ? BUC_CURSE : BUC_BLESS;
     }
@@ -1240,7 +1257,7 @@ void do_pickup(void) __banked
     int fi;
 
     if (c != '"' && c != ')' && c != '[' && c != '!' && c != '*' &&
-        c != '%' && c != '?' && c != '=' && c != '/' && c != '&') {
+        c != '%' && c != '?' && c != '=' && c != '/' && c != '&' && c != '(') {
         msg("Nothing here to pick up.");
         return;
     }
@@ -1354,7 +1371,7 @@ void do_drop(void) __banked
         }
         if (inv[i].worn) {                /* mark what you're currently using */
             const char *w = (cls == ')') ? " (wielded)" :
-                            (cls == '[') ? " (worn)"    :
+                            (cls == '[' || cls == '(') ? " (worn)" :
                             (cls == '=') ? " (on hand)" :
                             (cls == '"') ? " (on neck)" : "";
             print_str(x, r2, w, C_CYAN | C_BRIGHT);
@@ -1479,7 +1496,7 @@ void show_inventory(void) __banked
             x = print_str(x, row, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
             if (inv[i].worn) {
                 const char *w = (cls == ')') ? " (wielded)" :
-                                (cls == '[') ? " (worn)"    :
+                                (cls == '[' || cls == '(') ? " (worn)" :
                                 (cls == '=') ? " (on hand)" :
                             (cls == '"') ? " (on neck)" : "";
                 print_str(x, row, w, C_CYAN | C_BRIGHT);
@@ -1747,6 +1764,7 @@ static const char *pick_prompt(char cls)
     case '?': return "Read which scroll?";
     case ')': return "Throw which weapon?";
     case '/': return "Zap which wand?";
+    case '(': return "Apply what?";
     case 'P': return "Put on what?";
     case 'C': return "Charge which wand?";
     }

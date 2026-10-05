@@ -46,6 +46,7 @@ uint8_t  acted = 0;
 uint8_t  resting = 0;     /* 'R' rest: see rest_step (game.h) */
 uint8_t  door_open[MAXLVL + 1];   /* forced locked doors (see game.h) */
 uint8_t  amu_esp = 0, amu_life = 0, amu_pois = 0;   /* worn amulets (see game.h) */
+uint8_t  blindfolded = 0;    /* the blindfold is on (see game.h) */
 uint8_t  map_dirty = 1;   /* +zx renderer flag (unused on Next) */
 uint8_t  map_flush = 0;   /* +zx: skip draw_map's fast path once (a cell changed
                            * at a distance: a throw landed, search revealed a
@@ -508,6 +509,7 @@ void upkeep(void) __banked
         if (!--st_poison && !dead) msg("The poison wears off.");
     }
     if (st_conf  && !--st_conf)  msg("Your head clears.");
+    if (blindfolded && st_blind < 2) st_blind = 2;   /* the blindfold is on */
     if (st_blind && !--st_blind) { msg("You can see again."); map_dirty = 1; }
     if (st_sleep && !--st_sleep) msg("You wake up.");
     if (el_life && !--el_life)   msg("The engraving fades away.");
@@ -603,7 +605,7 @@ void show_help(void) __banked
     print_str(2,  5, "Stairs: > < or Enter", C_CYAN | C_BRIGHT);
     print_str(2,  6, "s search . wait ; look", C_CYAN | C_BRIGHT);
     print_str(2,  7, "R rest  K kick a door",  C_CYAN | C_BRIGHT);
-    print_str(2,  9, ", pick up",            C_CYAN | C_BRIGHT);
+    print_str(2,  9, ", pick up  a apply",   C_CYAN | C_BRIGHT);
     print_str(2,  10, "i inventory  D found", C_CYAN | C_BRIGHT);
     print_str(2, 11, "w wield    W wear",    C_CYAN | C_BRIGHT);
     print_str(2, 12, "P put on   t throw",   C_CYAN | C_BRIGHT);
@@ -800,7 +802,7 @@ static void describe(char dest, int moved)
     case '"': msg(dlvl == DLVL_AMULET ? "The Amulet of Yendor! (,get)"
                                      : "An amulet. (,get)"); break;
     case ')': case '[': case '!': case '%': case '?': case '=': case '/':
-    case '&':
+    case '&': case '(':
         msg2(floor_item_desc(),
              shop_in_room(hero_x, hero_y) ? " (,buy)" : " (,get)", "");
         break;
@@ -819,7 +821,7 @@ static int lookable(char c)
 {
     return c == '>' || c == '<' || c == '"' ||
            c == ')' || c == '[' || c == '!' ||
-           c == '%' || c == '?' || c == '=' || c == '/' || c == '&' ||
+           c == '%' || c == '?' || c == '=' || c == '/' || c == '&' || c == '(' ||
            c == '_' || c == '{';
 }
 
@@ -861,7 +863,7 @@ static void look_at(uint8_t x, uint8_t y)
     c = lvl[y][x];
     switch (c) {
     case ')': case '[': case '!': case '%': case '?': case '=': case '/':
-    case '&':
+    case '&': case '(':
         msg(floor_item_desc_at(x, y));
         break;
     case '.': msg("The floor.");            break;
@@ -1209,14 +1211,39 @@ uint8_t trap_detect(void) __banked
  * monster is a hero who dies asleep, and this is not hypothetical: measuring
  * the armour rule, a tanked hero left standing 172 turns collected three
  * wanderers and was killed by them. */
+/* Digging down with a pick-axe (1.6) is the same occupation as a rest: the
+ * turn loop spends the turns, rest_step decides when to stop. resting == 2
+ * marks it; dig_left counts the work still to do. */
+static uint8_t dig_left;
+
+void dig_start(void) __banked
+{
+    dig_left = 4;                    /* + the turn 'a' itself took: five */
+    resting = 2;
+}
+
 uint8_t rest_step(void) __banked
 {
-    uint8_t i;
+    uint8_t i, dig = (uint8_t)(resting == 2);
 
-    if (php >= pmaxhp)     { resting = 0; msg("You feel rested.");   return 0; }
+    if (dig) {
+        if (!dig_left) {             /* through: the wand of digging's fall */
+            resting = 0;
+            msg("You dig a hole and drop through!");   /* 32: the 128K line */
+            sfx_stairs();
+            dlvl++;
+            build_level();
+            hero_x = up_x; hero_y = up_y;
+            place_pet();
+            return 0;
+        }
+        dig_left--;
+    } else if (php >= pmaxhp) { resting = 0; msg("You feel rested."); return 0; }
     if (hunger_state >= 2) { resting = 0; msg("You are too weak with hunger.");
                              return 0; }
-    if (in_inkey())        { resting = 0; msg("You stop resting.");  return 0; }
+    if (in_inkey())        { resting = 0;
+                             msg(dig ? "You stop digging." : "You stop resting.");
+                             return 0; }
 
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i] || m_peace[i] || (int8_t)i == pet_idx) continue;

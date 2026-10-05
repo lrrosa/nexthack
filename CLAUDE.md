@@ -557,6 +557,22 @@ tilemap.
   a hero on a live Elbereth or on a scroll of scare monster lying underfoot:
   both chase paths read `ward`, worked out once per `monsters_turn`. That
   scroll's `ench` is its "picked up before" mark (dust on the next pickup).
+- **Tools** (`(`, 1.6) are applied with `a` (`do_apply`, `item_use.c`): the
+  skeleton key (70 + Dex in 100 per try, `door_unlock`), the pick-axe, the
+  magic whistle, the blindfold and the unicorn horn; a slain dwarf leaves a
+  pick-axe one time in three. Two of them borrow machinery instead of adding
+  it. Digging down is the rest loop's occupation: `resting == 2`, counted by
+  `dig_left` in `rest_step`, so a monster in view stops it as it stops a rest
+  and `mainentry.c` (resident) did not grow. The blindfold makes `upkeep` keep
+  `st_blind` topped up while `blindfolded` is set, so every blind test in the
+  game works unchanged; taking it off clears blindness only when no potion
+  added to it (`st_blind <= 2`).
+- **A new floor class char must be taught to six places**, and nothing checks
+  the list: `tile_for` (`level.c`), `do_pickup`'s accepted classes and
+  `resolve_floor`'s BUC rule (`item.c`), `describe`, `lookable` and the
+  farlook switch (`nexthack.c`), plus generation (`levelgen.c`'s loot blocks
+  and `SHOPCLS`). Missing the pickup list makes the item visible, describable
+  and impossible to take.
 - `q`/`e`/`r`/`P` use `select_item()`: silent when you carry one type, but it
   pops a letter menu when two *different* types are present, and derives its
   prompt from the class (pseudo-classes: `'P'` rings + wearable amulets, `'C'`
