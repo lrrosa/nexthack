@@ -30,15 +30,17 @@ static int iabs(int v) { return v < 0 ? -v : v; }
 
 /* ---- the wielded artifact (art_fx, recomputed in item.c) ---- */
 
-/* does the artifact in your hand hunt this kind? Then the blow lands double,
- * NetHack's slaying bonus at its simplest */
+/* does the weapon in your hand hunt this kind -- an artifact's quarry, or what
+ * silver burns? Then the blow lands double, NetHack's slaying bonus at its
+ * simplest */
 static uint8_t art_slays(char ch)
 {
     if (!art_fx) return 0;
     return (uint8_t)(((art_fx & AF_ORCS)    && ch == 'o') ||
                      ((art_fx & AF_UNDEAD)  && (ch == 'Z' || ch == 'W' || ch == 'V')) ||
                      ((art_fx & AF_TROLLS)  && ch == 'T') ||
-                     ((art_fx & AF_DRAGONS) && ch == 'D'));
+                     ((art_fx & AF_DRAGONS) && ch == 'D') ||
+                     ((art_fx & AF_SILVER)  && (ch == 'V' || ch == 'i')));
 }
 
 /* Sting glows blue while an orc is within eight squares, seen or not, as

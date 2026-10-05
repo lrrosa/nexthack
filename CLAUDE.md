@@ -512,7 +512,19 @@ tilemap.
   the Valkyrie's modelled wins with the dog from 25% to 94%. So the older
   potions' weights were tripled (9 and 6, every ratio kept) to give it weight
   1 from Dlvl 15 -- one in 55 there, 25% -> 49%. A rarer thing needs the
-  others multiplied, never a weight below 1.
+  others multiplied, never a weight below 1. Quote a modelled win rate as the
+  mean of several seeds (`run_batch(..., seed=)`): one seed of 600 lives
+  wanders +-4 points, and a catalogue change reshuffles every draw.
+- **The weapon ladder** (1.6) climbs in TWO-HANDED weapons (`slot` =
+  `SL_TWOHAND`): the battle-axe (6, Dlvl 20) and the mattock (7, Dlvl 28);
+  one-handed blades stop at 5 as NetHack's do (the silver saber, 5 from Dlvl
+  24, doubles on V and i via `AF_SILVER`). A two-hander and a shield exclude
+  each other -- `w` passes the two-hander over while a shield is worn, `W`
+  the shield while one is wielded, and `blocked` turns the refusal into a
+  reason. Measured: a one-handed 6 from Dlvl 14 alone took the Valkyrie with
+  the dog from 53% to ~85%. Trading the shield costs little once `ARMOR_CAP`
+  is reached, so `balance.py runs --twohand` (the player drops the shield) is
+  the number to watch: 88% against 58% for the game's own choosing.
 - **Four classes wear per-game looks** (`!` `?` `=` `/`): a Fisher-Yates shuffle
   seeded off `world_seed` with its OWN xorshift (never `rn2`, which would shift
   the game's stream every time an item is named). The pools hold only the word

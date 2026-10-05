@@ -35,8 +35,9 @@
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   31     /* 31: the artifacts -- art_given joined the player
-                           * block, and 68+ types grew id_known to 9 bytes.
+#define SAVE_VER   32     /* 32: the weapon ladder -- 75 types, id_known 10
+                           * bytes. 31: the artifacts -- art_given joined the
+                           * player block, and 68+ types grew id_known to 9.
                            * 30 was 1.5's: the play RNG's state joined the
                            * player block and a length+sum trailer closes the
                            * file. 29 was

@@ -52,6 +52,11 @@
 #define SL_HELM   3
 #define SL_BOOTS  4
 #define SL_CLOAK  5
+/* A weapon's `slot` (1.6): SL_TWOHAND takes both hands, so it and a shield
+ * exclude each other -- 'w' passes it over while a shield is worn and 'W'
+ * passes the shield over while it is wielded. NetHack's rule; with no remove
+ * command, dropping the shield is how you choose the two-hander. */
+#define SL_TWOHAND 1
 
 typedef struct {
     char        cls;     /* class char in the terrain buffer                  */
@@ -59,7 +64,8 @@ typedef struct {
     uint16_t    price;   /* base shop price (used from Phase 20)              */
     uint8_t     mindep;  /* earliest depth at which it is generated           */
     uint8_t     prob;    /* generation weight within its class (see below)   */
-    uint8_t     slot;    /* '[' only: which body slot it occupies (SL_*)      */
+    uint8_t     slot;    /* '[': which body slot it occupies (SL_*);
+                          * ')': SL_TWOHAND or SL_NONE                         */
     const char *name;
 } objtype_t;
 
@@ -204,7 +210,25 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '"',  0,  150,   6, 1, SL_NONE, "amulet versus poison" },
     { '!', 250, 200,  15, 1, SL_NONE, "potion of full healing" },
     { '?',  0,  100,   3, 2, SL_NONE, "scroll of scare monster" },
-    { '?',  0,  100,   1, 2, SL_NONE, "scroll of gold detection" }
+    { '?',  0,  100,   1, 2, SL_NONE, "scroll of gold detection" },
+    /* The weapon ladder. The blades stopped at the long sword on Dlvl 9 while
+     * the monsters scale for forty floors more. It goes on the way NetHack's
+     * does: a one-handed sword is about a long sword however deep you go, and
+     * the extra damage is in the two-handers, paid for with the shield
+     * (SL_TWOHAND). Measured before it was set, over 5 x 600 lives of
+     * balance.py's Valkyrie with the dog (53% won before the ladder):
+     * - one-handed 6s from Dlvl 14 took her to ~85% by themselves;
+     * - a silver saber at 16 to 78% (vampires are what kills deep);
+     * - two-handers of 7 and 8 at 14 and 24: 64%, and 99.7% for a hero who
+     *   trades the shield, which costs her little once ARMOR_CAP is reached.
+     * So, as with full healing, the conservative cut: the axe 6 at 20, the
+     * mattock 7 at 28, silver from 24 -- 58% as the game chooses (a hero
+     * keeps the shield she has), 88% for one who trades it. The silver saber
+     * is a long sword that burns vampires and imps (AF_SILVER). All weigh 1,
+     * as the weapons always have: the draw stays h % n. */
+    { ')',  5,  300,  24, 1, SL_NONE,    "silver saber" },
+    { ')',  6,  250,  20, 1, SL_TWOHAND, "battle-axe" },
+    { ')',  7,  400,  28, 1, SL_TWOHAND, "mattock" }
 };
 
 /* Each gift's alignment (as in NetHack: 0 Lawful, 1 Neutral, 2 Chaotic,
@@ -421,6 +445,8 @@ static void recompute_gear(void)
                 art_fx = AF_DRAINRES;
             else if (inv[i].otyp >= O_STING && inv[i].otyp <= O_STORMB)
                 art_fx = art_pow[inv[i].otyp - O_STING];
+            else if (inv[i].otyp == O_SILVSABER)
+                art_fx = AF_SILVER;
         } else if (t->cls == '[') {
             if ((uint8_t)eff <= base_ac) base_ac -= (uint8_t)eff;
             if (eff > 0) redux += (uint8_t)(eff > 1 ? eff - 1 : 1);
@@ -696,17 +722,40 @@ static int find_class(char cls)
  * a number cannot see what an artifact is for: a +2 long sword (7) would tie
  * Sunsword and could beat Sting, so the god's gift might never be wielded.
  * Among artifacts the number decides again. */
+/* The worn piece of class cls in this slot, or -1: a body slot of '[', or
+ * SL_TWOHAND of ')'. */
+static int worn_with(char cls, uint8_t slot)
+{
+    uint8_t i;
+    for (i = 0; i < inv_count; i++)
+        if (inv[i].worn && objtypes[inv[i].otyp].cls == cls &&
+            objtypes[inv[i].otyp].slot == slot) return (int)i;
+    return -1;
+}
+#define find_worn_slot(sl) worn_with('[', (sl))
+
+/* Set by find_best and find_best_gain: the choice passed over a better piece
+ * because a two-hander and a shield exclude each other -- so the refusal can
+ * say why instead of claiming you already have your best. */
+static uint8_t blocked;
+
 static int find_best(char cls)
 {
-    int best = -1, bestval = -999;
+    int best = -1, bestval = -999, skipped = -999;
     uint8_t i;
+    uint8_t shield = (uint8_t)(cls == ')' && find_worn_slot(SL_SHIELD) >= 0);
     for (i = 0; i < inv_count; i++) {
         int v;
         if (objtypes[inv[i].otyp].cls != cls) continue;
         v = (int)objtypes[inv[i].otyp].prop + inv[i].ench - inv[i].ero;
         if (is_artifact(inv[i].otyp)) v += 100;
+        if (shield && objtypes[inv[i].otyp].slot == SL_TWOHAND) {
+            if (v > skipped) skipped = v;     /* it needs the shield's hand */
+            continue;
+        }
         if (v > bestval) { bestval = v; best = i; }
     }
+    blocked = (uint8_t)(skipped > bestval);
     return best;
 }
 
@@ -1555,24 +1604,17 @@ void do_wield(void) __banked
         msg("Your weapon is welded fast!"); return;
     }
     s = find_best(')');
-    if (s < 0) { msg("You have no weapon to wield."); return; }
-    if (inv[s].worn) { msg("Already wielding your best."); return; }
+    if (s < 0 || inv[s].worn) {
+        msg(blocked ? "Your shield is in the way." :
+            s < 0   ? "You have no weapon to wield." : "Already wielding your best.");
+        return;
+    }
     unworn_class(')');
     inv[s].worn = 1;
     inv[s].buc |= BUC_KNOWN;             /* equipping reveals the curse/blessing */
     recompute_gear();
     if (buc_st(&inv[s]) == BUC_CURSE) msg2("Welded!  ", obj_desc(&inv[s]), ".");
     else                             msg2("Wield ", obj_desc(&inv[s]), ".");
-}
-
-/* the piece worn in this slot, or -1 */
-static int find_worn_slot(uint8_t slot)
-{
-    uint8_t i;
-    for (i = 0; i < inv_count; i++)
-        if (inv[i].worn && objtypes[inv[i].otyp].cls == '[' &&
-            objtypes[inv[i].otyp].slot == slot) return (int)i;
-    return -1;
 }
 
 /* The unworn piece that improves the SET most: the biggest gain over whatever
@@ -1583,12 +1625,18 @@ static int find_best_gain(void)
 {
     int best = -1, bestgain = 0;
     uint8_t i;
+    uint8_t both = (uint8_t)(worn_with(')', SL_TWOHAND) >= 0);
+    blocked = 0;
     for (i = 0; i < inv_count; i++) {
         const objtype_t *t = &objtypes[inv[i].otyp];
         int gain, w;
         if (t->cls != '[' || inv[i].worn) continue;
         w = find_worn_slot(t->slot);
         gain = gear_eff(&inv[i]) - (w >= 0 ? gear_eff(&inv[w]) : 0);
+        if (both && t->slot == SL_SHIELD) {   /* no hand left to hold it */
+            if (gain > 0) blocked = 1;
+            continue;
+        }
         if (gain > bestgain) { bestgain = gain; best = (int)i; }
     }
     return best;
@@ -1598,8 +1646,9 @@ void do_wear(void) __banked
 {
     int s = find_best_gain(), w;
     if (s < 0) {
-        msg(find_best('[') < 0 ? "You have no armor to wear."
-                               : "You are wearing your best.");
+        msg(blocked                ? "Both hands are on your weapon." :
+            find_best('[') < 0     ? "You have no armor to wear."
+                                   : "You are wearing your best.");
         return;
     }
     w = find_worn_slot(objtypes[inv[s].otyp].slot);

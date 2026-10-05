@@ -68,6 +68,8 @@ enum {
     O_AMU_POIS,                                    /* '"' versus poison       */
     O_PFULLHEAL,                                   /* '!' full healing        */
     O_SSCARE, O_SGOLD,                             /* '?' scare monster, gold */
+    /* the 1.6 weapon ladder: past the long sword, as 1.2 did for armour */
+    O_SILVSABER, O_BATTLEAXE, O_MATTOCK,           /* ')' deeper blades     */
     NUMOBJ
 };
 /* Excalibur and the five gifts: unique, wielded first by 'w', never eroded */

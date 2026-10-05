@@ -63,7 +63,7 @@ class Rng(object):
 
 
 def item_hash(world_seed, dlvl, x, y):
-    """src/item.c:948 -- pure; never touches the RNG stream."""
+    """src/item.c:997 -- pure; never touches the RNG stream."""
     h = (world_seed + dlvl * 2657 + x * 131 + y * 1009) & M16
     h ^= (h << 7) & M16
     h ^= h >> 9
@@ -236,6 +236,9 @@ class Tables(object):
                 slot=_num(f[5], item_consts),
                 name=f[6].strip().strip('"')))
         self.ARMOR_CAP = int(item_consts.get("ARMOR_CAP", "255"))
+        # src/item.c SL_*: a shield and a two-hander exclude each other (1.6)
+        self.SL_SHIELD = int(item_consts.get("SL_SHIELD", "2"))
+        self.SL_TWOHAND = int(item_consts.get("SL_TWOHAND", "-1"))
 
         kc = _defines(cls_c)
         self.classes = []
@@ -309,22 +312,22 @@ FORMULAS = [
     ("monster spawn HP", "src/monster_spawn.c:66",
      "m_hp = mt->hp + eff_depth() / 2",
      "mon_spawn_hp(mt, depth)"),
-    ("monster bite", "src/monster_ai.c:198",
+    ("monster bite", "src/monster_ai.c:200",
      "bite = rn2(mt->dmg) + 1 + eff_depth() / 4",
      "mon_bite(rng, mt, depth)"),
-    ("armour soak", "src/monster_ai.c:210",
+    ("armour soak", "src/monster_ai.c:212",
      "bite = (armor_def >= bite) ? 1 : bite - armor_def",
      "apply_soak(bite, armor_def)  -- a covered blow GRAZES for 1 (1.2+)"),
-    ("hero to-hit", "src/monster_ai.c:162",
+    ("hero to-hit", "src/monster_ai.c:164",
      "miss if rn2(20) >= 12 + (at_dex >> 1) + (eff_luck() >> 1)",
      "hero_hits(rng, dex, luck)"),
-    ("hero damage", "src/monster_ai.c:166",
+    ("hero damage", "src/monster_ai.c:168",
      "dmg = rn2(4) + 1 + weapon_dmg; +2 if St>=17, +1 if St>=14",
      "hero_dmg(rng, weapon_dmg, str)"),
-    ("XP threshold", "src/monster_ai.c:72",
+    ("XP threshold", "src/monster_ai.c:74",
      "level up while xp >= xlvl * 20 (xlvl < 30)",
      "xp_threshold(xlvl)"),
-    ("level-up HP", "src/monster_ai.c:73",
+    ("level-up HP", "src/monster_ai.c:75",
      "gain = rn2(4) + 2 + (at_con >= 14), capped so pmaxhp <= 250",
      "level_gain(rng, con)"),
     ("regeneration", "src/nexthack.c:482",
@@ -345,10 +348,10 @@ FORMULAS = [
     ("worn set", "src/item.c recompute_gear",
      "every worn '[' piece adds; armor_def saturates at ARMOR_CAP",
      "Hero.recompute() -- one piece per SL_* slot since 1.3"),
-    ("floor enchantment", "src/item.c:1048",
+    ("floor enchantment", "src/item.c:1097",
      "roll = (h >> 5) % 100; +1 if roll < depth, +2 if roll < depth/3",
      "floor_ench(h, depth)"),
-    ("floor BUC", "src/item.c:1055",
+    ("floor BUC", "src/item.c:1104",
      "r = (h >> 11) & 7 -- 5/8 uncursed, 2/8 cursed, 1/8 blessed",
      "floor_buc(h)"),
     ("amulet gauntlet", "src/monster.c:123",
@@ -366,7 +369,7 @@ def mon_bite(rng, mt, depth):
 
 
 def apply_soak(bite, armor_def):
-    """src/monster_ai.c:210 -- armour SUBTRACTS, with a floor of 1.
+    """src/monster_ai.c:212 -- armour SUBTRACTS, with a floor of 1.
 
     Until 1.2 a covered blow was a total miss, and this returned None for it.
     That rule was all-or-nothing at both ends of the dungeon; now the armour
@@ -406,7 +409,7 @@ def spawn_count(depth):
 
 
 def armor_redux(eff):
-    """src/item.c:426 -- an armour piece shields eff-1 (at least 1)"""
+    """src/item.c:452 -- an armour piece shields eff-1 (at least 1)"""
     return 0 if eff <= 0 else (eff - 1 if eff > 1 else 1)
 
 
@@ -463,6 +466,9 @@ class Hero(object):
         self.potions = []            # otyps of carried healing potions
         # best-worn tracking: item.c equips the highest prop+ench-ero
         self.best_wpn = None         # (eff,) of the wielded weapon
+        self.wpn_two = False         # it takes both hands (SL_TWOHAND)
+        self.wpn_silver = False      # silver: double against V and i
+        self.twohand = False         # the --twohand policy (simulate_run sets it)
         self.best_slot = {}          # armour slot -> eff of the piece worn
         self.best_ring = None
         for otyp, equipped in cls.kit:
@@ -473,18 +479,30 @@ class Hero(object):
                 self.offer(o.cls, o.prop, o.slot)
         self.recompute()
 
-    # -- src/item.c:1582 find_best_gain + :403 recompute_gear -------------------------
-    def offer(self, cls, eff, slot=0):
+    # -- src/item.c:1624 find_best_gain + :427 recompute_gear -------------------------
+    def offer(self, cls, eff, slot=0, silver=False):
         """consider a piece of gear.  Armour is per SLOT since 1.3 (do_wear
         takes off only the piece that slot already holds), so a shield and a
-        suit are both worn rather than one replacing the other."""
+        suit are both worn rather than one replacing the other.  Since 1.6 a
+        two-handed weapon and a shield exclude each other (src/item.c
+        find_best / find_best_gain): 'w' passes a two-hander over while a
+        shield is worn, 'W' a shield while a two-hander is wielded -- so this
+        hero, like the game's own choosing, keeps whichever came first."""
         if eff <= 0:
             return False
         if cls == ")":
+            if slot == self.t.SL_TWOHAND and self.t.SL_SHIELD in self.best_slot:
+                if not self.twohand or (self.best_wpn is not None and eff <= self.best_wpn):
+                    return False
+                del self.best_slot[self.t.SL_SHIELD]   # --twohand: d the shield, w
             if self.best_wpn is None or eff > self.best_wpn:
                 self.best_wpn = eff
+                self.wpn_two = slot == self.t.SL_TWOHAND
+                self.wpn_silver = silver
                 return True
         elif cls == "[":
+            if slot == self.t.SL_SHIELD and self.wpn_two:
+                return False
             if slot not in self.best_slot or eff > self.best_slot[slot]:
                 self.best_slot[slot] = eff
                 return True
@@ -507,7 +525,7 @@ class Hero(object):
         self.armor_def = cap if redux > cap else redux
 
     def gain_xp(self, rng, amt):
-        """src/monster_ai.c:69"""
+        """src/monster_ai.c:71"""
         self.xp += amt
         while self.xlvl < 30 and self.xp >= xp_threshold(self.xlvl):
             gain = level_gain(rng, self.con)
@@ -527,8 +545,8 @@ def fight(rng, hero, mt, depth, asleep=None, pet_dmg=0):
 
     Order mirrors the turn loop (src/mainentry.c): the hero swings, then
     monsters_turn() answers.  A sleeping monster cannot dodge (the sneak
-    attack always lands, src/monster_ai.c:161) and does not answer until the
-    blow wakes it (src/monster_ai.c:114 m_sleep = 0 on any hit).
+    attack always lands, src/monster_ai.c:163) and does not answer until the
+    blow wakes it (src/monster_ai.c:116 m_sleep = 0 on any hit).
     """
     mhp = mon_spawn_hp(mt, depth)
     if asleep is None:
@@ -538,7 +556,10 @@ def fight(rng, hero, mt, depth, asleep=None, pet_dmg=0):
     while True:
         turns += 1
         if asleep or hero_hits(rng, hero.dex, hero.luck):
-            mhp -= hero_dmg(rng, hero.weapon_dmg, hero.st)
+            d = hero_dmg(rng, hero.weapon_dmg, hero.st)
+            if hero.wpn_silver and mt.ch in "Vi":
+                d *= 2                  # src/monster_ai.c art_slays: silver
+            mhp -= d
         asleep = False                  # the swing wakes it either way
         if mhp <= 0:
             return True, start - hero.hp, turns
@@ -602,13 +623,14 @@ class RunOpts(object):
     sensitivity of a conclusion to a guess can be measured instead of argued."""
 
     def __init__(self, turns_per_level=200, engage=0.8, pet=False,
-                 pickup=True, quaff_at=0.35, ascend=True):
+                 pickup=True, quaff_at=0.35, ascend=True, twohand=False):
         self.turns_per_level = turns_per_level
         self.engage = engage          # fraction of the level's spawns fought
         self.pet = pet                # is the dog still alive and biting?
         self.pickup = pickup          # does the hero collect and wear the loot?
         self.quaff_at = quaff_at      # drink a healing potion below this * max
         self.ascend = ascend          # climb back out with the Amulet
+        self.twohand = twohand        # drop the shield for a better two-hander
 
 
 def level_loot(rng, t, hero, depth, opts):
@@ -631,7 +653,7 @@ def level_loot(rng, t, hero, depth, opts):
         return o, max(eff, 0)
 
     o, eff = draw(")")
-    hero.offer(")", eff)
+    hero.offer(")", eff, o.slot, o.name == "silver saber")
     o, eff = draw("[")
     hero.offer("[", eff, o.slot)
     for _ in range(1 if depth < 2 else 2):
@@ -676,6 +698,7 @@ def simulate_run(rng, t, cls, opts, log=None):
     """One life.  Returns (outcome, depth) where outcome is
     'died' | 'won' | 'survived' (ran out of modelled dungeon)."""
     hero = Hero(cls, t)
+    hero.twohand = opts.twohand
     opts.amulet = False
     for depth in range(1, t.DLVL_AMULET + 1):
         level_loot(rng, t, hero, depth, opts)
@@ -806,7 +829,7 @@ what the dungeon typically hands out, not a best case.
                max(m.dmg + d // 4 for m in pool)))
     print("""
   mobs     = spawns per level (src/monster_spawn.c:125), capped at 8
-  raw bite = mean damage rolled BEFORE armour (src/monster_ai.c:198)
+  raw bite = mean damage rolled BEFORE armour (src/monster_ai.c:200)
   max bite = the biggest single blow the pool can roll""")
 
     for cls in ([t.cls_by_name(a.cls)] if a.cls else t.classes):
@@ -845,7 +868,7 @@ what the dungeon typically hands out, not a best case.
                    "-" if bar > 900 else "%.1f" % bar, verdict))
         print("""
   soaked     = share of possible bites this armour absorbs ENTIRELY --
-               armor_def >= bite prints a miss (src/monster_ai.c:210)
+               armor_def >= bite prints a miss (src/monster_ai.c:212)
   HP/fight   = mean HP lost per single melee, fought to the death
   fights/bar = how many such fights one full HP bar buys, against the
                %d spawns a deep level throws at you
@@ -894,10 +917,10 @@ marked with * if the hero lost even one of %d duels.
         print(row)
     print("""
   The floating eye never bites back but freezes you when you strike it and
-  it lives (src/monster_ai.c:177) -- not modelled here, so read its row as
+  it lives (src/monster_ai.c:179) -- not modelled here, so read its row as
   'free XP, paid for in paralysed turns while everything else closes in'.
   The acid blob's row also understates it: it corrodes the weapon you hit
-  it with (src/monster_ai.c:175), a cost that lands on later fights.""")
+  it with (src/monster_ai.c:177), a cost that lands on later fights.""")
 
 
 def _hero_at_depth(t, cls, depth, a, samples=41):
@@ -912,7 +935,7 @@ def _hero_at_depth(t, cls, depth, a, samples=41):
     heroes = []
     for _ in range(samples):
         hero = Hero(cls, t)
-        opts = RunOpts(a.turns, a.engage, a.pet)
+        opts = RunOpts(a.turns, a.engage, a.pet, twohand=a.twohand)
         opts.amulet = False
         for d in range(1, depth + 1):
             level_loot(rng, t, hero, d, opts)
@@ -1035,7 +1058,7 @@ absolute rate -- the assumptions are listed at the end.
                ", the dog fighting alongside" if a.pet else ", no pet"))
     csv_rows = []
     for cls in ([t.cls_by_name(a.cls)] if a.cls else t.classes):
-        opts = RunOpts(a.turns, a.engage, a.pet)
+        opts = RunOpts(a.turns, a.engage, a.pet, twohand=a.twohand)
         outcomes, deaths, ascent, log = run_batch(t, cls, opts, a.trials_runs)
         tot = float(a.trials_runs)
         alld = sorted([k for k, v in deaths.items() for _ in range(v)])
@@ -1200,6 +1223,9 @@ def main(argv=None):
                    help="fraction of a level's spawns fought (default 0.8)")
     p.add_argument("--pet", action="store_true",
                    help="the dog fights alongside the hero")
+    p.add_argument("--twohand", action="store_true",
+                   help="the hero drops the shield for a better two-handed "
+                        "weapon (the game never does it by itself)")
     p.add_argument("--depths", default="1,2,3,5,8,12,16,20,25,30,40,50")
     a = p.parse_args(argv)
     a.depths = [int(x) for x in a.depths.split(",")]

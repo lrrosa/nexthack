@@ -100,6 +100,8 @@ extern uint8_t  art_fx;
 #define AF_DRAGONS  0x08      /* Dragonbane: double damage to the dragon        */
 #define AF_DRAIN    0x10      /* Stormbringer: each blow heals you by half      */
 #define AF_DRAINRES 0x20      /* Excalibur, Stormbringer: drain attacks fail    */
+#define AF_SILVER   0x40      /* the silver saber (not an artifact): double
+                               * damage to what silver burns, V and i         */
 /* Which artifacts exist in this game -- each is unique, as in NetHack. Bit k
  * is O_STING + k (item_int.h); ART_EXCAL is the fountain's, which does not
  * count as a gift. Saved; cleared by new_game. */
