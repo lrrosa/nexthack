@@ -18,9 +18,10 @@ typedef struct {
     const char *name;
     uint8_t at[6];          /* St Dx Co In Wi Ch */
     uint8_t hp, pw;
-    uint8_t kit[3];         /* otyp | 0x80 = start equipped; 0xFF = empty */
+    uint8_t kit[4];         /* otyp | 0x80 = start equipped; 0xFF = empty */
     uint8_t gold;
     uint8_t align;          /* 0 Lawful / 1 Neutral / 2 Chaotic */
+    uint8_t intr;           /* INTR_* the class is born with (1.6) */
 } class_t;
 
 /* otyps from item.c's catalogue enum (kept in sync by hand -- item.c owns it) */
@@ -33,6 +34,7 @@ typedef struct {
 #define K_FOOD    17      /* +1: O_IDENTIFY joined the scroll block */
 #define K_WSTRIKE 19
 #define K_BFORCE  25      /* spellbook of force bolt (after O_CORPSE 24) */
+#define K_CAMERA  80      /* the expensive camera (1.6, the Tourist's)    */
 #define K_EQ      0x80
 #define K_NONE    0xFF
 
@@ -40,11 +42,11 @@ typedef struct {
  * Rogue dodges, the Tourist haggles (and eats well). HP/Pw and the sheet
  * follow NetHack's flavour scaled to our numbers. */
 static const class_t classes[NCLASS] = {
-    /* name        St Dx Co In Wi Ch   hp pw  kit                                        $   align */
-    { "Valkyrie", {17,12,16, 8,10, 8}, 16, 1, {K_LONGSW|K_EQ,  K_RINGML|K_EQ,  K_NONE},   0, 0 },
-    { "Wizard",   { 8,11,10,16,14,10}, 10, 6, {K_DAGGER |K_EQ, K_BFORCE,       K_HEAL},   0, 1 },
-    { "Rogue",    {11,16,12,10, 8, 8}, 12, 2, {K_DAGGER |K_EQ, K_LEATHER|K_EQ, K_NONE},  60, 2 },
-    { "Tourist",  {10,11,12,10, 8,14}, 12, 2, {K_FOOD,         K_FOOD,         K_HEAL}, 120, 1 },
+    /* name        St Dx Co In Wi Ch   hp pw  kit                                                  $   align intr */
+    { "Valkyrie", {17,12,16, 8,10, 8}, 16, 1, {K_LONGSW|K_EQ,  K_RINGML|K_EQ,  K_NONE, K_NONE},     0, 0, 0 },
+    { "Wizard",   { 8,11,10,16,14,10}, 10, 6, {K_DAGGER |K_EQ, K_BFORCE,       K_HEAL, K_NONE},     0, 1, 0 },
+    { "Rogue",    {11,16,12,10, 8, 8}, 12, 2, {K_DAGGER |K_EQ, K_LEATHER|K_EQ, K_NONE, K_NONE},    60, 2, INTR_STEALTH },
+    { "Tourist",  {10,11,12,10, 8,14}, 12, 2, {K_FOOD,         K_FOOD,         K_HEAL, K_CAMERA}, 120, 1, 0 },
 };
 
 /* Ask who the player is (a full-screen menu at new-game time) and fill the
@@ -88,6 +90,7 @@ void class_apply(uint8_t k) __banked
     php = pmaxhp = c->hp;
     pw  = pmaxpw = c->pw;
     alignment = c->align;
+    intrinsics |= c->intr;          /* new_game zeroed them just before */
 }
 
 /* Hand out the class's starting gear + purse (call right after item_reset). */
@@ -95,7 +98,7 @@ void give_kit(void) __banked
 {
     const class_t *c = &classes[pclass];
     uint8_t i;
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 4; i++)
         if (c->kit[i] != K_NONE)
             give_item((uint8_t)(c->kit[i] & 0x7F),
                       (uint8_t)(c->kit[i] >> 7));

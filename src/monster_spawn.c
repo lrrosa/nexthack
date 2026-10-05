@@ -134,6 +134,7 @@ void spawn_level_monsters(void) __banked
      * and not the slot number. */
     if (count > 8) count = 8;
     if (guards > count) guards = count;
+    for (i = 0; i < MAXMON; i++) m_blind[i] = 0;   /* a new level's monsters */
     mcount = 0;
     { uint8_t k;
       for (k = 0; k < MAXMON; k++) { m_sleep[k] = 0; m_peace[k] = 0; m_face[k] = 0; } }
@@ -235,6 +236,7 @@ uint8_t summon_near(char type) __banked
                                          * news of its own arrival */
             m_peace[slot] = 0;
             m_face[slot]  = 0;
+            m_blind[slot] = 0;
             if (slot == mcount) mcount++;
             n++;
         }
@@ -295,6 +297,7 @@ void maybe_spawn_wanderer(void) __banked
     m_alive[slot] = 1;
     m_sleep[slot] = 0;          /* a fresh wanderer is awake */
     m_face[slot]  = 0;          /* (a reused dead slot may hold a stale pose) */
+    m_blind[slot] = 0;
     m_peace[slot] = (uint8_t)(dlvl == (uint16_t)(MINES_BASE + 1) &&
                               (type == 'G' || type == 'h'));  /* townsfolk */
     if (slot == mcount) mcount++;

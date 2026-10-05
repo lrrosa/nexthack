@@ -30,6 +30,7 @@ Usage:
 """
 
 import argparse
+import random
 import os
 import re
 import sys
@@ -62,8 +63,21 @@ class Rng(object):
         return self.next() % n if n else 0
 
 
+def fresh_rng(meta):
+    """A new life, or a new trial: its own xorshift16 stream, seeded as a game
+    seeds one -- 16 bits from a long-period generator. The dice stay the
+    game's, bit-exact; what changes is that no simulated life shares a stream
+    with the next. One stream used to run all 600 lives of a batch, and at
+    ~3700 draws a life it wrapped the 65535-step period about 33 times: lives
+    were phases of one cycle, the Valkyrie's wins came out ~8 points low
+    (58% against 66-67% from independent streams or a Mersenne Twister), and
+    a change that only moved the draw count could swing a result for no
+    reason. `meta` is a random.Random with a fixed seed, so runs repeat."""
+    return Rng(meta.getrandbits(16) or 1)
+
+
 def item_hash(world_seed, dlvl, x, y):
-    """src/item.c:1014 -- pure; never touches the RNG stream."""
+    """src/item.c:1020 -- pure; never touches the RNG stream."""
     h = (world_seed + dlvl * 2657 + x * 131 + y * 1009) & M16
     h ^= (h << 7) & M16
     h ^= h >> 9
@@ -190,7 +204,7 @@ class Obj(object):
 
 
 class Cls(object):
-    __slots__ = ("name", "at", "hp", "pw", "kit", "gold", "align")
+    __slots__ = ("name", "at", "hp", "pw", "kit", "gold", "align", "intr", "idx")
 
     def __init__(self, **kw):
         for k, v in kw.items():
@@ -241,10 +255,11 @@ class Tables(object):
         self.SL_TWOHAND = int(item_consts.get("SL_TWOHAND", "-1"))
 
         kc = _defines(cls_c)
+        gd = _defines(game_h)
         self.classes = []
         for row in _rows(_body(cls_c, "classes[NCLASS]")):
             f = _fields(row)
-            if len(f) != 7:
+            if len(f) != 8:
                 raise ParseError("classes row has %d fields: %r" % (len(f), row))
             at = [int(v) for v in f[1].strip("{} ").split(",")]
             kit = []
@@ -254,7 +269,19 @@ class Tables(object):
                     kit.append((v & 0x7F, bool(v & 0x80)))
             self.classes.append(Cls(
                 name=f[0].strip().strip('"'), at=at, hp=int(f[2]),
-                pw=int(f[3]), kit=kit, gold=int(f[5]), align=int(f[6])))
+                pw=int(f[3]), kit=kit, gold=int(f[5]), align=int(f[6]),
+                intr=_num(f[7], gd), idx=len(self.classes)))
+        # src/game.h: the bits and indices the class rules key on (1.6)
+        self.INTR_STEALTH = _num(gd.get("INTR_STEALTH", "0"), gd)
+        self.PC_WIZARD = _num(gd.get("PC_WIZARD", "1"), gd)
+        self.PC_ROGUE = _num(gd.get("PC_ROGUE", "2"), gd)
+
+        # src/spells.c: what each spell costs; a kit's spellbook (class '&')
+        # carries its spell's index in prop
+        spl_c = _strip_comments(_read(src, "spells.c"))
+        self.sp_cost = [int(v) for v in _body(spl_c, "sp_cost[NSPELL]").split(",")]
+        sd = _defines(spl_c)
+        self.SP_FORCE = int(sd.get("SP_FORCE", "0"))
 
         self.DLVL_AMULET = int(_defines(game_h)["DLVL_AMULET"])
         self.MAXMON = int(_defines(mon_h)["MAXMON"])
@@ -266,7 +293,7 @@ class Tables(object):
         return self.mons[0]
 
     def pool(self, depth):
-        """src/monster.c:116 pick_mon -- types eligible at this depth.
+        """src/monster.c:117 pick_mon -- types eligible at this depth.
         The shopkeeper is skipped; mines natives (mindep 255) are injected
         directly by pick_mon, never pooled."""
         return [m for m in self.mons if m.ch != "@" and m.mindep <= depth]
@@ -312,16 +339,16 @@ FORMULAS = [
     ("monster spawn HP", "src/monster_spawn.c:66",
      "m_hp = mt->hp + eff_depth() / 2",
      "mon_spawn_hp(mt, depth)"),
-    ("monster bite", "src/monster_ai.c:202",
+    ("monster bite", "src/monster_ai.c:208",
      "bite = rn2(mt->dmg) + 1 + eff_depth() / 4",
      "mon_bite(rng, mt, depth)"),
-    ("armour soak", "src/monster_ai.c:214",
+    ("armour soak", "src/monster_ai.c:220",
      "bite = (armor_def >= bite) ? 1 : bite - armor_def",
      "apply_soak(bite, armor_def)  -- a covered blow GRAZES for 1 (1.2+)"),
-    ("hero to-hit", "src/monster_ai.c:166",
+    ("hero to-hit", "src/monster_ai.c:167",
      "miss if rn2(20) >= 12 + (at_dex >> 1) + (eff_luck() >> 1)",
      "hero_hits(rng, dex, luck)"),
-    ("hero damage", "src/monster_ai.c:170",
+    ("hero damage", "src/monster_ai.c:171",
      "dmg = rn2(4) + 1 + weapon_dmg; +2 if St>=17, +1 if St>=14",
      "hero_dmg(rng, weapon_dmg, str)"),
     ("XP threshold", "src/monster_ai.c:74",
@@ -333,10 +360,10 @@ FORMULAS = [
     ("regeneration", "src/nexthack.c:484",
      "1 HP every 14/17/20 turns (Co>=16 / Co>=13 / else), halved by ring",
      "regen_period(con, ring)"),
-    ("wandering monster", "src/monster_spawn.c:262",
-     "upkeep() rolls rn2(has_amulet ? 25 : 70) == 0 each turn; spawns awake (:296)",
+    ("wandering monster", "src/monster_spawn.c:264",
+     "upkeep() rolls rn2(has_amulet ? 25 : 70) == 0 each turn; spawns awake (:298)",
      "WANDER_P / WANDER_P_AMULET"),
-    ("rest ('R')", "src/nexthack.c:1225",
+    ("rest ('R')", "src/nexthack.c:1228",
      "rest_step: pass turns until full HP, Weak, a key, or an awake hostile in view",
      "rest_breakeven(con, ring, amulet) = wander_period / regen_period"),
     ("monsters per level", "src/monster_spawn.c:125",
@@ -348,16 +375,52 @@ FORMULAS = [
     ("worn set", "src/item.c recompute_gear",
      "every worn '[' piece adds; armor_def saturates at ARMOR_CAP",
      "Hero.recompute() -- one piece per SL_* slot since 1.3"),
-    ("floor enchantment", "src/item.c:1114",
+    ("floor enchantment", "src/item.c:1120",
      "roll = (h >> 5) % 100; +1 if roll < depth, +2 if roll < depth/3",
      "floor_ench(h, depth)"),
-    ("floor BUC", "src/item.c:1121",
+    ("floor BUC", "src/item.c:1127",
      "r = (h >> 11) & 7 -- 5/8 uncursed, 2/8 cursed, 1/8 blessed",
      "floor_buc(h)"),
-    ("amulet gauntlet", "src/monster.c:123",
+    ("force bolt", "src/spells.c:95",
+     "a cast bolt hits the first monster in line for d(2,12)",
+     "bolt_dmg(rng, xlvl)"),
+    ("casting", "src/spells.c:145",
+     "Pw is spent first; the cast fails if rn2(20) >= at_int + xlvl",
+     "cast_ok(rng, intel, xlvl)"),
+    ("power regen", "src/nexthack.c:495",
+     "1 Pw every 8 turns for the Wizard, else 12 (Wi>=14) or 18",
+     "pw_period(wis, wizard)"),
+    ("waking", "src/monster_ai.c:292",
+     "a sleeper next to you wakes at once -- with stealth, one turn in three",
+     "fight(): asleep at the first blow only if stealthy, 2 in 3"),
+    ("backstab", "src/monster_ai.c:177",
+     "the Rogue on a sleeper: + rn2(xlvl) + 1 + xlvl/4",
+     "fight()"),
+    ("camera", "src/item_use.c:589",
+     "the flash blinds 5..14 turns: no strikes, no dodging (monster_ai.c:691)",
+     "fight(): flashed at big hitters (bite die >= 6) from Dlvl 20"),
+    ("power growth", "src/monster_ai.c:78",
+     "each level +2 max Pw (In>=14) or +1, while below 30",
+     "Hero.gain_xp"),
+    ("amulet gauntlet", "src/monster.c:124",
      "pool depth = has_amulet ? eff_depth() + 15 : eff_depth()",
      "pool(depth + 15) -- note the BITE still uses the real depth"),
 ]
+
+
+def bolt_dmg(rng, xlvl):
+    """src/spells.c:95 -- force bolt, NetHack's d(2,12) since 1.6"""
+    return rng.rn2(12) + rng.rn2(12) + 2
+
+
+def cast_ok(rng, intel, xlvl):
+    """src/spells.c:145 -- the Pw is already spent when the mind fumbles"""
+    return rng.rn2(20) < intel + xlvl
+
+
+def pw_period(wis, wizard=False):
+    """src/nexthack.c:495 -- the Wizard's mind refills fastest"""
+    return 8 if wizard else 12 if wis >= 14 else 18
 
 
 def mon_spawn_hp(mt, depth):
@@ -369,7 +432,7 @@ def mon_bite(rng, mt, depth):
 
 
 def apply_soak(bite, armor_def):
-    """src/monster_ai.c:214 -- armour SUBTRACTS, with a floor of 1.
+    """src/monster_ai.c:220 -- armour SUBTRACTS, with a floor of 1.
 
     Until 1.2 a covered blow was a total miss, and this returned None for it.
     That rule was all-or-nothing at both ends of the dungeon; now the armour
@@ -409,7 +472,7 @@ def spawn_count(depth):
 
 
 def armor_redux(eff):
-    """src/item.c:466 -- an armour piece shields eff-1 (at least 1)"""
+    """src/item.c:470 -- an armour piece shields eff-1 (at least 1)"""
     return 0 if eff <= 0 else (eff - 1 if eff > 1 else 1)
 
 
@@ -464,6 +527,13 @@ class Hero(object):
         self.weapon_dmg = 0
         self.armor_def = 0
         self.potions = []            # otyps of carried healing potions
+        self.maxpw = cls.pw
+        self.pw = cls.pw
+        self.spells = set()          # read from the kit's spellbooks at once
+        self.stealthy = bool(cls.intr & tables.INTR_STEALTH)
+        self.rogue = cls.idx == tables.PC_ROGUE
+        self.wizard = cls.idx == tables.PC_WIZARD
+        self.charges = 0             # the camera's (src/item.c give_item: 50)
         # best-worn tracking: item.c equips the highest prop+ench-ero
         self.best_wpn = None         # (eff,) of the wielded weapon
         self.wpn_two = False         # it takes both hands (SL_TWOHAND)
@@ -475,11 +545,15 @@ class Hero(object):
             o = tables.objs[otyp]
             if o.cls == "!" and o.prop > 0:
                 self.potions.append(otyp)
+            if o.cls == "&":
+                self.spells.add(o.prop)
+            if o.name == "expensive camera":
+                self.charges = 50
             if equipped:
                 self.offer(o.cls, o.prop, o.slot)
         self.recompute()
 
-    # -- src/item.c:1641 find_best_gain + :440 recompute_gear -------------------------
+    # -- src/item.c:1647 find_best_gain + :444 recompute_gear -------------------------
     def offer(self, cls, eff, slot=0, silver=False):
         """consider a piece of gear.  Armour is per SLOT since 1.3 (do_wear
         takes off only the piece that slot already holds), so a shield and a
@@ -534,6 +608,27 @@ class Hero(object):
                 gain = 0 if self.maxhp >= 250 else 250 - self.maxhp
             self.maxhp += gain
             self.hp += gain
+            if self.maxpw < 30:             # src/monster_ai.c:78
+                pwg = 2 if self.i >= 14 else 1
+                self.maxpw += pwg
+                self.pw += pwg
+
+    def bolt_ready(self):
+        """cast force bolt rather than swing? Only when it is known, the Pw is
+        there, and its expected harm beats the blade's -- the choice a caster
+        actually makes. Expected values, not rolls: the policy, not the dice."""
+        t = self.t
+        if t.SP_FORCE not in self.spells or self.pw < t.sp_cost[t.SP_FORCE]:
+            return False
+        bolt = 13.0 * min(1.0, (self.i + self.xlvl) / 20.0)   # E[d(2,12)], spells.c:95
+        stb = 2 if self.st >= 17 else 1 if self.st >= 14 else 0
+        hit = min(1.0, (12 + (self.dex >> 1) + (self.luck >> 1)) / 20.0)
+        return bolt > (2.5 + self.weapon_dmg + stb) * hit
+
+    def cast_bolt(self, rng):
+        """spend the Pw, then maybe fumble: the damage, 0 on a fumble"""
+        self.pw -= self.t.sp_cost[self.t.SP_FORCE]
+        return bolt_dmg(rng, self.xlvl) if cast_ok(rng, self.i, self.xlvl) else 0
 
 
 # ---------------------------------------------------------------------------
@@ -545,18 +640,37 @@ def fight(rng, hero, mt, depth, asleep=None, pet_dmg=0):
 
     Order mirrors the turn loop (src/mainentry.c): the hero swings, then
     monsters_turn() answers.  A sleeping monster cannot dodge (the sneak
-    attack always lands, src/monster_ai.c:165) and does not answer until the
+    attack always lands, src/monster_ai.c:166) and does not answer until the
     blow wakes it (src/monster_ai.c:116 m_sleep = 0 on any hit).
     """
     mhp = mon_spawn_hp(mt, depth)
     if asleep is None:
         asleep = rng.rn2(2) == 0        # spawns_asleep is a coin from a hash
+        # ...but a sleeper next to you wakes before you can strike unless you
+        # are stealthy, and even then stirs one turn in three
+        # (src/monster_ai.c:292 still_asleep)
+        asleep = asleep and hero.stealthy and rng.rn2(3) != 0
     start = hero.hp
     turns = 0
+    blind = 0
+    # the Tourist flashes the big hitters while they cross the room
+    if hero.charges and not asleep and mt.dmg >= 6 and depth >= 20:
+        hero.charges -= 1
+        blind = rng.rn2(10) + 5         # src/item_use.c:589
+        turns += 1
+    if not asleep and hero.bolt_ready():
+        mhp -= hero.cast_bolt(rng)      # one bolt while it crosses the room
+        turns += 1
+        if mhp <= 0:
+            return True, 0, turns
     while True:
         turns += 1
-        if asleep or hero_hits(rng, hero.dex, hero.luck):
+        if hero.bolt_ready():
+            mhp -= hero.cast_bolt(rng)
+        elif asleep or blind or hero_hits(rng, hero.dex, hero.luck):
             d = hero_dmg(rng, hero.weapon_dmg, hero.st)
+            if hero.rogue and asleep:   # src/monster_ai.c:177 backstab
+                d += rng.rn2(hero.xlvl) + 1 + (hero.xlvl >> 2)
             if hero.wpn_silver and mt.ch in "Vi":
                 d *= 2                  # src/monster_ai.c art_slays: silver
             mhp -= d
@@ -568,6 +682,9 @@ def fight(rng, hero, mt, depth, asleep=None, pet_dmg=0):
             if mhp <= 0:
                 return True, start - hero.hp, turns
         if mt.ch == "@":                # the shopkeeper never fights back
+            continue
+        if blind:                       # it cannot find you: no blow
+            blind -= 1
             continue
         bite = mon_bite(rng, mt, depth)
         dealt = apply_soak(bite, hero.armor_def)
@@ -672,9 +789,10 @@ def do_level(rng, t, hero, depth, opts, log=None):
     pool = t.pool(depth + 15 if opts.__dict__.get("amulet") else depth)
     if not pool:
         pool = t.pool(depth)
-    regen_each = 0
+    regen_each = pw_each = 0
     if n:
         regen_each = (opts.turns_per_level // n) // regen_period(hero.con)
+        pw_each = (opts.turns_per_level // n) // pw_period(hero.wis, hero.wizard)
     pet_dmg = 3 if opts.pet else 0        # the dog's mean bite, rn2(4)+2
 
     for _ in range(n):
@@ -688,6 +806,7 @@ def do_level(rng, t, hero, depth, opts, log=None):
             return False
         hero.gain_xp(rng, mt.xp)
         hero.hp = min(hero.maxhp, hero.hp + regen_each)
+        hero.pw = min(hero.maxpw, hero.pw + pw_each)
         if hero.hp < hero.maxhp * opts.quaff_at and hero.potions:
             ot = hero.potions.pop()
             hero.hp = min(hero.maxhp, hero.hp + potion_heal(rng, t.objs[ot].prop))
@@ -707,7 +826,7 @@ def simulate_run(rng, t, cls, opts, log=None):
     if not opts.ascend:
         return "survived", t.DLVL_AMULET
     # the gauntlet: with the Amulet the pool is 15 floors deeper than the
-    # ground under your feet (src/monster.c:123) -- but the BITE bonus still
+    # ground under your feet (src/monster.c:124) -- but the BITE bonus still
     # keys off the real depth, which is the whole point of measuring it.
     opts.amulet = True
     for depth in range(t.DLVL_AMULET, 0, -1):
@@ -717,13 +836,13 @@ def simulate_run(rng, t, cls, opts, log=None):
 
 
 def run_batch(t, cls, opts, trials, seed=1):
-    rng = Rng(seed)
+    meta = random.Random(seed)
     outcomes = {"died": 0, "won": 0, "survived": 0}
     deaths = {}
     ascent_deaths = 0
     log = []
     for _ in range(trials):
-        what, d = simulate_run(rng, t, cls, opts, log)
+        what, d = simulate_run(fresh_rng(meta), t, cls, opts, log)
         outcomes[what] += 1
         if what == "died":
             if d < 0:
@@ -737,18 +856,18 @@ def run_batch(t, cls, opts, trials, seed=1):
 # 8. Rest economics.
 # ---------------------------------------------------------------------------
 
-WANDER_P = 70       # src/monster_spawn.c:262 -- rn2(70), or rn2(25) with the Amulet
+WANDER_P = 70       # src/monster_spawn.c:264 -- rn2(70), or rn2(25) with the Amulet
 WANDER_P_AMULET = 25
 
 
 def rest_breakeven(con, ring=False, amulet=False):
     """How much a fight may cost before resting stops paying for itself.
 
-    'R' (src/nexthack.c:1225 rest_step) passes turns through the same
+    'R' (src/nexthack.c:1228 rest_step) passes turns through the same
     upkeep() (src/mainentry.c:145) as a wait ('.', src/mainentry.c:129) or a
-    search ('s', src/nexthack.c:1184), so whichever key spends the time,
+    search ('s', src/nexthack.c:1187), so whichever key spends the time,
     recovery is 1 HP every regen_period turns (src/nexthack.c:484).
-    Meanwhile every turn rolls a wandering monster (src/monster_spawn.c:262).
+    Meanwhile every turn rolls a wandering monster (src/monster_spawn.c:264).
     Resting is profitable only while
 
         1 / regen_period  >  hp_cost_per_fight / wander_period
@@ -756,7 +875,7 @@ def rest_breakeven(con, ring=False, amulet=False):
     i.e. while a fight costs less than wander_period / regen_period HP.
 
     'R' does not dodge that cost, it only times it: an awake hostile coming
-    into view ends the rest before the turn is charged (src/nexthack.c:1250),
+    into view ends the rest before the turn is charged (src/nexthack.c:1253),
     so each wanderer is one ordinary fight with the hero swinging first --
     the fight cmd_rest prices -- rather than free hits on a sleeper."""
     return (WANDER_P_AMULET if amulet else WANDER_P) / float(regen_period(con, ring))
@@ -829,7 +948,7 @@ what the dungeon typically hands out, not a best case.
                max(m.dmg + d // 4 for m in pool)))
     print("""
   mobs     = spawns per level (src/monster_spawn.c:125), capped at 8
-  raw bite = mean damage rolled BEFORE armour (src/monster_ai.c:202)
+  raw bite = mean damage rolled BEFORE armour (src/monster_ai.c:208)
   max bite = the biggest single blow the pool can roll""")
 
     for cls in ([t.cls_by_name(a.cls)] if a.cls else t.classes):
@@ -849,9 +968,10 @@ what the dungeon typically hands out, not a best case.
                     faces += 1
                     if hero.armor_def >= k + 1 + d // 4:
                         blocked += 1
-            rng = Rng(31)
+            meta = random.Random(31)   # one stream per trial (fresh_rng)
             lost = []
             for _ in range(a.trials // 4):
+                rng = fresh_rng(meta)
                 h = _clone(hero)
                 h.hp = h.maxhp
                 m = pool[rng.rn2(len(pool))]
@@ -868,7 +988,7 @@ what the dungeon typically hands out, not a best case.
                    "-" if bar > 900 else "%.1f" % bar, verdict))
         print("""
   soaked     = share of possible bites this armour absorbs ENTIRELY --
-               armor_def >= bite prints a miss (src/monster_ai.c:214)
+               armor_def >= bite prints a miss (src/monster_ai.c:220)
   HP/fight   = mean HP lost per single melee, fought to the death
   fights/bar = how many such fights one full HP bar buys, against the
                %d spawns a deep level throws at you
@@ -904,9 +1024,10 @@ marked with * if the hero lost even one of %d duels.
                 row += "%8s" % "-"
                 continue
             hero = _hero_at_depth(t, cls, d, a)
-            rng = Rng(99)
+            meta = random.Random(99)   # one stream per trial (fresh_rng)
             wins, lost = 0, []
             for _ in range(a.trials):
+                rng = fresh_rng(meta)
                 h = _clone(hero)
                 h.hp = h.maxhp
                 won, l, _n = fight(rng, h, m, d)
@@ -917,10 +1038,10 @@ marked with * if the hero lost even one of %d duels.
         print(row)
     print("""
   The floating eye never bites back but freezes you when you strike it and
-  it lives (src/monster_ai.c:181) -- not modelled here, so read its row as
+  it lives (src/monster_ai.c:187) -- not modelled here, so read its row as
   'free XP, paid for in paralysed turns while everything else closes in'.
   The acid blob's row also understates it: it corrodes the weapon you hit
-  it with (src/monster_ai.c:179), a cost that lands on later fights.""")
+  it with (src/monster_ai.c:185), a cost that lands on later fights.""")
 
 
 def _hero_at_depth(t, cls, depth, a, samples=41):
@@ -931,9 +1052,10 @@ def _hero_at_depth(t, cls, depth, a, samples=41):
     anecdote.  Walk `samples` independent dungeons down to `depth` and
     return the one whose armor_def is the median, which is the figure the
     duel and rest tables are about."""
-    rng = Rng(4242)
+    meta = random.Random(4242)   # one stream per trial (fresh_rng)
     heroes = []
     for _ in range(samples):
+        rng = fresh_rng(meta)
         hero = Hero(cls, t)
         opts = RunOpts(a.turns, a.engage, a.pet, twohand=a.twohand)
         opts.amulet = False
@@ -993,15 +1115,15 @@ blessed).  Sampled through the game's own item_hash over real cells.
 def cmd_rest(t, a):
     h1("Rest economics: can you heal up between fights?")
     print("""
-'R' rests (src/nexthack.c:1225 rest_step): the turn loop keeps passing turns
+'R' rests (src/nexthack.c:1228 rest_step): the turn loop keeps passing turns
 (src/mainentry.c:58) through the same upkeep() as a wait or a search, so it
 saves keypresses, not HP.  Regeneration is 1 HP every 14-20 turns
 (src/nexthack.c:484), and every turn also rolls a wandering monster at
-1/%d -- 1/%d once you carry the Amulet (src/monster_spawn.c:262).
+1/%d -- 1/%d once you carry the Amulet (src/monster_spawn.c:264).
 
 The rest ends before the turn is charged when an awake hostile comes into
-view (src/nexthack.c:1250), so a wanderer costs one ordinary fight, not free
-hits -- and wanderers spawn awake (src/monster_spawn.c:296), so the fights
+view (src/nexthack.c:1253), so a wanderer costs one ordinary fight, not free
+hits -- and wanderers spawn awake (src/monster_spawn.c:298), so the fights
 below get no sneak attack.  Resting therefore pays only while an average
 fight costs less than wander_period / regen_period HP:
 """.strip() % (WANDER_P, WANDER_P_AMULET))
@@ -1024,10 +1146,11 @@ fight costs less than wander_period / regen_period HP:
     print("  %5s %10s %12s" % ("depth", "HP/fight", "resting?"))
     for d in a.depths:
         hero = _hero_at_depth(t, cls, d, a)
-        rng = Rng(31)
+        meta = random.Random(31)   # one stream per trial (fresh_rng)
         lost = []
         pool = [m for m in t.pool(d) if m.ch not in "@e"]
         for _ in range(a.trials):
+            rng = fresh_rng(meta)
             h = _clone(hero)
             h.hp = h.maxhp
             m = pool[rng.rn2(len(pool))]
@@ -1042,9 +1165,9 @@ fight costs less than wander_period / regen_period HP:
 
   Left out, and pulling opposite ways: 1/%d is the roll, not the arrival
   rate -- a spawn in view, in a shop or onto a full monster list is dropped
-  (src/monster_spawn.c:264-284), so resting is a little cheaper than shown;
+  (src/monster_spawn.c:266-284), so resting is a little cheaper than shown;
   but each HP also costs 14-20 turns of food, and 'R' stops at Weak
-  (src/nexthack.c:1242), which this table does not price.""" % WANDER_P)
+  (src/nexthack.c:1245), which this table does not price.""" % WANDER_P)
 
 
 def cmd_runs(t, a):
@@ -1094,8 +1217,14 @@ absolute rate -- the assumptions are listed at the end.
     * %d turns walked per level, so regeneration between fights is about
       %d turns, i.e. %.1f HP, at depth 8;
     * the hero never flees a fight it has started, and never rests ('R');
-    * no wands, spells, altars (nor the artifacts they give), Excalibur
-      or gain-level potions (all of which help the hero) -- and no wandering monsters, traps, hunger,
+    * a sleeper is still asleep at the first blow only for a stealthy hero
+      (the Rogue; two times in three), as in the game;
+    * the kit's spells are cast (force bolt, when it beats the blade, one
+      bolt before an awake monster closes), and the Tourist's camera is
+      flashed at the big hitters (bite die 6+) from Dlvl 20; but no wands,
+      found spellbooks,
+      altars (nor the artifacts they give), Excalibur or gain-level potions
+      (all of which help the hero) -- and no wandering monsters, traps, hunger,
       dragon breath, poison, blindness or cursed gear (all of which hurt it);
     * every level's weapon and armour is found and worn.
   The first and last bullets make this OPTIMISTIC about gear and
@@ -1142,8 +1271,8 @@ guesses, the wall would be an artefact of the guessing.  It does not.
 def cmd_gauntlet(t, a):
     h1("The Amulet gauntlet: is the climb back out actually harder?")
     print("""
-Carrying the Amulet widens the spawn pool by 15 floors (src/monster.c:123)
-and triples the wandering-monster rate (src/monster_spawn.c:262).  But the
+Carrying the Amulet widens the spawn pool by 15 floors (src/monster.c:124)
+and triples the wandering-monster rate (src/monster_spawn.c:264).  But the
 bite bonus keys off the REAL depth, not the pool depth -- so near the
 surface the dungeon sends its deep servants with shallow teeth.
 """.strip())
@@ -1157,9 +1286,10 @@ surface the dungeon sends its deep servants with shallow teeth.
         out = []
         for pool_depth in (d, d + 15):
             pool = [m for m in t.pool(pool_depth) if m.ch not in "@e"]
-            rng = Rng(77)
+            meta = random.Random(77)   # one stream per trial (fresh_rng)
             lost = []
             for _ in range(a.trials // 4):
+                rng = fresh_rng(meta)
                 h = _clone(hero)
                 h.hp = h.maxhp
                 m = pool[rng.rn2(len(pool))]

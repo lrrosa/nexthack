@@ -124,6 +124,7 @@ void hit_monster(uint8_t mi, uint8_t dmg) __banked
     }
     if (m_hp[mi] <= dmg) {
         m_alive[mi] = 0;
+        m_blind[mi] = 0;
         if (dlvl <= MAXLVL)     /* remember the kill -- of the level's own only */
             mon_dead[dlvl] |= (uint8_t)(m_track & (1u << mi));
         drop_held(mi);                               /* stolen goods return */
@@ -162,7 +163,7 @@ void attack_monster(uint8_t mi) __banked
      * always) -- the whiffed turn still passes, as in NetHack. Luck leans on
      * the die: pleased gods steady your hand, spurned ones shake it. A
      * SLEEPING target can't dodge: the sneak attack always lands. */
-    if (!m_sleep[mi] &&
+    if (!m_sleep[mi] && !m_blind[mi] &&
         rn2(20) >= (uint8_t)(12 + (at_dex >> 1) + (eff_luck() >> 1))) {
         msg2("You miss the ", mon_name(m_type[mi]), ".");
         return;
@@ -170,6 +171,11 @@ void attack_monster(uint8_t mi) __banked
     dmg = (uint8_t)(rn2(4) + 1 + weapon_dmg);   /* 1..4 + weapon */
     if (at_str >= 17)      dmg = (uint8_t)(dmg + 2);   /* strength bonus */
     else if (at_str >= 14) dmg++;
+    /* The Rogue's backstab (NetHack's, on the fleeing; here on the sleeping,
+     * which stealth lets her reach): d(level) + level/4 on top. Measured to
+     * put balance.py's Rogue with the dog at ~35% of runs won. */
+    if (pclass == PC_ROGUE && m_sleep[mi])
+        dmg = (uint8_t)(dmg + rn2(xlvl) + 1 + (xlvl >> 2));
     if (art_slays(mt->ch)) dmg = (uint8_t)(dmg << 1);  /* the artifact's quarry */
     hit_monster(mi, dmg);
     if (art_fx & AF_DRAIN) {        /* Stormbringer drinks: half the blow is yours */
@@ -283,9 +289,9 @@ static uint8_t still_asleep(uint8_t i)
     if (ring_fx & RF_AGGR) { m_sleep[i] = 0; return 0; }
     dx = iabs((int)m_x[i] - hero_x);
     dy = iabs((int)m_y[i] - hero_y);
-    if ((dx <= 1 && dy <= 1) ? (!(ring_fx & RF_STEALTH) || rn2(3) == 0)
+    if ((dx <= 1 && dy <= 1) ? (!stealthy() || rn2(3) == 0)
                              : (dx <= 5 && dy <= 5 &&
-                                !(ring_fx & RF_STEALTH) && rn2(3) == 0)) {
+                                !stealthy() && rn2(3) == 0)) {
         m_sleep[i] = 0;              /* it stirs awake */
         return 0;
     }
@@ -682,6 +688,7 @@ static void mon_step(uint8_t i)
     if (m_sleep[i]) { m_sleep[i]--; return; }    /* asleep (wand of sleep): no turn */
     if (i == pet_idx) { pet_step(i); return; }   /* the pet follows its own rules */
     if (m_peace[i]) { peace_amble(i); return; }  /* a peaceful minds its own */
+    if (m_blind[i]) { m_blind[i]--; peace_amble(i); return; }  /* it cannot find you */
 
     ddx = hero_x - (int)m_x[i];
     ddy = hero_y - (int)m_y[i];
@@ -702,7 +709,7 @@ static void mon_step(uint8_t i)
 static uint8_t dragon_breath(uint8_t i)
 {
     int dx, dy, sx, sy;
-    if (m_type[i] != 'D') return 0;
+    if (m_type[i] != 'D' || m_blind[i]) return 0;
     if (m_sleep[i]) return 0;              /* a sleeping dragon only snores */
     dx = hero_x - (int)m_x[i];
     dy = hero_y - (int)m_y[i];
@@ -782,7 +789,8 @@ void monsters_turn(void) __banked
                 iabs((int)m_y[i] - hero_y) <= 1) awake = 1;
             continue;
         }
-        if (m_peace[i]) continue;          /* townsfolk trigger no chase */
+        if (m_peace[i] || m_blind[i]) continue;   /* townsfolk and the blind
+                                                      * trigger no chase */
         if (still_asleep(i)) continue;     /* spawn sleepers roll their one
                                             * per-turn wake chance HERE (no
                                             * break: every sleeper rolls);
@@ -793,7 +801,10 @@ void monsters_turn(void) __banked
     if (!awake) {
         /* the townsfolk still mill about (cheap: no BFS involved) */
         for (i = 0; i < mcount; i++)
-            if (m_alive[i] && m_peace[i]) peace_amble(i);
+            if (m_alive[i] && (m_peace[i] || m_blind[i])) {
+                if (m_blind[i]) m_blind[i]--;   /* the flash wears off */
+                peace_amble(i);
+            }
         /* no enemy near: heel the dog by sight, no flood. Only when a wall boxes
          * the greedy step (a bend or doorway it can't round straight to you) do we
          * flood -- once, routing just the dog. An open room never blocks, so it
@@ -819,6 +830,7 @@ void monsters_turn(void) __banked
             if (m_sleep[i] == 255) continue;  /* still asleep (rolled in the scan) */
             if (m_sleep[i]) { m_sleep[i]--; continue; }
             if (m_peace[i]) { peace_amble(i); continue; }  /* minds its own */
+            if (m_blind[i]) { m_blind[i]--; peace_amble(i); continue; }
             if (i == (uint8_t)pet_idx) {
                 if (pet_bite_adjacent(i)) continue;
                 if (!pet_heel_greedy(i)) blocked |= (uint16_t)(1u << i);
@@ -858,7 +870,8 @@ void monsters_turn(void) __banked
         for (i = 0; i < mcount; i++) {
             uint8_t s = m_sleep[i];
             char    t = m_type[i];
-            if (!m_alive[i] || m_peace[i] || t == MON_KEEPER || t == 'e' || t == 'x')
+            if (!m_alive[i] || m_peace[i] || m_blind[i] || t == MON_KEEPER ||
+                t == 'e' || t == 'x')
                 continue;
             if (s == 255 && !(ring_fx & RF_AGGR) &&
                 (iabs((int)m_x[i] - hero_x) > 5 || iabs((int)m_y[i] - hero_y) > 5))

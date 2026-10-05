@@ -490,7 +490,10 @@ void upkeep(void) __banked
             if (php < pmaxhp) php++;
         }
     }
-    if (pw < pmaxpw && ++pw_timer >= (uint8_t)(at_wis >= 14 ? 12 : 18)) {
+    /* the Wizard's mind refills fastest -- NetHack gives the role an energy
+     * bonus; eight turns a point is balance.py's ~43% of runs won */
+    if (pw < pmaxpw && ++pw_timer >= (uint8_t)(pclass == PC_WIZARD ? 8 :
+                                               at_wis >= 14 ? 12 : 18)) {
         pw_timer = 0;                           /* power trickles back; wisdom
                                                  * quickens the flow */
         pw++;

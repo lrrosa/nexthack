@@ -51,7 +51,13 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   Wizard zaps, the Rogue dodges, the Tourist haggles — each with its own
   attributes (which really matter: St hits harder, Dx lands blows, Co mends,
   Ch bargains in shops), starting gear, purse and **alignment** (Lawful,
-  Neutral or Chaotic — the god your offerings answer to).
+  Neutral or Chaotic — the god your offerings answer to). Each also plays
+  its own way: the Wizard's power refills fastest and a force bolt hits for
+  2d12; the Rogue is born **stealthy**, so sleepers stay asleep, and
+  **backstabs** them for extra damage that grows with experience; the
+  Tourist carries an **expensive camera** whose flash blinds a monster for a
+  few turns. The Valkyrie needs no trick — she is still the easiest start,
+  as in NetHack.
 - A **50-level dungeon**, generated procedurally and **deterministically**: each
   depth regenerates identically from its own seed, while the changes you make
   (gold taken, monsters killed, items picked up) are remembered across revisits
@@ -309,7 +315,7 @@ used to emit one and no longer does.
 | `q` / `e` / `r`           | quaff potion / eat food / read scroll |
 | `t`                       | throw a weapon in a direction |
 | `z`                       | zap a wand (strike, freeze, burn, sleep, teleport, unlock, or dig down) |
-| `a`                       | apply a tool (unlock a door, dig down, call your dog, put on a blindfold, cure with a unicorn horn) |
+| `a`                       | apply a tool (unlock a door, dig down, call your dog, put on a blindfold, cure with a unicorn horn, flash a camera) |
 | `Z`                       | cast a known spell (spends Pw) |
 | `p`                       | pray to your god |
 | `E`                       | engrave Elbereth in the dust (wards off monsters) |

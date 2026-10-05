@@ -35,7 +35,9 @@
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   33     /* 33: the tools -- levels and shops place them, so
+#define SAVE_VER   34     /* 34: the classes -- the Tourist's camera makes 81
+                           * types (id_known 11 bytes). 33: the tools --
+                           * levels and shops place them, so
                            * a level's loot (and the kill masks after it)
                            * would no longer match an older save's. 32: the
                            * weapon ladder -- 75 types, id_known 10 bytes. 31: the artifacts -- art_given joined the

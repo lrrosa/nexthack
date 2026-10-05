@@ -25,6 +25,12 @@ extern uint8_t m_sleep[];    /* >0 = asleep: 255 sleeps until disturbed (spawn
                               * sleepers), less is a turn countdown (wand/spell) */
 extern uint8_t m_peace[];    /* 1 = peaceful: ambles, never attacks; striking
                               * it angers the town (try_move swaps past them) */
+extern uint8_t m_blind[];    /* >0: blinded by the Tourist's camera (1.6) -- it
+                              * cannot find you, so it wanders and never
+                              * strikes, and cannot dodge. Counts down a turn
+                              * at a time; cleared on death and on every
+                              * spawn into its slot. Not saved: monsters are
+                              * rebuilt with their level. */
 extern uint8_t m_face[];     /* 1 = last stepped right: directional art (dog/
                               * rat) draws mirrored; set via mon_face_to      */
 extern char    m_type[];

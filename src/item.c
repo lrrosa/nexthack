@@ -241,7 +241,11 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '(',  0,   50,   3, 2, SL_NONE, "pick-axe" },
     { '(',  0,  100,   8, 1, SL_NONE, "unicorn horn" },
     { '(',  0,   10,   2, 3, SL_NONE, "magic whistle" },
-    { '(',  0,   20,   1, 3, SL_NONE, "blindfold" }
+    { '(',  0,   20,   1, 3, SL_NONE, "blindfold" },
+    /* The Tourist's camera (NetHack's expensive camera), her kit's and never
+     * found (mindep 255): the flash blinds a monster for 5..14 turns. Charges
+     * in ench, like a wand's, and a scroll of charging tops it up. */
+    { '(',  0,  200, 255, 1, SL_NONE, "expensive camera" }
 };
 
 /* Each gift's alignment (as in NetHack: 0 Lawful, 1 Neutral, 2 Chaotic,
@@ -661,9 +665,11 @@ static const char *obj_desc(const obj_t *o)
         s = t->name;
     }
     while (*s) *p++ = *s++;
-    if (t->cls == '/') {        /* a wand shows its remaining charges: " (N)" */
+    if (t->cls == '/' || o->otyp == O_CAMERA) {  /* charges left: " (N)" */
+        uint8_t n = (uint8_t)o->ench;             /* a camera's run to 99 */
         *p++ = ' '; *p++ = '(';
-        *p++ = (char)('0' + (o->ench % 10));
+        if (n >= 10) *p++ = (char)('0' + n / 10);
+        *p++ = (char)('0' + (n % 10));
         *p++ = ')';
     }
     *p = 0;
@@ -804,7 +810,7 @@ void give_item(uint8_t otyp, uint8_t worn) __banked
 {
     obj_t o;
     o.otyp = otyp;
-    o.ench = (int8_t)(objtypes[otyp].cls == '/' ? 4 : 0);
+    o.ench = (int8_t)(objtypes[otyp].cls == '/' ? 4 : otyp == O_CAMERA ? 50 : 0);
     o.ero  = 0;
     o.worn = worn;
     o.buc  = BUC_UNC;
@@ -1743,8 +1749,8 @@ static uint8_t cls_match(uint8_t i, char cls)
     char c = objtypes[inv[i].otyp].cls;
     if (cls == 'P')          /* 'P': rings, and every amulet but Yendor's */
         return (uint8_t)(c == '=' || (c == '"' && inv[i].otyp != O_AMULET));
-    if (cls == 'C')          /* 'C': the wand a scroll of charging tops up */
-        return (uint8_t)(c == '/');
+    if (cls == 'C')          /* 'C': what a scroll of charging tops up */
+        return (uint8_t)(c == '/' || inv[i].otyp == O_CAMERA);
     return (uint8_t)(c == cls || (cls == '?' && c == '&'));
 }
 
@@ -1766,7 +1772,7 @@ static const char *pick_prompt(char cls)
     case '/': return "Zap which wand?";
     case '(': return "Apply what?";
     case 'P': return "Put on what?";
-    case 'C': return "Charge which wand?";
+    case 'C': return "Charge what?";
     }
     return "Which item?";
 }

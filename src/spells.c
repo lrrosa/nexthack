@@ -90,7 +90,9 @@ static void spell_ray(uint8_t sp, int dx, int dy)
          * on the stairs; the kill even counted against your conduct. */
         if (mi == pet_idx || m_type[mi] == MON_KEEPER) continue;
         if (sp == SP_FORCE) {
-            hit_monster((uint8_t)mi, (uint8_t)(rn2(6) + 4));
+            /* NetHack's d(2,12): the old 4..9 never kept pace with the
+             * deep floors, and a Wizard's Pw bought less than a dagger */
+            hit_monster((uint8_t)mi, (uint8_t)(rn2(12) + rn2(12) + 2));
         } else {                     /* SP_SLEEP */
             m_sleep[mi] = (uint8_t)(rn2(8) + 6);
             msg2("The ", mon_name(m_type[mi]), " falls asleep.");

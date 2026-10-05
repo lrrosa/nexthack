@@ -38,7 +38,7 @@ static void quaff_fountain(void)
     /* the Lady of the Lake: a Valkyrie of level 5+ wielding a plain long sword
      * may draw Excalibur -- once a game, as in NetHack. Before art_given, a
      * second long sword dipped made a second Excalibur. */
-    if (pclass == 0 && xlvl >= 5 && !(art_given & ART_EXCAL)) {
+    if (pclass == PC_VALKYRIE && xlvl >= 5 && !(art_given & ART_EXCAL)) {
         for (i = 0; i < inv_count; i++) {
             if (inv[i].worn && inv[i].otyp == O_LONGSW) {
                 if (rn2(3) == 0) {
@@ -322,7 +322,13 @@ static void charging(uint8_t buc)
     int w = select_item('C');
     if (w == -1) { pw = pmaxpw; msg("You feel charged up!"); return; }
     if (w == -2) { msg("Never mind."); return; }
-    if (buc == BUC_CURSE) { inv[w].ench = 0; msg("The wand is drained!"); return; }
+    if (buc == BUC_CURSE) { inv[w].ench = 0; msg("It is drained!"); return; }
+    if (inv[w].otyp == O_CAMERA) {         /* film, not a wand's few charges */
+        uint8_t n = (uint8_t)(inv[w].ench + (buc == BUC_BLESS ? 30 : 10 + rn2(10)));
+        inv[w].ench = (int8_t)(n > 99 ? 99 : n);
+        msg("Your camera is reloaded.");
+        return;
+    }
     if (buc == BUC_BLESS) {
         inv[w].ench = 9;
     } else {
@@ -563,6 +569,30 @@ static void apply_blindfold(uint8_t s)
     }
 }
 
+/* The Tourist's expensive camera: the flash blinds the first monster in
+ * line for 5..14 turns. Blind, it cannot find you -- it wanders and never
+ * strikes (monster_ai.c) -- and it cannot dodge you. A charge a flash. */
+static void apply_camera(uint8_t s)
+{
+    int dx, dy, x, y, r, mi;
+    if (inv[s].ench <= 0) { msg("The camera is out of charges."); return; }
+    msg("In what direction?");
+    if (!read_dir(&dx, &dy)) { msg("Never mind."); return; }
+    acted = 1; turns++;
+    inv[s].ench--;
+    x = hero_x; y = hero_y;
+    for (r = 0; r < 8; r++) {
+        x += dx; y += dy;
+        if (!walkable(terrain(x, y))) break;        /* a wall stops the light */
+        mi = monster_at(x, y);
+        if (mi < 0 || mi == pet_idx || m_type[mi] == MON_KEEPER) continue;
+        m_blind[mi] = (uint8_t)(rn2(10) + 5);
+        msg2("The ", mon_name(m_type[mi]), " is blinded!");
+        return;
+    }
+    msg("The flash lights up nothing.");
+}
+
 /* 'a': apply a tool. The key and the pick-axe charge their own turn (a
  * cancelled direction or a refused dig costs none); the rest always act. */
 void do_apply(void) __banked
@@ -574,6 +604,7 @@ void do_apply(void) __banked
     ot = inv[s].otyp;
     if (ot == O_SKELKEY) { apply_key();  return; }
     if (ot == O_PICKAXE) { apply_pick(); return; }
+    if (ot == O_CAMERA)  { apply_camera((uint8_t)s); return; }
     acted = 1; turns++;
     if (ot == O_BLINDFOLD)     apply_blindfold((uint8_t)s);
     else if (ot == O_MWHISTLE) apply_whistle();

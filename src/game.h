@@ -135,6 +135,16 @@ extern int8_t   luck;         /* hidden fortune, -5..+5: pleased gods raise it,
 #define INTR_TPORT      0x08  /* teleportitis, from a leprechaun's or a
                                * nymph's flesh: upkeep blinks you as the ring
                                * does (and the ring of control still steers) */
+#define INTR_STEALTH    0x10  /* the Rogue's by birth (1.6): the ring of stealth's
+                               * rule -- footsteps wake no sleeper, and one beside
+                               * you stirs only one turn in three */
+/* stealth, from the ring or by birth: every sleeper's waking asks this */
+#define stealthy() ((ring_fx & RF_STEALTH) || (intrinsics & INTR_STEALTH))
+/* class indices: the order of classes.c's table */
+#define PC_VALKYRIE 0
+#define PC_WIZARD   1
+#define PC_ROGUE    2
+#define PC_TOURIST  3
 /* poison resistance, from the flesh or the amulet: every poisoning asks this */
 #define poison_res() ((intrinsics & INTR_POISON_RES) || amu_pois)
 

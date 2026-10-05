@@ -198,8 +198,21 @@ rather than report stale numbers; (2) every formula carries the `file:line` it
 mirrors (`balance.py formulas` prints them side by side) -- line numbers, so they
 rot whenever code above them moves (by 1.4, 37 of the 40 pointed at the wrong
 line); re-point them in the commit that moves the code; (3) the dice are the
-game's own xorshift16 and item hashes, bit-exact. So **after tuning a table,
-re-running the tool measures the change immediately** -- that is the point of it.
+game's own xorshift16 and item hashes, bit-exact -- **one stream per simulated
+life** (`fresh_rng`): until 1.6 a batch ran 600 lives on one stream, which at
+~3700 draws a life wrapped the 65535-step period ~33 times, so lives were
+phases of one cycle and the Valkyrie's wins read 58% instead of 67%. So **after
+tuning a table, re-running the tool measures the change immediately** -- that
+is the point of it.
+
+The model plays every class the way the game lets it: since 1.6 it casts the
+kit's force bolt when that beats the blade, flashes the Tourist's camera at the
+big hitters from Dlvl 20, and -- the other 1.6 correction -- a sleeper is still
+asleep at the first blow only for a stealthy hero, as `still_asleep` rules;
+it used to grant every class a free sneak attack in half its fights. The class
+targets set 2026-10-05 (NetHack's order, measured with the dog over 5 seeds):
+Valkyrie ~59%, Wizard ~43%, Rogue ~35%, Tourist ~19%. Before the signatures the
+three were at 0-1%; without the dog every class is under 3%.
 
 Subcommands: `tables curves duel gear rest gauntlet runs sweep report`
 (`--class`, `--depths`, `--turns`, `--engage`, `--pet`, `--csv`). `sweep` exists
@@ -557,6 +570,18 @@ tilemap.
   a hero on a live Elbereth or on a scroll of scare monster lying underfoot:
   both chase paths read `ward`, worked out once per `monsters_turn`. That
   scroll's `ench` is its "picked up before" mark (dust on the next pickup).
+  Stealth is `stealthy()` (`game.h`): the ring's `RF_STEALTH` OR the Rogue's
+  birth `INTR_STEALTH` -- test the macro, never the ring bit alone.
+- **Class signatures** (1.6, `PC_*` in `game.h` name the `classes[]` rows): the
+  Wizard regains Pw every 8 turns (`upkeep`) and force bolt is d(2,12); the
+  Rogue is born stealthy and backstabs a sleeper for `rn2(xlvl)+1+xlvl/4` more
+  (`hit_monster`); the Tourist's kit holds the **expensive camera**, a `(` with
+  charges in `ench` like a wand's (charging reloads it, `obj_desc` prints
+  them). Its flash sets `m_blind[]` 5..14: a blind monster ambles, cannot
+  dodge, never breathes, and is out of the flood. `m_blind` is not saved and
+  NOT cleared by `m_alive = 0`: `spawn_level_monsters` zeroes the array and
+  the summon and wanderer sites zero their slot -- a new spawn site must too,
+  or the newcomer inherits a dead monster's blindness.
 - **Tools** (`(`, 1.6) are applied with `a` (`do_apply`, `item_use.c`): the
   skeleton key (70 + Dex in 100 per try, `door_unlock`), the pick-axe, the
   magic whistle, the blindfold and the unicorn horn; a slain dwarf leaves a

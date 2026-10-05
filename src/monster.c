@@ -33,6 +33,7 @@ uint8_t mon_dead[MAXLVL + 1];   /* bit i: monster i killed. Written by combat
                                  * monster_spawn.c; defined here because the
                                  * two live in different banks. */
 uint8_t m_track;                /* which slots are the level's own (monster.h) */
+uint8_t m_blind[MAXMON];        /* the camera's flash (monster.h) */
 
 /* ---- monster catalogue (resident; mon_find/pick_mon read it) ---- */
 static const MonType montypes[] = {
