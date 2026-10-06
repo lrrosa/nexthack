@@ -87,7 +87,9 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   blood — then the whole town comes for you, and the gods dock your luck.
 - **Corpses: you are what you eat** — slain monsters may leave one, and the
   right flesh teaches the body something: poison resistance, sleep resistance,
-  or a floating eye's **telepathy** (sense every monster while blind).
+  a floating eye's **telepathy** (sense every monster while blind), a
+  leprechaun's or a nymph's restless **teleportitis** — and a wraith's corpse
+  is a whole experience level.
 - A **loyal pet dog** starts at your side, fights monsters for you, follows you
   through the dungeon — and **grows with its kills**, biting harder and taking
   more punishment. **Throw** (`t`) a weapon down a corridor for a ranged
@@ -100,26 +102,39 @@ RAM-expansion interface, which is how many people actually have 128 KB.
 - **Items and equipment** — weapons, armour worn as a **set** (body suit,
   shield, helmet, boots and cloak, each in its own slot; seven grades of
   suit alone, from leather up to dragon scale), potions, food, scrolls,
-  rings and **amulets** — ESP, and life saving, which spends itself instead
-  of you —
+  rings and **amulets** — ESP, versus poison, and life saving, which spends
+  itself instead of you —
   each with its own enchantment, erosion and **blessed/uncursed/cursed** state;
   potions, scrolls, rings and wands start **unidentified**, each game with its
   own shuffle of looks. Wield/wear the best you carry, quaff/eat/read, watch
   acid blobs corrode your gear, beware cursed items that won't come off — then
   **enchant your gear** with the right scroll, **lift your curses** with
-  another, **genocide** a monster you are tired of, **recharge** a wand, or
-  bottle a whole **experience level**. Nine **rings** — protection,
+  another, **genocide** a monster you are tired of, **recharge** a wand, map
+  the level's gold, drink a **full healing**, or bottle a whole **experience
+  level** — and leave a **scroll of scare monster** on the floor to stand on
+  where no monster dares strike. Deep down the weapons go on past the long
+  sword the way NetHack's do: the extra damage is in the **two-handers** (a
+  battle-axe, a mattock), paid for with your shield, and a **silver saber**
+  burns vampires. Nine **rings** — protection,
   regeneration, slow digestion, free action, teleport control, stealth, and
   three cursed pieces of junk that make trying on an unknown one a gamble.
   **Wands** (`z`) zap magic in a chosen direction — a striking bolt, a
   freezing or burning ray, magic missiles, sleep, teleport-away, a bolt that
   unlocks doors — or dig straight down a level.
+- **Tools** (`a` applies them) — a **skeleton key** for locked doors, a
+  **pick-axe** that digs down through the floor or through rock and walls
+  (the level remembers your tunnels), a **magic whistle** that calls your dog
+  from anywhere, a **blindfold** (no gaze can catch you, and with telepathy
+  you see the whole level's monsters), and a **unicorn horn** to cure what
+  ails you. Dwarves carry pick-axes.
 - **Altars and divinity** — step onto an **altar** (`_`) to reveal the
   blessings on what you carry; drop an item on one and a flash names it, a
   potion taking the altar's own touch (holy water — or worse, on an altar of a
-  crossed god). **Offer a corpse** (`d`) to a co-aligned god for real boons,
-  and mind your hidden **luck**: pleased gods steady your sword arm, spurned
-  ones stop hearing your prayers.
+  crossed god). **Offer a corpse** (`d`) to a co-aligned god for real boons
+  — even an **artifact**: Sting, Sunsword, Trollsbane, Dragonbane or
+  Stormbringer, each deadly to what it hunts — and mind your hidden
+  **luck**: pleased gods steady your sword arm, spurned ones stop hearing
+  your prayers.
 - **Spells and fountains** — read a **spellbook** (`&`) to learn its spell, then
   **cast** (`Z`) from your **spell power** (Pw): force bolt, healing, sleep, or
   teleport. **Fountains** (`{`) reward a thirsty adventurer with clear water,
@@ -146,13 +161,13 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   past the **high priest** who guards it — and climb back out alive, through
   everything **Moloch** sends up after you (and he no longer takes your calls).
 
-![NextHack gameplay: a magically mapped dungeon level drawn in colour 8×8 tiles — rooms and corridors across the level, a stocked shop with warm brick walls, the armoured hero and his dog facing monsters in a lit room, and the full status bar below.](docs/gameplay.png)
+![NextHack gameplay: a magically mapped dungeon level drawn in colour 8×8 tiles — rooms and corridors across the level, a shop with warm brick walls stocked with tools and weapons, and in a lit room the armoured hero beside a fresh breach in the wall, with the dog, a troll, a zombie and a kobold, and the full status bar below.](docs/gameplay.png)
 
-*Dlvl 6 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, a shop trades in the corner, and monsters find you anyway. The rat at the hero's elbow just bounced off his dragon scale: armour turns a blow aside, it no longer erases it. The status bar carries the whole character sheet, alignment included.*
+*Dlvl 5 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, and the shop in the corner sells tools now. The hero has just broken through the room's east wall with a pick-axe: the breach stays open, and the level remembers it on every later visit. The brown troll, the zombie and the kobold were redrawn for 1.6, and faces are back on the Next — the hero's and everyone else's. The status bar carries the whole character sheet, alignment included.*
 
-![The Gnomish Mines: cobblestone chambers and winding tunnels revealed, Minetown's warm-brick shop stocked with wares, and the hero and his dog meeting a monster in a lit chamber, with the status bar reading Mine:2.](docs/mines.png)
+![The Gnomish Mines: cobblestone chambers and winding tunnels revealed, Minetown's warm-brick shop stocked with wares, and in a lit chamber the hero with the dog, just whistled to heel, meeting a gnome and a dwarf, with the status bar reading Mine:2.](docs/mines.png)
 
-*Minetown (Mine:2): cobblestone caves hewn from the rock, the shop glowing warm brick, and the hero and his dog meeting what lives down here. The luckstone waits at the bottom of the branch.*
+*Minetown (Mine:2): cobblestone caves hewn from the rock, the shop glowing warm brick, and the hero meeting the townsfolk — a gnome and a dwarf, faces and all — as a magic whistle brings the dog back to heel. Dwarves carry pick-axes; the luckstone waits at the bottom of the branch.*
 
 ## Project structure
 
@@ -278,11 +293,12 @@ it does not depend on esxDOS just to run.
 run-zx128.bat        REM dev convenience: boots nexthack128.tap in ZEsarUX (--machine 128k)
 ```
 
-![NextHack on the plain ZX Spectrum 128K: the ULA renderer with 1-bit tiles — a magically mapped level, a stocked shop in yellow, the sword-bearing hero with his dog facing a monster, and the compact status line.](docs/zx128.png)
+![NextHack on the plain ZX Spectrum 128K: the ULA renderer with 1-bit tiles — a magically mapped level, and in a lit room the sword-bearing hero beside a fresh breach in the wall, with the dog, a yellow troll, a white zombie and a kobold, above the compact status line.](docs/zx128.png)
 
 *The same game on a plain 128K: 1-bit tiles on the ULA, a 32-column viewport that
-edge-scrolls over the 80-wide map — the hero (sword raised), his dog (tail up), a
-freshly mapped level, and the shop picked out in yellow.*
+edge-scrolls over the 80-wide map — the hero (sword raised) beside the breach a
+pick-axe has just opened, the dog (tail up), and 1.6's inks: the troll yellow, the
+zombie white, so that fewer monsters share green.*
 
 `run-zx128.bat` launches **ZEsarUX** (sibling `..\ZEsarUX\`) for quick local
 testing; it inserts the tape with `--tape`, so ZEsarUX auto-loads it straight to
@@ -325,9 +341,9 @@ used to emit one and no longer does.
 
 Walk into a monster to attack it; walk over gold to pick it up.
 
-![The NextHack inventory screen: a blessed +2 long sword (wielded), +1 dragon scale, large shield and +1 helmet (worn), the amulet of life on the neck and a ring of teleport control on the hand — then a cursed agate ring and a copper wand (6) still known only by their looks, a wand of opening (4), a scroll of genocide, a murky potion, a carrot and the luckstone.](docs/inventory.png)
+![The NextHack inventory screen: a blessed +2 Excalibur (wielded), +1 dragon scale and +1 helmet (worn), the amulet versus poison on the neck and a ring of teleport control on the hand — then a battle-axe, a silver saber, a pick-axe, a magic whistle, a unicorn horn, a blindfold, a scroll of scare monster and a smoky potion still known only by its look.](docs/inventory.png)
 
-*The inventory screen (`i`): an armour set worn a piece at a time, enchantment, blessed/cursed state and wand charges, everything in use flagged. Rings and wands you have not learned yet show only this game's look — that agate ring is cursed, and nothing yet says what it does.*
+*The inventory screen (`i`): 1.6's new things — the two-handed battle-axe and the silver saber past the long sword, four of the tools `a` applies, an amulet versus poison and a scroll of scare monster — beside an armour set worn a piece at a time, enchantment, blessed/cursed state and everything in use flagged. A potion you have not learned yet shows only this game's look: that smoky one is a full healing, and nothing yet says so.*
 
 ## Map & item tiles
 
@@ -339,13 +355,13 @@ from the roguelike tradition):
   stairs up/down (`<` `>`), a mine entrance (`v`), altar (`_`), fountain (`{`),
   a sprung trap (`^`)
 - **Items:** gold (`$`), weapon (`)`), armor (`[`), potion (`!`), food (`%`),
-  scroll (`?`), ring (`=`), wand (`/`), spellbook (`&`), the luckstone (`*`),
-  the Amulet of Yendor (`"`)
+  scroll (`?`), ring (`=`), wand (`/`), spellbook (`&`), tool (`(`), the
+  luckstone (`*`), the Amulet of Yendor (`"`)
 - **Creatures:** hero and shopkeeper (`@`), rat (`r`), bat (`B`), acid blob (`a`),
   kobold (`k`), dog (`d`), snake (`S`), orc (`o`), zombie (`Z`), leprechaun (`l`),
   yellow light (`y`), homunculus (`i`), wraith (`W`), floating eye (`e`),
   troll (`T`), vampire (`V`), dragon (`D`), mimic (`m` — hidden ones wear an
-  item's tile), gnome (`G`), dwarf (`h`), the high priest (`M`)
+  item's tile), nymph (`n`), gnome (`G`), dwarf (`h`), the high priest (`M`)
 
 ## Technical notes
 

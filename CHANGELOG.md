@@ -8,6 +8,103 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.6.0] — 2026-10-05
+
+**Artifacts, tools, a weapon ladder — and four classes that each win their own
+way.** Every addition plugs into something the game already did, every
+calibration was measured with `tools/balance.py` before it was set, and every
+change was proven in ZEsarUX on both machines.
+
+### Added
+- **Artifacts.** Offer at an altar of your own god, from experience level 3
+  with your luck not below zero, and a pleased god may hand you one of five
+  instead of the usual boon: **Sting**, **Sunsword**, **Trollsbane**,
+  **Dragonbane** or **Stormbringer** — always of your alignment or of none,
+  never one this game already holds. Each hunts something this dungeon holds,
+  for double damage: Sting the orcs, Sunsword the zombie, the wraith and the
+  vampire, Trollsbane the trolls, Dragonbane the dragon. Sting glows blue
+  while an orc is near; with Trollsbane in your hand no troll knits its
+  wounds; Stormbringer heals you by half of every blow, and it and Excalibur
+  turn the wraith's and the vampire's drain. Acid never eats an artifact, and
+  `w` always prefers one.
+- **Tools**, a new class (`(`), applied with a new key, `a`:
+  - the **skeleton key** opens a locked door for good — 70 + Dex in 100 a try;
+  - the **pick-axe** digs: `>` down through the floor in five turns, any
+    direction through rock or a wall in three — and **the level remembers the
+    tunnel**, through the stairs and through a save. A monster coming into
+    view stops the work, and `a` at the same spot carries on. Doors, shop
+    walls and the Amulet's floor will not give;
+  - the **magic whistle** brings your dog from anywhere on the level;
+  - the **blindfold** keeps you blind while it is on: no floating eye catches
+    your gaze, and with telepathy every monster on the level shows;
+  - the **unicorn horn** cures confusion, poison and blindness — or, cursed,
+    brings one on.
+
+  A slain dwarf leaves a pick-axe one time in three; tools also lie on levels
+  and sell in shops.
+- **Each class plays its own way.** The Valkyrie stays the easy start; the
+  other three each get NetHack's own edge:
+  - the **Wizard**'s power comes back fastest, a point every eight turns, and
+    force bolt hits for 2d12 — NetHack's dice — instead of 4–9;
+  - the **Rogue** is born **stealthy** — a sleeper beside you stays asleep two
+    turns in three — and **backstabs** a sleeping monster for extra damage
+    that grows with experience;
+  - the **Tourist** carries an **expensive camera**, 50 charges, reloaded by a
+    scroll of charging: its flash blinds a monster for 5–14 turns, and blind,
+    it wanders, cannot dodge, never strikes and never breathes fire.
+
+  Modelled with the dog, over 3000 runs each, the four now win about 59%
+  (Valkyrie), 43% (Wizard), 35% (Rogue) and 19% (Tourist) of their runs —
+  NetHack's order. The Wizard, the Rogue and the Tourist were at 0–1%.
+- **The weapons go on past the long sword**, NetHack's way: one-handed blades
+  stay about a long sword however deep, and the extra damage is in the
+  **two-handers** — the **battle-axe** from Dlvl 20, the **mattock** from 28 —
+  paid for with the shield. `w` passes one over while you wear a shield and
+  `W` a shield while you wield one, and each says why. The **silver saber**
+  (Dlvl 24) burns vampires and imps for double.
+- **New things to find**: the **amulet versus poison**, which every poisoning
+  asks about, from the snake's bite to the murky fountain; the **potion of
+  full healing** — every HP back, more maximum, the eyes cleared — rare and
+  deep on purpose; the **scroll of scare monster**, under which no monster
+  strikes you (read, it freezes everything near; picked up too often, it
+  turns to dust); and the **scroll of gold detection**, which maps every pile
+  of gold — or, confused, every hidden trap.
+- **New flesh**: a **wraith's corpse** is an experience level, and a
+  **leprechaun's** or a **nymph's** brings on teleportitis.
+
+### Fixed
+- **On the Next, every face was missing.** The tilemap treated pixel value
+  15 as transparent, and that is the skin colour: the hero had a black band
+  between helm and mail, and the shopkeeper had no head at all — nor did the
+  vampire, the high priest, the gnome, the dwarf or the nymph. They are back.
+- **Excalibur could be made twice**: a second long sword dipped in a fountain
+  became a second Excalibur. It is unique now.
+
+### Changed
+- **Art pass.** Redrawn on the Next: the troll (brown, NetHack's colour, arms
+  to its knees), the zombie, the kobold (snout and spear — it read as a
+  torch), the bat (its legs made it a crab), armour (a mail shirt — the
+  shield read as a tombstone) and the snake (it read as a boot). On the 128K:
+  the zombie, the kobold, the snake (it read as an 8) and the mine hole, and
+  new inks, so that four monsters are green instead of seven.
+- `SAVE_VER` 35. **Saves from 1.5 will not load**; the game names the old
+  save and asks before deleting it — answer `n` and it stays for the 1.5.0
+  binary.
+- `tools/balance.py` models the classes as they play — the force bolt, the
+  stealth and the backstab, the camera — and calibrating them exposed two
+  errors in the model itself, pulling opposite ways. One random stream
+  served all 600 lives of a batch and wrapped its 65535-step period about
+  33 times, so the lives were phases of one cycle; and every class got a
+  free sneak attack in half its fights, where the game wakes a sleeper beside
+  you unless you are stealthy. Each life has its own stream now, and only
+  the stealthy strike first. Figures quoted for earlier versions came from
+  the old model.
+- On the 128K the inventory moved within Bank 5 to make room for more tiles,
+  and the pick-axe's tunnels live in its free tail on both machines.
+- The `zrcp-verify` skill gained a second emulator: a headless MAME harness
+  that loads the real 128K tape through the 128 ROM and reads memory without
+  stretching time.
+
 ## [1.5.0] — 2026-09-27
 
 **A code audit's ten findings, fixed** — every one confirmed in the code
