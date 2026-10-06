@@ -443,7 +443,10 @@ void do_read(void) __banked
     acted = 1; turns++;
 }
 
-/* read one movement key into a unit direction; 0 if it was not a direction */
+/* read one movement key into a unit direction; 0 if it was not a direction.
+ * '>' is none either, but the pick-axe asks for it: it answers 0 with *dy set
+ * to DIR_DOWN, which every other caller ignores with the rest of a refusal. */
+#define DIR_DOWN 2
 static int read_dir(int *dx, int *dy)
 {
     int k;
@@ -460,6 +463,7 @@ static int read_dir(int *dx, int *dy)
         case 'u': *dx = +1; *dy = -1; break;
         case 'b': *dx = -1; *dy = +1; break;
         case 'n': *dx = +1; *dy = +1; break;
+        case '>': *dy = DIR_DOWN;   /* fall through: no direction */
         default: return 0;
     }
     return 1;
@@ -487,20 +491,38 @@ static void apply_key(void)
     }
 }
 
-/* The pick-axe digs DOWN: the wand of digging's hole, but five turns of work
- * that the rest loop carries (dig_start, nexthack.c) -- a monster coming into
- * view stops it, as it stops a rest. Sideways digging would have to be
- * remembered by a level that is regenerated on every visit, so it is not. */
+/* The pick-axe digs where you point it, as NetHack's does. '>' is DOWN: the
+ * wand of digging's hole, in five turns. A direction cuts through rock or a
+ * wall in three, and the cell stays open (dug_add: the level remembers it).
+ * Either way the rest loop carries the work (dig_start, nexthack.c) -- a
+ * monster coming into view stops it, and 'a' at the same spot carries on.
+ * Refused: a door (kick it, or use a key), a shop's walls, the map's edge,
+ * and the Amulet's floor, whose temple NetHack makes undiggable too. */
 static void apply_pick(void)
 {
-    char c = terrain(hero_x, hero_y);
-    if (AT_BOTTOM(dlvl) || shop_in_room(hero_x, hero_y)) {
-        msg("The floor here is too hard."); return;
+    int dx, dy;
+    uint8_t x = (uint8_t)hero_x, y = (uint8_t)hero_y;
+    char c;
+    const char *no = 0;
+    msg("Dig in what direction?");
+    if (read_dir(&dx, &dy)) {
+        x += (uint8_t)dx; y += (uint8_t)dy;
+        c = terrain(x, y);
+        if (c == '+') no = "You cannot dig through a door.";
+        else if (c != ' ' && c != '-' && c != '|') no = "You swing at thin air.";
+        /* 1..MAPW-2 by one unsigned compare: the outer ring stays rock */
+        else if ((uint8_t)(x - 1) >= MAPW - 2 || (uint8_t)(y - 1) >= MAPH - 2 ||
+                 shop_in_room(x, y) || dlvl == DLVL_AMULET)
+            no = (c == ' ') ? "This rock is too hard to dig." : "This wall is too hard to dig.";
+    } else if (dy != DIR_DOWN) no = "Never mind.";
+    else {
+        c = terrain(x, y);
+        if (AT_BOTTOM(dlvl) || shop_in_room(x, y)) no = "The floor here is too hard.";
+        else if (c != '.' && c != '#')             no = "You cannot dig here.";
     }
-    if (c != '.' && c != '#') { msg("You cannot dig here."); return; }
+    if (no) { msg(no); return; }
     acted = 1; turns++;
-    msg("You start digging downward.");
-    dig_start();
+    msg(dig_start(x, y) ? "You continue digging." : "You start digging.");
 }
 
 /* The magic whistle brings your dog to your side, wherever it is on the

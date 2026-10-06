@@ -71,6 +71,10 @@ void    load_template(uint8_t idx) __banked; /* stamp template into lvl[][]+r_*[
 void level_save(uint8_t h) __banked;
 void level_load(uint8_t h) __banked;
 
+/* ---- dug cells (1.6, levelfov.c): the pick-axe's tunnels, per level ---- */
+void dug_add(uint8_t x, uint8_t y) __banked;   /* remember (x,y) as dug here   */
+void dug_restore(void) __banked;               /* re-open them (build_level)   */
+
 /* ---- field of view (fog of war) -- banked (levelfov.c) ----
  * None of these is per-cell hot: fov_update runs once per turn; draw_map calls
  * fov_bitmap()/vis_bitmap() once per redraw and reads the bitmap inline.

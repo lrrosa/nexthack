@@ -60,7 +60,8 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   as in NetHack.
 - A **50-level dungeon**, generated procedurally and **deterministically**: each
   depth regenerates identically from its own seed, while the changes you make
-  (gold taken, monsters killed, items picked up) are remembered across revisits
+  (gold taken, monsters killed, items picked up, tunnels dug with a
+  **pick-axe** through rock and walls) are remembered across revisits
   — plus the **Gnomish Mines**, a four-level side branch off Dlvl 2: chambers
   hewn from rock, winding tunnels, gnomes and dwarves, **Minetown**'s shop in
   the middle of the caves, and the luck-steadying **luckstone** at the bottom.
@@ -315,7 +316,7 @@ used to emit one and no longer does.
 | `q` / `e` / `r`           | quaff potion / eat food / read scroll |
 | `t`                       | throw a weapon in a direction |
 | `z`                       | zap a wand (strike, freeze, burn, sleep, teleport, unlock, or dig down) |
-| `a`                       | apply a tool (unlock a door, dig down, call your dog, put on a blindfold, cure with a unicorn horn, flash a camera) |
+| `a`                       | apply a tool (unlock a door, dig through rock and walls or `>` down, call your dog, put on a blindfold, cure with a unicorn horn, flash a camera) |
 | `Z`                       | cast a known spell (spends Pw) |
 | `p`                       | pray to your god |
 | `E`                       | engrave Elbereth in the dust (wards off monsters) |

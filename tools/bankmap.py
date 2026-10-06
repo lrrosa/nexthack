@@ -98,11 +98,14 @@ def bank5_map(target):
     fov_slots = const('FOV_SLOTS', ['levelfov.c'])
     fov_bytes = (mapw * maph + 7) // 8
     bfsq_size = const('BFSQ_SIZE', ['monster_ai.c'])
+    dug_max = const('DUG_MAX', ['levelfov.c'])
     objsz = 5                      # obj_t: otyp, ench, ero, worn, buc
 
     dist_a = addr('dist', 'monster_ai.c')
     bfsq_a = addr('bfsq', 'monster_ai.c')
-    items = []
+    # the pick-axe's tunnels (1.6): a count byte, then 3 B a dug cell
+    items = [(addr('dug_pool', 'levelfov.c'), 1 + dug_max * 3, 'dug_pool',
+              'count + DUG_MAX %d x 3 B' % dug_max)]
 
     if target == 'next':
         tm_w, tm_h = 80, 32

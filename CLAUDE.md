@@ -408,7 +408,8 @@ tilemap.
 - **Persistence is deterministic**, not stored maps: `gen_level()` calls
   `rng_set(level_seed(dlvl))` so a given depth always regenerates identically. Player
   changes (gold taken, monsters killed, items picked up) are kept in tiny per-depth
-  **bitmasks** and re-applied after regeneration. **Do not change the order/number of
+  **bitmasks** and re-applied after regeneration -- and the pick-axe's tunnels as a
+  list of cells (`dug_pool`, see Items), re-opened last. **Do not change the order/number of
   `rn2()` calls inside generation casually** — it changes every level and can desync
   the persistence bit indices.
 - `build_level()` (in `nexthack.c`) orchestrates: `gen_level()` → spawn monsters →
@@ -487,7 +488,8 @@ tilemap.
   deterministically from the restored `world_seed` + persistence bitmasks, exactly
   as a revisit does. Saved state = `world_seed`, the player globals, the inventory
   (`item.c`), and the per-depth `gold_taken`/`item_taken`/`mon_dead` masks plus the
-  `fov_pool` LRU fog-of-war and the genocide mask (`level.c`/`monster.c`).
+  `fov_pool` LRU fog-of-war, the pick-axe's `dug_pool` and the genocide mask
+  (`level.c`/`monster.c`).
 - **Any save-format change bumps `SAVE_VER`, and an older save gets the
   incompatible-save prompt** (1.3.1): name it, ask, and leave it on `n`. The
   identification bitmap is `(NUMOBJ+7)/8` bytes, so appending catalogue types
@@ -586,12 +588,29 @@ tilemap.
   skeleton key (70 + Dex in 100 per try, `door_unlock`), the pick-axe, the
   magic whistle, the blindfold and the unicorn horn; a slain dwarf leaves a
   pick-axe one time in three. Two of them borrow machinery instead of adding
-  it. Digging down is the rest loop's occupation: `resting == 2`, counted by
-  `dig_left` in `rest_step`, so a monster in view stops it as it stops a rest
-  and `mainentry.c` (resident) did not grow. The blindfold makes `upkeep` keep
+  it. Digging is the rest loop's occupation: `resting == 2`, with `dig_left`
+  turns of work on `dig_x/dig_y` in `rest_step`, so a monster in view stops it
+  as it stops a rest and `mainentry.c` (resident) did not grow. A stop costs
+  no work, and `a` at the same spot carries on ("You continue digging").
+  The blindfold makes `upkeep` keep
   `st_blind` topped up while `blindfolded` is set, so every blind test in the
   game works unchanged; taking it off clears blindness only when no potion
   added to it (`st_blind <= 2`).
+- **The pick-axe digs where it is pointed** (`apply_pick`): `>` down (five
+  turns, the wand of digging's hole), a direction through rock or a wall
+  (three). Refused, at no cost: a door, a shop's walls (`shop_in_room` covers
+  the rect's walls), the map's outer ring (the generator never digs it, and
+  nothing should) and Dlvl 50. Every dug cell becomes `#`, a wall's breach
+  too -- never `.`, where `trap_type`'s position hash would hide a trap in one
+  in 47 of them. **A level remembers its tunnels by cell**, unlike every other
+  persistence here: `dug_pool` (`levelfov.c`) is a count and 3-byte records
+  (level, `y*MAPW+x`) in Bank 5's free tail, re-opened by `dug_restore` at the
+  end of `build_level` -- after gen, spawns, persistence, altar and fountain,
+  so all of those see the level as it was born, and before `floor_restore`,
+  because a stash may lie in a tunnel. Full (`DUG_MAX` 128), it forgets the
+  oldest record of another floor; if every record is this floor's, the new
+  hole opens but is not remembered. `fov_reset` empties it (new game, the
+  attract demo), and it rides the level block of the save.
 - **A new floor class char must be taught to six places**, and nothing checks
   the list: `tile_for` (`level.c`), `do_pickup`'s accepted classes and
   `resolve_floor`'s BUC rule (`item.c`), `describe`, `lookable` and the
@@ -685,8 +704,9 @@ The game **broke the 64 KB ceiling by code-banking**. Layout:
   and some are full while others are half empty. **Ask `bankmap.py`, never guess.**
 - **Bank 5** (`0x4000-0x7FFF`, always mapped): tilemap + tile defs, and its free tail
   holds the BFS scratch `dist[]`+`bfsq[]` (`0x7400-0x7C90`, data-banked out of
-  resident); `0x7C90-0x8000` (880 B) has been free on both targets since the queue
-  became a ring.
+  resident) and, above it, the pick-axe's `dug_pool` (`0x7C90-0x7E11`, 1.6) --
+  persistent and saved, unlike the scratch below it. `0x7E11-0x8000` (495 B) is
+  free on both targets.
 
 **The resident half is the constraint.** Everything resident (code+data+BSS) must end
 below `0xBDF0` — `REGISTER_SP` is `0xBFF0` and the stack wants the 512 B under it — or

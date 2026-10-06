@@ -363,7 +363,7 @@ FORMULAS = [
     ("wandering monster", "src/monster_spawn.c:264",
      "upkeep() rolls rn2(has_amulet ? 25 : 70) == 0 each turn; spawns awake (:298)",
      "WANDER_P / WANDER_P_AMULET"),
-    ("rest ('R')", "src/nexthack.c:1228",
+    ("rest ('R')", "src/nexthack.c:1238",
      "rest_step: pass turns until full HP, Weak, a key, or an awake hostile in view",
      "rest_breakeven(con, ring, amulet) = wander_period / regen_period"),
     ("monsters per level", "src/monster_spawn.c:125",
@@ -396,7 +396,7 @@ FORMULAS = [
     ("backstab", "src/monster_ai.c:177",
      "the Rogue on a sleeper: + rn2(xlvl) + 1 + xlvl/4",
      "fight()"),
-    ("camera", "src/item_use.c:589",
+    ("camera", "src/item_use.c:611",
      "the flash blinds 5..14 turns: no strikes, no dodging (monster_ai.c:691)",
      "fight(): flashed at big hitters (bite die >= 6) from Dlvl 20"),
     ("power growth", "src/monster_ai.c:78",
@@ -656,7 +656,7 @@ def fight(rng, hero, mt, depth, asleep=None, pet_dmg=0):
     # the Tourist flashes the big hitters while they cross the room
     if hero.charges and not asleep and mt.dmg >= 6 and depth >= 20:
         hero.charges -= 1
-        blind = rng.rn2(10) + 5         # src/item_use.c:589
+        blind = rng.rn2(10) + 5         # src/item_use.c:611
         turns += 1
     if not asleep and hero.bolt_ready():
         mhp -= hero.cast_bolt(rng)      # one bolt while it crosses the room
@@ -863,7 +863,7 @@ WANDER_P_AMULET = 25
 def rest_breakeven(con, ring=False, amulet=False):
     """How much a fight may cost before resting stops paying for itself.
 
-    'R' (src/nexthack.c:1228 rest_step) passes turns through the same
+    'R' (src/nexthack.c:1238 rest_step) passes turns through the same
     upkeep() (src/mainentry.c:145) as a wait ('.', src/mainentry.c:129) or a
     search ('s', src/nexthack.c:1187), so whichever key spends the time,
     recovery is 1 HP every regen_period turns (src/nexthack.c:484).
@@ -875,7 +875,7 @@ def rest_breakeven(con, ring=False, amulet=False):
     i.e. while a fight costs less than wander_period / regen_period HP.
 
     'R' does not dodge that cost, it only times it: an awake hostile coming
-    into view ends the rest before the turn is charged (src/nexthack.c:1253),
+    into view ends the rest before the turn is charged (src/nexthack.c:1270),
     so each wanderer is one ordinary fight with the hero swinging first --
     the fight cmd_rest prices -- rather than free hits on a sleeper."""
     return (WANDER_P_AMULET if amulet else WANDER_P) / float(regen_period(con, ring))
@@ -1115,14 +1115,14 @@ blessed).  Sampled through the game's own item_hash over real cells.
 def cmd_rest(t, a):
     h1("Rest economics: can you heal up between fights?")
     print("""
-'R' rests (src/nexthack.c:1228 rest_step): the turn loop keeps passing turns
+'R' rests (src/nexthack.c:1238 rest_step): the turn loop keeps passing turns
 (src/mainentry.c:58) through the same upkeep() as a wait or a search, so it
 saves keypresses, not HP.  Regeneration is 1 HP every 14-20 turns
 (src/nexthack.c:484), and every turn also rolls a wandering monster at
 1/%d -- 1/%d once you carry the Amulet (src/monster_spawn.c:264).
 
 The rest ends before the turn is charged when an awake hostile comes into
-view (src/nexthack.c:1253), so a wanderer costs one ordinary fight, not free
+view (src/nexthack.c:1270), so a wanderer costs one ordinary fight, not free
 hits -- and wanderers spawn awake (src/monster_spawn.c:298), so the fights
 below get no sneak attack.  Resting therefore pays only while an average
 fight costs less than wander_period / regen_period HP:
@@ -1167,7 +1167,7 @@ fight costs less than wander_period / regen_period HP:
   rate -- a spawn in view, in a shop or onto a full monster list is dropped
   (src/monster_spawn.c:266-284), so resting is a little cheaper than shown;
   but each HP also costs 14-20 turns of food, and 'R' stops at Weak
-  (src/nexthack.c:1245), which this table does not price.""" % WANDER_P)
+  (src/nexthack.c:1262), which this table does not price.""" % WANDER_P)
 
 
 def cmd_runs(t, a):

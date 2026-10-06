@@ -1214,34 +1214,51 @@ uint8_t trap_detect(void) __banked
  * monster is a hero who dies asleep, and this is not hypothetical: measuring
  * the armour rule, a tanked hero left standing 172 turns collected three
  * wanderers and was killed by them. */
-/* Digging down with a pick-axe (1.6) is the same occupation as a rest: the
- * turn loop spends the turns, rest_step decides when to stop. resting == 2
- * marks it; dig_left counts the work still to do. */
-static uint8_t dig_left;
+/* Digging with a pick-axe (1.6) is the same occupation as a rest: the turn
+ * loop spends the turns, rest_step decides when to stop. resting == 2 marks
+ * it; dig_left counts the work still to do on (dig_x, dig_y) of floor dig_lv
+ * -- the hero's own cell is the way down. An interruption keeps it, so 'a'
+ * at the same spot carries on as NetHack's "You continue digging" does. */
+static uint8_t dig_left, dig_x, dig_y, dig_lv;
 
-void dig_start(void) __banked
+uint8_t dig_start(uint8_t x, uint8_t y) __banked
 {
-    dig_left = 4;                    /* + the turn 'a' itself took: five */
+    uint8_t more = (uint8_t)(dig_left && x == dig_x && y == dig_y &&
+                             dig_lv == (uint8_t)dlvl);
+    if (!more) {
+        dig_x = x; dig_y = y; dig_lv = (uint8_t)dlvl;
+        /* + the turn 'a' itself took: five turns down, three sideways --
+         * NetHack's pick needs 250 effort down and 100 across */
+        dig_left = (uint8_t)(x == (uint8_t)hero_x && y == (uint8_t)hero_y ? 4 : 2);
+    }
     resting = 2;
+    return more;
 }
 
 uint8_t rest_step(void) __banked
 {
     uint8_t i, dig = (uint8_t)(resting == 2);
 
-    if (dig) {
-        if (!dig_left) {             /* through: the wand of digging's fall */
-            resting = 0;
-            msg("You dig a hole and drop through!");   /* 32: the 128K line */
-            sfx_stairs();
-            dlvl++;
-            build_level();
-            hero_x = up_x; hero_y = up_y;
-            place_pet();
+    if (dig && !dig_left) {
+        resting = 0;
+        if (dig_x != (uint8_t)hero_x || dig_y != (uint8_t)hero_y) {
+            char *c = &lvl[dig_y][dig_x];  /* through: the cell opens for good */
+            msg(*c == ' ' ? "You cut away some rock."
+                          : "You make an opening in the wall.");   /* 32 */
+            *c = '#';
+            dug_add(dig_x, dig_y);
+            map_flush = 1;                 /* +zx: a cell the 3-tier draw keeps */
             return 0;
         }
-        dig_left--;
-    } else if (php >= pmaxhp) { resting = 0; msg("You feel rested."); return 0; }
+        msg("You dig a hole and drop through!");       /* 32: the 128K line */
+        sfx_stairs();                      /* the wand of digging's fall */
+        dlvl++;
+        build_level();
+        hero_x = up_x; hero_y = up_y;
+        place_pet();
+        return 0;
+    }
+    if (!dig && php >= pmaxhp) { resting = 0; msg("You feel rested."); return 0; }
     if (hunger_state >= 2) { resting = 0; msg("You are too weak with hunger.");
                              return 0; }
     if (in_inkey())        { resting = 0;
@@ -1261,6 +1278,7 @@ uint8_t rest_step(void) __banked
         msg2("You stop: ", mon_name(m_type[i]), " nearby!");
         return 0;
     }
+    if (dig) dig_left--;           /* only a turn spent is work done */
     return 1;
 }
 
@@ -1380,6 +1398,7 @@ void new_game(uint8_t reseed) __banked
     hunger_state = 0;
     st_conf = st_blind = st_sleep = st_poison = 0;
     resting = 0;
+    dig_left = 0;          /* no half-dug hole carries into a new world */
     pray_timeout = 0;
     intrinsics = 0;
     known_spells = 0;

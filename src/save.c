@@ -35,7 +35,9 @@
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   34     /* 34: the classes -- the Tourist's camera makes 81
+#define SAVE_VER   35     /* 35: the pick-axe digs sideways -- the level
+                           * block ends with the dug-cell pool (385 B).
+                           * 34: the classes -- the Tourist's camera makes 81
                            * types (id_known 11 bytes). 33: the tools --
                            * levels and shops place them, so
                            * a level's loot (and the kill masks after it)

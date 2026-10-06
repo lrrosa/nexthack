@@ -55,6 +55,57 @@ static uint16_t fov_clock;                       /* advances on each level entry
 static uint8_t  cur_slot;                        /* pool slot for the current dlvl */
 static uint8_t  last_dlvl;                        /* dlvl cur_slot was resolved for */
 
+/* ---- dug cells (1.6) -------------------------------------------------------
+ * The pick-axe digs sideways through rock and walls, and a level is rebuilt
+ * from its seed on every visit -- so a tunnel must be remembered, as a forced
+ * door or a taken pile is. Not by bit this time: there is no fixed list of
+ * cells a hero might dig. A record is (level, y*MAPW + x) in 3 bytes, and
+ * build_level re-opens this level's cells once the level is otherwise final
+ * (dug_restore), so generation, spawning and every persistence index see the
+ * level exactly as it was born. Every dug cell becomes corridor: a breach in
+ * a wall is never '.', where the trap hash (nexthack.c trap_type) would hide
+ * a trap in one cell in 47 of them.
+ *
+ * The pool is in Bank 5's free tail on both targets (zero resident cost),
+ * above the BFS queue: dug_pool[0] is the count, the records follow, oldest
+ * first. Full, it forgets the oldest record of another level -- the one place
+ * a tunnel can close, and only on a floor the hero is not standing on. It is
+ * in the save (level_save), so growing DUG_MAX bumps SAVE_VER. */
+#define DUG_MAX  128
+#define dug_pool ((uint8_t *)0x7C90u)    /* 1 + DUG_MAX*3 B: ends 0x7E11 */
+
+/* the hero has dug (x,y) open on this level: remember it */
+void dug_add(uint8_t x, uint8_t y) __banked
+{
+    uint8_t  i, n = dug_pool[0];
+    uint8_t *p = dug_pool + 1;
+    uint16_t c = (uint16_t)y * MAPW + x;
+
+    if (n == DUG_MAX) {
+        for (i = 0; i < n && p[0] == (uint8_t)dlvl; i++) p += 3;
+        if (i == n) return;             /* every record is this floor's: the
+                                         * new hole goes unremembered instead */
+        for (n--; i < n; i++, p += 3) { /* drop record i; the rest move down */
+            p[0] = p[3]; p[1] = p[4]; p[2] = p[5];
+        }
+    }
+    p = dug_pool + 1 + (uint16_t)n * 3;
+    p[0] = (uint8_t)dlvl;
+    p[1] = (uint8_t)c;
+    p[2] = (uint8_t)(c >> 8);
+    dug_pool[0] = (uint8_t)(n + 1);
+}
+
+/* re-open this level's tunnels (build_level, before the floor stash) */
+void dug_restore(void) __banked
+{
+    uint8_t  i, n = dug_pool[0];
+    const uint8_t *p = dug_pool + 1;
+    for (i = 0; i < n; i++, p += 3)
+        if (p[0] == (uint8_t)dlvl)
+            ((char *)lvl)[p[1] | ((uint16_t)p[2] << 8)] = '#';
+}
+
 static int     hero_room = -1;
 static int     fov_hx, fov_hy;
 
@@ -137,12 +188,13 @@ static int in_room(uint8_t r, int x, int y)
 }
 
 void fov_reset(void) __banked   /* forget every level's exploration (new game) */
-{
+{                               /* -- and its tunnels, which Bank 5 keeps */
     uint8_t i;
     for (i = 0; i < FOV_SLOTS; i++) {
         slot_lvl[i]  = 0;
         slot_tick[i] = 0;
     }
+    dug_pool[0] = 0;
     fov_clock = 0;
     cur_slot  = 0;
     last_dlvl = 0;
@@ -304,6 +356,7 @@ void level_save(uint8_t h) __banked
     file_write(h, slot_lvl,   FOV_SLOTS);
     file_write(h, slot_tick,  (uint16_t)(FOV_SLOTS * 2));
     file_write(h, &fov_clock, 2);
+    file_write(h, dug_pool,   1 + DUG_MAX * 3);
 }
 
 void level_load(uint8_t h) __banked
@@ -314,5 +367,6 @@ void level_load(uint8_t h) __banked
     file_read(h, slot_lvl,   FOV_SLOTS);
     file_read(h, slot_tick,  (uint16_t)(FOV_SLOTS * 2));
     file_read(h, &fov_clock, 2);
+    file_read(h, dug_pool,   1 + DUG_MAX * 3);
     last_dlvl = 0;              /* force fov_touch to re-resolve cur_slot */
 }
