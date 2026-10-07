@@ -36,6 +36,14 @@ longer stalls for 0.6 s.
   time, held keys, a watch list, a pinned world for A/B runs between builds,
   and `mameprof.py` to read the result.
 
+### Fixed
+- **Swapping places with your dog no longer hides what lies there.** Stepping
+  onto the dog (or a shopkeeper, or a peaceful) swaps you, and that move used
+  to end before the square was looked at: an item under the dog was never
+  announced and gold under it was left on the floor. You now arrive as on any
+  step — told what is there, gold picked up, an altar read, a shop's door
+  greeted. On both machines; the swap has skipped it since the dog arrived.
+
 ## [1.6.0] — 2026-10-05
 
 **Artifacts, tools, a weapon ladder — and four classes that each win their own

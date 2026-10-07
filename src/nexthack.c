@@ -1363,21 +1363,21 @@ void try_move(int dx, int dy) __banked
     }
     mi = monster_at(nx, ny);
     if (mi >= 0) {
-        if (m_type[mi] == MON_KEEPER || mi == pet_idx ||
-            m_peace[mi]) {              /* swap past keeper/pet/peaceful -- a
-                                         * townsman is murdered by choice
-                                         * (throw/zap/cast), never by a bump */
-            mon_face_to((uint8_t)mi, (uint8_t)hero_x);
-            m_x[mi] = (uint8_t)hero_x;             /* the keeper/pet steps aside */
-            m_y[mi] = (uint8_t)hero_y;             /* so you never bump into it  */
-            hero_x = nx; hero_y = ny;
-            turns++; acted = 1;
-            maybe_trap(dest, (uint8_t)nx, (uint8_t)ny);   /* a trap under it still springs */
+        if (!(m_type[mi] == MON_KEEPER || mi == pet_idx || m_peace[mi])) {
+            acted = 1;
+            attack_monster((uint8_t)mi);
             return;
         }
-        acted = 1;
-        attack_monster((uint8_t)mi);
-        return;
+        /* Swap past the keeper, the pet or a peaceful -- a townsman is
+         * murdered by choice (throw/zap/cast), never by a bump. It steps onto
+         * your square, and you arrive on its square exactly as on any step
+         * below: the trap under it, the gold, the altar, the shop's door, and
+         * what lies there. The swap used to return as soon as it had moved
+         * you, so an item under the dog was never announced (you stood on a
+         * ring mail nobody mentioned) and gold under it stayed on the floor. */
+        mon_face_to((uint8_t)mi, (uint8_t)hero_x);
+        m_x[mi] = (uint8_t)hero_x;
+        m_y[mi] = (uint8_t)hero_y;
     }
     was_shop = shop_in_room(hero_x, hero_y);
     hero_x = nx;
