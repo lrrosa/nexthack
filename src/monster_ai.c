@@ -382,11 +382,7 @@ extern void dist_clear(uint8_t *p);
  * two rows BELOW and the flood leaked through rock (caught in ZEsarUX on the
  * maze). Row bases one cell left of the column, from integer arithmetic,
  * keep the constants non-negative. */
-#ifdef __ZXNEXT
 #define ENQ_OK(nd) ((uint16_t)(tail - head) < BFSQ_SIZE - 1)
-#else
-#define ENQ_OK(nd) ((nd) < MAXDIST && (uint16_t)(tail - head) < BFSQ_SIZE - 1)
-#endif
 #define FLOOD_TRY(off, poff)                                                  \
     do {                                                                      \
         uint8_t *q = dq + (off);                                              \
@@ -399,6 +395,198 @@ extern void dist_clear(uint8_t *p);
             }                                                                 \
         }                                                                     \
     } while (0)
+
+#ifndef __ZXNEXT
+/* +zx: the flood's main loop in hand-written Z80. The C loop below (still
+ * the Next's) keeps its locals in IX-indexed memory, and a boxed-in monster
+ * makes it run every turn: measured in MAME, a flood out to MAXDIST cost
+ * ~100 ms of a 160 ms turn. This is that loop, step for step -- the same
+ * neighbour order and tests (FLOOD_TRY), the MAXDIST horizon and the ring
+ * guard -- so the field it leaves is the C one's, cell for cell. It lives
+ * here rather than in a .asm so that it is always in monster_ai's own bank,
+ * whichever banks.json gives it, and compute_dist_map reaches it directly.
+ *
+ * compute_dist_map sets up the field, the queue and fl_want, then calls it.
+ * IX -> dist[] of the cell being expanded, HL -> its lvl[] char, B = its
+ * label + 1, C = which neighbours exist (bit 0 left, 1 right, 2 up, 3 down).
+ * fl_x/fl_y hold the cell; a queue entry is its (x, y) byte pair, as in C. */
+static uint8_t fl_head, fl_tail, fl_want, fl_x, fl_y;
+
+static void flood_run(void) __naked
+{
+    __asm
+FL_DIST     equ 0x7400              ; dist[], as #defined above
+FL_BFSQ     equ 0x7a90              ; bfsq[]
+FL_MAXDIST  equ 30                  ; MAXDIST
+FL_TARGET   equ 254                 ; TARGET
+FL_MAPW     equ 80
+FL_MAPH     equ 21
+
+; One neighbour at dist offset OFF, map step (DX, DY): FLOOD_TRY.
+FL_TRY MACRO OFF, DX, DY, SKIP, KEEP
+    ld   a, (ix+OFF)
+    cp   FL_TARGET
+    jr   c, SKIP                    ; labelled already
+    push hl
+    ld   de, OFF
+    add  hl, de
+    ld   a, (hl)                    ; its map char: walkable?
+    pop  hl
+    cp   0x7c                       ; |
+    jr   z, SKIP
+    cp   0x2d                       ; -
+    jr   z, SKIP
+    cp   0x20                       ; rock
+    jr   z, SKIP
+    ld   a, (ix+OFF)
+    ld   (ix+OFF), b                ; label it
+    cp   FL_TARGET
+    jr   nz, KEEP
+    ld   a, (_fl_want)              ; a reader cell: the last one?
+    dec  a
+    ld   (_fl_want), a
+    jp   z, fl_done
+KEEP:
+    ld   e, DX
+    ld   d, DY
+    call fl_enq
+SKIP:
+    ENDM
+
+    push ix
+fl_next:
+    ld   a, (_fl_head)
+    ld   hl, _fl_tail
+    cp   (hl)
+    jp   z, fl_done                 ; the queue ran dry
+    ld   l, a
+    inc  a
+    ld   (_fl_head), a
+    ld   h, 0
+    add  hl, hl
+    ld   de, FL_BFSQ
+    add  hl, de
+    ld   e, (hl)                    ; x
+    inc  hl
+    ld   d, (hl)                    ; y
+    ld   a, e
+    ld   (_fl_x), a
+    ld   a, d
+    ld   (_fl_y), a
+    ld   l, d                       ; k = y * 80 + x
+    ld   h, 0
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    ld   b, h
+    ld   c, l
+    add  hl, hl
+    add  hl, hl
+    add  hl, bc
+    ld   c, e
+    ld   b, 0
+    add  hl, bc
+    push hl
+    ld   bc, FL_DIST
+    add  hl, bc
+    push hl
+    pop  ix                         ; IX -> dist[k]
+    pop  hl
+    ld   bc, _lvl
+    add  hl, bc                     ; HL -> lvl[k]
+    ld   a, (ix+0)
+    inc  a
+    cp   FL_TARGET
+    jr   nc, fl_next                ; the horizon: labels stay below TARGET
+    ld   b, a                       ; B = nd
+    ld   c, 0
+    ld   a, e
+    or   a
+    jr   z, fl_f1
+    set  0, c                       ; a column to the left
+fl_f1:
+    cp   FL_MAPW - 1
+    jr   z, fl_f2
+    set  1, c                       ; a column to the right
+fl_f2:
+    ld   a, d
+    or   a
+    jr   z, fl_f3
+    set  2, c                       ; a row above
+fl_f3:
+    cp   FL_MAPH - 1
+    jr   z, fl_f4
+    set  3, c                       ; a row below
+fl_f4:
+    bit  2, c
+    jp   z, fl_row
+    bit  0, c
+    jr   z, fl_s1
+    FL_TRY -81, -1, -1, fl_s1, fl_k1
+    FL_TRY -80, 0, -1, fl_s2, fl_k2
+    bit  1, c
+    jr   z, fl_s3
+    FL_TRY -79, 1, -1, fl_s3, fl_k3
+fl_row:
+    bit  0, c
+    jr   z, fl_s4
+    FL_TRY -1, -1, 0, fl_s4, fl_k4
+    bit  1, c
+    jr   z, fl_s5
+    FL_TRY 1, 1, 0, fl_s5, fl_k5
+    bit  3, c
+    jp   z, fl_next
+    bit  0, c
+    jr   z, fl_s6
+    FL_TRY 79, -1, 1, fl_s6, fl_k6
+    FL_TRY 80, 0, 1, fl_s7, fl_k7
+    bit  1, c
+    jp   z, fl_next
+    FL_TRY 81, 1, 1, fl_s8, fl_k8
+    jp   fl_next
+fl_done:
+    pop  ix
+    ret
+
+; queue (fl_x + E, fl_y + D) -- if its label (B) is inside the horizon and
+; the ring has room (255 entries, as ENQ_OK). Keeps B, C, HL and IX.
+fl_enq:
+    ld   a, b
+    cp   FL_MAXDIST
+    ret  nc
+    push hl
+    ld   a, (_fl_head)
+    ld   h, a
+    ld   a, (_fl_tail)
+    ld   l, a
+    sub  h
+    inc  a
+    jr   z, fl_enq_x                ; 255 queued: the ring is full
+    ld   h, 0
+    add  hl, hl
+    ld   a, l
+    add  a, +(FL_BFSQ & 0xff)
+    ld   l, a
+    ld   a, h
+    adc  a, +(FL_BFSQ / 256)
+    ld   h, a
+    ld   a, (_fl_x)
+    add  a, e
+    ld   (hl), a
+    inc  hl
+    ld   a, (_fl_y)
+    add  a, d
+    ld   (hl), a
+    ld   a, (_fl_tail)
+    inc  a
+    ld   (_fl_tail), a
+fl_enq_x:
+    pop  hl
+    ret
+    __endasm;
+}
+#endif
 
 /* The field is flooded from (sx,sy): the hero, every turn -- or the down
  * stairs, for the title's attract demo (dist_map_from, below).
@@ -437,6 +625,10 @@ static void compute_dist_map(uint8_t sx, uint8_t sy, uint16_t who)
     d[(uint16_t)sy * MAPW + sx] = 0;
     bfsq[(uint8_t)tail++] = (uint16_t)(((uint16_t)sy << 8) | sx);
 
+#ifndef __ZXNEXT
+    fl_head = (uint8_t)head; fl_tail = (uint8_t)tail; fl_want = want;
+    flood_run();
+#else
     while (head != tail) {
         uint16_t    p  = bfsq[(uint8_t)head++];
         uint8_t     cx = (uint8_t)p, cy = (uint8_t)(p >> 8);
@@ -465,6 +657,7 @@ static void compute_dist_map(uint8_t sx, uint8_t sy, uint16_t who)
             if (cx < MAPW - 1) FLOOD_TRY(2, 257);
         }
     }
+#endif
 }
 
 /* Step one cell down the BFS gradient toward the hero (the lowest-distance free

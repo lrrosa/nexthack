@@ -16,6 +16,17 @@
 #include "platform.h"
 #include <arch/zxn/esxdos.h>
 
+#ifndef __ZXNEXT
+/* Row 0, the message line, holds nothing but spaces. Then msg("") -- which
+ * describe() says on every plain step -- has nothing to write: on the 128K
+ * that was 32 cell blits a step for a line that was already blank. Text
+ * reaching row 0 clears it (print_str, put_uint: every writer of the row goes
+ * through one of them); blanking the row sets it (clear_line, tm_cls). The
+ * Next rewrites its 80 cells at 28 MHz in well under a millisecond, which
+ * is not worth the resident bytes the bookkeeping costs there. */
+static uint8_t msg_clear;
+#endif
+
 #ifdef __ZXNEXT
 /* ---------------- ZX Spectrum Next (hardware tilemap) ---------------- */
 #define TILEMAP_BASE  0x6000u
@@ -106,6 +117,7 @@ void tm_cls(void)
     for (i = 0; i < 6144; i++) p[i] = 0;          /* blank the bitmap   */
     p = (uint8_t *)ATTR_BASE;
     for (i = 0; i < 768; i++) p[i] = 0;            /* black ink on black */
+    msg_clear = 1;
 }
 #endif  /* __ZXNEXT */
 
@@ -113,6 +125,9 @@ void tm_cls(void)
 
 uint8_t print_str(uint8_t x, uint8_t y, const char *s, uint8_t coff)
 {
+#ifndef __ZXNEXT
+    if (!y && *s) msg_clear = 0;
+#endif
     while (*s && x < TM_W) {
         putcell(x++, y, (uint8_t)*s, coff);
         s++;
@@ -125,6 +140,9 @@ uint8_t put_uint(uint8_t x, uint8_t y, uint16_t v, uint8_t coff)
     char t[5];
     uint8_t n = 0;
 
+#ifndef __ZXNEXT
+    if (!y) msg_clear = 0;
+#endif
     if (v == 0) {
         putcell(x++, y, '0', coff);
         return x;
@@ -139,6 +157,9 @@ void clear_line(uint8_t y, uint8_t coff)
     uint8_t x;
     for (x = 0; x < TM_W; x++)
         putcell(x, y, ' ', coff);
+#ifndef __ZXNEXT
+    if (!y) msg_clear = 1;
+#endif
 }
 
 /* ---- save-file I/O (NextZXOS/esxDOS). Returns FILE_ERR on failure. ---- */
@@ -217,6 +238,14 @@ static void pad_eol(uint8_t x, uint8_t y)
 
 void msg(const char *s)
 {
+#ifndef __ZXNEXT
+    if (!*s) {                  /* every plain step says this (describe) */
+        if (msg_clear) return;
+        pad_eol(0, 0);
+        msg_clear = 1;
+        return;
+    }
+#endif
     pad_eol(print_str(0, 0, s, C_WHITE | C_BRIGHT), 0);
 }
 
@@ -270,15 +299,25 @@ int getkey(void)
                                  * polls at 28 MHz ~= 20 ms, one nominal frame
                                  * -- calibrated from a measured 1.2 s hold. */
 #else
-#define RPT_FIRST 13            /* ~260 ms before the first repeat  */
-#define RPT_NEXT   4            /* ~80 ms between repeats after it  */
-#define RPT_GUARD 4000          /* FRAMES ticks (IM1 ROM ISR): the guard is
-                                 * only a backstop against a stall */
+/* On the 128K the beat is counted from the moment the previous step was
+ * HANDED OUT (`given`), not from when the loop comes back for the next key:
+ * the turn that step bought -- move, monsters, redraw -- has already spent
+ * part of the beat, often all of it at 3.5 MHz. Counted from the return, the
+ * whole beat landed on top of the turn: ~80 ms of turn + ~70 ms of beat put
+ * a held walk at 150 ms a step in a room and 180 in a corridor, where the
+ * Next walks at ~107 ms (both measured in MAME). Anchored, a held key steps
+ * every max(turn, beat). A count of n FRAMES ticks is (n-1, n] frames. */
+#define RPT_FIRST 11            /* 200-220 ms before the first repeat (the
+                                 * Next measures 212): a ~120 ms human tap
+                                 * stays one step */
+#define RPT_NEXT   5            /* 80-100 ms a step after it, the Next's pace */
+#define RPT_GUARD 4000          /* polls per frame: only a backstop, in case
+                                 * FRAMES ever stops ticking */
 #endif
 
 /* A modal cursor (farlook) glides too fast at the Next's brisk walk repeat:
- * while one is up the repeat drops to the 128K's ~80 ms pace, which already
- * feels right there -- so slowing is a no-op on the 128K. */
+ * while one is up the repeat drops to ~100 ms -- which is the 128K's walking
+ * beat already, so slowing is a no-op there. */
 #ifdef __ZXNEXT
 #define RPT_SLOW 5      /* ~100 ms: 4 (~80 ms) felt rushed, 7 (~140 ms) sluggish */
 #else
@@ -291,10 +330,14 @@ int getkey_rpt(void)
 {
     static int last = 0;
     static uint8_t rpt = 0;
+#ifndef __ZXNEXT
+    static uint8_t given;               /* FRAMES when `last` was handed out */
+#endif
     volatile uint8_t *fr = (volatile uint8_t *)23672;   /* FRAMES lsb, 50 Hz */
     int k = in_inkey();
     if (k != 0 && k == last) {          /* the same key is still held */
         uint8_t n = rpt ? rpt_next : RPT_FIRST;
+#ifdef __ZXNEXT
         while (n--) {
             uint8_t  f = *fr;
             uint16_t guard = RPT_GUARD;
@@ -309,12 +352,31 @@ int getkey_rpt(void)
                  * restarted at the long RPT_FIRST delay instead of RPT_NEXT. */
             }
         }
+#else
+        uint16_t guard = (uint16_t)(RPT_GUARD * n);
+        while ((uint8_t)(*fr - given) < n && --guard) {  /* see RPT_FIRST */
+            int kk = in_inkey();
+            if (kk != 0 && kk != last) {       /* rolled to a NEW key: act now */
+                last = kk; rpt = 0; given = *fr; return kk;
+            }
+            /* a momentary 0 is not a release (see the Next's loop above) */
+        }
+#endif
         /* still down? require two 0s in a row before believing a release, so a
          * single missed scan can't drop us back to the slow first-repeat beat */
-        if (in_inkey() != 0 || in_inkey() != 0) { rpt = 1; return last; }
+        if (in_inkey() != 0 || in_inkey() != 0) {
+            rpt = 1;
+#ifndef __ZXNEXT
+            given = *fr;
+#endif
+            return last;
+        }
     }
     last = 0; rpt = 0;
     do { k = in_inkey(); } while (k == 0);   /* block for a fresh press */
     last = k;
+#ifndef __ZXNEXT
+    given = *fr;
+#endif
     return k;
 }

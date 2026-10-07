@@ -27,6 +27,7 @@
 #include "music.h"
 #include "classes.h"
 #include "attract.h"
+#include <string.h>       /* memset, memcpy (the 128K renderer) */
 #ifndef __ZXNEXT
 #include "scr.h"
 #endif
@@ -180,7 +181,21 @@ static uint8_t dm_shop, dm_sx, dm_sy, dm_sx1, dm_sy1;
 static uint8_t  prev_hx = 255, prev_hy = 255;
 static uint8_t  prev_mx[MAXMON], prev_my[MAXMON];
 static uint16_t prev_vis_sum = 0xFFFF;
-static uint8_t  mon_bm[(MAPH * TM_W + 7) / 8];   /* viewport cells a monster covers */
+/* The full path's two tables, in Bank 5's free tail above dug_pool (see the
+ * bank-budget skill's map). MON_MAP marks the cells draw_map has just painted
+ * a monster or the hero on, laid out bit for bit like the vis and explored
+ * bitmaps (bit y*MAPW+x), so dm_row reads all three with one moving mask.
+ * DM_CTAB is that routine's char -> tile table: tile_for, flattened (128-
+ * aligned: dm_row indexes it by OR-ing the char in). Its walls follow the
+ * mines, so it is rebuilt when IN_MINES flips -- and on every forced redraw,
+ * a few ms where the redraw costs ~100. */
+#define MON_MAP ((uint8_t *)0x7E18u)
+#define DM_CTAB ((uint8_t *)0x7F80u)
+static uint8_t ctab_mines = 255;            /* IN_MINES the table was built for */
+extern const uint8_t *dmr_lrow, *dmr_seen, *dmr_vis, *dmr_mon;  /* puttile_asm.asm */
+extern uint8_t *dmr_shad;
+extern uint8_t dmr_k, dmr_y, dmr_shop0, dmr_shopn, dmr_force;
+extern void dm_row(void);
 /* copy of the vis bitmap the screen was LAST PAINTED with, for the mid path's
  * XOR (210 B). In Bank 5's free gap AFTER fov_pool -- the 12-slot pool runs
  * 0x68A0..0x7278 (the old 0x6C00 home sat INSIDE it once the pool grew 4->12
@@ -242,7 +257,7 @@ static void dm_terrain(uint8_t mapx, uint8_t mapy, uint8_t vx)
 void draw_map(void) __banked
 {
     uint8_t *shad = VIEW_SHADOW;
-    uint8_t sc, x, y, t, attr, vx, full, i;
+    uint8_t y, t, vx, full, forced, i;
     uint8_t pv_sync = 0;    /* repainted by vis (mid/full): resync PREV_VIS */
     int hsc, nvx;
     uint8_t sx, sy, sw, sh, sx1 = 0, sy1 = 0;
@@ -252,8 +267,9 @@ void draw_map(void) __banked
     dm_shop = (uint8_t)has_shop; dm_sx = sx; dm_sy = sy; dm_sx1 = sx1; dm_sy1 = sy1;
 
     /* keep the viewport origin unless the hero left the central band (or a full
-     * redraw is pending), then recenter -- a change forces a full redraw. */
-    full = map_dirty;
+     * redraw is pending), then recenter -- a change takes the full path, but
+     * only a pending redraw (map_dirty) FORCES every cell to be rewritten. */
+    full = forced = map_dirty;
     if (map_dirty) { nvx = hero_x - TM_W / 2; map_dirty = 0; }
     else {
         hsc = hero_x - (int)vx_origin;
@@ -329,76 +345,82 @@ void draw_map(void) __banked
          * a monster's new cell before the terrain pass erases its old cell means a
          * moving monster is never briefly absent -- that gap was the corridor
          * flicker. (Terrain under it stays correct: when it moves on, its old cell
-         * is no longer marked, so the terrain pass repaints floor there.) */
+         * is no longer marked, so the terrain pass repaints floor there.) The
+         * hero is drawn the same way, ahead of the sweep. */
+        uint8_t mines = (uint8_t)(IN_MINES(dlvl) ? 1 : 0);
         pv_sync = 1;
-        if (full) {
-            /* A forced full redraw means the screen may hold ANYTHING -- the
+        if (forced) {
+            /* A forced redraw means the screen may hold ANYTHING -- the
              * inventory/help overlay that just closed wrote text straight to
              * the ULA without touching this shadow. dm_paint trusts the shadow
              * to skip "unchanged" cells, so a stale entry left an overlay
-             * letter sitting on an unmoved monster (the corrupted-dog bug: the
-             * terrain sweep force-writes on full, but the monster/erase passes
-             * go through dm_paint's diff). Invalidate the whole shadow so
-             * every diff misses exactly once. */
-            uint16_t bz;
-            for (bz = 0; bz < (uint16_t)(MAPH * TM_W) * 2; bz++) shad[bz] = 0xFF;
+             * letter sitting on an unmoved monster (the corrupted-dog bug).
+             * Invalidate the whole shadow so every diff misses exactly once.
+             * A SCROLL is not forced: the shadow still mirrors the screen, cell
+             * for cell, so the sweep below repaints only what the new origin
+             * changed -- the unexplored rock and the floor that stays floor
+             * cost no blit. Forcing it cost every scroll ~0.6 s on the 128K. */
+            memset(shad, 0xFF, (uint16_t)(MAPH * TM_W) * 2);
         }
-        { uint16_t bz; for (bz = 0; bz < sizeof mon_bm; bz++) mon_bm[bz] = 0; }
+        if (forced || ctab_mines != mines) {        /* dm_row's lookup table */
+            uint8_t c;
+            for (c = 0; c < 128; c++) DM_CTAB[c] = tile_for((char)c);
+            ctab_mines = mines;
+        }
+        memset(MON_MAP, 0, (MAPH * MAPW) / 8);
         for (i = 0; i < mcount; i++) {
-            uint16_t midx, vb;
+            uint16_t midx;
             uint8_t mt;
             if (!m_alive[i] || m_y[i] >= MAPH) continue;
             if (m_x[i] < vx || m_x[i] >= (uint8_t)(vx + TM_W)) continue;
             if (m_x[i] == (uint8_t)hero_x && m_y[i] == (uint8_t)hero_y) continue;
             midx = (uint16_t)m_y[i] * MAPW + m_x[i];
             if (!(dm_vis[midx >> 3] & (1u << (midx & 7))) && !mon_sensed()) continue;
-            vb = (uint16_t)m_y[i] * TM_W + (uint16_t)(m_x[i] - vx);
-            mon_bm[vb >> 3] |= (uint8_t)(1u << (vb & 7));
+            MON_MAP[midx >> 3] |= (uint8_t)(1u << (midx & 7));
             mt = mon_tile(m_type[i]);
             dm_paint(m_x[i], m_y[i], vx, face_tile(mt, m_face[i]),
                      (uint8_t)(udg_ink[mt - T_ROCK] | 0x40));
+        }
+        {
+            uint16_t hidx = (uint16_t)hero_y * MAPW + (uint16_t)hero_x;
+            MON_MAP[hidx >> 3] |= (uint8_t)(1u << (hidx & 7));
+            dm_paint((uint8_t)hero_x, (uint8_t)hero_y, vx,
+                     face_tile(T_HERO, (uint8_t)!hero_face),
+                     (uint8_t)(udg_ink[T_HERO - T_ROCK] | 0x40));
         }
         /* erase where each monster was drawn last turn (unless a monster is there
          * now) RIGHT AWAY -- not in the slow terrain pass below -- so the old cell
          * doesn't linger as a ghost while the terrain pass grinds toward it. */
         for (i = 0; i < mcount; i++) {
             uint8_t px = prev_mx[i], py = prev_my[i];
-            uint16_t pvb;
+            uint16_t pidx;
             if (px == 255 || px < vx || px >= (uint8_t)(vx + TM_W) || py >= MAPH) continue;
-            if (px == (uint8_t)hero_x && py == (uint8_t)hero_y) continue;  /* hero is here now */
-            pvb = (uint16_t)py * TM_W + (uint16_t)(px - vx);
-            if (mon_bm[pvb >> 3] & (1u << (pvb & 7))) continue;   /* a monster is here now */
+            pidx = (uint16_t)py * MAPW + px;
+            if (MON_MAP[pidx >> 3] & (1u << (pidx & 7))) continue;  /* someone is here now */
             dm_terrain(px, py, vx);
         }
+        /* the terrain sweep, a viewport row at a time, in hand-written Z80
+         * (dm_row, puttile_asm.asm): the C loop it replaces spent ~2500 T a
+         * cell on bit masks, tile_for and the call into the blit */
+        dmr_force = forced;
         for (y = 0; y < MAPH; y++) {
             uint16_t idx = (uint16_t)y * MAPW + vx;
-            uint16_t si  = (uint16_t)((uint16_t)y * TM_W) << 1;
-            uint16_t vb  = (uint16_t)y * TM_W;
-            const char *lrow = lvl[y];
-            for (sc = 0; sc < TM_W; sc++, idx++, si += 2, vb++) {
-                uint8_t byte, mask;
-                if (mon_bm[vb >> 3] & (1u << (vb & 7))) continue;   /* a monster is here */
-                byte = (uint8_t)(idx >> 3);
-                mask = (uint8_t)(1u << (idx & 7));
-                x = (uint8_t)(vx + sc);
-                if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) {
-                    t = face_tile(T_HERO, (uint8_t)!hero_face);
-                    attr = (uint8_t)(udg_ink[T_HERO - T_ROCK] | 0x40);
-                } else if (!(dm_seen[byte] & mask)) {
-                    t = T_ROCK; attr = 0;
-                } else {
-                    t = tile_for(lrow[x]);
-                    if (has_shop && (t == T_WALL || t == T_MINEWALL) &&
-                        x >= sx && x <= sx1 && y >= sy && y <= sy1) t = T_SHOPWALL;
-                    attr = (dm_vis[byte] & mask)
-                           ? (uint8_t)(udg_ink[t - T_ROCK] | 0x40)
-                           : udg_ink[t - T_ROCK];
-                }
-                if (full || shad[si] != t || shad[si + 1] != attr) {
-                    puttile_attr(sc, (uint8_t)(OY + y), t, attr);
-                    shad[si] = t; shad[si + 1] = attr;
-                }
+            dmr_lrow  = (const uint8_t *)&lvl[y][vx];
+            dmr_seen  = dm_seen + (idx >> 3);
+            dmr_vis   = dm_vis + (idx >> 3);
+            dmr_mon   = MON_MAP + (idx >> 3);
+            dmr_k     = (uint8_t)(1u << (idx & 7));
+            dmr_shad  = shad + ((uint16_t)y * TM_W) * 2;
+            dmr_y     = (uint8_t)(OY + y);
+            dmr_shop0 = 0; dmr_shopn = 0;       /* the shop's bricks, in screen columns */
+            if (has_shop && y >= sy && y <= sy1 &&
+                sx1 >= vx && sx < (uint8_t)(vx + TM_W)) {
+                uint8_t c0 = (uint8_t)(sx > vx ? sx - vx : 0);
+                uint8_t c1 = (uint8_t)(sx1 - vx);
+                if (c1 > TM_W - 1) c1 = TM_W - 1;
+                dmr_shop0 = c0; dmr_shopn = (uint8_t)(c1 - c0 + 1);
             }
+            dm_row();
         }
     }
 
@@ -418,11 +440,8 @@ void draw_map(void) __banked
     }
     prev_vis_sum = fov_vis_sum;
     map_flush = 0;                    /* the distant change (if any) is on screen */
-    if (pv_sync) {                    /* PREV_VIS mirrors what is on screen now */
-        uint8_t *pv = PREV_VIS;
-        uint16_t b2;
-        for (b2 = 0; b2 < (uint16_t)(MAPH * (MAPW / 8)); b2++) pv[b2] = dm_vis[b2];
-    }
+    if (pv_sync)                      /* PREV_VIS mirrors what is on screen now */
+        memcpy(PREV_VIS, dm_vis, MAPH * (MAPW / 8));
 }
 #endif
 
@@ -717,6 +736,8 @@ void draw_status(void) __banked
  * only the few digits that moved (T:, HP, gold) instead of all ~64 cells. */
 #define SSHADOW ((uint8_t *)0x6600u)
 static uint8_t sd_force;                /* 1 = redraw every cell (see draw_status) */
+static uint16_t sd_dlvl, sd_gold;       /* what row 22 shows now */
+static uint8_t  sd_hp, sd_maxhp;
 
 /* glyph >= 128 is a UDG tile (the '$'); below that an ROM-font char. */
 static void sd_putc(uint8_t x, uint8_t y, uint8_t glyph, uint8_t coff)
@@ -733,13 +754,20 @@ static uint8_t sd_str(uint8_t x, uint8_t y, const char *p, uint8_t coff)
     while (*p && x < TM_W) { sd_putc(x++, y, (uint8_t)*p, coff); p++; }
     return x;
 }
+/* Digits by subtracting powers of ten: the % 10 and / 10 it used were two
+ * library divisions per digit -- ~8 a turn, and about a tenth of the status
+ * bar's cost on the 128K. */
+static const uint16_t sd_p10[4] = { 10000u, 1000u, 100u, 10u };
 static uint8_t sd_uint(uint8_t x, uint8_t y, uint16_t v, uint8_t coff)
 {
-    char t[5];
-    uint8_t n = 0;
-    if (v == 0) { sd_putc(x++, y, '0', coff); return x; }
-    while (v) { t[n++] = (char)('0' + (v % 10)); v /= 10; }
-    while (n) sd_putc(x++, y, (uint8_t)t[--n], coff);
+    uint8_t i, d, lead = 1;
+    for (i = 0; i < 4; i++) {
+        uint16_t p = sd_p10[i];
+        d = '0';
+        while (v >= p) { v -= p; d++; }
+        if (d != '0' || !lead) { sd_putc(x++, y, d, coff); lead = 0; }
+    }
+    sd_putc(x++, y, (uint8_t)('0' + v), coff);
     return x;
 }
 
@@ -756,19 +784,26 @@ void draw_status(void) __banked
      * has map_dirty == 1, so the first pass writes (and seeds) every cell. */
     sd_force = map_dirty;
 
-    x = sd_str(0, 22, IN_MINES(dlvl) ? "Mine:" : "Dlvl:", C_GREEN | C_BRIGHT);
-    x = sd_uint(x, 22, IN_MINES(dlvl) ? (uint16_t)(dlvl - MINES_BASE + 1) : dlvl,
-                C_GREEN | C_BRIGHT);
-    x = sd_str(x, 22, " ", C_GREEN | C_BRIGHT);
-    sd_putc(x, 22, T_DOLLAR, 0); x++;     /* green '$' tile, not the ROM glyph */
-    x = sd_str(x, 22, ":", C_GREEN | C_BRIGHT);
-    x = sd_uint(x, 22, gold, C_GREEN | C_BRIGHT);
-    x = sd_str(x, 22, " HP:", C_GREEN | C_BRIGHT);
-    x = sd_uint(x, 22, php, C_GREEN | C_BRIGHT);
-    x = sd_str(x, 22, "/", C_GREEN | C_BRIGHT);
-    x = sd_uint(x, 22, pmaxhp, C_GREEN | C_BRIGHT);
-    while (x < TM_W - 6) sd_putc(x++, 22, ' ', C_GREEN);     /* pad up to the hint */
-    sd_str(TM_W - 6, 22, "?=help", C_GREEN | C_BRIGHT);      /* so the player finds show_help */
+    /* Row 22 changes only with the depth, the purse and the hit points, and
+     * a step changes none of them: skip the row (some 30 cell checks) unless
+     * one did. Row 23 carries T:, so it is rebuilt every turn. */
+    if (sd_force || dlvl != sd_dlvl || gold != sd_gold ||
+        php != sd_hp || pmaxhp != sd_maxhp) {
+        sd_dlvl = dlvl; sd_gold = gold; sd_hp = php; sd_maxhp = pmaxhp;
+        x = sd_str(0, 22, IN_MINES(dlvl) ? "Mine:" : "Dlvl:", C_GREEN | C_BRIGHT);
+        x = sd_uint(x, 22, IN_MINES(dlvl) ? (uint16_t)(dlvl - MINES_BASE + 1) : dlvl,
+                    C_GREEN | C_BRIGHT);
+        x = sd_str(x, 22, " ", C_GREEN | C_BRIGHT);
+        sd_putc(x, 22, T_DOLLAR, 0); x++;     /* green '$' tile, not the ROM glyph */
+        x = sd_str(x, 22, ":", C_GREEN | C_BRIGHT);
+        x = sd_uint(x, 22, gold, C_GREEN | C_BRIGHT);
+        x = sd_str(x, 22, " HP:", C_GREEN | C_BRIGHT);
+        x = sd_uint(x, 22, php, C_GREEN | C_BRIGHT);
+        x = sd_str(x, 22, "/", C_GREEN | C_BRIGHT);
+        x = sd_uint(x, 22, pmaxhp, C_GREEN | C_BRIGHT);
+        while (x < TM_W - 6) sd_putc(x++, 22, ' ', C_GREEN);     /* pad up to the hint */
+        sd_str(TM_W - 6, 22, "?=help", C_GREEN | C_BRIGHT);      /* so the player finds show_help */
+    }
 
     x = sd_str(0, 23, "AC:", C_GREEN | C_BRIGHT);
     x = sd_uint(x, 23, ac, C_GREEN | C_BRIGHT);

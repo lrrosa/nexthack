@@ -47,7 +47,8 @@ that way; one-liners do not scale.
 3. Drive the feature and **assert on state**, not on vibes: positions, `turns`,
    `dlvl`, tile ids, message text.
 4. **Verify on BOTH targets** when the change touches rendering, movement or
-   the AI. The 128K has its own `draw_map` (3-tier) and its own greedy chase —
+   the AI. The 128K has its own `draw_map` (3-tier, its full path in Z80) and its
+   own greedy chase and Z80 flood —
    a fix in the shared path can still be missing from the 128K one.
 5. Report what the reads actually said. If a check did not run, say so.
 

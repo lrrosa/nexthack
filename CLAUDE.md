@@ -351,6 +351,16 @@ DATA — banked code's data is resident too). Modules include `game.h` to read/w
   running tilemap pointer and inline FOV bit-tests for speed; writing each cell exactly
   once (rather than clear-then-fill) is what keeps it flicker-free. Status/message
   lines follow the same write-once-then-pad rule.
+- **The 128K's `draw_map` is three paths over a 32-column viewport**, each writing a
+  cell only where it differs from `VIEW_SHADOW` (what is on screen): fast (only the
+  hero and monsters moved), mid (repaint the cells whose vis bit flipped, by XOR
+  with `PREV_VIS`) and full. The full path's terrain sweep is `dm_row`
+  (`puttile_asm.asm`), a row at a time, after `draw_map` has painted the monsters and
+  the hero and marked them in `MON_MAP`. Only `map_dirty` (an overlay closed, a new
+  level) **forces** every cell; an edge-scroll keeps the shadow and repaints what the
+  new origin changed -- forcing it, and the C sweep, made each scroll a 0.6 s stall
+  (now ~0.1 s). A new way to write over the map without setting `map_dirty` would
+  leave the shadow lying, on every path.
 
 ### Title & victory screens (Layer 2)
 The **only** use of the Next's **Layer 2** framebuffer (256×192, 8bpp); everything
@@ -671,7 +681,10 @@ tilemap.
   (`FLOOD_TRY`) -- the dx/dy loops kept their ints in IX memory. Measured on the
   128K Big Room, a wall-boxed chaser 10 squares off: 0.9 s of flood before,
   ~0.25 s after (FRAMES-timed under ZEsarUX); 20 squares off, 0.5 s where the old
-  flood never reached it at all.
+  flood never reached it at all. On the 128K the loop itself is hand-written Z80
+  (`flood_run`, inline asm in `monster_ai.c` so it stays in that module's bank) and
+  stops at `MAXDIST`; it mirrors `FLOOD_TRY` test for test, so **a change to the
+  flood's rules must be made in both**.
 - **Kill persistence names spawn identities, not slot numbers.** `m_track` (bit i:
   slot i holds the monster the level spawned there) gates every `mon_dead` write:
   keeper, pet and followers are appended above the spawns, and a wanderer or summon
@@ -681,10 +694,15 @@ tilemap.
 - Loop: read key (`getkey_rpt`) → act → if the action took a turn, `upkeep()`
   (hunger/regen) then `monsters_turn()` → recompute FOV → redraw → handle death.
 - Held keys pace via **typematic repeat** in `getkey_rpt` (`platform.c`): a tap is
-  exactly one step, a hold repeats after ~260 ms then every ~80 ms. Do NOT try to
-  throttle with `in_pause` — it returns immediately while any key is down. The 128K
-  times by the FRAMES sysvar; the bare `.nex` runs with interrupts off (FRAMES
-  dead), so there the bounded poll loop itself is the ~20 ms clock (`RPT_GUARD`).
+  exactly one step, a hold repeats after a first beat then a steady one. Do NOT try
+  to throttle with `in_pause` — it returns immediately while any key is down. The
+  128K times by the FRAMES sysvar, and counts each beat from the moment the last
+  step was **handed out** (`given`), so the turn's own work spends the beat instead
+  of adding to it: a held key steps every max(turn, beat) -- 220 ms, then 100 ms.
+  Counted from the redraw's end (through 1.6.0), the 128K walked at turn + beat,
+  140-180 ms a step against the Next's ~107 (MAME). The bare `.nex` runs
+  with interrupts off (FRAMES dead), so there the bounded poll loop itself is the
+  ~20 ms clock (`RPT_GUARD`) and the beat still follows the turn.
 - Movement: cursor keys **and** vi-keys (`hjkl`+`yubn`). Commands are NetHack-style
   single letters (`,` `i` `w` `W` `P` `q` `e` `r` `S`, `>`/`<`/Enter for stairs). Uppercase
   is **not** folded to lowercase (so `w` wield vs `W` wear are distinct).
@@ -706,7 +724,8 @@ The game **broke the 64 KB ceiling by code-banking**. Layout:
   holds the BFS scratch `dist[]`+`bfsq[]` (`0x7400-0x7C90`, data-banked out of
   resident) and, above it, the pick-axe's `dug_pool` (`0x7C90-0x7E11`, 1.6) --
   persistent and saved, unlike the scratch below it. `0x7E11-0x8000` (495 B) is
-  free on both targets.
+  free on the Next; on the 128K the renderer's full path took `MON_MAP`
+  (`0x7E18`, 210 B) and `DM_CTAB` (`0x7F80`, 128 B), leaving ~150 B.
 
 **The resident half is the constraint.** Everything resident (code+data+BSS) must end
 below `0xBDF0` — `REGISTER_SP` is `0xBFF0` and the stack wants the 512 B under it — or

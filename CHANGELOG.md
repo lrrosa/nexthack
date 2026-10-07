@@ -8,6 +8,34 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [Unreleased]
+
+**The 128K walks as fast as the Next.** Measured in MAME on the same world,
+holding a direction key: a step every 140-160 ms in a room and 180 ms in a
+corridor became 100 ms in both — the Next's ~107 ms — and an edge-scroll no
+longer stalls for 0.6 s.
+
+### Changed
+- **The 128K's key repeat counts from the step, not from the redraw.** A
+  held key used to wait its whole beat after the turn had been drawn, so every
+  step cost the turn *plus* the beat; now the turn spends the beat, and a
+  hold steps every 100 ms (220 ms before the first repeat, the Next's 212).
+  Taps are still one step each, and a tap made during a scroll is no longer
+  lost behind its redraw.
+- **The 128K's edge-scroll is ~5x faster** (0.6 s → ~0.1 s): the viewport's
+  terrain sweep is hand-written Z80, and a scroll repaints only the cells the
+  new origin changes instead of all 672.
+- **Faster turns on the 128K**: the field of view casts its rays without
+  multiplying (on both machines), the status bar prints its numbers without
+  dividing and skips its first row when depth, gold and HP are unchanged, a
+  blank message line is no longer redrawn, and the chase's flood fill — run
+  when a wall boxes a monster in — is hand-written Z80 too. A turn in a room
+  takes ~40 ms instead of ~75; a turn with a monster boxed in, 95-120 ms
+  instead of 140-195.
+- The `zrcp-verify` skill's MAME harness can time: a PC sampler on emulated
+  time, held keys, a watch list, a pinned world for A/B runs between builds,
+  and `mameprof.py` to read the result.
+
 ## [1.6.0] — 2026-10-05
 
 **Artifacts, tools, a weapon ladder — and four classes that each win their own

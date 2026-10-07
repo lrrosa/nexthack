@@ -154,7 +154,17 @@ def bank5_map(target):
              'one vis bitmap'),
             (dist_a, mapw * maph, 'dist[] (BFS)', 'MAPW*MAPH'),
             (bfsq_a, bfsq_size * 2, 'bfsq[] (BFS)', 'BFSQ_SIZE %d x 2 B' % bfsq_size),
+            # draw_map's full path (dm_row in puttile_asm.asm): the cells it
+            # painted a monster on, and its char -> tile table
+            (addr('MON_MAP', 'nexthack.c'), fov_bytes, 'MON_MAP',
+             'drawn monsters, 1 bit a cell'),
         ]
+        ctab = addr('DM_CTAB', 'nexthack.c')
+        ctab_asm = asm_equ('DM_CTAB', 'puttile_asm.asm')
+        note = 'dm_row: char -> tile'
+        if ctab_asm is not None and ctab_asm != ctab:
+            note += '  !! puttile_asm.asm disagrees: 0x%04X' % ctab_asm
+        items.append((ctab, 128, 'DM_CTAB', note))
 
     return sorted(items, key=lambda t: (t[0], t[1]))
 

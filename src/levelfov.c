@@ -12,6 +12,7 @@
 #include "level.h"
 #include "platform.h"     /* file_read/file_write */
 #include "game.h"         /* dlvl, MAXLVL          */
+#include <string.h>       /* memset                */
 
 extern uint8_t r_x[], r_y[], r_w[], r_h[];   /* room rects (levelgen.c) */
 extern uint8_t gold_taken[], item_taken[];   /* persistence masks (levelgen.c) */
@@ -117,8 +118,10 @@ static uint8_t vis_now[FOV_BYTES];   /* cells visible right now (this turn) */
 uint16_t fov_vis_sum;
 static void fov_recalc_sum(void)
 {
-    uint16_t s = 0; uint8_t b;
-    for (b = 0; b < FOV_BYTES; b++) s = (uint16_t)((s << 8) + s + vis_now[b]);
+    const uint8_t *p = vis_now;
+    uint16_t s = 0;
+    uint8_t  n = FOV_BYTES;
+    do { s = (uint16_t)((s << 8) + s + *p++); } while (--n);
     fov_vis_sum = s;
 }
 
@@ -156,6 +159,10 @@ static uint8_t *fov_map(void)        /* explored bitmap for the current depth */
     return fov_pool + (uint16_t)cur_slot * FOV_BYTES;
 }
 
+/* The current depth's explored bitmap, resolved once per fov_update: light()
+ * used to call fov_map() -- a slot * 210 multiply -- for every cell it lit. */
+static uint8_t *fov_fm;
+
 /* mark a cell as visible this turn and remembered (seen) */
 static void light(int x, int y)
 {
@@ -165,7 +172,7 @@ static void light(int x, int y)
     idx = (uint16_t)y * MAPW + x;
     bit = (uint8_t)(1u << (idx & 7));
     vis_now[idx >> 3] |= bit;
-    fov_map()[idx >> 3] |= bit;
+    fov_fm[idx >> 3] |= bit;
 }
 
 /* set a run of n consecutive bits from bit index `start` in bitmap bm. Lighting
@@ -208,14 +215,14 @@ static const signed char RDY[8] = { 0,  0,  1, -1,  1, -1,  1, -1 };
 
 void fov_update(int hx, int hy) __banked
 {
-    int dx, dy, d;
-    uint8_t r, i, b;
+    int dx, dy;
+    uint8_t r, i;
 
     fov_touch();                 /* make cur_slot track the current depth */
+    fov_fm = fov_map();
     fov_hx = hx; fov_hy = hy;
 
-    for (b = 0; b < FOV_BYTES; b++)     /* clear current visibility */
-        vis_now[b] = 0;
+    memset(vis_now, 0, FOV_BYTES);      /* clear current visibility */
 
     hero_room = -1;
     for (r = 0; r < rcount; r++)
@@ -239,7 +246,7 @@ void fov_update(int hx, int hy) __banked
         uint8_t x0 = r_x[rr];
         uint8_t xw = r_w[rr];
         uint8_t ymax = (uint8_t)(r_y[rr] + r_h[rr]);
-        uint8_t *fm = fov_map();
+        uint8_t *fm = fov_fm;
         if ((uint16_t)x0 + xw > MAPW) xw = (uint8_t)(MAPW - x0);   /* clamp to map */
         if (ymax > MAPH) ymax = MAPH;
         for (yy = r_y[rr]; yy < ymax; yy++) {
@@ -250,14 +257,29 @@ void fov_update(int hx, int hy) __banked
     }
 
     /* line of sight down corridors: cast rays until a wall blocks them, so
-     * monsters chasing single-file are all visible */
+     * monsters chasing single-file are all visible. Each ray walks by adding
+     * its step to the cell index -- it used to compute hx + RDX[i] * d, two
+     * library multiplies a cell, and redo y * MAPW + x inside light(): on
+     * the 3.5 MHz 128K the rays were most of the FOV's cost. The hero is on
+     * the map, so a uint8_t coordinate stepping off the left or top edge
+     * wraps to 255 and fails the same bound test as the right and bottom. */
     for (i = 0; i < 8; i++) {
-        for (d = 1; d <= SIGHT; d++) {
-            int nx = hx + RDX[i] * d, ny = hy + RDY[i] * d;
+        int8_t   sx = RDX[i], sy = RDY[i];
+        int16_t  step = sx;
+        uint8_t  x = (uint8_t)hx, y = (uint8_t)hy, d;
+        uint16_t idx = (uint16_t)hy * MAPW + (uint16_t)hx;
+        if (sy > 0) step += MAPW;
+        else if (sy < 0) step -= MAPW;
+        for (d = 0; d < SIGHT; d++) {
             char c;
-            if (nx < 0 || ny < 0 || nx >= MAPW || ny >= MAPH) break;
-            light(nx, ny);
-            c = lvl[ny][nx];
+            uint8_t bit;
+            x = (uint8_t)(x + sx); y = (uint8_t)(y + sy);
+            if (x >= MAPW || y >= MAPH) break;
+            idx = (uint16_t)(idx + step);
+            bit = (uint8_t)(1u << (idx & 7));
+            vis_now[idx >> 3] |= bit;
+            fov_fm[idx >> 3]  |= bit;
+            c = ((const char *)lvl)[idx];
             /* walls, rock and doors are opaque: rays light corridors but do
              * not peek into rooms (a room is revealed when you enter it) */
             if (c == '|' || c == '-' || c == ' ' || c == '+') break;
