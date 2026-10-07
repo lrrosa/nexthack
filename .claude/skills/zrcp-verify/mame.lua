@@ -19,12 +19,21 @@
 --   load <path>           mount a snapshot now (the Next's .nex, after boot)
 --   peek <addr> <n> <lbl> log n bytes, hex, under a label
 --   poke <addr> <v>...    write bytes (decimal values)
+--   copy <src> <dst> <n>  copy n bytes at run time (e.g. the hero onto @dn_x)
 --   msg                   log row 0 (the message line) decoded as text
 --   snap <name>           save the screen as <name>.png in the snapshot dir
 --   pc | log <text> | exit
+-- Timing (mameprof.py reads what these log):
+--   watch <addr> <n>      add n bytes to the watch list (logged on every change)
+--   sampleon [hz]         sample PC (and the 128K's bank) hz times a second of
+--                         EMULATED time, default 1000; the watch list too
+--   sampleoff <label>     stop, and log the PC histogram under that label
+--   hold <key> <frames>   press a key's matrix field and keep it down (a held walk)
+--   release               let it go
 --
 -- Reads happen between frames, outside emulated time, so unlike ZRCP they do
--- not stretch what they measure.
+-- not stretch what they measure. The sampler runs on emu.wait timers, so it
+-- interrupts the CPU at exact emulated instants -- also without stretching it.
 
 local log = io.open(os.getenv("MAME_LOG"), "w")
 local function L(s) log:write(s, "\n") log:flush() end
@@ -102,6 +111,38 @@ local function msgline()
   return (table.concat(s):gsub("%s+$", ""))
 end
 
+-- ---- timing: the PC sampler and the watch list ----
+local watch = {}                 -- { {addr, n}, ... }
+local hold_field = nil
+local samp_on, samp_hz, hist, nsamp, lastw = false, 1000, {}, 0, ""
+local function bank_now()        -- the 128K's paged bank, from BANKM
+  if target == "zx128" then return mem:read_u8(23388) & 7 end
+  return 0
+end
+local function wstr()
+  local t = {}
+  for _, w in ipairs(watch) do
+    for i = 0, w[2] - 1 do t[#t + 1] = string.format("%02X", mem:read_u8(w[1] + i)) end
+  end
+  return table.concat(t, " ")
+end
+local function sampler()
+  while samp_on do
+    emu.wait(1.0 / samp_hz)
+    if not samp_on then break end
+    local pc = cpu.state["PC"].value
+    local key = pc
+    if pc >= 0xC000 then key = (bank_now() << 16) | pc end
+    hist[key] = (hist[key] or 0) + 1
+    nsamp = nsamp + 1
+    local w = wstr()
+    if w ~= lastw then
+      L(string.format("W %.4f %s", m.time:as_double(), w))
+      lastw = w
+    end
+  end
+end
+
 local function run()
   while idx <= #steps do
     local op, a = steps[idx].op, steps[idx].arg
@@ -141,6 +182,35 @@ local function run()
     elseif op == "pc" then L(string.format("pc %04X", cpu.state["PC"].value))
     elseif op == "log" then L(a)
     elseif op == "time" then L(string.format("time frame %d emu %.3f s", frame, m.time:as_double()))
+    elseif op == "copy" then
+      local src, dst, n = a:match("^(%d+)%s+(%d+)%s+(%d+)")
+      src, dst, n = tonumber(src), tonumber(dst), tonumber(n)
+      for i = 0, n - 1 do mem:write_u8(dst + i, mem:read_u8(src + i)) end
+    elseif op == "watch" then
+      local ad, n = a:match("^(%d+)%s+(%d+)")
+      watch[#watch + 1] = { tonumber(ad), tonumber(n) }
+    elseif op == "sampleon" then
+      samp_hz, samp_on, lastw = tonumber(a) or 1000, true, ""
+      L(string.format("SON %d %.4f", samp_hz, m.time:as_double()))
+      local ok, err = coroutine.resume(coroutine.create(sampler))
+      if not ok then L("sampler error: " .. tostring(err)) end
+    elseif op == "sampleoff" then
+      samp_on = false
+      L(string.format("SOFF %.4f", m.time:as_double()))
+      L(string.format("HIST %s %d", a, nsamp))
+      for k, v in pairs(hist) do L(string.format("H %X %d", k, v)) end
+      L("HEND")
+      hist, nsamp = {}, 0
+    elseif op == "hold" then
+      local k, n = a:match("^(%S+)%s+(%d+)")
+      hold_field = keyfield[k]
+      if hold_field then hold_field:set_value(1) else L("hold: no key field " .. k) end
+      L(string.format("HOLD %s %.4f", k, m.time:as_double()))
+      until_frame = frame + tonumber(n)
+      return
+    elseif op == "release" then
+      if hold_field then hold_field:clear_value() hold_field = nil end
+      L(string.format("REL %.4f", m.time:as_double()))
     elseif op == "exit" then L("exit @frame " .. frame) log:close() m:exit() return
     else L("unknown step: " .. op)
     end

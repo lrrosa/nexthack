@@ -57,8 +57,17 @@ function Get-MameBoot([ValidateSet('zx128', 'next')][string]$Target, [switch]$Sd
     @('wait 12', "load $(Join-Path $script:MamePort 'nexthack.nex')", 'waitpc 0x8000', 'wait 3')
 }
 
-function Get-MameNewGame([char]$Class = 'a') {
-    @('key \s', 'wait 2', "key $Class", 'wait 3')
+# -Seed pins the world. The title seeds world_seed and the play RNG from how
+# long the key took to come, which differs between two builds whose tapes load
+# in different times; build_level only runs after the class pick, so poking
+# both while the picker waits gives any build the same world.
+function Get-MameNewGame([char]$Class = 'a', [int]$Seed = -1) {
+    $pin = @()
+    if ($Seed -ge 0) {
+        $lo, $hi = ($Seed -band 255), (($Seed -shr 8) -band 255)
+        $pin = @("poke @world_seed $lo $hi", "poke @rng $lo $hi")
+    }
+    @('key \s', 'wait 2') + $pin + @("key $Class", 'wait 3')
 }
 
 function Invoke-Mame {
@@ -74,7 +83,11 @@ function Invoke-Mame {
           [string[]]$ExtraArgs = @())
     $syms = Get-MameSyms $Target
     $lines = foreach ($s in ($Steps + 'exit')) {
-        if ($s -match '^(peek|poke)\s+(\S+)\s*(.*)$') {
+        if ($s -match '^watch\s+(\S+)\s+(\d+)$') {
+            "watch $(Resolve-MameAddr $Matches[1] $syms) $($Matches[2])"
+        } elseif ($s -match '^copy\s+(\S+)\s+(\S+)\s+(\d+)$') {
+            "copy $(Resolve-MameAddr $Matches[1] $syms) $(Resolve-MameAddr $Matches[2] $syms) $($Matches[3])"
+        } elseif ($s -match '^(peek|poke)\s+(\S+)\s*(.*)$') {
             $op, $addr, $rest = $Matches[1], $Matches[2], $Matches[3]
             $ad = Resolve-MameAddr $addr $syms
             if ($op -eq 'peek') {             # peek <addr> [n] [label]

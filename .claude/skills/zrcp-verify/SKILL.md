@@ -136,12 +136,40 @@ Get-MamePeek $r turns               # every read of that label, oldest first
 |---|---|
 | `Invoke-Mame next\|zx128 -Steps @(...)` | runs the script, returns `.Log` + `.Dir` (snapshots); `-Tag`, `-OutDir`, `-Visible`, `-Throttle`, `-MaxSeconds`, `-Sd`, `-FreshSd`, `-ExtraArgs` |
 | `Get-MameBoot next\|zx128` | steps up to the title (the 128K's includes the whole tape load) |
-| `Get-MameNewGame [-Class a]` | title -> class pick -> playable |
+| `Get-MameNewGame [-Class a] [-Seed n]` | title -> class pick -> playable; `-Seed` pins the world (below) |
 | `Get-MamePeek $r label` / `Get-MameMsg $r` | parse the log |
 
 In steps, addresses are `@sym`, `@sym+N` (from the CURRENT `.map`), `0xHEX` or
 decimal; poke values are decimal. `peek <addr> [n] [label]`, `msg` decodes row
-0 on both targets, `snap <name>` saves a PNG, `time` logs emulated time.
+0 on both targets, `snap <name>` saves a PNG, `time` logs emulated time, and
+`copy <src> <dst> <n>` copies bytes at run time -- a fixed script can still act
+on what the game decided (`copy @dn_x @hero_x 1`: onto the down stairs).
+
+**Timing and profiling** (how the 128K's walk was measured against the Next's,
+and made to match it). `watch`, `hold`/`release` and `sampleon`/`sampleoff`
+log what `mameprof.py` turns into a per-function profile of the turn's work
+(idle key polling left out) and the hero's step timing:
+
+```powershell
+$r = Invoke-Mame zx128 -Tag walk -Steps ((Get-MameBoot zx128) + (Get-MameNewGame -Seed 0x1234) + @(
+         'watch @hero_x 2', 'watch @hero_y 2', 'watch @turns 2', 'watch @prev_hx 1',
+         'sampleon 2000', 'hold l 100', 'release', 'wait 0.7', 'sampleoff room'))
+python .claude/skills/zrcp-verify/mameprof.py "$($r.Dir)\log.txt" zx128
+```
+- The sampler reads PC on `emu.wait` timers, at exact emulated instants -- unlike
+  ZRCP, sampling does not stretch the time it measures. On the 128K a banked PC
+  resolves by the paged bank (BANKM); on the Next it cannot tell the banks apart.
+- `-Seed` matters for any A/B: the title seeds the world from how long the key
+  took, so two builds whose tapes load in different times play different worlds.
+  It pokes `world_seed` and `rng` while the class picker waits, before any level
+  exists. Compare an old build by copying its `.tap`/`.nex` and `.map` to a folder
+  and pointing `$script:MamePort` at it (or build it in a `git worktree`).
+- A **hold** measures the walk; for comparing two builds' *state*, use taps with
+  generous waits (`key l`, `wait 1.0`): a tap that lands during a long redraw is
+  lost, and the faster build then takes more steps (caught here: the old 128K
+  dropped a tap during its 0.6 s scroll).
+- `move -> drawn` needs `watch @prev_hx 1` (128K): the time from the hero's move
+  to the frame that drew it, i.e. the turn's own cost, beat excluded.
 
 **What each target can and cannot do in MAME:**
 - **128K (`spec128`)**: everything but saving -- MAME's 128K has no DivMMC, so
@@ -165,6 +193,9 @@ decimal; poke values are decimal. `peek <addr> [n] [label]`, `msg` decodes row
   ROM freezes at PC `0192`. Prove saves on ZEsarUX.
 
 **MAME traps:**
+- **Two MAME runs cannot share one `.tap`/`.nex`**: MAME opens the image
+  read-write and the second instance dies on "Permission denied" (no log at
+  all). Running builds side by side, give each its own copy.
 - **Never type during the tape load**: SPACE is BREAK to LD-BYTES and silently
   kills it. `Get-MameBoot zx128` waits for `PC >= 0x8000` before handing over.
 - **The Next driver's natural keyboard has no SYMBOL SHIFT**: MAME silently
