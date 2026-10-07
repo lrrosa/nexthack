@@ -8,7 +8,7 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
-## [Unreleased]
+## [1.6.1] — 2026-10-06
 
 **The 128K walks as fast as the Next.** Measured in MAME on the same world,
 holding a direction key: a step every 140-160 ms in a room and 180 ms in a
@@ -35,6 +35,8 @@ longer stalls for 0.6 s.
 - The `zrcp-verify` skill's MAME harness can time: a PC sampler on emulated
   time, held keys, a watch list, a pinned world for A/B runs between builds,
   and `mameprof.py` to read the result.
+- Saves are unchanged (`SAVE_VER` 35): a 1.6.0 save loads in 1.6.1 — saved
+  by the 1.6.0 binary and restored by this one in ZEsarUX, on both machines.
 
 ### Fixed
 - **Swapping places with your dog no longer hides what lies there.** Stepping
