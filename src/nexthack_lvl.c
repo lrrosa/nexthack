@@ -208,12 +208,18 @@ void build_level(void) __banked
     spawn_level_monsters();
     rng_set(play);
     { uint8_t kx, ky; if (shop_keeper_xy(&kx, &ky)) place_shopkeeper(kx, ky); }
-    apply_gold_persistence();
-    apply_monster_persistence();
-    apply_item_persistence();
+    /* The altar and the fountain decide on the level AS BORN, before the
+     * persistence below: they stand only on plain floor, and a pile the hero
+     * took is plain floor on the next visit -- after it, gold on the room's
+     * centre kept the altar off the first visit and put it there on every
+     * one after (a looted vault grew one). Still after the spawns, so no
+     * monster lands differently. */
     place_altar();       /* a deterministic altar on some levels (no RNG) */
     place_fountain();    /* ...and a fountain on some (guards on '.', so it
                           * never overwrites the altar) */
+    apply_gold_persistence();
+    apply_monster_persistence();
+    apply_item_persistence();
     dug_restore();       /* re-open the tunnels the hero dug here (levelfov.c):
                           * last but the stash, which may lie in one */
     floor_restore();     /* re-lay this level's dropped-item stash (item.c) */

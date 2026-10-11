@@ -422,9 +422,12 @@ tilemap.
   list of cells (`dug_pool`, see Items), re-opened last. **Do not change the order/number of
   `rn2()` calls inside generation casually** — it changes every level and can desync
   the persistence bit indices.
-- `build_level()` (in `nexthack.c`) orchestrates: `gen_level()` → spawn monsters →
-  apply gold/monster/item persistence. Gold/items are placed before monsters so
-  spawning sees the same map each visit.
+- `build_level()` (in `nexthack_lvl.c`) orchestrates: `gen_level()` → spawn
+  monsters → altar and fountain → apply gold/monster/item persistence → the dug
+  cells → the floor stash. Gold/items are placed before monsters so spawning sees
+  the same map each visit, and anything that decides by looking at the map must
+  run before the persistence: until 2026-10-10 the altar and fountain came after
+  it, so a pile taken from the room's centre made one appear on the next visit.
 - **Special levels** (Phases 22-24, `levelgen.c`): certain depths are landmark
   levels, decided by **side hashes** (never `rn2`, so ordinary levels stay
   byte-identical and persistence stays in sync). `special_gen()` at the top of
