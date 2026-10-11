@@ -282,6 +282,10 @@ one level for 11000 of its 12500 frames. On a level whose altar or fountain spot
 `.`. It mirrors `place_altar`/`place_fountain`'s hashes and `eff_depth`'s
 mines rule; `tile_for` and the oracles mirror `level.c` and `draw_map`.
 Change those and update `fuzz.lua`, or it reports phantoms or goes blind.
+The Next oracle reads `tile_pal2()` and `PAL2_ATTR` out of `platform.h`
+(`fuzzcfg.py`), so a monster recoloured into the second palette needs no
+edit here; the 1.7.0 release fuzz caught the oracle before it did, as
+snakes and nymphs "drawn" with attribute `30`.
 
 **Reading `<OutDir>\<Tag>\log.txt`** (`fuzz.ps1` prints it, `A` stairs lines
 left out, and ends with a verdict line):

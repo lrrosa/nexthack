@@ -37,7 +37,9 @@ for _, s in pairs(m.screens) do scr = s break end
 local T      = cfg.target
 local S      = cfg.sym
 local TL     = cfg.tile
-local SEED   = tonumber(os.getenv("FUZZ_SEED") or "1")
+local PAL2   = {}                      -- Next: monster tiles drawn from the second palette
+for _, t in ipairs(cfg.pal2 or {}) do PAL2[t] = true end
+local SEED  = tonumber(os.getenv("FUZZ_SEED") or "1")
 local FRAMES = tonumber(os.getenv("FUZZ_FRAMES") or "60000")
 local CLASS  = os.getenv("FUZZ_CLASS") or "a"
 local STAIRS_EVERY = tonumber(os.getenv("FUZZ_STAIRS") or "70")
@@ -315,10 +317,12 @@ local function oracle_next(g)
         if g.hface == 0 then ea = 0x08 end
       elseif g.sensed and first then
         et = montile(first.t)
+        if PAL2[et] then ea = cfg.pal2_attr end          -- draw_map: tile_pal2 -> PAL2_ATTR
       elseif bitat(g.seen, idx) == 0 then
         et = TL.T_ROCK
       elseif bitat(g.vis, idx) == 1 then
         et = first and montile(first.t) or tile_for(r8(S.lvl + idx), g.mines)
+        if first and PAL2[et] then ea = cfg.pal2_attr end
       else
         et = tile_for(r8(S.lvl + idx), g.mines); ea = 0x10
       end

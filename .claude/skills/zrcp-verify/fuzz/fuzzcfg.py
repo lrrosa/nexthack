@@ -92,6 +92,13 @@ for line in open(os.path.join(src, 'platform.h'), encoding='utf-8'):
     m = re.match(r'#define\s+(T_\w+)\s+(\d+)', line)
     if m:
         tiles[m.group(1)] = int(m.group(2))
+# Next: the monster tiles drawn from the second palette (tile_pal2(), and the
+# attribute draw_map gives them, PAL2_ATTR) -- read, so the oracle follows it
+ph = open(os.path.join(src, 'platform.h'), encoding='utf-8').read()
+m = re.search(r'#define\s+tile_pal2\(t\)((?:[^\n]*\\\n)*[^\n]*)', ph)
+pal2 = [tiles[n] for n in re.findall(r'\bT_\w+', m.group(1))] if m else []
+m = re.search(r'#define\s+PAL2_ATTR\s+(0x[0-9A-Fa-f]+|\d+)', ph)
+pal2_attr = int(m.group(1), 0) if m else 0      # none before 1.7: an older -PortDir
 mon = {}
 for m in re.finditer(r"\{\s*('(.)'|MON_KEEPER),\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*(T_\w+)",
                      open(os.path.join(src, 'monster.c'), encoding='utf-8').read()):
@@ -162,6 +169,7 @@ def lua(v):
 
 cfg = {
     'target': target, 'sym': S, 'size': sizes, 'tile': tiles, 'mon': mon, 'guard': guard,
+    'pal2': pal2, 'pal2_attr': pal2_attr,
     'idle': idle, 'main_idle': main_idle, 'code_end': code_end, 'bss_end': bss_end,
     'stack_floor': bankmap.STACK_FLOOR, 'sp_init': bankmap.SP_INIT,
     'banking_stack': consts.get('CLIB_BANKING_STACK_SIZE', 100),
@@ -180,4 +188,4 @@ for lo, hi, lb in guard:
     print('  %04X-%04X %5d B  %s' % (lo, hi, hi - lo, lb))
 print('idle', ['%04X-%04X' % r for r in idle], 'main', '%04X-%04X' % main_idle)
 print('inv %04X dug_pool %04X fov_pool %04X  sizes %s' % (b5['inv'], b5['dug_pool'], b5['fov_pool'], sizes))
-print('mon tiles', len(mon), 'syms', len(S), 'objs', len(objs))
+print('mon tiles', len(mon), 'syms', len(S), 'objs', len(objs), 'pal2', pal2, '0x%02X' % pal2_attr)
