@@ -8,6 +8,17 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [Unreleased]
+
+### Added
+- **A second palette for monsters on the Next.** A text colour uses only two
+  of its palette's sixteen entries; the spare fourteen of one now hold the
+  purple, pink and olive the tiles never had. The **nymph** wears a pink gown
+  (she was the leprechaun's green twin), the **high priest** a violet robe
+  (his red was the dragon's), the **snake** is olive — NetHack's brown, out
+  of the greens — and the **vampire**'s cape is deep purple. The 128K
+  already drew the nymph and the priest in magenta.
+
 ## [1.6.2] — 2026-10-11
 
 **Three bugs a fuzzer found.** The game was played by a machine for hours in

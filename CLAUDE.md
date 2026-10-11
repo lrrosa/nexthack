@@ -347,6 +347,15 @@ DATA — banked code's data is resident too). Modules include `game.h` to read/w
   - offset 1 (indices 16..31) = **dimmed master** (channels halved) for remembered,
     out-of-sight terrain. Half is the dimmest a grey stays neutral on 3-3-2 colour.
   - offsets 2..15 = black-paper/ink pairs for **coloured text** (`inkcol[]`).
+    A glyph's pixels are only 0 or 1, so entries 2..15 of each are free: offset
+    3's hold the **second monster palette** (`pal2[]` in `platform_init.c` --
+    purple, pink and olive, which the master palette lacks; entry 1 is the
+    dim-magenta ink, a usable purple). A tile drawn there is listed in
+    `tile_pal2()` (`platform.h`) and its pixel values index `pal2[]`, not
+    `master[]`; `draw_map` gives it attribute `PAL2_ATTR` in the two branches
+    that draw a monster. **Monsters only**: a monster is never drawn dimmed,
+    while an item or a wall needs offset 1's dimmed twin, which `pal2` has not.
+    Recolouring a tile into it is a `gfx[]` edit plus a `tile_pal2` entry.
   - Gold in the status bar draws a graphic `T_DOLLAR` tile instead of the ROM `$`.
     That started as a workaround for CSpect, whose ROM had no `$` glyph; the ROM
     ZEsarUX loads does have one (checked), so the tile is now only a colour choice.

@@ -140,11 +140,15 @@ void draw_map(void) __banked
                 t = T_HERO;
             } else if (mon_sensed() && (mi = monster_at(x, y)) >= 0) {
                 t = mon_tile(m_type[mi]);         /* sensed by telepathy  */
+                if (tile_pal2(t)) attr = PAL2_ATTR;
             } else if (!(seen[byte] & mask)) {
                 t = T_ROCK;                       /* never seen -> dark   */
             } else if (vis[byte] & mask) {        /* in sight -> full     */
                 mi = monster_at(x, y);
-                t = (mi >= 0) ? mon_tile(m_type[mi]) : tile_for(lvl[y][x]);
+                if (mi >= 0) {
+                    t = mon_tile(m_type[mi]);
+                    if (tile_pal2(t)) attr = PAL2_ATTR;   /* purple/pink/olive */
+                } else t = tile_for(lvl[y][x]);
             } else {                              /* remembered -> dim    */
                 t = tile_for(lvl[y][x]);
                 attr = 0x10;                      /* palette offset 1     */

@@ -22,7 +22,9 @@ extern const uint8_t inkcol[16];    /* text ink colours             (platform.c)
 /* The ~3 KB graphic-tile table is read ONCE, here, by load_gfx_tiles(), so
  * it lives in this banked module's own const bank instead of resident rodata.
  * It is reachable because load_gfx_tiles() runs with the same bank mapped in.
- * Each tile: 64 pixels (8 rows x 8 cols), values are master-palette indices.
+ * Each tile: 64 pixels (8 rows x 8 cols), values are master-palette indices --
+ * except the tiles tile_pal2() names (platform.h), whose values index pal2[]
+ * below: draw_map gives them palette offset 3.
  * Order matches the T_* numbering starting at T_ROCK. */
 const uint8_t gfx[NTILES][64] = {
   { /* T_ROCK */
@@ -88,9 +90,10 @@ const uint8_t gfx[NTILES][64] = {
     9,9,9,9,9,9,9,9, 0,9,9,9,9,9,9,0, 0,9,0,9,9,0,9,0, 0,9,0,0,0,0,9,0 },
   { /* T_SNAKE (an upright S: head with a yellow eye and a red tongue on top,
      * dark scales down the body, the tail flicking out at the bottom -- the
-     * old coil sat on a flat base and read as a boot) */
-    0,0,9,9,9,0,0,0, 8,9,9,13,9,9,0,0, 0,0,10,9,9,0,0,0, 0,0,0,9,10,9,0,0,
-    0,0,0,0,9,10,9,0, 0,0,0,9,10,9,0,0, 0,0,9,10,9,0,0,0, 0,9,9,0,0,0,0,0 },
+     * old coil sat on a flat base and read as a boot). PAL2: olive, NetHack's
+     * brown snake, with a light belly -- no longer one of five greens */
+    0,0,9,9,9,0,0,0, 13,9,9,12,9,9,0,0, 0,0,8,10,9,0,0,0, 0,0,0,9,8,10,0,0,
+    0,0,0,0,10,8,9,0, 0,0,0,10,8,9,0,0, 0,0,10,8,9,0,0,0, 0,9,9,0,0,0,0,0 },
   { /* T_BAT (dark membranes, grey body, red eyes; no legs -- the old pair of
      * legs under the wings made it a crab) */
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 1,0,0,2,2,0,0,1, 1,1,0,8,8,0,1,1,
@@ -156,15 +159,18 @@ const uint8_t gfx[NTILES][64] = {
      * humanoids with the orc and the zombie) */
     0,0,6,6,6,6,0,0, 0,6,8,6,6,8,6,0, 0,4,5,5,5,5,4,0, 6,6,6,6,6,6,6,6,
     6,0,6,6,6,6,0,6, 6,0,5,5,5,5,0,6, 5,0,6,0,0,6,0,5, 0,6,6,0,0,6,6,0 },
-  { /* T_VAMPIRE (pale face, red eyes, white fangs, dark spread cape) */
-    0,0,1,15,15,1,0,0, 0,0,8,15,15,8,0,0, 0,0,15,4,4,15,0,0, 0,1,15,15,15,15,1,0,
-    1,1,8,1,1,8,1,1, 0,1,1,1,1,1,1,0, 0,1,1,0,0,1,1,0, 0,1,0,0,0,0,1,0 },
+  { /* T_VAMPIRE (pale face, red eyes, white fangs, spread cape). PAL2: the
+     * cape deep purple over its red lining, where it was the bat's grey */
+    0,0,15,11,11,15,0,0, 0,0,13,11,11,13,0,0, 0,0,11,14,14,11,0,0, 0,2,11,11,11,11,2,0,
+    2,2,13,2,2,13,2,2, 0,2,2,2,2,2,2,0, 0,2,2,0,0,2,2,0, 0,2,0,0,0,0,2,0 },
   { /* T_DRAGON (red dragon on the wing: yellow eyes, orange membranes) */
     0,0,0,8,8,0,0,0, 0,0,8,13,13,8,0,0, 8,0,8,8,8,8,0,8, 8,8,8,8,8,8,8,8,
     8,14,8,8,8,8,14,8, 0,0,8,8,8,8,0,0, 0,0,0,8,8,0,0,0, 0,0,0,0,8,0,0,0 },
-  { /* T_PRIEST (the Amulet's keeper: gold mitre, red eyes, sashed red robe) */
-    0,0,0,13,13,0,0,0, 0,0,13,13,13,13,0,0, 0,0,15,8,8,15,0,0, 0,0,15,15,15,15,0,0,
-    0,8,8,8,8,8,8,0, 8,8,8,13,13,8,8,8, 0,8,8,8,8,8,8,0, 0,8,8,0,0,8,8,0 },
+  { /* T_PRIEST (the Amulet's keeper: gold mitre, red eyes, a violet robe with
+     * a gold clasp and a deep hem). PAL2 -- the 128K's ink for him is
+     * magenta; the red robe was the dragon's and the homunculus's colour */
+    0,0,0,12,12,0,0,0, 0,0,12,12,12,12,0,0, 0,0,11,13,13,11,0,0, 0,0,11,11,11,11,0,0,
+    0,3,3,3,3,3,3,0, 3,3,3,12,12,3,3,3, 0,3,3,1,1,3,3,0, 0,1,1,0,0,1,1,0 },
   { /* T_MIMIC (a revealed mimic: brown chest, yellow eyes, toothy maw) */
     0,6,6,6,6,6,6,0, 6,6,13,6,6,13,6,6, 6,6,6,6,6,6,6,6, 4,6,4,6,4,6,4,6,
     6,4,6,4,6,4,6,4, 6,6,6,6,6,6,6,6, 0,6,6,6,6,6,6,0, 0,0,0,0,0,0,0,0 },
@@ -187,9 +193,11 @@ const uint8_t gfx[NTILES][64] = {
      * he marked red). Shape identical to the 128K tile. */
     0,6,6,0,0,6,6,0, 0,6,6,6,0,6,7,6, 0,6,6,0,0,0,6,6, 0,0,0,0,0,0,0,0,
     6,0,6,6,6,0,0,6, 6,0,6,7,6,6,0,6, 6,0,0,6,6,0,0,0, 0,0,0,0,0,0,6,0 },
-  { /* T_NYMPH (golden hair, fair face, green gown, arms reaching out) */
-    0,0,13,13,13,13,0,0, 0,13,15,15,15,15,13,0, 0,0,15,1,1,15,0,0, 0,0,9,9,9,9,0,0,
-    0,9,9,9,9,9,9,0, 0,0,9,9,9,9,0,0, 0,0,9,9,9,9,0,0, 0,0,9,0,0,9,0,0 },
+  { /* T_NYMPH (golden hair, fair face, a pink gown with a magenta hem, arms
+     * reaching out). PAL2 -- magenta on the 128K too; green, she was the
+     * leprechaun's twin */
+    0,0,12,12,12,12,0,0, 0,12,11,11,11,11,12,0, 0,0,11,15,15,11,0,0, 0,0,6,6,6,6,0,0,
+    0,6,6,7,7,6,6,0, 0,0,6,6,6,6,0,0, 0,0,6,5,5,6,0,0, 0,0,5,0,0,5,0,0 },
   { /* T_TOOL (1.6: a pick-axe for the whole '(' class -- a curved grey head
      * over a brown handle, upright so it never reads as the diagonal dagger) */
     0,0,3,3,3,3,0,0, 0,3,0,6,6,0,3,0, 3,0,0,6,6,0,0,3, 0,0,0,6,6,0,0,0,
@@ -232,6 +240,21 @@ static void tm_init_font(void)
     }
 }
 
+/* The second monster palette: tilemap palette offset 3, entries 2..15 (0 is
+ * black paper and 1 the dim-magenta text ink 0x82, a mid purple -- both kept
+ * for the text, and both usable). The master palette has no purple, pink or
+ * olive; these 14 add them, for the tiles tile_pal2() names. Only monsters:
+ * one is drawn only in sight, so it never needs a dimmed twin the way a
+ * remembered item or wall does (offset 1). Read once here, so it is const
+ * in this bank, not resident. */
+static const uint8_t pal2[14] = {
+    0x41, 0xA7, 0xD3, 0xE3,   /* 2 dk purple  3 violet  4 lavender  5 magenta */
+    0xF2, 0xF7,               /* 6 pink       7 light pink                    */
+    0x6C, 0x90, 0xB5,         /* 8 dk olive   9 olive   10 light olive        */
+    0xF9, 0xFC, 0xE0,         /* 11 skin      12 yellow 13 red                */
+    0xFF, 0x49                /* 14 white     15 dark grey                    */
+};
+
 static void tm_init_palette(void)
 {
     uint8_t i, o;
@@ -264,6 +287,12 @@ static void tm_init_palette(void)
         ZXN_WRITE_REG(0x41, 0x00);                /* o*16+0 : black    */
         ZXN_WRITE_REG(0x41, inkcol[o]);           /* o*16+1 : ink      */
     }
+
+    /* ...whose entries 2..15 the font never touches (a glyph's pixels are 0
+     * or 1). Offset 3's hold the second monster palette, pal2[]. */
+    ZXN_WRITE_REG(0x40, (uint8_t)(PAL2_ATTR + 2));
+    for (i = 0; i < 14; i++)
+        ZXN_WRITE_REG(0x41, pal2[i]);
 }
 
 void tm_init(void) __banked

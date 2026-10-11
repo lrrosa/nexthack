@@ -84,6 +84,15 @@
                           * to make that room. The Next's tile defs end at
                           * 0x4000 + (128 + NTILES) * 32, below inv[] at 0x5800. */
 
+/* The Next's second monster palette: tiles drawn with tilemap attribute
+ * PAL2_ATTR (palette offset 3) take their colours from pal2[] in
+ * platform_init.c -- purple, pink and olive, which the master palette lacks.
+ * Monsters only, so draw_map tests this where it draws one (a monster is
+ * never drawn dimmed). The 128K's 1-bit tiles take their inks as before. */
+#define PAL2_ATTR 0x30
+#define tile_pal2(t) ((t) == T_SNAKE || (t) == T_VAMPIRE || \
+                      (t) == T_PRIEST || (t) == T_NYMPH)
+
 /* display dimensions (characters) */
 #ifdef __ZXNEXT
 #define TM_W 80          /* Next hardware tilemap 80x32 */

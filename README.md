@@ -367,7 +367,10 @@ from the roguelike tradition):
 
 - **Display**: the Next hardware tilemap (80×32). Glyphs are built at runtime by
   expanding the 1bpp ROM font at `0x3C00` into 4bpp tiles; per-cell colour comes
-  from the tilemap palette (16 ink colours over a black paper). The ULA layer is
+  from the tilemap palette (16 ink colours over a black paper). A text colour
+  uses two of its palette's sixteen entries, so the spare fourteen of one of
+  them carry a second palette for monsters — the purple, pink and olive the
+  first one lacks. The ULA layer is
   disabled so only the tilemap is shown. Tile data lives in Bank 5
   (`0x4000` tiles, `0x6000` tilemap) — free because the program is at `0x8000+`.
 - **`int` is 16-bit** in SDCC, so values that can exceed ±32767 (gold, the turn
