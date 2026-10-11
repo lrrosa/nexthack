@@ -8,6 +8,42 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.6.2] — 2026-10-11
+
+**Three bugs a fuzzer found.** The game was played by a machine for hours in
+MAME — random keys, the game's own rules checked after every one, and some
+2,600 levels of random worlds visited — and these are what it turned up.
+Every fix was reproduced on the old binary first, then proven on both
+machines.
+
+### Fixed
+- **A dried fountain stays dry.** One drink in six dries a fountain up — until
+  you left the level: it was full again on the next visit, so a fountain was
+  endless gold and healing. The level now remembers it, through a save too.
+- **No more altars or fountains appearing out of nowhere.** When gold or an
+  item happened to lie on the spot where a level's altar or fountain would
+  stand, the level had none — until you picked the pile up: on your next visit
+  one stood there. A looted treasure vault was the likeliest place.
+- **128K: monsters you sensed while blind no longer linger on screen.** Blind
+  with telepathy, you see every monster on the level; when your sight came
+  back through a prayer — or you traded away the amulet of ESP while blind —
+  a monster that had not moved stayed drawn where you could not see it. The
+  Next was never affected.
+
+### Changed
+- Two code banks rebalanced so none is left nearly full (on the Next the
+  special-level loader moved to another bank, on the 128K the level builder),
+  and `tools/bankpack.py --free` now picks the move that leaves *every* bank it
+  touches roomiest, instead of curing one tight bank by making another.
+- The `zrcp-verify` skill gains the **fuzzer** that found all of this
+  (`fuzz/`): it plays the real `.nex`/`.tap` headless in MAME, checks the
+  game's invariants at every key, watches the memory the game must never
+  write, compares the screen with what the map says, and can visit random
+  levels of random worlds to check that every staircase, the Mines' entrance
+  and the Amulet can be reached on foot (all 2,600 could).
+- Saves are unchanged (`SAVE_VER` 35): a 1.6.1 save loads in 1.6.2 — saved by
+  the 1.6.1 binary and restored by this one in ZEsarUX, on both machines.
+
 ## [1.6.1] — 2026-10-06
 
 **The 128K walks as fast as the Next.** Measured in MAME on the same world,
