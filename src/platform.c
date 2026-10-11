@@ -76,22 +76,29 @@ void tm_cls(void)
 #define ATTR_BASE 0x5800u      /* attributes   */
 #define ROM_FONT  0x3C00u      /* ROM 8x8 font (char c -> 0x3C00 + (c<<3)) */
 
-/* Each tile's base ink (0..7); draw_map ORs in BRIGHT for in-sight cells.
- * The 1-bit shapes (udg_bitmap, built from udg_src[] by build_udgs) live in
- * Bank 5, not resident -- see the #define in platform.h. */
+/* Each tile's base attribute, ink | paper<<3; draw_map ORs in BRIGHT for
+ * in-sight cells. Every map path takes the whole byte, so a tile may have a
+ * paper: the walls are white bricks on blue (15), a door a red plank framed
+ * in black (16) and a shop's walls yellow on red (22) -- the door lies in
+ * either wall and in the mines' yellow-on-black, so black ink is the one
+ * frame that stands out in all three (yellow sank into the shop's bricks)
+ * -- and the fountain is cyan on blue water (13). Floors, items and
+ * monsters stay on black. The 1-bit shapes (udg_bitmap, built from
+ * udg_src[] by build_udgs) live in Bank 5, not resident -- see the #define
+ * in platform.h. */
 const uint8_t udg_ink[NTILES] = {
     /* ROCK   FLOOR  WALL   CORR   DOOR   SUP    SDOWN */
-       0,     7,     7,     7,     6,     7,     7,
+       0,     7,     15,    7,     16,    7,     7,
     /* HERO   DOG    RAT    GOLD   FOOD   DOLLAR WEAPON ARMOR  POTION */
        5,     6,     7,     6,     2,     4,     7,     7,     5,
     /* KOBOLD ORC    SNAKE  BAT    ZOMBIE SCROLL RING   AMULET ACIDBLOB */
        6,     4,     4,     1,     7,     7,     6,     6,     4,  /* bat: blue */
     /* SHOPWALL KEEPER  LEPRECHAUN YELLOWLIGHT TRAP HOMUNCULUS WRAITH ALTAR WAND FEYE BOOK FOUNTAIN */
-       6,       3,          4,          6,        2,      2,        7,     7,    5,   1,   2,   5,
+       22,      3,          4,          6,        2,      2,        7,     7,    5,   1,   2,   13,
     /* TROLL  VAMPIRE  DRAGON  PRIEST  MIMIC  MINEHOLE GNOME DWARF LUCKSTONE MINEWALL NYMPH TOOL */
        6,     7,       2,      3,      3,     6,       1,    7,    7,        6,       3,    6
     /* zombie white (NetHack's human zombie); keeper magenta; leprechaun green; yellow light
-     * yellow; trap+imp red; wraith+altar white; wand cyan; eye blue; book red; fountain cyan;
+     * yellow; trap+imp red; wraith+altar white; wand cyan; eye blue; book red; fountain cyan on blue;
      * troll yellow (NetHack's brown, as the Next draws it); vampire white; dragon red;
      * high priest + mimic magenta; mine hole yellow; gnome blue (the Next's smock);
      * dwarf + luckstone white; nymph magenta (the charm reads at a glance); tool

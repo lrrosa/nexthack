@@ -26,6 +26,15 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
   already drew the nymph and the priest in magenta.
 
 ### Changed
+- **The 128K's walls have a paper colour.** Every map cell was ink on black;
+  now the dungeon's walls are white bricks on blue, a shop's walls yellow on
+  red, the fountain cyan on blue water, and a door a red plank framed in
+  black — the one frame that stands out in all three walls a door can sit in
+  (yellow sank into the shop's bricks). The mines keep their yellow on
+  black, so Minetown's shop stands out of the cave. Floors, items and
+  monsters stay on black, and a remembered wall is still the dim one. The
+  four colours are bytes in a table the renderer already read whole: no
+  size, speed or save change.
 - `SAVE_VER` 36, but **1.6 saves still load**: the bytes are the same. The
   new version number is for the other direction — a 1.6.x binary would read
   a pack holding a two-handed sword past the end of its catalogue, so it now

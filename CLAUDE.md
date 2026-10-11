@@ -374,6 +374,13 @@ DATA — banked code's data is resident too). Modules include `game.h` to read/w
   new origin changed -- forcing it, and the C sweep, made each scroll a 0.6 s stall
   (now ~0.1 s). A new way to write over the map without setting `map_dirty` would
   leave the shadow lying, on every path.
+- **`udg_ink[]` (`platform.c`) is each 128K tile's whole attribute, not just an
+  ink**: `ink | paper<<3`, and every map path ORs BRIGHT (0x40) for a cell in
+  sight. Since 2026-10-11 four tiles have a paper -- walls white on blue (15),
+  doors black on red (16), shop walls yellow on red (22), the fountain cyan on
+  blue (13); the mines' walls stay yellow on black so Minetown's shop stands
+  out. A new path that draws a map tile must take the byte whole (never `& 7`),
+  and a door's colours must read in all three walls it can sit in.
 
 ### Title & victory screens (Layer 2)
 The **only** use of the Next's **Layer 2** framebuffer (256×192, 8bpp); everything
