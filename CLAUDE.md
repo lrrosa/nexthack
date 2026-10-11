@@ -508,8 +508,8 @@ tilemap.
   esxDOS `esx_f_*`). It needs a mounted writable filesystem, which **`run-next.bat`**
   gives for free: ZEsarUX auto-mounts esxDOS onto the .nex's folder, so `S` saves to
   `nexthack.sav` there and the next boot restores it. (No SD image / `hdfmonkey`.)
-- Memory budget: the cheap per-level masks scale to all 50 levels (`MAXLVL =
-  DLVL_AMULET`, ~3 bytes/level), but the fog-of-war does **not** — it is a fixed
+- Memory budget: the cheap per-level masks scale to every level (`MAXLVL` = 54,
+  the 50 floors plus the four mine levels, ~3 bytes/level), but the fog-of-war does **not** — it is a fixed
   `FOV_SLOTS`-entry LRU pool, so RAM is independent of dungeon depth. esxDOS itself
   adds ~1.5 KB of BSS (sector buffers), so `FOV_SLOTS` (12) is kept below the RAM
   max (~18) to reserve headroom for future features.
@@ -620,7 +620,15 @@ tilemap.
   because a stash may lie in a tunnel. Full (`DUG_MAX` 128), it forgets the
   oldest record of another floor; if every record is this floor's, the new
   hole opens but is not remembered. `fov_reset` empties it (new game, the
-  attract demo), and it rides the level block of the save.
+  attract demo), and it rides the level block of the save. **A dried fountain
+  is the same kind of record** (`DUG_FLOOR`, 2026-10-10): `place_fountain`
+  puts the `{` back on every visit, so until then a fountain that "dried up"
+  was full again on the next one -- endless gold and healing. Its record
+  reopens the cell as `.`, and the mark is bit 7 of the record's *level* byte,
+  not of the cell index, so an older binary loading the save skips the record
+  instead of writing 32 KB past `lvl[]`; the format and `SAVE_VER` are
+  unchanged. Anything else the hero changes for good on a regenerated level
+  belongs in this pool too.
 - **A new floor class char must be taught to six places**, and nothing checks
   the list: `tile_for` (`level.c`), `do_pickup`'s accepted classes and
   `resolve_floor`'s BUC rule (`item.c`), `describe`, `lookable` and the

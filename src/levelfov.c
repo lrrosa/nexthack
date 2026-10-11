@@ -71,19 +71,29 @@ static uint8_t  last_dlvl;                        /* dlvl cur_slot was resolved 
  * above the BFS queue: dug_pool[0] is the count, the records follow, oldest
  * first. Full, it forgets the oldest record of another level -- the one place
  * a tunnel can close, and only on a floor the hero is not standing on. It is
- * in the save (level_save), so growing DUG_MAX bumps SAVE_VER. */
+ * in the save (level_save), so growing DUG_MAX bumps SAVE_VER.
+ *
+ * A dried fountain rides the same pool (DUG_FLOOR, level.h): place_fountain
+ * puts the '{' back on every visit, so drying one was a formality -- leave the
+ * level and the gold and the healing were there again. Its record reopens the
+ * cell as '.', and the mark lives in bit 7 of the LEVEL byte (levels end at
+ * 54): a 1.6.1 binary loading this save finds no level of that number and
+ * skips the record, where a bit in the cell index would have sent its write
+ * 32 KB past lvl[]. So the format, and SAVE_VER, are unchanged. */
 #define DUG_MAX  128
 #define dug_pool ((uint8_t *)0x7C90u)    /* 1 + DUG_MAX*3 B: ends 0x7E11 */
 
-/* the hero has dug (x,y) open on this level: remember it */
+/* the hero has dug (x,y) open on this level: remember it. y | DUG_FLOOR:
+ * the cell is floor now (a dried fountain), not a tunnel */
 void dug_add(uint8_t x, uint8_t y) __banked
 {
     uint8_t  i, n = dug_pool[0];
     uint8_t *p = dug_pool + 1;
-    uint16_t c = (uint16_t)y * MAPW + x;
+    uint8_t  tag = (uint8_t)((uint8_t)dlvl | (y & DUG_FLOOR));
+    uint16_t c = (uint16_t)(y & (uint8_t)~DUG_FLOOR) * MAPW + x;
 
     if (n == DUG_MAX) {
-        for (i = 0; i < n && p[0] == (uint8_t)dlvl; i++) p += 3;
+        for (i = 0; i < n && (p[0] & (uint8_t)~DUG_FLOOR) == (uint8_t)dlvl; i++) p += 3;
         if (i == n) return;             /* every record is this floor's: the
                                          * new hole goes unremembered instead */
         for (n--; i < n; i++, p += 3) { /* drop record i; the rest move down */
@@ -91,20 +101,22 @@ void dug_add(uint8_t x, uint8_t y) __banked
         }
     }
     p = dug_pool + 1 + (uint16_t)n * 3;
-    p[0] = (uint8_t)dlvl;
+    p[0] = tag;
     p[1] = (uint8_t)c;
     p[2] = (uint8_t)(c >> 8);
     dug_pool[0] = (uint8_t)(n + 1);
 }
 
-/* re-open this level's tunnels (build_level, before the floor stash) */
+/* re-open this level's tunnels and dry its fountain (build_level, after
+ * place_fountain and before the floor stash) */
 void dug_restore(void) __banked
 {
     uint8_t  i, n = dug_pool[0];
     const uint8_t *p = dug_pool + 1;
     for (i = 0; i < n; i++, p += 3)
-        if (p[0] == (uint8_t)dlvl)
-            ((char *)lvl)[p[1] | ((uint16_t)p[2] << 8)] = '#';
+        if ((p[0] & (uint8_t)~DUG_FLOOR) == (uint8_t)dlvl)
+            ((char *)lvl)[p[1] | ((uint16_t)p[2] << 8)] =
+                (p[0] & DUG_FLOOR) ? '.' : '#';
 }
 
 static int     hero_room = -1;

@@ -73,8 +73,11 @@ static void quaff_fountain(void)
           else                                 gold = (uint16_t)(gold + amt);
           msg_num("You scoop up ", amt, " gold pieces."); }
         break;
-    case 4:                              /* the fountain dries up */
+    case 4:                              /* the fountain dries up -- for good:
+                                          * place_fountain puts it back on every
+                                          * visit, and the record undoes that */
         lvl[hero_y][hero_x] = '.';
+        dug_add((uint8_t)hero_x, (uint8_t)(hero_y | DUG_FLOOR));
         map_flush = 1;                   /* +zx: the '{' cell changed */
         msg("The fountain dries up!");
         break;

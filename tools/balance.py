@@ -396,7 +396,7 @@ FORMULAS = [
     ("backstab", "src/monster_ai.c:177",
      "the Rogue on a sleeper: + rn2(xlvl) + 1 + xlvl/4",
      "fight()"),
-    ("camera", "src/item_use.c:611",
+    ("camera", "src/item_use.c:614",
      "the flash blinds 5..14 turns: no strikes, no dodging (monster_ai.c:884)",
      "fight(): flashed at big hitters (bite die >= 6) from Dlvl 20"),
     ("power growth", "src/monster_ai.c:78",
@@ -656,7 +656,7 @@ def fight(rng, hero, mt, depth, asleep=None, pet_dmg=0):
     # the Tourist flashes the big hitters while they cross the room
     if hero.charges and not asleep and mt.dmg >= 6 and depth >= 20:
         hero.charges -= 1
-        blind = rng.rn2(10) + 5         # src/item_use.c:611
+        blind = rng.rn2(10) + 5         # src/item_use.c:614
         turns += 1
     if not asleep and hero.bolt_ready():
         mhp -= hero.cast_bolt(rng)      # one bolt while it crosses the room
