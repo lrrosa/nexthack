@@ -1,6 +1,6 @@
 ---
 name: zrcp-verify
-description: Verify NextHack behaviour by driving it inside ZEsarUX over ZRCP (read/poke memory, inject keys, decode the screen) on the Next and/or the 128K, or headless inside MAME (mame.ps1) as a second emulator. Use whenever a change needs proving in the emulator rather than by reading code — new commands, tiles, AI/movement, traps, save/restore, rendering, the 128K tape loader, timing — and before calling any feature done. There are no automated tests in this repo; this IS the test harness.
+description: Verify NextHack behaviour by driving it inside ZEsarUX over ZRCP (read/poke memory, inject keys, decode the screen) on the Next and/or the 128K, or headless inside MAME (mame.ps1) as a second emulator, where fuzz/fuzz.ps1 also fuzzes it for invariant and memory-guard violations. Use whenever a change needs proving in the emulator rather than by reading code — new commands, tiles, AI/movement, traps, save/restore, rendering, the 128K tape loader, timing — and before calling any feature done. There are no automated tests in this repo; this IS the test harness.
 ---
 
 # Verifying NextHack in the emulator (ZRCP)
@@ -211,3 +211,113 @@ python .claude/skills/zrcp-verify/mameprof.py "$($r.Dir)\log.txt" zx128
   one, so never hard-code positions: read `hero_x`, or poke.
 - A script that stalls (a `waitpc` never met) is killed by `-MaxSeconds` of
   emulated time; the log then lacks `exit` and `Invoke-Mame` warns.
+
+## Fuzzing (`fuzz/`)
+
+`fuzz/fuzz.ps1` boots the real `.tap`/`.nex` headless in MAME with its
+debugger on (`-debug -debugger none`), plays weighted random keys and checks
+the game's invariants at every key wait. It is what found the 2026-10-08..10
+bugs no scripted test had: a dried fountain refilling on a revisit, an altar
+or fountain appearing where a pile was taken, and 128K ghost monsters after
+telepathy ended. Run it after touching generation, persistence, the renderer
+or a bank -- one seed per target at least.
+
+```powershell
+& .claude\skills\zrcp-verify\fuzz\fuzz.ps1 zx128 -Seed 7 -Frames 30000   # play
+& .claude\skills\zrcp-verify\fuzz\fuzz.ps1 next -Scan -Seed 7 -Stairs 40 # visit levels
+python .claude\skills\zrcp-verify\fuzz\cover.py nexthack128.map "$env:TEMP\nexthack-fuzz\*\log.txt.cover"
+```
+
+- `-Seed` pins the world, the dice and every key: the same seed, frames and
+  build replay the same run, so a report is reproduced by rerunning it.
+  Almost always: of 19 identical Next runs (one image, one config) 18
+  matched trip for trip and one diverged, cause unknown. A report that does
+  not come back on the first rerun deserves a second before it is dismissed.
+- `-Frames` counts play after the class pick (50 a second). With the
+  debugger on, the Next runs ~3x real time and the 128K ~14x (its ~616 s
+  tape load included): 6000 frames take about a minute on either, 60000
+  about seven on the Next. Parallel runs are fine; each `-Tag` gets its own
+  copy of the image.
+- `-Class a`, `-Stairs 70` (take the stairs every n actions; a scan visits
+  more levels at 40), `-Dump` (also `$env:FUZZ_DUMP=1`: the last 40 keys and
+  the map at each kind's first violation), `-OutDir` (default
+  `%TEMP%\nexthack-fuzz`), `-Tag` (default `fz-<target>-<seed>[-scan]`).
+- `-PortDir` is the tree whose build is fuzzed: the `.map`, `src/` tables and
+  `tools/bankmap.py` are read from it (`fuzzcfg.py`, rerun every time). The
+  default is this repo -- a worktree has no build, so point it at the
+  checkout you built.
+
+**What it checks.** At every wait of the MAIN loop's `getkey_rpt`: `dlvl`
+1..54; the hero inside the map and on walkable ground; every monster in
+bounds, not in rock, not stacked, not on the hero; `mcount <= MAXMON`; the
+pack's count and `otyp`s; `php <= pmaxhp`; the pet slot alive and a dog;
+`dug_pool`'s count; and a **renderer oracle** that recomputes every viewport
+cell the way a forced full redraw would, against `VIEW_SHADOW` and the ULA
+screen (128K) or the tilemap (Next). On each level's first check: `>`, `<`,
+the mine entrance (Dlvl 2) and the Amulet's cell (Dlvl 50) reachable on foot,
+one `<`, one `>` except at the two bottoms, the mine hole only on Dlvl 2.
+Throughout: **write watchpoints** on memory the game must never write --
+resident code, the code banks, Bank 5's gaps between tenants (from
+`bankmap.py`), the free space between `__BSS_END` and the stack reserve -- and
+on the 128K a `0x7FFD` write with bit 3 (shadow screen) or bit 5 (paging
+lock); a **control** watchpoint that must fire (FRAMES on the 128K, a `Y` on
+the Next's message line) proves they are armed. A 1 kHz sampler logs the
+lowest SP and `tempsp` (the trampoline's stack) and the PCs for `cover.py`;
+30 s without a key wait is a `stall`, 100 frames in ROM `in-rom`. To keep the
+run going it tops up HP and food, pokes a gift into the pack every 25 actions
+(wands, scrolls, tools, artifacts) and the hero onto the stairs every
+`-Stairs` actions.
+
+**`-Scan`** visits random levels of random worlds. A one-shot write
+watchpoint on `build_level`'s `el_life = 0` (after `go_down`/`go_up` moved
+`dlvl`, before `gen_level` reads it) pokes `dlvl` and `world_seed` and clears
+the last world's stashes, masks, open doors and tunnels from INSIDE
+`build_level`. Never before the key: a misread key would then play turns on a
+new depth over the old floor. Each trip's action prints a serial to the
+debugger console, which is how `scan trips N taken M` knows a trip happened.
+A monster on the `>` (a sleeper never leaves) makes it climb `<` instead,
+logged as `A ... blocked`; before that, one such sleeper held a 128K scan on
+one level for 11000 of its 12500 frames. On a level whose altar or fountain spot holds a generated pile it runs the
+**grow test**: take the pile, revisit the same level, the spot must still be
+`.`. It mirrors `place_altar`/`place_fountain`'s hashes and `eff_depth`'s
+mines rule; `tile_for` and the oracles mirror `level.c` and `draw_map`.
+Change those and update `fuzz.lua`, or it reports phantoms or goes blind.
+
+**Reading `<OutDir>\<Tag>\log.txt`** (`fuzz.ps1` prints it, `A` stairs lines
+left out, and ends with a verdict line):
+- `VIOLATION <kind> @frame F dlvl D turns T: <detail>` -- an invariant broke.
+  The first 4 of a kind are logged, all are counted (`count <kind> N` after
+  the summary); the first also saves `vNN_<kind>.png` (the Next's font is
+  garbage there, see above).
+- `HIT @frame F dlvl D: WP <guard> a=<addr> d=<data> pc=<pc> sp=<sp> bk=<bank>`
+  -- a guard watchpoint: the game wrote where it never may. `bk` is BANKM on
+  the 128K; `pc` + the `.map` name the writer.
+- `SUMMARY seed ... actions ... checks ... deaths ...`, then: stairs keys
+  lost, levels walk-checked, scan trips/taken, grow tests/passed, cursor
+  skips; the levels visited; `min SP` against the reserve floor and `min
+  tempsp` against the main stack's top; `count` lines; `WATCH Nx WP ...`
+  per watchpoint that fired.
+- **A clean run** has a SUMMARY, no `VIOLATION` or `HIT`, and a `WATCH ... WP
+  control` line. No SUMMARY means MAME stopped early (`mame.out`); no control
+  line means the guards proved nothing. `trip not taken` and `grow test
+  abandoned` are noise (a key misread, a teleport), not findings.
+- `log.txt.cover` feeds `cover.py`: the game's public functions no sample
+  ever landed in. On the 128K a banked PC carries its bank; the Next's
+  sampler cannot tell its banks apart, so a banked function there is listed
+  only if no bank had a sample at its offset.
+
+**Fuzzer traps:**
+- **MAME's debugger reads numbers as hex, and a bare one that starts with a
+  letter as a register**: `C`, `D`, `AF25` are registers, `28` is `0x28`.
+  `0x`-prefix every number handed to it (`hx()` in `fuzz.lua`).
+- **`getkey_rpt` is shared by the main loop and `cursor_pick`** (farlook,
+  teleport control), which waits mid-turn, before the redraw. The PC cannot
+  tell them apart; a return address into `cursor_pick` among the top stack
+  words can, and no oracle runs there (`cursor skips`).
+- **Two MAME instances cannot share one `.tap`** (see MAME traps): `fuzz.ps1`
+  copies the image into each run's folder.
+- **`pet_idx = -1` with `have_pet` set is legal**: `place_pet` lets the dog
+  sit a level out when the arrival is packed or `MAXMON` is reached. It is
+  not a lost pet.
+- **A chord must not overlap the last key**, still held by MAME's natural
+  keyboard: the game would see neither. A scan trip waits 8 quiet frames.
