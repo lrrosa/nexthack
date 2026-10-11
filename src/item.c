@@ -245,7 +245,15 @@ static const objtype_t objtypes[NUMOBJ] = {
     /* The Tourist's camera (NetHack's expensive camera), her kit's and never
      * found (mindep 255): the flash blinds a monster for 5..14 turns. Charges
      * in ench, like a wand's, and a scroll of charging tops it up. */
-    { '(',  0,  200, 255, 1, SL_NONE, "expensive camera" }
+    { '(',  0,  200, 255, 1, SL_NONE, "expensive camera" },
+    /* The two-handed sword (2026-10-11), appended so no saved otyp shifts: the
+     * ladder's first two-hander, a 6 from Dlvl 16 -- before the axe -- for
+     * the hero who will trade the shield early. Measured over 5 x 600 lives
+     * with the dog against the three settings beside it: every class within
+     * a point or two of before (Valkyrie 58.7, Wizard 42.1, Rogue 35.7,
+     * Tourist 18.9 -- one seed alone wanders +-4) and the shield-trader 83.6
+     * against 82.9; a 7 from Dlvl 24 would have taken her to 87.7. */
+    { ')',  6,  300,  16, 1, SL_TWOHAND, "two-handed sword" }
 };
 
 /* Each gift's alignment (as in NetHack: 0 Lawful, 1 Neutral, 2 Chaotic,

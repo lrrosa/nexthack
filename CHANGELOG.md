@@ -11,6 +11,12 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 ## [Unreleased]
 
 ### Added
+- **The two-handed sword**, NetHack's *montante*: the first rung of the
+  two-handed ladder, a 6 from Dlvl 16 — before the battle-axe (20) and the
+  mattock (28) — for a hero ready to give up the shield early. Modelled with
+  the dog over 3000 runs a class, it moves no class's wins by more than the
+  noise (the Valkyrie 59.4% → 58.7%; one who trades the shield 82.9% →
+  83.6%); a 7 from Dlvl 24 would have put the trader at 88%.
 - **A second palette for monsters on the Next.** A text colour uses only two
   of its palette's sixteen entries; the spare fourteen of one now hold the
   purple, pink and olive the tiles never had. The **nymph** wears a pink gown
@@ -18,6 +24,12 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
   (his red was the dragon's), the **snake** is olive — NetHack's brown, out
   of the greens — and the **vampire**'s cape is deep purple. The 128K
   already drew the nymph and the priest in magenta.
+
+### Changed
+- `SAVE_VER` 36, but **1.6 saves still load**: the bytes are the same. The
+  new version number is for the other direction — a 1.6.x binary would read
+  a pack holding a two-handed sword past the end of its catalogue, so it now
+  sees another version's save and asks, instead of loading it.
 
 ## [1.6.2] — 2026-10-11
 

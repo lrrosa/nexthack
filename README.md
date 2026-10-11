@@ -114,7 +114,7 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   level** — and leave a **scroll of scare monster** on the floor to stand on
   where no monster dares strike. Deep down the weapons go on past the long
   sword the way NetHack's do: the extra damage is in the **two-handers** (a
-  battle-axe, a mattock), paid for with your shield, and a **silver saber**
+  two-handed sword, a battle-axe, a mattock), paid for with your shield, and a **silver saber**
   burns vampires. Nine **rings** — protection,
   regeneration, slow digestion, free action, teleport control, stealth, and
   three cursed pieces of junk that make trying on an unknown one a gamble.

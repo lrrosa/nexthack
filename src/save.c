@@ -35,7 +35,13 @@
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   35     /* 35: the pick-axe digs sideways -- the level
+#define SAVE_VER   36     /* 36: the two-handed sword, otyp 81. The bytes are
+                           * 35's -- 82 types still fit id_known's 11 -- so a
+                           * 35 save loads (SAVE_VER_MIN); but a 1.6.x binary
+                           * reading a pack that holds one would index past
+                           * its catalogue, so it must see another version and
+                           * ask, not load.
+                           * 35: the pick-axe digs sideways -- the level
                            * block ends with the dug-cell pool (385 B).
                            * 34: the classes -- the Tourist's camera makes 81
                            * types (id_known 11 bytes). 33: the tools --
@@ -50,6 +56,7 @@
                            * 1.4's (the item batch: 60 types, id_known 8 bytes,
                            * the genocide mask); 28 1.3's; 27 the 1.0 freeze.
                            * An older save gets the 1.3.1 prompt. */
+#define SAVE_VER_MIN 35   /* the oldest whose bytes this binary reads as its own */
 
 struct save_hdr {
     uint16_t magic;
@@ -155,7 +162,8 @@ static uint8_t save_check(void)
     got = file_read(h, buf, sizeof buf);
     if (got < sizeof(struct save_hdr)) { file_close(h); return SV_DAMAGED; }
     if (((struct save_hdr *)buf)->magic != SAVE_MAGIC ||
-        ((struct save_hdr *)buf)->ver   != SAVE_VER) { file_close(h); return SV_VERSION; }
+        ((struct save_hdr *)buf)->ver   >  SAVE_VER  ||
+        ((struct save_hdr *)buf)->ver   <  SAVE_VER_MIN) { file_close(h); return SV_VERSION; }
     last[0] = last[1] = last[2] = last[3] = 0;
     do {
         for (i = 0; i < (uint8_t)got; i++) {

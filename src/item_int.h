@@ -73,6 +73,7 @@ enum {
     /* the 1.6 tools, '(' -- 'a' applies them (item_use.c do_apply) */
     O_SKELKEY, O_PICKAXE, O_UHORN, O_MWHISTLE, O_BLINDFOLD,
     O_CAMERA,      /* '(' the Tourist's expensive camera (1.6); never generated */
+    O_TWOHSWORD,   /* ')' the two-handed sword, the ladder's first rung (after 1.6.2) */
     NUMOBJ
 };
 /* Excalibur and the five gifts: unique, wielded first by 'w', never eroded */
