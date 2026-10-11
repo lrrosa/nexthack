@@ -49,7 +49,7 @@
 
     "monster_ai":    { "code": "PAGE_26_CODE", "const": "PAGE_26_CODE", "why": "bank 13, a third code bank opened when PAGE_20 filled up" },
     "attract":       { "code": "PAGE_26_CODE", "const": "PAGE_26_CODE", "why": "the title's attract demo: cold (it runs only at the title), and every call out of it is __banked or resident -- its one literal goes only to the resident msg() -- so it may live anywhere with room. Bank 13 had the most" },
-    "leveltmpl":     { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "const holds the generated leveltmpl_data.h grids; load_template() reads them in place, so both must share a bank. Moved off PAGE_26 with the 128K half, so monster_ai + levelfov get that bank to themselves" },
+    "leveltmpl":     { "code": "PAGE_26_CODE", "const": "PAGE_26_CODE", "why": "const holds the generated leveltmpl_data.h grids; load_template() reads them in place, so both must share a bank. Back in PAGE_26 since 2026-10-11, when item_use's growth left PAGE_30 at 738 B: `bankpack --free PAGE_30_CODE` chose it over nexthack_lvl because it left the tighter of the two banks roomier (2369 B against 2043). The Next has no contended RAM, so sharing the AI's bank costs the AI nothing but bytes" },
     "levelfov":      { "code": "PAGE_26_CODE", "why": "moved off PAGE_20 when bank 10 filled up as item.c grew" },
 
     "item_use":      { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "the verbs that activate or consume an item (quaff/eat/read/throw/zap), split out of item.c when PAGE_28 fell to 163 B. None needs a pointer into item.c's catalogue -- see item_int.h -- so it can live anywhere; PAGE_30 had the room" },
@@ -84,7 +84,7 @@
     "monster_spawn": { "code": "BANK_1", "const": "BANK_1", "why": "split out of monster_ai.c when BANK_6 filled up" },
     "sfx":           { "code": "BANK_1", "why": "moved BACK here from BANK_3 when the 0.12 batch (farlook + mirroring + traps) filled BANK_3. All sfx_* entries are __banked and bit_beepfx + its tables are resident, so the move costs nothing" },
 
-    "nexthack_lvl":  { "code": "BANK_7", "const": "BANK_7", "why": "the cold level half split out of nexthack.c (see the Next entry). BANK_7 because it had ~14 KB free and this code runs once per level entry, so its contended RAM costs nothing" },
+    "nexthack_lvl":  { "code": "BANK_6", "const": "BANK_6", "why": "the cold level half split out of nexthack.c (see the Next entry). In BANK_6 since 2026-10-11, when item_use's growth left BANK_7 at 496 B. BANK_6 is the uncontended bank kept for per-turn code and this runs once per level, so it is not the natural tenant -- but it was the one destination that did not leave the receiving bank tight: BANK_1, where the first --free sent it, would have been left at 123 B. The AI keeps 2.8 KB there to grow" },
 
     "save":          { "code": "BANK_1", "const": "BANK_1", "why": "save & restore, split out of nexthack.c (see the Next entry) -- ~1.3 KB that BANK_3 could no longer spare. Cold (it runs on S and at boot), so BANK_1's contended RAM costs it nothing; BANK_1 had the most room" },
 

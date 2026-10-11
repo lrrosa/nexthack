@@ -104,8 +104,12 @@ python tools/bankpack.py plan zx128 --grow monster_ai=2000
   recompile *and* a fresh emulator verification, so minimising moves beats
   minimising banks). `--grow mod=BYTES` asks the real question: a bank is about to
   overflow, what is the smallest fix? `--free BANK_4` asks the other one: give that
-  bank headroom *now*, before it overflows. `--consolidate` packs into the fewest
-  banks and prints the churn it costs.
+  bank headroom *now*, before it overflows -- and it keeps the plan whose tightest
+  **touched** bank (the freed one and every destination) ends roomiest, so it never
+  just moves the shortage. Its first version took the first bank with room and,
+  asked to free the 128K's BANK_7, would have left BANK_1 at 123 B. Hot code still
+  goes uncontended first. `--consolidate` packs into the fewest banks and prints
+  the churn it costs.
 - `compress` ranks every module by how well its banked bytes pack, using the
   game's own LZ. A **hint, not a plan**: only data read once into a destination
   that already exists can spend it — code never can, so a well-packing

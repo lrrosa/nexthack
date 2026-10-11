@@ -45,7 +45,11 @@ pressure, and vice versa.
    with 21 KB stranded in two banks while two others sat at 26 and 42 free bytes.
    To give a bank headroom BEFORE it overflows -- `plan` stays silent while a
    bank still fits at 627 free bytes -- ask `plan <target> --free BANK_4`: the
-   fewest moves that empty the most of that one bank.
+   fewest moves, keeping the plan whose tightest TOUCHED bank (the freed one
+   and each destination) ends roomiest. It prints every touched bank's before
+   and after: read the receiving banks, since relieving one bank by filling
+   another is the mistake this rule exists to stop (its first version would
+   have left the 128K's BANK_1 at 123 B to free BANK_7).
    Swap `plan` for `apply` to write it into `banks.json`; then fix the moved
    entries' `why` text (it still describes the old bank) and **re-verify in the
    emulator** — every address in those banks changed.
@@ -88,7 +92,8 @@ pressure, and vice versa.
 
 **Next:** plenty. Banks 10/11/13/14 hold code, 12 holds PAGE_22's const spill
 (so a `PAGE_24` section there collides — `bankmap.py` flags it), 16-21 hold the
-Layer 2 images, 15 is `nexthack_lvl` (PAGE_30). Banks 22+ are still free; add a
+Layer 2 images, 15 is PAGE_30 (`item_use`, `nexthack_lvl`, `save`). Banks 22+ are
+still free; add a
 `SECTION PAGE_nn_CODE` + `ORG 0xnnC000` to `mmap.inc`, then list it in
 `banks.json`'s `_pool`.
 
@@ -102,8 +107,8 @@ Layer 2 images, 15 is `nexthack_lvl` (PAGE_30). Banks 22+ are still free; add a
 | 3 | `nexthack.c`, `classes`, `spells` — 2.2 KB free since the 2026-08-31 split |
 | 4 | `scr` + the two SCRs — 2.5 KB free, but the group is 13.9 KB and cannot move |
 | 5 | **the data bank** (0x4000-0x7FFF, always mapped — see the tenant map) |
-| 6 | `monster_ai`, `levelfov` — 6.9 KB free, and UNCONTENDED: per-turn code belongs here |
-| 7 | `platform_init`, `music`, `nexthack_lvl`, `leveltmpl`, `item_use` — ~5.9 KB free; contended, so cold code only |
+| 6 | `monster_ai`, `levelfov`, `nexthack_lvl` — UNCONTENDED, kept for per-turn code; `nexthack_lvl` is cold but went here (2026-10-11) as the one destination that left nobody tight |
+| 7 | `platform_init`, `music`, `leveltmpl`, `item_use` — contended, so cold code only; `item_use` is the grower |
 
 (That table goes stale every time a bank fills; `banks.json` is authoritative
 and `python tools/bankmap.py` prints what is actually left.)

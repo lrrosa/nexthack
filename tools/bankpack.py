@@ -387,43 +387,46 @@ def compute(target, consolidate=False, grow=None, free_bank=None):
 
 
 def relieve(pool, us, load, grown, contended, bank):
-    """Fewest moves that get the most out of ONE named bank.
+    """Fewest moves that give ONE named bank headroom -- without making another
+    bank the new tight one.
 
     `plan` answers "what is the minimum that makes it fit", which is silent
-    while a bank still fits at 627 free bytes. This answers the question that
-    actually gets asked -- "free BANK_4" -- by emptying as much of it as a
-    single small set of moves can, without breaking anything else.
+    while a bank still fits at 627 free bytes; this answers "free BANK_4".
+
+    Asking to free a bank means two things at once: it gains room, AND no other
+    bank becomes the next one to fill. So among the plans with the fewest
+    moves, this keeps the one whose TIGHTEST TOUCHED BANK -- the source and
+    every destination -- ends roomiest. The first version took the first bank
+    with room in pool order: asked to free the 128K's BANK_7 it moved
+    nexthack_lvl into BANK_1 and left THAT at 123 B, which moves the shortage
+    instead of curing it. Ranking, most important first:
+      1. no hot unit in a contended bank, when any plan avoids it;
+      2. the tightest touched bank, as roomy as possible;
+      3. the most freed from the named bank.
     """
-    cands = [(n, b, grown[n], h) for n, _, _, b, p, h in us if not p and b == bank]
-    if not cands:
-        return [], 0
+    cands = [(n, grown[n], h) for n, _, _, b, p, h in us if not p and b == bank]
+    dests = [d for d in pool if d != bank]
     best = None
     for k in range(1, len(cands) + 1):
         for combo in itertools.combinations(cands, k):
-            left = dict(load)
-            for n, b, sz, _h in combo:
-                left[b] -= sz
-            moves, ok = [], True
-            for n, b, sz, hot in sorted(combo, key=lambda c: -c[2]):
-                order = pool if not hot else (
-                    [x for x in pool if x not in contended] +
-                    [x for x in pool if x in contended])
-                for dst in order:
-                    if dst != b and BANK_SIZE - left[dst] >= sz:
-                        left[dst] += sz
-                        moves.append((n, b, dst))
-                        break
-                else:
-                    ok = False
-                    break
-            if not ok:
-                continue
-            freed = sum(c[2] for c in combo)
-            if best is None or freed > best[1]:
-                best = (moves, freed)
+            for assign in itertools.product(dests, repeat=k):
+                left = dict(load)
+                for (n, sz, h), d in zip(combo, assign):
+                    left[bank] -= sz
+                    left[d] += sz
+                if any(left[d] > BANK_SIZE for d in set(assign)):
+                    continue
+                worst = min(BANK_SIZE - left[t] for t in {bank} | set(assign))
+                hot_cont = sum(1 for (n, sz, h), d in zip(combo, assign)
+                               if h and d in contended)
+                freed = sum(sz for _, sz, _ in combo)
+                score = (-hot_cont, worst, freed)
+                if best is None or score > best[0]:
+                    best = (score, [(n, bank, d) for (n, _, _), d in zip(combo, assign)],
+                            freed)
         if best:
-            break          # minimal k wins; among those, the most freed
-    return best if best else ([], 0)
+            break          # fewest moves first; among those, the best score
+    return (best[1], best[2]) if best else ([], 0)
 
 
 def cmd_plan(target, consolidate=False, grow=None, free_bank=None):
@@ -487,9 +490,14 @@ def cmd_plan(target, consolidate=False, grow=None, free_bank=None):
         after[a] -= grown[n]
         after[b] += grown[n]
     if free_bank:
-        print("\n  %s: %d B free now -> %d B after"
-              % (free_bank, BANK_SIZE - load[free_bank],
-                 BANK_SIZE - after[free_bank]))
+        # Every bank the plan touches, not just the freed one: the point of the
+        # choice is that no destination becomes the next bank to fill.
+        print()
+        touched = [free_bank] + sorted({d for _, _, d in moves} - {free_bank})
+        for b in touched:
+            print("  %-14s %6d B free now -> %6d B after%s"
+                  % (b, BANK_SIZE - load[b], BANK_SIZE - after[b],
+                     "   (freed)" if b == free_bank else "   (receives)"))
     print("\n  largest free block: %d B now -> %d B after"
           % (max(BANK_SIZE - load[b] for b in pool),
              max(BANK_SIZE - after[b] for b in pool)))
