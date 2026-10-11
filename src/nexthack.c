@@ -254,6 +254,13 @@ static void dm_terrain(uint8_t mapx, uint8_t mapy, uint8_t vx)
     dm_paint(mapx, mapy, vx, t, attr);
 }
 
+/* would a monster standing on (x,y) be drawn this frame? (in sight, or sensed) */
+static uint8_t dm_shows(uint8_t x, uint8_t y)
+{
+    uint16_t idx = (uint16_t)y * MAPW + x;
+    return (uint8_t)((dm_vis[idx >> 3] & (1u << (idx & 7))) || mon_sensed());
+}
+
 void draw_map(void) __banked
 {
     uint8_t *shad = VIEW_SHADOW;
@@ -318,20 +325,23 @@ void draw_map(void) __banked
             uint8_t cmx = 255, cmy = 255;   /* this turn's drawn cell, or 255 = none */
             if (i < mcount && m_alive[i] && m_y[i] < MAPH &&
                 m_x[i] >= vx && m_x[i] < (uint8_t)(vx + TM_W) &&
-                !(m_x[i] == (uint8_t)hero_x && m_y[i] == (uint8_t)hero_y)) {
-                uint16_t midx = (uint16_t)m_y[i] * MAPW + m_x[i];
-                if ((dm_vis[midx >> 3] & (1u << (midx & 7))) || mon_sensed())
-                    { cmx = m_x[i]; cmy = m_y[i]; }
-            }
-            /* erase only where it left -- but never a cell someone occupies NOW:
-             * the hero (a pet swap puts its old cell under the just-drawn hero)
-             * or another monster (the pet<->keeper swap moves a LOWER slot onto
-             * the pet's old cell, so ascending draw order no longer guarantees
-             * the enterer is drawn after this erase). The occupant is visible
-             * whenever this path runs, so it is (re)drawn this same frame. */
+                !(m_x[i] == (uint8_t)hero_x && m_y[i] == (uint8_t)hero_y) &&
+                dm_shows(m_x[i], m_y[i]))
+                { cmx = m_x[i]; cmy = m_y[i]; }
+            /* erase only where it left -- but never a cell someone occupies NOW
+             * and is drawn on this frame: the hero (a pet swap puts its old
+             * cell under the just-drawn hero) or another monster (the
+             * pet<->keeper swap moves a LOWER slot onto the pet's old cell, so
+             * ascending draw order no longer guarantees the enterer is drawn
+             * after this erase). An occupant who is NOT drawn is erased: a
+             * monster that stays put while telepathy ends kept its sensed
+             * picture for good wherever no map_dirty came with the cure -- a
+             * prayer's "You feel purified", a swapped or stolen amulet of ESP
+             * (found by the MAME fuzzer, 2026-10-10). */
             if (prev_mx[i] != 255 && (prev_mx[i] != cmx || prev_my[i] != cmy) &&
                 !(prev_mx[i] == (uint8_t)hero_x && prev_my[i] == (uint8_t)hero_y) &&
-                monster_at(prev_mx[i], prev_my[i]) < 0)
+                !(monster_at(prev_mx[i], prev_my[i]) >= 0 &&
+                  dm_shows(prev_mx[i], prev_my[i])))
                 dm_terrain(prev_mx[i], prev_my[i], vx);
             if (cmx != 255) {
                 t = mon_tile(m_type[i]);
@@ -374,8 +384,8 @@ void draw_map(void) __banked
             if (!m_alive[i] || m_y[i] >= MAPH) continue;
             if (m_x[i] < vx || m_x[i] >= (uint8_t)(vx + TM_W)) continue;
             if (m_x[i] == (uint8_t)hero_x && m_y[i] == (uint8_t)hero_y) continue;
+            if (!dm_shows(m_x[i], m_y[i])) continue;
             midx = (uint16_t)m_y[i] * MAPW + m_x[i];
-            if (!(dm_vis[midx >> 3] & (1u << (midx & 7))) && !mon_sensed()) continue;
             MON_MAP[midx >> 3] |= (uint8_t)(1u << (midx & 7));
             mt = mon_tile(m_type[i]);
             dm_paint(m_x[i], m_y[i], vx, face_tile(mt, m_face[i]),
@@ -431,10 +441,8 @@ void draw_map(void) __banked
         uint8_t dr = 0;
         if (i < mcount && m_alive[i] && m_y[i] < MAPH &&
             m_x[i] >= vx && m_x[i] < (uint8_t)(vx + TM_W) &&
-            !(m_x[i] == (uint8_t)hero_x && m_y[i] == (uint8_t)hero_y)) {
-            uint16_t midx = (uint16_t)m_y[i] * MAPW + m_x[i];
-            if ((dm_vis[midx >> 3] & (1u << (midx & 7))) || mon_sensed()) dr = 1;
-        }
+            !(m_x[i] == (uint8_t)hero_x && m_y[i] == (uint8_t)hero_y))
+            dr = dm_shows(m_x[i], m_y[i]);
         if (dr) { prev_mx[i] = m_x[i]; prev_my[i] = m_y[i]; }
         else      prev_mx[i] = 255;
     }
