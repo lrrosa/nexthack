@@ -39,9 +39,11 @@ const uint8_t gfx[NTILES][64] = {
   { /* T_CORR (speckled) */
     0,0,0,0,0,0,0,0, 0,0,1,0,0,0,0,0, 0,0,0,0,0,1,0,0, 0,0,0,0,0,0,0,0,
     0,1,0,0,0,0,0,0, 0,0,0,0,1,0,0,0, 0,0,0,0,0,0,0,0, 0,0,1,0,0,0,0,0 },
-  { /* T_DOOR (arched wooden door: grey frame, brown planks, knob) */
-    0,0,3,3,3,3,0,0, 0,3,5,5,5,5,3,0, 3,5,6,6,6,6,5,3, 3,5,6,6,6,6,5,3,
-    3,5,6,6,13,6,5,3, 3,5,6,6,6,6,5,3, 3,5,6,6,6,6,5,3, 0,3,3,3,3,3,3,0 },
+  { /* T_DOOR (the 128K's door in colour: a dark arched recess, two brown
+     * planks with a pale grain and a dark seam, a brass ring. The old grey
+     * frame and brown door sank into the shop's and the mines' browns) */
+    0,0,7,6,6,7,0,0, 0,7,6,5,7,6,6,0, 0,7,6,5,7,6,6,0, 0,7,6,5,7,6,13,0,
+    0,7,6,5,7,6,13,0, 0,7,6,5,7,6,6,0, 0,7,6,5,7,6,6,0, 0,7,6,5,7,6,6,0 },
   { /* T_SUP (stairs up: a bright stone ziggurat rising toward you --
      * light treads, grey risers) */
     0,0,0,3,3,0,0,0, 0,0,0,2,2,0,0,0, 0,0,3,3,3,3,0,0, 0,0,2,2,2,2,0,0,
@@ -334,7 +336,9 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00 }, /* FLOOR    (centre dot)   */
     { 0xFF,0x88,0x88,0xFF,0x22,0x22,0xFF,0x88 }, /* WALL     (brick)        */
     { 0x00,0x20,0x00,0x04,0x00,0x40,0x00,0x08 }, /* CORR     (speckle)      */
-    { 0x3C,0x42,0x42,0x4A,0x42,0x42,0x42,0x7E }, /* DOOR (arched top + knob) */
+    { 0xC3,0x91,0x91,0x95,0x91,0x91,0x91,0x91 }, /* DOOR (an arched recess,
+                                                  * a plank seam and a ring;
+                                                  * black ink on red paper) */
     { 0x00,0x0F,0x08,0x38,0x20,0xE0,0x00,0x00 }, /* SUP (UNIFORM steps -- 3px
                                                   * treads, 1px risers -- up
                                                   * to a long top landing)   */

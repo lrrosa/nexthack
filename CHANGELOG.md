@@ -35,6 +35,11 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
   monsters stay on black, and a remembered wall is still the dim one. The
   four colours are bytes in a table the renderer already read whole: no
   size, speed or save change.
+- **A dungeon door on both machines.** The door was a plain arch with a
+  knob; it is now an arched recess in the wall, two planks parted by a seam
+  and a ring — black on red on the 128K, and on the Next brown planks with a
+  pale grain and a brass ring in a dark recess, where the old grey frame and
+  brown door had sunk into the shop's and the mines' browns. Same bytes.
 - `SAVE_VER` 36, but **1.6 saves still load**: the bytes are the same. The
   new version number is for the other direction — a 1.6.x binary would read
   a pack holding a two-handed sword past the end of its catalogue, so it now
