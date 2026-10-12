@@ -19,6 +19,7 @@ $script:ZrcpClient = $null
 $script:ZrcpStream = $null
 $script:ZrcpTarget = 'next'
 $script:ZrcpSymbols = $null
+$script:ZrcpVisible = $false     # Start-Emu sets it (headless unless -Visible)
 
 $script:PortDir = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $script:EmuExe  = Join-Path (Split-Path -Parent $script:PortDir) 'ZEsarUX\zesarux.exe'
@@ -75,10 +76,18 @@ function Stop-Emu {
 }
 
 function Start-Emu {
+    # Headless by default: no window (--vo null) and no sound (--ao null). A
+    # window steals the focus and plays the theme over whatever the user is
+    # doing -- and whatever they then type lands in the emulated keyboard: their
+    # Space at the title once restored a save ahead of the test's own key, which
+    # then played a phantom turn. -Visible (or $env:NEXTHACK_EMU_VISIBLE=1)
+    # brings the window and the sound back, to watch a run.
     param([ValidateSet('next', 'zx128')][string]$Target = 'next',
-          [switch]$KeepSave)
+          [switch]$KeepSave,
+          [switch]$Visible)
     Stop-Emu
     $script:ZrcpTarget = $Target
+    $script:ZrcpVisible = [bool]($Visible -or $env:NEXTHACK_EMU_VISIBLE)
     $script:ZrcpSymbols = $null
     $script:ZrcpFont = $null      # each build (and each tree, -PortDir) has its own
 
@@ -93,6 +102,7 @@ function Start-Emu {
     # itself on exit; a ZX Desktop switched on there once widened every later
     # window, pushing a panel into Save-EmuScreenshot's crop.
     $common = @('--enable-remoteprotocol', '--nowelcomemessage', '--quickexit', '--forbid-zxdesktop')
+    if (-not $script:ZrcpVisible) { $common += @('--vo', 'null', '--ao', 'null') }
     if ($Target -eq 'next') {
         $args = @((Join-Path $script:PortDir 'nexthack.nex')) + $common
     } else {
@@ -267,9 +277,26 @@ function Set-Tank {
 }
 
 function Save-EmuScreenshot {
-    # PrintWindow with PW_RENDERFULLCONTENT grabs the ZEsarUX window even when
-    # it is occluded; a plain CopyFromScreen grabs whatever overlaps it.
+    # Headless (the default) there is no window to grab: ZEsarUX's own ZRCP
+    # save-screen writes the emulated screen, border included, as a BMP --
+    # 352x304 on the 128K, 704x608 on the Next (80 columns, rows doubled) --
+    # which is converted to the PNG asked for. With -Visible it is the window,
+    # title bar and all: PrintWindow with PW_RENDERFULLCONTENT grabs it even
+    # when occluded (a plain CopyFromScreen grabs whatever overlaps it).
     param([Parameter(Mandatory)][string]$Path)
+    $Path = [IO.Path]::GetFullPath($Path)
+    if (-not $script:ZrcpVisible) {
+        $tmp = [IO.Path]::ChangeExtension($Path, '.bmp')
+        Remove-Item $tmp -ErrorAction SilentlyContinue
+        $null = Send-Zrcp "save-screen $tmp"
+        for ($i = 0; $i -lt 20 -and -not (Test-Path $tmp); $i++) { Start-Sleep -Milliseconds 100 }
+        Add-Type -AssemblyName System.Drawing
+        $img = [System.Drawing.Image]::FromFile($tmp)
+        $img.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png); $img.Dispose()
+        Remove-Item $tmp
+        Write-Host "zrcp: saved $Path"
+        return
+    }
     Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;

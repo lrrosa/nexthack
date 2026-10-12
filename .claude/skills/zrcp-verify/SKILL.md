@@ -25,7 +25,7 @@ that way; one-liners do not scale.
 
 | Call | Does |
 |---|---|
-| `Start-Emu next\|zx128` | kills any running emulator, launches with the right flags, connects, stashes `nexthack.sav` |
+| `Start-Emu next\|zx128 [-Visible]` | kills any running emulator, launches it **headless and silent** (`--vo null --ao null`; `-Visible` or `$env:NEXTHACK_EMU_VISIBLE=1` for the window and sound), connects, stashes `nexthack.sav` |
 | `Start-NewGame [-Class a]` | title → class pick → playable |
 | `Sym hero_x` | address from the CURRENT `.map` (never hard-code: every build shifts them) |
 | `Get-Byte/Get-Word/Get-Bytes` | read (handles the retry that transient failures need) |
@@ -36,7 +36,7 @@ that way; one-liners do not scale.
 | `Get-ShadowTile x y` | 128K: what `draw_map` last painted there |
 | `Invoke-Descend` | teleport onto `>` and take it; returns the new `dlvl` |
 | `Set-Tank [200]` | survive a long test |
-| `Save-EmuScreenshot path.png` | grabs the window even when occluded |
+| `Save-EmuScreenshot path.png` | headless: ZRCP `save-screen`, the emulated screen with its border (128K 352x304, Next 704x608, rows doubled) as PNG; `-Visible`: the window, title bar and all |
 
 ## Procedure
 
@@ -53,6 +53,13 @@ that way; one-liners do not scale.
 5. Report what the reads actually said. If a check did not run, say so.
 
 ## Traps that have cost real time here
+
+- **Never pop a window at the user.** The harness runs ZEsarUX headless by
+  default for a reason: a visible window took the focus and played the theme
+  over the user's work, so they dismissed the title themselves -- and their
+  Space restored a save before the test's own key, which then landed in the
+  game as a phantom turn ('You wait.', turns +1). Several "flaky" failures
+  before 1.7.0 were the same. Use `-Visible` only to watch, never in a batch.
 
 - **`set-machine` KILLS ZEsarUX v13** — the process dies, not just the
   connection. To switch targets, relaunch (`Start-Emu` does). Always check the
