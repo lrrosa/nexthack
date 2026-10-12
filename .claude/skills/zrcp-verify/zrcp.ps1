@@ -88,7 +88,10 @@ function Start-Emu {
         Write-Host "zrcp: stashed nexthack.sav -> nexthack.sav.bak (a boot would eat it)"
     }
 
-    $common = @('--enable-remoteprotocol', '--nowelcomemessage', '--quickexit')
+    # --forbid-zxdesktop: the Next run reads the shared .zesaruxrc, which saves
+    # itself on exit; a ZX Desktop switched on there once widened every later
+    # window, pushing a panel into Save-EmuScreenshot's crop.
+    $common = @('--enable-remoteprotocol', '--nowelcomemessage', '--quickexit', '--forbid-zxdesktop')
     if ($Target -eq 'next') {
         $args = @((Join-Path $script:PortDir 'nexthack.nex')) + $common
     } else {

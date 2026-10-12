@@ -12,10 +12,14 @@ REM  folder with NO SD image (that is why run-sd.bat is gone).
 REM
 REM  Usage:  run-next.bat            (runs nexthack.nex)
 REM          run-next.bat my.nex
+REM
+REM  --forbid-zxdesktop keeps ZEsarUX's ZX Desktop (the panel of
+REM  icons beside the screen) off: the shared .zesaruxrc saves
+REM  itself on exit, so once switched on it came back every run.
 REM ============================================================
 SET ZES_DIR=%~dp0..\ZEsarUX
 
 IF "%~1"=="" (SET NEX=%~dp0nexthack.nex) ELSE (SET NEX=%~1)
 
 CD /D "%ZES_DIR%"
-zesarux.exe "%NEX%" --enable-remoteprotocol --nowelcomemessage --quickexit
+zesarux.exe "%NEX%" --enable-remoteprotocol --nowelcomemessage --quickexit --forbid-zxdesktop
