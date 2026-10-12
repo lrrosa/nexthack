@@ -8,9 +8,10 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
-## [1.7.0] — 2026-10-11
+## [1.7.0] — 2026-10-12
 
-**A new look for the dungeon, and the two-handed sword.** The
+**A new look for the dungeon, and the two-handed sword.** The game speaks in
+a gothic hand of its own instead of the Spectrum's ROM font, the
 128K's walls get colour behind them for the first time, a door looks like a
 dungeon door on both machines, and the Next's monsters borrow a second
 palette for the colours its first never had. Every look was chosen from
@@ -18,6 +19,17 @@ previews of the real screens, and every change proven in ZEsarUX on both
 machines. Saves from 1.6 load.
 
 ### Added
+- **A gothic font on both machines**, based on **Byteletter** by DamienG
+  (ZX Origins): textura lowercase, and capitals redrawn for NextHack so that
+  "HP", "AC", "Dlvl" and a scroll's random label read at a glance — the
+  originals are Fraktur, where an A passes for a U and a T for a C. Its `l`
+  no longer passes for a `1`, its `i` for a `j`, and the punctuation is bold
+  enough to read on the 128K. The ROM font is not used any more: the Next
+  expands this one into its text tiles at boot (which also makes the bare
+  `.nex` readable in MAME, which has no ROM font to copy), and the 128K
+  copies it into Bank 5, where the tape loader's BASIC lived — no resident
+  memory spent. The glyphs live in `tools/font/nexthack.txt`
+  (`tools/txt2font.py` makes `src/font_data.h`).
 - **The two-handed sword**, NetHack's *montante*: the first rung of the
   two-handed ladder, a 6 from Dlvl 16 — before the battle-axe (20) and the
   mattock (28) — for a hero ready to give up the shield early. Modelled with
@@ -53,6 +65,12 @@ machines. Saves from 1.6 load.
   sees another version's save and asks, instead of loading it. Both proven
   in ZEsarUX on both machines against the 1.6.2 binary: its save restored by
   this one, and this one's save refused by it and kept on `n`.
+- The help screen lists `a apply` before `, pick up`: the comma no longer
+  sits right above the `i` of inventory, where in the new font it was hard to
+  tell which key was which.
+- The test harnesses (ZEsarUX's `zrcp`, MAME's `mame.lua` and the fuzzer)
+  read the 128K's text through the font the build prints with — the game's
+  own at `_font_ram`, or the ROM's for a build before 1.7.
 - The fuzzer's screen oracle on the Next learns the second palette, reading
   `tile_pal2()` out of `platform.h`: the release fuzz flagged every snake and
   nymph as drawn wrong until it did. `run-next.bat` and the `zrcp` harness

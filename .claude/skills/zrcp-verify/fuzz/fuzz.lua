@@ -281,9 +281,9 @@ local function oracle128(g)
         for r = 0, 7 do if r8(bb + r * 256) ~= r8(gl + r) then ok = false break end end
       end
       if not ok then
-        -- the farlook / teleport-control cursor: a ROM-font X over the cell
+        -- the farlook / teleport-control cursor: the font's X over the cell
         local isx = true
-        for r = 0, 7 do if r8(bb + r * 256) ~= r8(0x3C00 + 88 * 8 + r) then isx = false break end end
+        for r = 0, 7 do if r8(bb + r * 256) ~= r8(cfg.font_base + 88 * 8 + r) then isx = false break end end
         if not isx then badscr[#badscr + 1] = string.format("(%d,%d)", x, y) end
       end
     end

@@ -23,11 +23,16 @@
     PUBLIC  _putcell, _puttile, _puttile_attr, _dist_clear, _dm_row
     PUBLIC  _dmr_lrow, _dmr_seen, _dmr_vis, _dmr_mon, _dmr_shad
     PUBLIC  _dmr_k, _dmr_y, _dmr_shop0, _dmr_shopn, _dmr_force
+    PUBLIC  _font_ram
     EXTERN  _udg_ink
 
 UDG_BITMAP equ 0x6680      ; tile shapes in Bank 5 (always mapped); see platform.h
 
-ROM_FONT equ 0x3c00
+; The game's font in Bank 5 (platform.h font_ram, copied there by tm_init):
+; codes 32..127, so code c is at FONT_RAM + (c-32)*8. Exported for the map,
+; where the zrcp/MAME/fuzz harnesses find it to read the 128K's text.
+FONT_RAM equ 0x5d00
+    DEFC    _font_ram = FONT_RAM
 
 ; ---- shared tail: HL = src glyph, A = attribute, frame already set up via IX ----
 ; cell  bitmap addr = 0x4000 + (y&0x18)*256 + ((y&7)*32 + x)
@@ -93,7 +98,7 @@ pta_core:
     ret
 
 ; void putcell(uint8_t x, uint8_t y, uint8_t ch, uint8_t coff)
-;   ch=(ix+6), coff=(ix+7); src = ROM font; attr = (coff&7) | ((coff&8)<<3)
+;   ch=(ix+6), coff=(ix+7); src = the font; attr = (coff&7) | ((coff&8)<<3)
 _putcell:
     push ix
     ld   ix, 0
@@ -104,8 +109,8 @@ _putcell:
     add  hl, hl
     add  hl, hl
     add  hl, hl             ; ch * 8
-    ld   bc, ROM_FONT
-    add  hl, bc             ; HL = src (ROM glyph)
+    ld   bc, FONT_RAM - 0x100
+    add  hl, bc             ; HL = src (glyph of code ch >= 32)
     ld   a, (ix+7)          ; coff
     and  8
     add  a, a

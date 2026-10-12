@@ -130,9 +130,15 @@ def bank5_map(target):
         # the mirrored-UDG annex (T_HERO_R..): ids past the range inv blocks,
         # reached by the blit's own udg_bitmap + (id-128)*8 formula
         mir = re.findall(r'#define\s+T_\w+_R\s+(\d+)', _read('platform.h'))
+        font = addr('font_ram', 'platform.h')
+        font_asm = asm_equ('FONT_RAM', 'puttile_asm.asm')
+        fnote = 'codes 32..127 x 8 B, copied in by tm_init'
+        if font_asm is not None and font_asm != font:
+            fnote += '  !! puttile_asm.asm disagrees: 0x%04X' % font_asm
         items += [
             (0x4000, 6144, 'ULA pixel bitmap', 'SCRN_BASE'),
             (0x5800, 768, 'ULA attributes', 'ATTR_BASE'),
+            (font, 96 * 8, 'font', fnote),
             (addr('VIEW_SHADOW', 'nexthack.c'), maph * tm_w * 2, 'VIEW_SHADOW',
              'MAPH %d x %d cols x 2 B' % (maph, tm_w)),
             (addr('SSHADOW', 'nexthack.c'), 2 * tm_w * 2, 'SSHADOW',

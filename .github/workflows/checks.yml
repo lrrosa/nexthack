@@ -57,6 +57,7 @@ jobs:
           python tools/txt2template.py
           python tools/png2layer2.py
           python tools/png2scr.py
+          python tools/txt2font.py
           if ! git diff --exit-code -- src/; then
             echo "::error::a generated file in src/ is stale -- re-run its tool and commit the result"
             exit 1

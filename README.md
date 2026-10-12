@@ -369,7 +369,8 @@ from the roguelike tradition):
 ## Technical notes
 
 - **Display**: the Next hardware tilemap (80×32). Glyphs are built at runtime by
-  expanding the 1bpp ROM font at `0x3C00` into 4bpp tiles; per-cell colour comes
+  expanding the game's own 1bpp font (`src/font_data.h`, see Credits) into 4bpp
+  tiles; the 128K copies the same font into Bank 5 and prints from it; per-cell colour comes
   from the tilemap palette (16 ink colours over a black paper). A text colour
   uses two of its palette's sixteen entries, so the spare fourteen of one of
   them carry a second palette for monsters — the purple, pink and olive the
@@ -397,6 +398,16 @@ from the roguelike tradition):
 - z88dk: <https://github.com/z88dk/z88dk>
 - ZEsarUX emulator: <https://github.com/chernandezba/zesarux>
 
+## Credits
+
+- **Font**: based on **Byteletter** by DamienG, from the
+  [ZX Origins](https://damieng.com/zx-origins) collection — textura lowercase
+  under capitals redrawn for NextHack so the status line and scroll labels read
+  at a glance, with bolder punctuation for the 128K. The glyphs and the list of
+  changes are in [tools/font/nexthack.txt](tools/font/nexthack.txt). The font is
+  not under the GPL: its own terms (in the ZX Origins download) allow it in games
+  with this credit and forbid redistributing it as a font.
+
 ## License
 
 Copyright © 2026 Leonardo Roman da Rosa
@@ -410,4 +421,6 @@ It is an independent, from-scratch engine *inspired by* NetHack's design. It
 contains no NetHack source code and is **not affiliated with or endorsed by** the
 NetHack DevTeam; "NetHack" is mentioned only to credit the inspiration. Because the
 codebase shares no code with NetHack, NetHack's own licence (the NGPL) does not
-apply to it, leaving us free to license NextHack under the GPLv3.
+apply to it, leaving us free to license NextHack under the GPLv3. The one part
+that is not ours to license is the font, which keeps DamienG's terms (see
+Credits).

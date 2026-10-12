@@ -4,7 +4,7 @@
  *
  *  __ZXNEXT (+zxn): the Next hardware TILEMAP (80x32). Bank 5 (0x4000-0x7FFF):
  *    0x4000 tile definitions (4bpp 8x8), 0x6000 tilemap (id+attr per cell).
- *    Font tiles 0..127 from the ROM font, coloured by the attribute's palette
+ *    Font tiles 0..127 from the game's font, coloured by the attribute's palette
  *    offset; graphic tiles 128+ use the 16-colour master palette.
  *
  *  +zx (plain 128K): the ULA screen (256x192 = 32x24). 0x4000 pixel bitmap,
@@ -74,7 +74,6 @@ void tm_cls(void)
 /* -------------------- plain ZX Spectrum 128K (ULA) -------------------- */
 #define SCRN_BASE 0x4000u      /* pixel bitmap */
 #define ATTR_BASE 0x5800u      /* attributes   */
-#define ROM_FONT  0x3C00u      /* ROM 8x8 font (char c -> 0x3C00 + (c<<3)) */
 
 /* Each tile's base attribute, ink | paper<<3; draw_map ORs in BRIGHT for
  * in-sight cells. Every map path takes the whole byte, so a tile may have a
@@ -107,7 +106,7 @@ const uint8_t udg_ink[NTILES] = {
      * zombie, troll); four are now. */
 };
 
-/* The three ULA cell blits -- putcell (ROM-font text), puttile (a UDG tile
+/* The three ULA cell blits -- putcell (text, from font_ram), puttile (a UDG tile
  * drawn "in hand"), and puttile_attr (a UDG map tile with explicit fog-of-war
  * attribute) -- all copy an 8-byte glyph into the bitmap (pixel rows +0x100
  * apart) and set the cell attribute. They are the hot render path: the status

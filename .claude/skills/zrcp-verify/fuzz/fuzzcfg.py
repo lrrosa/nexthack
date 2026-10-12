@@ -170,6 +170,9 @@ def lua(v):
 cfg = {
     'target': target, 'sym': S, 'size': sizes, 'tile': tiles, 'mon': mon, 'guard': guard,
     'pal2': pal2, 'pal2_attr': pal2_attr,
+    # 128K: code c's glyph is at font_base + c*8 -- the game's font at
+    # _font_ram (1.7, codes from 32) or, in an older tree, the ROM's
+    'font_base': (syms.get('_font_ram') or consts.get('_font_ram') or 0x3D00) - 0x100,
     'idle': idle, 'main_idle': main_idle, 'code_end': code_end, 'bss_end': bss_end,
     'stack_floor': bankmap.STACK_FLOOR, 'sp_init': bankmap.SP_INIT,
     'banking_stack': consts.get('CLIB_BANKING_STACK_SIZE', 100),

@@ -26,7 +26,7 @@
 #define C_WHITE   7
 #define C_BRIGHT  8
 
-/* ---- graphic tile numbers (past the 128 ROM-font tiles) ---- */
+/* ---- graphic tile numbers (past the 128 font tiles) ---- */
 #define T_ROCK   128
 #define T_FLOOR  129
 #define T_WALL   130
@@ -106,7 +106,7 @@
 void tm_init(void) __banked;
 
 /* drawing */
-void    putcell(uint8_t x, uint8_t y, uint8_t ch, uint8_t coff);   /* ROM-font glyph */
+void    putcell(uint8_t x, uint8_t y, uint8_t ch, uint8_t coff);   /* a font_data glyph */
 void    puttile(uint8_t x, uint8_t y, uint8_t tile);               /* graphic/UDG tile */
 #ifdef __ZXNEXT
 uint8_t *tm_cell_ptr(uint8_t x, uint8_t y);   /* address of a tilemap cell (Next) */
@@ -120,6 +120,15 @@ void    puttile_attr(uint8_t x, uint8_t y, uint8_t tile, uint8_t attr); /* UDG +
  * rejects a cast to a pointer-to-array, so it is a flat pointer indexed
  * udg_bitmap[tile*8 + row] (the asm blits use the same base + index*8). */
 #define udg_bitmap ((uint8_t *)0x6680u)
+/* The game's font (font_data.h: codes 32..127, 8 B each), copied here by
+ * tm_init and read by putcell (puttile_asm.asm: FONT_RAM, which must agree)
+ * in place of the ROM's at 0x3D00. 0x5D00-0x5FFF is the BASIC loader's
+ * workspace while the tape loads and nobody's once the game runs: the 48K
+ * ROM's IM1 keeps to the system variables below 0x5CB6, the game never
+ * returns to BASIC or prints through RST 16, and esxDOS works in its own RAM
+ * (proven by a save and restore leaving the copy intact). Ends exactly where
+ * VIEW_SHADOW begins. */
+#define font_ram ((uint8_t *)0x5D00u)
 extern const uint8_t udg_ink[NTILES];
 /* Mirrored companions (hero/dog/rat facing RIGHT): bit-reversed copies built
  * by build_udgs at startup. Their ids are NOT consecutive with the base tiles:

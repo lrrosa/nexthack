@@ -49,6 +49,7 @@ end
 
 local m      = manager.machine
 local target = os.getenv("MAME_TARGET")
+local FONT = tonumber(os.getenv("MAME_FONT") or "15616")   -- the 128K's ' ' glyph
 local cpu    = m.devices[":maincpu"]
 local mem    = cpu.spaces["program"]
 local kb     = m.natkeyboard
@@ -85,7 +86,7 @@ local CHORD_HOLD, CHORD_GAP = 5, 3   -- frames: under both targets' first repeat
 
 -- Row 0 as text. The Next draws the tilemap at 0x6000, 2 B/cell, 80 wide, and
 -- the tile id of a text cell IS its ASCII code. The 128K draws ULA pixels, so
--- each of the 32 cells is matched against the ROM font (0x3D00 = ' ').
+-- each of the 32 cells is matched against the font it prints with (FONT = ' ').
 local function msgline()
   local s = {}
   if target == "zx128" then
@@ -94,7 +95,7 @@ local function msgline()
       for ch = 0, 95 do
         local ok = true
         for r = 0, 7 do
-          if mem:read_u8(0x4000 + r * 256 + x) ~= mem:read_u8(0x3D00 + ch * 8 + r) then
+          if mem:read_u8(0x4000 + r * 256 + x) ~= mem:read_u8(FONT + ch * 8 + r) then
             ok = false break
           end
         end

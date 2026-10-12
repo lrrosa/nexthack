@@ -5,16 +5,16 @@
  * table. +zx: build the 27 1-bit UDGs (from udg_src[]) + clear the ULA. */
 
 #include "platform.h"
+#include "font_data.h"   /* font_data[]: const in this bank, read once below */
 
 #ifdef __ZXNEXT
 #include <arch/zxn.h>
 
 /* Banked (banks.json): one-time init runs from any bank -- it reads resident
- * data + the always-mapped ROM font/Bank 5, and gfx[] (const-banked with it,
- * ~3 KB with the v0.10 bestiary) lives next to its only reader. */
+ * data + the always-mapped Bank 5, and gfx[] and font_data[] (const-banked
+ * with it) live next to their only reader. */
 
 #define TILEDEF_BASE  0x4000u
-#define ROM_FONT      0x3C00u
 
 extern const uint8_t master[16];    /* graphic-tile master palette  (platform.c) */
 extern const uint8_t inkcol[16];    /* text ink colours             (platform.c) */
@@ -221,18 +221,21 @@ static void load_gfx_tiles(void)
         pack_tile((uint8_t)(T_ROCK + i), gfx[i]);
 }
 
-/* expand the 1bpp ROM font into 4bpp font tiles 0..127 */
+/* expand the 1bpp font into 4bpp text tiles 0..127: a tile id IS its code.
+ * Codes 0..31 are never printed; they get blank tiles (they used to be the
+ * ROM code below its font). The font is the game's own (font_data.h), not
+ * the ROM's -- which also gives MAME, booting the bare .nex with no ROM font
+ * at 0x3C00, readable text. */
 static void tm_init_font(void)
 {
-    const uint8_t *src = (const uint8_t *)ROM_FONT;
     uint8_t *dst = (uint8_t *)TILEDEF_BASE;
     uint16_t c;
     uint8_t row, col, b;
 
     for (c = 0; c < 128; c++) {
-        const uint8_t *g = src + (c << 3);
+        const uint8_t *g = font_data + ((c < 32 ? 0 : c - 32) << 3);
         for (row = 0; row < 8; row++) {
-            b = g[row];
+            b = (c < 32) ? 0 : g[row];
             for (col = 0; col < 4; col++) {        /* 2 pixels per byte */
                 uint8_t left  = (b & 0x80) ? 1 : 0; b <<= 1;
                 uint8_t right = (b & 0x80) ? 1 : 0; b <<= 1;
@@ -442,7 +445,10 @@ static void build_udgs(void)
 
 void tm_init(void) __banked
 {
+    uint16_t i;
     build_udgs();   /* reads udg_src[] (this bank), fills resident udg_bitmap[] */
+    for (i = 0; i < 96 * 8; i++)          /* the font, where putcell reads it */
+        font_ram[i] = font_data[i];
     tm_cls();       /* blank the ULA screen (resident leaf) */
 }
 

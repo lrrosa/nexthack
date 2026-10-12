@@ -78,7 +78,10 @@ that way; one-liners do not scale.
   `Start-Sleep` with ZERO ZRCP traffic, then read once and bisect.
 - **The render target differs**: Next = hardware tilemap at `0x6000`
   (2 B/cell); 128K = ULA bitmap `0x4000` + attrs `0x5800`, so text must be
-  matched against the ROM font — `Get-MsgLine` already does both.
+  matched against the font it was printed with — the game's own at
+  `_font_ram` since 1.7 (the ROM's `0x3D00` before) — `Get-MsgLine` already
+  does both, and re-reads the font on every `Start-Emu`. Never compare 128K
+  text against hard-coded ROM bytes.
 - The Next's title/victory are **Layer 2**, invisible to ZRCP. Verify those
   with `Save-EmuScreenshot`.
 
@@ -177,9 +180,10 @@ python .claude/skills/zrcp-verify/mameprof.py "$($r.Dir)\log.txt" zx128
   the game correctly finds no esxDOS.
 - **Next (`specnext_ks2`, `.nex` via `-dump`)**: game logic, tilemap, Layer 2
   and keys are real, but with no SD card the ROM at `0x0000` is the TBBlue boot
-  loader, so the font the game copies from `0x3C00` is **garbage on screen** --
-  judge text with `msg` (a tile id IS its ASCII code), not with snapshots -- and
-  there is no esxDOS, so no saves.
+  loader. Builds before 1.7 copied their font from it at `0x3C00`, so their
+  text is **garbage on screen** there (judge it with `msg`: a tile id IS its
+  ASCII code); since 1.7 the font is the game's own and snapshots read fine.
+  There is no esxDOS, so no saves.
 - **Next `-Sd`** (boot NextZXOS off `roms\specnext_sd\sys2411.chd`, then mount
   the `.nex`): **does not boot in MAME 0.289**, so saves cannot be tested there.
   `sys2411.chd` is System/Next 24.11 (`cspect-next-1gb.img` from

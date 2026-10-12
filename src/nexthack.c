@@ -639,7 +639,7 @@ void show_help(void) __banked
     print_str(2,  5, "Stairs: > < or Enter", C_CYAN | C_BRIGHT);
     print_str(2,  6, "s search . wait ; look", C_CYAN | C_BRIGHT);
     print_str(2,  7, "R rest  K kick a door",  C_CYAN | C_BRIGHT);
-    print_str(2,  9, ", pick up  a apply",   C_CYAN | C_BRIGHT);
+    print_str(2,  9, "a apply    , pick up", C_CYAN | C_BRIGHT);  /* not ',' over 'i' */
     print_str(2,  10, "i inventory  D found", C_CYAN | C_BRIGHT);
     print_str(2, 11, "w wield    W wear",    C_CYAN | C_BRIGHT);
     print_str(2, 12, "P put on   t throw",   C_CYAN | C_BRIGHT);
@@ -714,7 +714,7 @@ void draw_status(void) __banked
     x = put_uint(x, 23, IN_MINES(dlvl) ? (uint16_t)(dlvl - MINES_BASE + 1) : dlvl,
                  C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "  ", C_GREEN | C_BRIGHT);
-    puttile(x, 23, T_DOLLAR); x++;        /* green '$' tile, not the ROM glyph */
+    puttile(x, 23, T_DOLLAR); x++;        /* green '$' tile, not the font's */
     x = print_str(x, 23, ":", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, gold, C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "  HP:", C_GREEN | C_BRIGHT);
@@ -751,7 +751,7 @@ static uint8_t sd_force;                /* 1 = redraw every cell (see draw_statu
 static uint16_t sd_dlvl, sd_gold;       /* what row 22 shows now */
 static uint8_t  sd_hp, sd_maxhp;
 
-/* glyph >= 128 is a UDG tile (the '$'); below that an ROM-font char. */
+/* glyph >= 128 is a UDG tile (the '$'); below that a font char. */
 static void sd_putc(uint8_t x, uint8_t y, uint8_t glyph, uint8_t coff)
 {
     uint8_t *s = SSHADOW + (((uint16_t)(y - 22) * TM_W + x) << 1);
@@ -806,7 +806,7 @@ void draw_status(void) __banked
         x = sd_uint(x, 22, IN_MINES(dlvl) ? (uint16_t)(dlvl - MINES_BASE + 1) : dlvl,
                     C_GREEN | C_BRIGHT);
         x = sd_str(x, 22, " ", C_GREEN | C_BRIGHT);
-        sd_putc(x, 22, T_DOLLAR, 0); x++;     /* green '$' tile, not the ROM glyph */
+        sd_putc(x, 22, T_DOLLAR, 0); x++;     /* green '$' tile, not the font's */
         x = sd_str(x, 22, ":", C_GREEN | C_BRIGHT);
         x = sd_uint(x, 22, gold, C_GREEN | C_BRIGHT);
         x = sd_str(x, 22, " HP:", C_GREEN | C_BRIGHT);

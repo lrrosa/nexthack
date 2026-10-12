@@ -80,6 +80,7 @@ function Start-Emu {
     Stop-Emu
     $script:ZrcpTarget = $Target
     $script:ZrcpSymbols = $null
+    $script:ZrcpFont = $null      # each build (and each tree, -PortDir) has its own
 
     # A boot CONSUMES and deletes nexthack.sav. Stash it unless asked not to.
     $sav = Join-Path $script:PortDir 'nexthack.sav'
@@ -192,7 +193,8 @@ function Start-NewGame {
 # The render target differs per platform: the Next draws to the hardware
 # tilemap at 0x6000 (2 B/cell: tile id + attr, 80 wide); the 128K to the ULA
 # bitmap at 0x4000 (+ attributes 0x5800), so text there must be decoded by
-# matching each rendered 8-byte cell against the ROM font at 0x3C00.
+# matching each rendered 8-byte cell against the font the game prints with:
+# its own at _font_ram (1.7), or the ROM's at 0x3D00 for an older build.
 
 function Get-TileCell {
     # Next only: returns @(tile, attr) for a MAP cell (OX=0, OY=1).
@@ -218,7 +220,11 @@ function Get-MsgLine {
         }
         return $s.TrimEnd()
     }
-    if (-not $script:ZrcpFont) { $script:ZrcpFont = Get-Bytes 15616 768 }  # 0x3D00, ' '..
+    if (-not $script:ZrcpFont) {             # codes 32..127, 8 B each
+        $fa = 15616                          # 0x3D00: the ROM's, before 1.7
+        try { $fa = Sym font_ram } catch { }
+        $script:ZrcpFont = Get-Bytes $fa 768
+    }
     $rows = @()
     for ($r = 0; $r -lt 8; $r++) { $rows += ,(Get-Bytes (16384 + $r * 256) 32) }
     $s = ''

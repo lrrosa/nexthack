@@ -112,6 +112,9 @@ function Invoke-Mame {
     $env:MAME_STEPS = $stepFile
     $env:MAME_LOG = $logFile
     $env:MAME_TARGET = $Target
+    # the 128K prints with the game's font at _font_ram (1.7); a build without
+    # one prints with the ROM's, whose ' ' is at 0x3D00
+    $env:MAME_FONT = if ($syms.ContainsKey('font_ram')) { $syms['font_ram'] } else { 15616 }
 
     # Headless by default, and deaf to the host: a MAME window takes the focus
     # when it opens, and whatever the user then types goes into the emulated
