@@ -8,7 +8,14 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
-## [Unreleased]
+## [1.7.0] — 2026-10-11
+
+**A new look for the dungeon, and the two-handed sword.** The
+128K's walls get colour behind them for the first time, a door looks like a
+dungeon door on both machines, and the Next's monsters borrow a second
+palette for the colours its first never had. Every look was chosen from
+previews of the real screens, and every change proven in ZEsarUX on both
+machines. Saves from 1.6 load.
 
 ### Added
 - **The two-handed sword**, NetHack's *montante*: the first rung of the
@@ -43,7 +50,14 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 - `SAVE_VER` 36, but **1.6 saves still load**: the bytes are the same. The
   new version number is for the other direction — a 1.6.x binary would read
   a pack holding a two-handed sword past the end of its catalogue, so it now
-  sees another version's save and asks, instead of loading it.
+  sees another version's save and asks, instead of loading it. Both proven
+  in ZEsarUX on both machines against the 1.6.2 binary: its save restored by
+  this one, and this one's save refused by it and kept on `n`.
+- The fuzzer's screen oracle on the Next learns the second palette, reading
+  `tile_pal2()` out of `platform.h`: the release fuzz flagged every snake and
+  nymph as drawn wrong until it did. `run-next.bat` and the `zrcp` harness
+  keep ZEsarUX's ZX Desktop off (`--forbid-zxdesktop`), which the shared
+  config otherwise remembered from one run to the next.
 
 ## [1.6.2] — 2026-10-11
 
