@@ -36,7 +36,7 @@ that way; one-liners do not scale.
 | `Get-ShadowTile x y` | 128K: what `draw_map` last painted there |
 | `Invoke-Descend` | teleport onto `>` and take it; returns the new `dlvl` |
 | `Set-Tank [200]` | survive a long test |
-| `Save-EmuScreenshot path.png` | headless: ZRCP `save-screen`, the emulated screen with its border (128K 352x304, Next 704x608, rows doubled) as PNG; `-Visible`: the window, title bar and all |
+| `Save-EmuScreenshot path.png` | headless: the emulated screen with its border as PNG -- the Next's from ZRCP `save-screen` (704x608, rows doubled), the 128K's decoded from screen memory (352x304: with `--vo null` ZEsarUX never draws the ULA, so its `save-screen` is black); `-Visible`: the window, title bar and all |
 
 ## Procedure
 

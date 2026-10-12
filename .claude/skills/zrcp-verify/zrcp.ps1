@@ -277,14 +277,50 @@ function Set-Tank {
 }
 
 function Save-EmuScreenshot {
-    # Headless (the default) there is no window to grab: ZEsarUX's own ZRCP
-    # save-screen writes the emulated screen, border included, as a BMP --
-    # 352x304 on the 128K, 704x608 on the Next (80 columns, rows doubled) --
-    # which is converted to the PNG asked for. With -Visible it is the window,
+    # Headless (the default) there is no window to grab: on the Next ZEsarUX's
+    # own ZRCP save-screen writes the emulated screen, border included, as a
+    # BMP (704x608: 80 columns, rows doubled) converted to the PNG asked for;
+    # the 128K's is decoded from screen memory (352x304, see below). With -Visible it is the window,
     # title bar and all: PrintWindow with PW_RENDERFULLCONTENT grabs it even
     # when occluded (a plain CopyFromScreen grabs whatever overlaps it).
     param([Parameter(Mandatory)][string]$Path)
     $Path = [IO.Path]::GetFullPath($Path)
+    if (-not $script:ZrcpVisible -and $script:ZrcpTarget -eq 'zx128') {
+        # with --vo null ZEsarUX does not draw the ULA screen at all (save-screen
+        # comes back black), so it is decoded here from the screen memory:
+        # 6144 B of pixels and 768 of attributes at 0x4000 (BRIGHT kept, FLASH
+        # not), centred in a black 352x304 border like save-screen's.
+        Add-Type -AssemblyName System.Drawing
+        $scr = Get-Bytes 16384 6912
+        $W, $H, $bx, $by = 352, 304, 48, 56
+        $buf = New-Object byte[] ($W * $H * 3)
+        for ($y = 0; $y -lt 192; $y++) {
+            $prow = (($y -band 0xC0) -shl 5) + (($y -band 7) -shl 8) + (($y -band 0x38) -shl 2)
+            $arow = 6144 + ($y -shr 3) * 32
+            $o = (($by + $y) * $W + $bx) * 3
+            for ($cx = 0; $cx -lt 32; $cx++) {
+                $bits = $scr[$prow + $cx]; $at = $scr[$arow + $cx]
+                $v = if ($at -band 0x40) { 255 } else { 215 }
+                for ($k = 7; $k -ge 0; $k--) {
+                    $c = if (($bits -shr $k) -band 1) { $at -band 7 } else { ($at -shr 3) -band 7 }
+                    $buf[$o] = if ($c -band 1) { $v } else { 0 }        # B
+                    $buf[$o + 1] = if ($c -band 4) { $v } else { 0 }    # G
+                    $buf[$o + 2] = if ($c -band 2) { $v } else { 0 }    # R
+                    $o += 3
+                }
+            }
+        }
+        $bmp = New-Object System.Drawing.Bitmap $W, $H, ([System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
+        $rect = New-Object System.Drawing.Rectangle 0, 0, $W, $H
+        $bd = $bmp.LockBits($rect, [System.Drawing.Imaging.ImageLockMode]::WriteOnly, $bmp.PixelFormat)
+        for ($y = 0; $y -lt $H; $y++) {
+            [System.Runtime.InteropServices.Marshal]::Copy($buf, $y * $W * 3, [IntPtr]($bd.Scan0.ToInt64() + $y * $bd.Stride), $W * 3)
+        }
+        $bmp.UnlockBits($bd)
+        $bmp.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
+        Write-Host "zrcp: saved $Path"
+        return
+    }
     if (-not $script:ZrcpVisible) {
         $tmp = [IO.Path]::ChangeExtension($Path, '.bmp')
         Remove-Item $tmp -ErrorAction SilentlyContinue
