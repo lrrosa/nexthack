@@ -163,7 +163,7 @@ RAM-expansion interface, which is how many people actually have 128 KB.
 
 ![NextHack gameplay: a magically mapped dungeon level drawn in colour 8×8 tiles — grey-brick rooms with arched wooden doors and the corridors between them, a shop with warm brick walls stocked with tools and weapons, and in a lit room the armoured hero beside a fresh breach in the wall, with the dog, a vampire in a purple cape, a nymph in a pink gown and an olive snake, and the full status bar below.](docs/gameplay.png)
 
-*Dlvl 5 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, and the shop in the corner sells tools. The hero has just broken through the room's west wall with a pick-axe: the breach stays open, and the level remembers it on every later visit. 1.7 hangs a real door in every doorway — an arch, two planks and a brass ring — and lends the monsters a second palette: the vampire's purple cape, the nymph's pink gown, the olive snake. The status bar carries the whole character sheet, alignment included.*
+*Dlvl 5 after a scroll of magic mapping — rooms light up on entry, corridors reveal as you go, and the shop in the corner sells tools. The hero has just broken through the room's west wall with a pick-axe: the breach stays open, and the level remembers it on every later visit. 1.7 hangs a real door in every doorway — an arch, two planks and a brass ring — and lends the monsters a second palette: the vampire's purple cape, the nymph's pink gown, the olive snake. Every word is in the game's own gothic hand now, not the ROM's, and the status bar carries the whole character sheet, alignment included.*
 
 ![The Gnomish Mines: cobblestone chambers and winding tunnels revealed, Minetown's warm-brick shop stocked with wares, and in a lit chamber the hero with the dog, just whistled to heel, meeting a gnome and a dwarf, with the status bar reading Mine:2.](docs/mines.png)
 
@@ -293,7 +293,7 @@ it does not depend on esxDOS just to run.
 run-zx128.bat        REM dev convenience: boots nexthack128.tap in ZEsarUX (--machine 128k)
 ```
 
-![NextHack on the plain ZX Spectrum 128K: the ULA renderer with 1-bit tiles — a magically mapped level of white-on-blue brick walls and red doors in black arches, a yellow-on-red shop in the corner, and in a lit room the sword-bearing hero beside a fresh breach in the wall, with the dog, a vampire, a nymph and a snake, above the compact status line.](docs/zx128.png)
+![NextHack on the plain ZX Spectrum 128K: the ULA renderer with 1-bit tiles — a magically mapped level of white-on-blue brick walls and red doors in black arches, and in a lit room the sword-bearing hero beside a fresh breach in the wall, with the dog, a vampire, a nymph, a snake and a fountain, cyan on blue, above the compact status line.](docs/zx128.png)
 
 *The same game on a plain 128K: 1-bit tiles on the ULA, a 32-column viewport that
 edge-scrolls over the 80-wide map. 1.7 gives the walls a paper colour — white
@@ -342,9 +342,9 @@ used to emit one and no longer does.
 
 Walk into a monster to attack it; walk over gold to pick it up.
 
-![The NextHack inventory screen: a blessed +2 Excalibur (wielded), +1 dragon scale and +1 helmet (worn), the amulet versus poison on the neck and a ring of teleport control on the hand — then a battle-axe, a silver saber, a pick-axe, a magic whistle, a unicorn horn, a blindfold, a scroll of scare monster, a pink potion still known only by its look and a two-handed sword.](docs/inventory.png)
+![The NextHack inventory screen: a blessed +2 Excalibur (wielded), +1 dragon scale and +1 helmet (worn), the amulet versus poison on the neck and a ring of teleport control on the hand — then a battle-axe, a silver saber, a pick-axe, a magic whistle, a unicorn horn, a blindfold, a scroll of scare monster, a smoky potion still known only by its look and a two-handed sword.](docs/inventory.png)
 
-*The inventory screen (`i`): the weapons past the long sword — the two-handed battle-axe, the silver saber and 1.7's two-handed sword — four of the tools `a` applies, an amulet versus poison and a scroll of scare monster, beside an armour set worn a piece at a time, enchantment, blessed/cursed state and everything in use flagged. A potion you have not learned yet shows only this game's look: that pink one is a full healing, and nothing yet says so.*
+*The inventory screen (`i`): the weapons past the long sword — the two-handed battle-axe, the silver saber and 1.7's two-handed sword — four of the tools `a` applies, an amulet versus poison and a scroll of scare monster, beside an armour set worn a piece at a time, enchantment, blessed/cursed state and everything in use flagged. A potion you have not learned yet shows only this game's look: that smoky one is a full healing, and nothing yet says so.*
 
 ## Map & item tiles
 
