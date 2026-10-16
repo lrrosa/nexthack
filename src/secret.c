@@ -11,9 +11,9 @@
  * be, and the mines are hewn, not built.
  *
  * ONE RULE NetHack does not keep: a secret never cuts the way through the
- * level. Before a cell is hidden, a flood from the up stairs must still reach
- * the down stairs (the Amulet's cell on Dlvl 50 -- the same cell) and the mine
- * entrance on Dlvl 2; if it does not, the cell stays open. NetHack can wall
+ * level. A flood from the up stairs marks one way to the down stairs (the
+ * Amulet's cell on Dlvl 50 -- the same cell) and to the mine entrance on
+ * Dlvl 2, and nothing on it hides. NetHack can wall
  * you in, and 's' gets you out at one chance in seven a turn; on a Spectrum,
  * searching every wall of a dead level for the stairs is not a game. Side
  * rooms, a vault, a branch of the corridor -- those can hide. The fuzzer's
@@ -30,6 +30,7 @@
  * entry, before dug_restore re-opens the found ones, so 's' checks that a
  * listed cell is still hidden before it "finds" it. */
 
+#include <string.h>       /* memset */
 #include "level.h"
 #include "game.h"
 #include "rng.h"
@@ -44,37 +45,60 @@ static uint8_t sec_n, sec_x[SEC_MAX], sec_y[SEC_MAX];
  * reader floods afresh before it reads (compute_dist_map, dist_map_from). */
 #define seen ((uint8_t *)0x7400u)
 #define ring ((uint16_t *)0x7A90u)
+#define ON_WAY 255            /* seen[] mark of a cell on the kept way through */
 
-static uint8_t open_cell(uint16_t k)
+/* walkable(), inline: this is the cost of entering a level */
+#define OPEN(c) ((c) != '|' && (c) != '-' && (c) != ' ')
+
+/* ONE flood per level, from '<', four ways round (whatever it reaches, the
+ * hero can): seen[k] = the step count + 1, 0 = not reached. It stops once the
+ * targets -- '>' (the Amulet's cell on Dlvl 50) and the mine entrance on
+ * Dlvl 2 -- are labelled. 0 if one is not reached, or lies too far for a
+ * byte, or the ring fills: then nothing hides, which is always safe. The
+ * base pointers sit a row above the cell so every offset is non-negative
+ * (CLAUDE.md: a pointer plus a negative constant can assemble wrong). */
+#define TRY(off)                                                                 if (!sb[off] && OPEN(lb[off])) {                                                sb[off] = nd;                                                               if ((uint8_t)(tail + 1) == head) return 0;                                  ring[tail++] = (uint16_t)(k - MAPW + (off));                            }
+static uint8_t label_way(uint16_t dn, uint16_t mn)
 {
-    return walkable(((const char *)lvl)[k]) && !seen[k];
-}
+    uint16_t k;
+    uint8_t head = 0, tail = 0, nd, left = (uint8_t)(mn == dn ? 1 : 2);
+    uint8_t *sb;
+    const char *lb;
 
-/* Is the way through the level still open: '<' to '>' (and to the mine
- * entrance on its level), four ways round? Four rather than the hero's eight
- * is the strict reading -- whatever it reaches, the hero can. A full ring
- * gives up and answers no, which only means the cell stays open. */
-static uint8_t way_open(void)
-{
-    uint16_t k, n, dn = (uint16_t)dn_y * MAPW + dn_x;
-    uint16_t mn = (dlvl == MINES_ENTR_DLVL) ? (uint16_t)mn_y * MAPW + mn_x : dn;
-    uint8_t head = 0, tail = 0, left = (uint8_t)(mn == dn ? 1 : 2);
-
-    for (k = 0; k < (uint16_t)(MAPH * MAPW); k++) seen[k] = 0;
+    memset(seen, 0, (uint16_t)(MAPH * MAPW));   /* LDIR: a C loop cost the 128K ~30 ms */
     k = (uint16_t)up_y * MAPW + up_x;
     seen[k] = 1;
     ring[tail++] = k;
     while (head != tail) {
         k = ring[head++];
         if ((k == dn || k == mn) && !--left) return 1;
+        nd = (uint8_t)(seen[k] + 1);
+        if (nd >= ON_WAY - 1) return 0;     /* past a byte's reach: give up */
         /* walkable cells never touch the map's edge on a generated level,
-         * so k-1/k+1 stay on the row and k-MAPW/k+MAPW on the map */
-        n = k - MAPW; if (open_cell(n)) { seen[n] = 1; if ((uint8_t)(tail + 1) == head) return 0; ring[tail++] = n; }
-        n = k + MAPW; if (open_cell(n)) { seen[n] = 1; if ((uint8_t)(tail + 1) == head) return 0; ring[tail++] = n; }
-        n = k - 1;    if (open_cell(n)) { seen[n] = 1; if ((uint8_t)(tail + 1) == head) return 0; ring[tail++] = n; }
-        n = k + 1;    if (open_cell(n)) { seen[n] = 1; if ((uint8_t)(tail + 1) == head) return 0; ring[tail++] = n; }
+         * so all four neighbours are on the map */
+        sb = seen + (k - MAPW);
+        lb = (const char *)lvl + (k - MAPW);
+        TRY(0) TRY(MAPW - 1) TRY(MAPW + 1) TRY(2 * MAPW)
     }
     return 0;
+}
+#undef TRY
+
+/* Walk back from target t to '<', each step to a neighbour one closer, and
+ * mark the way ON_WAY. A walk that meets a way already marked stops there. */
+static void mark_way(uint16_t t)
+{
+    uint8_t d = seen[t];
+    seen[t] = ON_WAY;
+    while (d > 1) {
+        d--;
+        if      (seen[t - MAPW] == d) t -= MAPW;
+        else if (seen[t + MAPW] == d) t += MAPW;
+        else if (seen[t - 1] == d)    t -= 1;
+        else if (seen[t + 1] == d)    t += 1;
+        else return;                        /* joined the other target's way */
+        seen[t] = ON_WAY;
+    }
 }
 
 /* a straight stretch of corridor: '#' both ways along it, rock both sides */
@@ -86,37 +110,61 @@ static uint8_t mid_corridor(uint8_t x, uint8_t y)
                       lvl[y][x - 1] == ' ' && lvl[y][x + 1] == ' '));
 }
 
+/* One flood finds a way from '<' to each target and marks it; then the first
+ * SEC_MAX cells the hashes pick OFF that way are hidden. The way stays whole,
+ * so the stairs stay joined however many hide -- by construction, with no
+ * flood per candidate. (A flood per candidate made entering a level on the
+ * 128K take up to 1.03 s, measured in MAME, where 1.7.0 took 0.24-0.29.) The
+ * scan finds each row's doors and corridor squares with memchr (CPIR, in
+ * the library's assembly) and looks at nothing else: a C loop over all 1482
+ * cells cost the 128K ~70 ms a level. */
 void secrets_hide(void) __banked
 {
     uint8_t x, y;
+    uint16_t dn, mn, hrow;
     sec_n = 0;
     if (dlvl < 2 || IN_MINES(dlvl) || level_is_special()) return;
-    for (y = 1; y < MAPH - 1; y++)
-        for (x = 1; x < MAPW - 1; x++) {
-            char c = lvl[y][x], hid;
-            if (sec_n == SEC_MAX) return;
-            if (c == '+') {
-                /* one door in eight, as NetHack's dodoor -- never a shop's:
-                 * its keeper must be able to leave, and a shop you have to
-                 * search for is no shop */
-                if ((door_hash(x, y) & 7u) != 2 || shop_in_room(x, y)) continue;
-                hid = (lvl[y][x - 1] == '-' || lvl[y][x + 1] == '-') ? '-' : '|';
-            } else if (c == '#') {
-                /* the odd square of a straight corridor, about one in 64:
-                 * the dead end that says "search here" */
-                uint16_t h = (uint16_t)(world_seed * 13u + (uint16_t)dlvl * 977u
-                                        + (uint16_t)x * 59u + (uint16_t)y * 211u);
-                h ^= (uint16_t)(h << 7);
-                h ^= (uint16_t)(h >> 9);
-                if ((h & 63u) != 5 || !mid_corridor(x, y)) continue;
-                hid = ' ';
-            } else {
-                continue;
+    dn = (uint16_t)dn_y * MAPW + dn_x;
+    mn = (dlvl == MINES_ENTR_DLVL) ? (uint16_t)mn_y * MAPW + mn_x : dn;
+    if (!label_way(dn, mn)) return;
+    mark_way(dn);
+    if (mn != dn) mark_way(mn);
+
+    hrow = (uint16_t)(world_seed * 13u + (uint16_t)dlvl * 977u + 211u);
+    for (y = 1; y < MAPH - 1; y++, hrow += 211u) {
+        char          *row = &lvl[y][0];
+        const uint8_t *srow = seen + (uint16_t)y * MAPW;
+        uint8_t        pass;
+        for (pass = 0; pass < 2; pass++) {          /* the doors, then the corridors */
+            char  want = pass ? '#' : '+';
+            char *p = row + 1, *q;
+            while ((q = memchr(p, want, (uint16_t)(row + (MAPW - 1) - p))) != 0) {
+                char hid;
+                p = q + 1;
+                x = (uint8_t)(q - row);
+                if (srow[x] == ON_WAY) continue;
+                if (!pass) {
+                    /* one door in eight, as NetHack's dodoor -- never a
+                     * shop's: its keeper must be able to leave, and a shop
+                     * you have to search for is no shop */
+                    if ((door_hash(x, y) & 7u) != 2 || shop_in_room(x, y)) continue;
+                    hid = (row[x - 1] == '-' || row[x + 1] == '-') ? '-' : '|';
+                } else {
+                    /* the odd square of a straight corridor, about one in
+                     * 64: the dead end that says "search here" */
+                    uint16_t m = (uint16_t)(hrow + (uint16_t)x * 59u);
+                    m ^= (uint16_t)(m << 7);
+                    m ^= (uint16_t)(m >> 9);
+                    if ((m & 63u) != 5 || !mid_corridor(x, y)) continue;
+                    hid = ' ';
+                }
+                *q = hid;
+                sec_x[sec_n] = x; sec_y[sec_n] = y;
+                if (++sec_n == SEC_MAX) return;
+                if (p == row + (MAPW - 1)) break;
             }
-            lvl[y][x] = hid;
-            if (!way_open()) { lvl[y][x] = c; continue; }
-            sec_x[sec_n] = x; sec_y[sec_n] = y; sec_n++;
         }
+    }
 }
 
 /* Open listed secret i for good: the map, and the dug pool that remembers it.

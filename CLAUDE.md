@@ -503,11 +503,14 @@ tilemap.
   expose it to the spawner and to `item.c`.
 - **Secret doors and corridors** (1.8, `secret.c`): one door in eight
   (`door_hash` `(h & 7) == 2`, nexthack.c) and about one straight corridor
-  square in 64 are hidden as wall or rock, on ordinary levels from Dlvl 2. A
-  cell is hidden only if a four-way flood from `<` still reaches `>` (the
-  Amulet's cell on 50) and the mine entrance on Dlvl 2 -- the user chose that
-  over NetHack's rule, which can wall you in; the fuzzer's walk check and the
-  attract demo rely on it. A door is locked where `(h & 3) == 0`, so none is
+  square in 64 are hidden as wall or rock, on ordinary levels from Dlvl 2. One
+  four-way flood from `<` per level marks a way to `>` (the Amulet's cell on
+  50) and to the mine entrance on Dlvl 2, and nothing on that way hides -- so
+  the stairs stay joined by construction. The user chose that over NetHack's
+  rule, which can wall you in; the fuzzer's walk check and the attract demo
+  rely on it. It costs the 128K ~100 ms a level entry (0.24-0.29 s became
+  0.34-0.44 s, MAME); a flood per candidate had cost up to 0.75 s, and a C
+  loop over all 1482 cells 70 ms, which `memchr` (CPIR) replaced. A door is locked where `(h & 3) == 0`, so none is
   both and the locked doors' map-order index never shifts when one is found.
   The flood borrows `dist[]`/`bfsq[]`, which no reader trusts without
   reflooding. `s` finds one in five tries (luck 3 or 9); found ones ride the
