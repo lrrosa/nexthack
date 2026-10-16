@@ -51,23 +51,37 @@ function Stale($src, $o) {
     return (($ot -lt (Get-Item $src).LastWriteTime) -or ($ot -lt $depTime))
 }
 
-foreach ($m in $csrcs) {
-    $o = "obj-zx128/$m.o"
-    # The .seg stamp records the bank flags the .o was built with, so re-banking
-    # a module in banks.json recompiles exactly that module.
-    $seg = "obj-zx128/$m.seg"
-    $segStale = (-not (Test-Path $seg)) -or ((Get-Content $seg -Raw) -ne $bank[$m].Stamp)
-    if ($segStale -or (Stale "src/$m.c" $o)) {
-        $zargs = @($cflags) + $bank[$m].Flags + @('-c', "src/$m.c", '-o', $o)
+# The stale C modules compile in parallel, as build.ps1 does for the Next: a
+# header edit recompiles all of them, which one at a time took ~28 minutes.
+# The .seg stamp records the bank flags each .o was built with, so re-banking
+# a module in banks.json recompiles exactly that module.
+$todo = $csrcs | Where-Object {
+    $seg = "obj-zx128/$_.seg"
+    (-not (Test-Path $seg)) -or ((Get-Content $seg -Raw) -ne $bank[$_].Stamp) -or
+    (Stale "src/$_.c" "obj-zx128/$_.o")
+}
+$csrcs | Where-Object { $_ -notin $todo } | ForEach-Object { "  --  $_.c (up to date)" }
+if ($todo) {
+    $zcccfg = $env:ZCCCFG; $zpath = $env:PATH
+    $flags = @{}; $todo | ForEach-Object { $flags[$_] = $bank[$_].Flags }
+    $results = $todo | ForEach-Object -ThrottleLimit 8 -Parallel {
+        $env:ZCCCFG = $using:zcccfg
+        $env:PATH   = $using:zpath
+        $o = "obj-zx128/$_.o"
+        $zargs = @($using:cflags) + ($using:flags)[$_] + @('-c', "src/$_.c", '-o', $o)
         $log = & zcc $zargs 2>&1
-        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $o)) {
-            $fail += [pscustomobject]@{ Mod = "$m.c"; Log = ($log -join "`n") }
-        } elseif (($log -join "`n") -match '2147483647') {
+        [pscustomobject]@{ Mod = $_; Code = $LASTEXITCODE; Log = ($log -join "`n"); Ok = (Test-Path $o) }
+    }
+    foreach ($r in $results) {
+        $o = "obj-zx128/$($r.Mod).o"
+        if ($r.Code -ne 0 -or -not $r.Ok) {
+            $fail += [pscustomobject]@{ Mod = "$($r.Mod).c"; Log = $r.Log }
+        } elseif ($r.Log -match '2147483647') {
             # z80asm clamped a literal: miscompiled (see build.ps1, CLAUDE.md)
             Remove-Item $o -ErrorAction SilentlyContinue
-            $fail += [pscustomobject]@{ Mod = "$m.c"; Log = "z80asm clamped a literal to 2147483647 (see CLAUDE.md, Gotchas):`n" + ($log -join "`n") }
-        } else { Set-Content $seg $bank[$m].Stamp -NoNewline; "  ok  $m.c" }
-    } else { "  --  $m.c (up to date)" }
+            $fail += [pscustomobject]@{ Mod = "$($r.Mod).c"; Log = "z80asm clamped a literal to 2147483647 (see CLAUDE.md, Gotchas):`n" + $r.Log }
+        } else { Set-Content "obj-zx128/$($r.Mod).seg" $bank[$r.Mod].Stamp -NoNewline; "  ok  $($r.Mod).c" }
+    }
 }
 foreach ($m in $asrcs) {
     $o = "obj-zx128/$m.o"
