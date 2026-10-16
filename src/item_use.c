@@ -716,6 +716,66 @@ void do_throw(void) __banked
  * the shopkeeper, and acts on the monster(s) it meets: striking damages the
  * first, cold chills every monster in the line, sleep dozes the first, and
  * teleportation whisks the first away. Each zap spends a charge (obj_t.ench). */
+/* 'E' (1.8): Elbereth, written with a finger or with a wand -- and a wand
+ * that writes leaves its own mark, which is how NetHack players have always
+ * told one wand from another. It spends a charge. Digging carves the word
+ * (it lasts longer), fire burns it (EL_BURNED: it lasts the visit -- and any
+ * engraving is rubbed out by a blow struck from it, game.h), and the rest
+ * only write in the dust after their trick. Each mark below is unmistakable
+ * among this game's wands, so it identifies the kind, by the rule wands have
+ * followed since 1.4: you learn one by watching it work. Opening shows
+ * nothing, and teleportation shows something only to an engraving already
+ * there -- so those two stay unknown, as in NetHack. Blind, you see none of
+ * it; only fire's heat and digging's drill reach you. */
+void do_engrave(void) __banked
+{
+    int s = -1;
+    uint8_t i, ot, life = 30;
+    const char *m = 0;
+
+    for (i = 0; i < inv_count; i++)
+        if (item_obj_cls(inv[i].otyp) == '/') {
+            int k;
+            msg("Engrave with a wand? y/n");
+            in_wait_nokey();
+            k = getkey();
+            in_wait_nokey();
+            if (k == 'y' || k == 'Y') {
+                s = select_item('/');
+                if (s < 0) { msg("Never mind."); return; }
+            }
+            break;
+        }
+
+    if (s >= 0 && inv[s].ench > 0) {     /* an empty wand writes like a stick */
+        inv[s].ench--;
+        ot = inv[s].otyp;
+        switch (ot) {
+        case O_WDIG:
+            m = st_blind ? "You hear drilling!" : "Gravel flies up from the floor!";
+            life = 100;
+            break;
+        case O_WFIRE:
+            m = st_blind ? "You feel the wand heat up." : "Flames fly from the wand!";
+            life = EL_BURNED;
+            break;
+        case O_WCOLD:     m = "Ice cubes drop from the wand.";   break;
+        case O_WSLEEP:    m = "Bugs on the floor stop moving!";  break;
+        case O_WMMISSILE: m = "Bullet holes riddle the floor!";  break;
+        case O_WSTRIKE:   m = "The wand fights your writing.";   break;
+        case O_WTELE:
+            if (el_life && el_x == (uint8_t)hero_x && el_y == (uint8_t)hero_y)
+                m = "The old engraving vanishes!";
+            break;
+        }
+        if (m && (!st_blind || ot == O_WDIG || ot == O_WFIRE)) item_id_set(ot);
+        else m = 0;
+    }
+    el_x = (uint8_t)hero_x; el_y = (uint8_t)hero_y; el_life = life;
+    msg(m ? m : "You write Elbereth in the dust.");
+    acted = 1; turns++;
+}
+
 #define ZAP_RANGE 9
 void do_zap(void) __banked
 {

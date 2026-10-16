@@ -546,7 +546,7 @@ void upkeep(void) __banked
     if (blindfolded && st_blind < 2) st_blind = 2;   /* the blindfold is on */
     if (st_blind && !--st_blind) { msg("You can see again."); map_dirty = 1; }
     if (st_sleep && !--st_sleep) msg("You wake up.");
-    if (el_life && !--el_life)   msg("The engraving fades away.");
+    if (el_life && el_life != EL_BURNED && !--el_life) msg("The engraving fades away.");
     if (pray_timeout) pray_timeout--;
 
     /* teleportitis blinks you about, NetHack's one turn in eighty-five -- from
@@ -1377,6 +1377,10 @@ void try_move(int dx, int dy) __banked
     if (mi >= 0) {
         if (!(m_type[mi] == MON_KEEPER || mi == pet_idx || m_peace[mi])) {
             acted = 1;
+            /* NetHack 3.6: a blow struck from Elbereth rubs it out, burned
+             * or not (game.h) -- the word guards the one who stands, not the
+             * one who fights */
+            if (el_life && hero_x == el_x && hero_y == el_y) el_life = 0;
             attack_monster((uint8_t)mi);
             return;
         }

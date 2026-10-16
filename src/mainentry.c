@@ -90,10 +90,7 @@ start_game:
         case 'D': show_discoveries(); break;        /* what the looks mean   */
         case '?': show_help();      break;          /* full key-list screen; no turn */
         case 'd': do_drop(); in_wait_nokey(); break; /* drop an item (sells in a shop) */
-        case 'E':                                   /* engrave Elbereth in the dust */
-            el_x = (uint8_t)hero_x; el_y = (uint8_t)hero_y; el_life = 30;
-            msg("You engrave Elbereth.");
-            turns++; acted = 1; in_wait_nokey(); break;
+        case 'E': do_engrave(); in_wait_nokey(); break;   /* Elbereth, finger or wand */
         case 'p': do_pray(); in_wait_nokey(); break;  /* pray to your god */
 
         case 'S':                                   /* save game and quit to title */

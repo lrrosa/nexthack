@@ -168,8 +168,13 @@ extern uint8_t  st_poison;    /* poisoned: HP drains each turn            */
 /* Elbereth: a protective word scratched in the dust. 'E' engraves it on the
  * hero's cell (el_x/el_y) with a turn life (el_life); while the hero stands on
  * a live engraving, adjacent monsters dare not strike. Ticked down in upkeep,
- * wiped on any level change. Defined in nexthack.c. */
+ * wiped on any level change. Defined in nexthack.c. Since 1.8 a wand can
+ * write it (item_use.c do_engrave): carved with digging it lasts longer, and
+ * burned with fire it is EL_BURNED, which upkeep never ticks -- so, as in
+ * NetHack 3.6, a melee blow struck from it rubs ANY engraving out (try_move),
+ * or a burned Elbereth would be a fortress you could fight from forever. */
 extern uint8_t  el_x, el_y, el_life;
+#define EL_BURNED 255
 
 /* prayer: turns until your god will hear you again (0 = ready). Ticked in
  * upkeep, set by a successful prayer, saved. */
