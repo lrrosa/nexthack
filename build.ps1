@@ -86,8 +86,17 @@ if ($todo) {
 
 # Link stage: combine the .o files into the .nex (+ .map), applying the banking
 # pragmas (REGISTER_SP/CRT_APPEND_MMAP/CLIB_BANKING_SEGMENT) and the page mmap.
+# $crt is the C runtime the game actually uses, and nothing more: startup 31 is
+# startup 1 without its stdin/stdout terminal drivers, which the game never
+# called (it draws its own tilemap and reads keys through in_inkey), and the
+# zero sizes drop the stdio and malloc heaps (file I/O is esx_f_* direct, and
+# nothing allocates). That was 3.6 KB of the resident half. Kept here rather
+# than in zpragma.inc because they only touch the link: an edit to that file
+# recompiles every module.
+$crt  = @('-startup=31', '-pragma-define:CLIB_STDIO_HEAP_SIZE=0', '-pragma-define:CLIB_MALLOC_HEAP_SIZE=0',
+          '-pragma-define:CLIB_FOPEN_MAX=0', '-pragma-define:CLIB_OPEN_MAX=0')
 $objs = $srcs | ForEach-Object { "src/$_.o" }
-& zcc +zxn -subtype=nex -vn -clib=sdcc_iy -startup=1 -pragma-include:zpragma.inc -m $objs -o nexthack -create-app
+& zcc +zxn -subtype=nex -vn -clib=sdcc_iy @crt -pragma-include:zpragma.inc -m $objs -o nexthack -create-app
 $sw.Stop()
 
 if (Test-Path nexthack.nex) {

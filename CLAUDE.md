@@ -54,8 +54,17 @@ then link:
 
 ```
 zcc +zxn -clib=sdcc_iy -SO3 --max-allocs-per-node200000 -pragma-include:zpragma.inc <bank flags> -c src/foo.c -o src/foo.o
-zcc +zxn -subtype=nex -vn -clib=sdcc_iy -startup=1 -pragma-include:zpragma.inc -m <objs> -o nexthack -create-app
+zcc +zxn -subtype=nex -vn -clib=sdcc_iy -startup=31 <CLIB heap sizes 0> -pragma-include:zpragma.inc -m <objs> -o nexthack -create-app
 ```
+
+**The runtime is `-startup=31`, not 1** (1.8): startup 1 is the same CRT plus
+z88dk's stdin/stdout terminal drivers, which the game never used -- it draws its
+own tilemap/ULA cells and reads keys through `in_inkey`. With them went the stdio
+and malloc heaps (`-pragma-define:CLIB_*=0`; file I/O is `esx_f_*` direct and
+nothing allocates): 3.8 KB of the resident half on both targets. So `printf`,
+`getchar` and `malloc` do not work in this game -- nothing is wired to them.
+Those flags live on the link line in the build scripts, not in `zpragma.inc`,
+because an edit there recompiles every module for a link-only setting.
 
 `zpragma.inc` (`REGISTER_SP=0xBFF0`, `CRT_APPEND_MMAP=1`, `CLIB_BANKING_SEGMENT=3`)
 and `mmap.inc` (the `PAGE_20/22/26/28_CODE` section ORGs) drive the banking;
@@ -805,7 +814,9 @@ tenant map. Any figure in this document is a snapshot of the commit that wrote i
 this is the one place where a stale number costs a debugging session. Its headroom
 figure is measured to `$BDF0` and reaches 0 exactly where the stack reserve begins,
 so it is the number you can spend directly. As of 2026-09-27 the Next sat at
-`__BSS_END=$BCFE` — 242 B — and the 128K at `$B4E9`, ~2.3 KB.
+`__BSS_END=$BCFE` — 242 B — and the 128K at `$B4E9`, ~2.3 KB; dropping the
+unused terminal runtime (1.8, `-startup=31`) took them to `$AE5C` (3988 B) and
+`$A798` (5720 B).
 
 **Adding a feature:**
 - **New code → make it banked** (there is room, though not in every bank): declare the

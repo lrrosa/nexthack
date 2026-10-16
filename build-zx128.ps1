@@ -92,9 +92,13 @@ if ($CompileOnly) { "`nAll modules compiled OK in {0:N1}s." -f $sw.Elapsed.Total
 # boots the resident title and crashes on the first banked call. It cost a link
 # pass every build and was a standing trap (load the .tap, never the .sna), so
 # it is no longer emitted.
+# The runtime is the Next build's (see build.ps1): startup 31 is startup 1
+# without the terminal drivers the game never used, and no stdio/malloc heaps.
+$crt  = @('-startup=31', '-pragma-define:CLIB_STDIO_HEAP_SIZE=0', '-pragma-define:CLIB_MALLOC_HEAP_SIZE=0',
+          '-pragma-define:CLIB_FOPEN_MAX=0', '-pragma-define:CLIB_OPEN_MAX=0')
 $objs = ($csrcs + $asrcs) | ForEach-Object { "obj-zx128/$_.o" }
 "`nlinking nexthack128.tap ..."
-& zcc +zx -vn -clib=sdcc_iy -startup=1 -pragma-include:zpragma-zx128.inc -m $objs -o nexthack128 -create-app
+& zcc +zx -vn -clib=sdcc_iy @crt -pragma-include:zpragma-zx128.inc -m $objs -o nexthack128 -create-app
 # z88dk's newlib +zx tape loader only loads the resident CODE, not the extra
 # banks -> rebuild the .tap with a 128K loader that pages + loads each bank.
 "rebuilding nexthack128.tap with the bank-paging 128K loader ..."
