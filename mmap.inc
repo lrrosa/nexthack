@@ -20,3 +20,9 @@ SECTION PAGE_30_CODE
 ; The Layer 2 title image (titlegfx0/1/2.c) goes in banks 16/17/18 via z88dk's
 ; predefined BANK_16/17/18 sections (already ORG'd at 0x20C000/0x22C000/0x24C000
 ; = the 0xC000 window over those banks), so nothing to add here.
+; PAGE_44_CODE is bank 22 (free, 1.8): the first bank past the Layer 2 images
+; (16..21). Opened for the furniture (feature.c, throne.c) and given
+; platform_init too, whose 3 KB of gfx[] had PAGE_20 at 119 B with three more
+; tiles to come. One-time init and cold code: any bank will do.
+SECTION PAGE_44_CODE
+    ORG 0x2CC000

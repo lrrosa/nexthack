@@ -638,7 +638,7 @@ void show_help(void) __banked
     print_str(7,  4, "h j k l  y u b n",     C_CYAN | C_BRIGHT);
     print_str(2,  5, "Stairs: > < or Enter", C_CYAN | C_BRIGHT);
     print_str(2,  6, "s search . wait ; look", C_CYAN | C_BRIGHT);
-    print_str(2,  7, "R rest  K kick a door",  C_CYAN | C_BRIGHT);
+    print_str(2,  7, "R rest  K kick  # sit",  C_CYAN | C_BRIGHT);
     print_str(2,  9, "a apply    , pick up", C_CYAN | C_BRIGHT);  /* not ',' over 'i' */
     print_str(2,  10, "i inventory  D found", C_CYAN | C_BRIGHT);
     print_str(2, 11, "w wield    W wear",    C_CYAN | C_BRIGHT);
@@ -862,6 +862,9 @@ static void describe(char dest, int moved)
     case 'v': msg("A mine entrance. (> descends)");   break;
     case '*': msg("A luckstone! (, to take)");        break;
     case '{': msg("There is a fountain here.");       break;
+    case CH_SINK:   msg("There is a sink here.");      break;
+    case CH_THRONE: msg("A throne!  (# to sit)");      break;
+    case CH_GRAVE:  grave_say((uint8_t)hero_x, (uint8_t)hero_y); break;
     default:  msg("");                                break;
     }
 }
@@ -872,7 +875,8 @@ static int lookable(char c)
     return c == '>' || c == '<' || c == '"' ||
            c == ')' || c == '[' || c == '!' ||
            c == '%' || c == '?' || c == '=' || c == '/' || c == '&' || c == '(' ||
-           c == '_' || c == '{';
+           c == '_' || c == '{' ||
+           c == CH_SINK || c == CH_THRONE || c == CH_GRAVE;
 }
 
 /* ---- farlook (';') ----
@@ -926,6 +930,9 @@ static void look_at(uint8_t x, uint8_t y)
     case '^': msg("A trap.");               break;
     case '_': msg2("A ", align_name(altar_align(x, y)), " altar."); break;
     case '{': msg("A fountain.");           break;
+    case CH_SINK:   msg("A sink.");         break;
+    case CH_THRONE: msg("A throne.");       break;
+    case CH_GRAVE:  grave_say(x, y);        break;
     case 'v': msg("A hole down to the mines."); break;
     case '$': msg("A pile of gold.");       break;
     case '*': msg("A luckstone.");          break;
@@ -1150,6 +1157,10 @@ void do_kick(void) __banked
             int x = hero_x + dx, y = hero_y + dy;
             if ((dx == 0 && dy == 0)) continue;
             if (x < 0 || y < 0 || x >= MAPW || y >= MAPH) continue;
+            if (terrain(x, y) == CH_SINK) {       /* a sink rattles (feature.c) */
+                kick_sink((uint8_t)x, (uint8_t)y);
+                return;
+            }
             if (terrain(x, y) != '+') continue;
             if (!door_locked((uint8_t)x, (uint8_t)y)) continue;
             turns++; acted = 1;
@@ -1307,6 +1318,10 @@ uint8_t rest_step(void) __banked
             *c = '#';
             dug_add(dig_x, dig_y);
             map_flush = 1;                 /* +zx: a cell the 3-tier draw keeps */
+            return 0;
+        }
+        if (lvl[dig_y][dig_x] == CH_GRAVE) {   /* a grave opens, no hole */
+            grave_dig();
             return 0;
         }
         msg("You dig a hole and drop through!");       /* 32: the 128K line */

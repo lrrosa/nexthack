@@ -363,7 +363,8 @@ static int floor_find(uint8_t x, uint8_t y)
 static int floor_drop(uint8_t x, uint8_t y, const obj_t *o)
 {
     char t = lvl[y][x];
-    if ((t != '.' && t != '#' && t != '_')   /* items may rest on an altar */
+    if ((t != '.' && t != '#' && t != '_' &&   /* items may rest on an altar */
+         t != CH_SINK && t != CH_THRONE && t != CH_GRAVE)   /* ...and the furniture */
         || floor_find(x, y) >= 0 || floor_n >= MAXFLOOR)
         return 0;
     floor_obj[floor_n].x = x; floor_obj[floor_n].y = y;
@@ -1208,14 +1209,20 @@ void steal_item(uint8_t mi) __banked
 /* A kill may leave loot besides the corpse (NetHack's death drops): a
  * depth-appropriate item rolled from the play-time RNG -- never inside
  * generation, so the deterministic streams stay untouched. */
-void death_drop(uint8_t x, uint8_t y) __banked
+void death_drop(uint8_t x, uint8_t y) __banked { item_spawn(x, y, 0, 0); }
+
+/* A fresh object of class cls (0: the death drop's mix) lying on (x,y): a
+ * kill's loot, a sink's ring, what a grave held (1.8) -- cursed when asked,
+ * as NetHack's grave goods are. The draws are death_drop's, in its order. */
+void item_spawn(uint8_t x, uint8_t y, char cls, uint8_t cursed) __banked
 {
     static const char pool[8] = { ')', '[', '!', '%', '?', '=', '!', '%' };
     obj_t o;
     uint16_t h = rng_next();
-    o.otyp = resolve_otyp(pool[h & 7], (uint16_t)(h >> 3), (uint8_t)eff_depth());
+    o.otyp = resolve_otyp(cls ? cls : pool[h & 7], (uint16_t)(h >> 3), (uint8_t)eff_depth());
     o.ench = 0; o.ero = 0; o.worn = 0; o.buc = BUC_UNC;
     gen_buc(&o, rng_next());            /* a fresh draw: h already chose the type */
+    if (cursed) o.buc = BUC_CURSE;
     floor_drop(x, y, &o);
 }
 
@@ -1407,6 +1414,10 @@ void do_drop(void) __banked
         sacrifice((uint8_t)s);          /* a corpse on an altar is an offering */
         return;
     }
+    if (objtypes[inv[s].otyp].cls == '=' && terrain(hero_x, hero_y) == CH_SINK) {
+        sink_ring((uint8_t)s);          /* down the drain (feature.c) */
+        return;
+    }
 
     if (in_shop) {
         uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u);
@@ -1473,6 +1484,10 @@ void do_drop(void) __banked
     if (cursed_on((uint8_t)s)) return;  /* stuck on: not dropped, not sold */
     if (inv[s].otyp == O_CORPSE && terrain(hero_x, hero_y) == '_') {
         sacrifice((uint8_t)s);          /* a corpse on an altar is an offering */
+        return;
+    }
+    if (objtypes[inv[s].otyp].cls == '=' && terrain(hero_x, hero_y) == CH_SINK) {
+        sink_ring((uint8_t)s);          /* down the drain (feature.c) */
         return;
     }
 

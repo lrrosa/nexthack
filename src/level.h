@@ -18,6 +18,21 @@
 #define OY 1              /* map -> screen row offset (row 0 = msgs) */
 
 extern char    lvl[MAPH][MAPW];
+
+/* The furniture (1.8, feature.c/throne.c): a sink, a throne and a grave.
+ * NetHack draws them '#', '\\' and '|', two of which this map already uses
+ * for corridors and walls; the buffer only needs a char nothing else holds,
+ * since every renderer draws a tile (tile_for). */
+#define CH_SINK   '~'
+#define CH_THRONE '\\'
+#define CH_GRAVE  '`'
+void place_features(void) __banked;           /* build_level, beside the altar */
+void quaff_sink(void) __banked;               /* 'q' on a sink                 */
+void kick_sink(uint8_t x, uint8_t y) __banked;/* 'K' beside one               */
+void sink_ring(uint8_t s) __banked;           /* 'd' a ring on one            */
+void grave_say(uint8_t x, uint8_t y) __banked;/* its headstone                */
+void grave_dig(void) __banked;                /* dug up underfoot             */
+void do_sit(void) __banked;                   /* '#' (throne.c)               */
 extern uint8_t rcount;                    /* number of rooms          */
 extern uint8_t up_x, up_y, dn_x, dn_y;    /* this level's stairs      */
 extern uint8_t mn_x, mn_y;                /* mine entrance ('v') cell on

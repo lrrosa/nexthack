@@ -220,6 +220,7 @@ void build_level(void) __banked
     place_altar();       /* a deterministic altar on some levels (no RNG) */
     place_fountain();    /* ...and a fountain on some (guards on '.', so it
                           * never overwrites the altar) */
+    place_features();    /* sinks, thrones, graves (feature.c), the same way */
     apply_gold_persistence();
     apply_monster_persistence();
     apply_item_persistence();

@@ -77,6 +77,9 @@ uint8_t tile_for(char c)
     case 'v': return T_MINEHOLE;
     case '*': return T_LUCKSTONE;
     case '(': return T_TOOL;
+    case CH_SINK:   return T_SINK;
+    case CH_THRONE: return T_THRONE;
+    case CH_GRAVE:  return T_GRAVE;
     default:  return T_ROCK;
     }
 }

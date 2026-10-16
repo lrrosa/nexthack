@@ -318,7 +318,7 @@ def run(target):
         problems = report_resident('nexthack.map', 'Next')
         print()
         problems += report_code_banks('nexthack', 'Next (PAGE_20=b10, 22=b11, 30=b15, '
-                                                 '26=b13, 28=b14)')
+                                                 '26=b13, 28=b14, 44=b22)')
     else:
         print('== ZX Spectrum 128K (nexthack128.tap) ' + '=' * 31)
         problems = report_resident('nexthack128.map', '128K')

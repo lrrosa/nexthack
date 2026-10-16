@@ -203,7 +203,19 @@ const uint8_t gfx[NTILES][64] = {
   { /* T_TOOL (1.6: a pick-axe for the whole '(' class -- a curved grey head
      * over a brown handle, upright so it never reads as the diagonal dagger) */
     0,0,3,3,3,3,0,0, 0,3,0,6,6,0,3,0, 3,0,0,6,6,0,0,3, 0,0,0,6,6,0,0,0,
-    0,0,0,6,6,0,0,0, 0,0,0,6,6,0,0,0, 0,0,0,6,6,0,0,0, 0,0,0,5,5,0,0,0 }
+    0,0,0,6,6,0,0,0, 0,0,0,6,6,0,0,0, 0,0,0,6,6,0,0,0, 0,0,0,5,5,0,0,0 },
+  { /* T_SINK (1.8: a kitchen sink -- a grey tap dripping cyan over a white
+     * counter with a dark basin, on a wooden cabinet; the fountain is the
+     * grey basin on a stem) */
+    0,0,0,0,0,0,3,0, 0,0,0,3,3,3,3,0, 0,0,0,12,0,0,3,0, 4,4,4,4,4,4,4,4,
+    4,1,1,1,1,1,1,4, 5,4,4,4,4,4,4,5, 5,6,6,5,5,6,6,5, 5,6,7,5,5,7,6,5 },
+  { /* T_THRONE (1.8: a gold frame with finials round a red cushion) */
+    0,13,0,13,13,0,13,0, 0,13,13,13,13,13,13,0, 0,13,8,8,8,8,13,0, 0,13,8,8,8,8,13,0,
+    0,13,8,8,8,8,13,0, 13,13,13,13,13,13,13,13, 13,8,8,8,8,8,8,13, 13,0,0,0,0,0,0,13 },
+  { /* T_GRAVE (1.8: a rounded grey headstone, a cross cut in it, on a
+     * mound of brown earth) */
+    0,0,3,3,3,3,0,0, 0,3,3,1,1,3,3,0, 0,3,1,1,1,1,3,0, 0,3,3,1,1,3,3,0,
+    0,3,3,1,1,3,3,0, 0,3,3,3,3,3,3,0, 6,6,6,6,6,6,6,6, 0,5,5,5,5,5,5,0 }
 };
 
 static void pack_tile(uint8_t tilenum, const uint8_t *px)
@@ -413,8 +425,13 @@ static const uint8_t udg_src[NTILES][8] = {
                                                   * see the Next gfx entry)   */
     { 0x3C,0x7E,0x5A,0x3C,0x7E,0x3C,0x3C,0x24 }, /* NYMPH (haired face, gown,
                                                   * arms out for your pack)  */
-    { 0x3C,0x5A,0x99,0x18,0x18,0x18,0x18,0x18 }  /* TOOL (a pick-axe: curved
+    { 0x3C,0x5A,0x99,0x18,0x18,0x18,0x18,0x18 }, /* TOOL (a pick-axe: curved
                                                   * head, upright handle)    */
+    { 0x0E,0x08,0xFF,0x81,0x42,0x3C,0x18,0x3C }, /* SINK (a tap over a bowl)  */
+    { 0x5A,0x7E,0x42,0x42,0x42,0xFF,0x81,0x81 }, /* THRONE (a framed seat: the
+                                                  * red paper is the cushion) */
+    { 0x3C,0x66,0x42,0x66,0x66,0x7E,0xFF,0x7E }  /* GRAVE (headstone, a cross
+                                                  * cut through, on a mound)  */
 };
 
 /* Copy the hand-drawn tiles into udg_bitmap[] (Bank 5, see platform.h) that the

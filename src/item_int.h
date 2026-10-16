@@ -125,4 +125,9 @@ void    item_destroy_armor(void) __banked;     /* the outermost worn piece goes 
 void    item_forget_ids(void) __banked;        /* amnesia: a third of the looks  */
 char    item_obj_cls(uint8_t otyp) __banked;   /* objtypes[otyp].cls, by value  */
 
+/* item_use.c's, for the throne (throne.c, which includes this header too, for
+ * inv[] and the O_* ids -- under the same values-only rule) */
+void    use_gain_ability(void) __banked;       /* an uncursed gain ability      */
+void    use_genocide(void) __banked;           /* an uncursed scroll's prompt   */
+
 #endif /* ITEM_INT_H */

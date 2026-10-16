@@ -95,7 +95,11 @@ const uint8_t udg_ink[NTILES] = {
     /* SHOPWALL KEEPER  LEPRECHAUN YELLOWLIGHT TRAP HOMUNCULUS WRAITH ALTAR WAND FEYE BOOK FOUNTAIN */
        22,      3,          4,          6,        2,      2,        7,     7,    5,   1,   2,   13,
     /* TROLL  VAMPIRE  DRAGON  PRIEST  MIMIC  MINEHOLE GNOME DWARF LUCKSTONE MINEWALL NYMPH TOOL */
-       6,     7,       2,      3,      3,     6,       1,    7,    7,        6,       3,    6
+       6,     7,       2,      3,      3,     6,       1,    7,    7,        6,       3,    6,
+    /* SINK  THRONE  GRAVE (1.8) */
+       7,    22,     7
+    /* sink and grave white; the throne yellow on red, the Next's gold frame
+     * round a red cushion (the shop wall's pair, which no room floor wears) */
     /* zombie white (NetHack's human zombie); keeper magenta; leprechaun green; yellow light
      * yellow; trap+imp red; wraith+altar white; wand cyan; eye blue; book red; fountain cyan on blue;
      * troll yellow (NetHack's brown, as the Next draws it); vampire white; dragon red;
@@ -271,6 +275,32 @@ void msg_num(const char *a, uint16_t n, const char *c)
     x = put_uint(x, 0, n, C_WHITE | C_BRIGHT);
     x = print_str(x, 0, c, C_WHITE | C_BRIGHT);
     pad_eol(x, 0);
+}
+
+/* NetHack's --More-- (1.8): the line on show stays until a key, because
+ * another follows it; s, if given, is shown first. Every message keeps to the
+ * 128K's 32 columns, so on the Next the prompt fits after it on row 0; the
+ * 128K's message row is full, so the prompt borrows the right end of row 1
+ * -- the map's top row -- and those cells are put back from VIEW_SHADOW
+ * (0x6000, nexthack.c), which always holds what draw_map painted there. */
+void msg_more(const char *s)
+{
+    if (s) msg(s);
+#ifdef __ZXNEXT
+    print_str(34, 0, "--More--", C_CYAN | C_BRIGHT);
+#else
+    print_str(24, 1, "--More--", C_CYAN | C_BRIGHT);
+#endif
+    in_wait_nokey();
+    getkey();
+    in_wait_nokey();
+#ifndef __ZXNEXT
+    {
+        const uint8_t *sh = (const uint8_t *)0x6000u + 48;   /* map row 0, col 24 */
+        uint8_t x;
+        for (x = 24; x < 32; x++, sh += 2) puttile_attr(x, 1, sh[0], sh[1]);
+    }
+#endif
 }
 
 /* Unpack one stream (tools/lztmpl.py wrote it) straight into its destination

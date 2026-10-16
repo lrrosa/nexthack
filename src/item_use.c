@@ -114,11 +114,21 @@ static void gain_ability(uint8_t buc)
     msg("You feel no different.");
 }
 
+void use_gain_ability(void) __banked { gain_ability(BUC_UNC); }
+
 void do_quaff(void) __banked
 {
     int s;
     uint8_t ot, buc;
 
+    if (lvl[hero_y][hero_x] == CH_SINK) {   /* a sink (1.8): drink from it? */
+        int k;
+        msg("Drink from the sink? y/n");
+        in_wait_nokey();
+        k = getkey();
+        in_wait_nokey();
+        if (k == 'y' || k == 'Y') { quaff_sink(); return; }
+    }
     if (lvl[hero_y][hero_x] == '{') {    /* standing on a fountain: drink it? */
         int k;
         msg("Drink from the fountain? y/n");
@@ -298,7 +308,8 @@ static void genocide(uint8_t cursed)
     if (!ch) { msg("The scroll turns to dust."); return; }
     if (ch == 'x') ch = 'm';            /* the hidden mimic's letter */
     if (cursed) {
-        if (summon_near(ch)) msg2("The ", mon_name(ch), " horde arrives!");
+        if (summon_near(ch, (uint8_t)(4 + rn2(3))))   /* NetHack sends four to six */
+            msg2("The ", mon_name(ch), " horde arrives!");
         else                 msg("You hear a distant rumble.");
         return;
     }
@@ -320,6 +331,8 @@ static void genocide(uint8_t cursed)
  * three to five, cursed drains it dry. With no wand to charge it charges YOU
  * -- your power comes back, NetHack's confused-reading gift, so the scroll is
  * never a blank. Nine is the brim: the charges show as one digit. */
+void use_genocide(void) __banked { genocide(0); }
+
 static void charging(uint8_t buc)
 {
     int w = select_item('C');
@@ -522,7 +535,7 @@ static void apply_pick(void)
     else {
         c = terrain(x, y);
         if (AT_BOTTOM(dlvl) || shop_in_room(x, y)) no = "The floor here is too hard.";
-        else if (c != '.' && c != '#')             no = "You cannot dig here.";
+        else if (c != '.' && c != '#' && c != CH_GRAVE) no = "You cannot dig here.";
     }
     if (no) { msg(no); return; }
     acted = 1; turns++;
@@ -791,6 +804,12 @@ void do_zap(void) __banked
 
     if (ot == O_WDIG) {                  /* digging needs no aim -- it goes down */
         acted = 1; turns++;
+        if (lvl[hero_y][hero_x] == CH_GRAVE) {   /* NetHack's zap_dig: the grave */
+            inv[s].ench--;                       /* opens, and you stay put      */
+            item_id_set(O_WDIG);
+            grave_dig();
+            return;
+        }
         /* Refuse only where there is no floor below: the win level, and the
          * mines' bottom (AT_BOTTOM, which the trap doors obey too).
          * `dlvl >= DLVL_AMULET` looked equivalent and was not -- the mines

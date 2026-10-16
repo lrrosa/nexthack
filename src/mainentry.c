@@ -94,6 +94,7 @@ start_game:
         case 'd': do_drop(); in_wait_nokey(); break; /* drop an item (sells in a shop) */
         case 'E': do_engrave(); in_wait_nokey(); break;   /* Elbereth, finger or wand */
         case 'p': do_pray(); in_wait_nokey(); break;  /* pray to your god */
+        case '#': do_sit();  in_wait_nokey(); break;  /* sit down (a throne!) */
 
         case 'S':                                   /* save game and quit to title */
             if (save_game()) {

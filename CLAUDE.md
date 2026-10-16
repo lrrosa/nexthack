@@ -313,7 +313,10 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `music.c` | B | the AY title theme — a 3-voice sequencer, not a tracker replayer; the title plays it twice through before the demo |
 | `attract.c/.h` | B | the title's attract demo: ~15 s of magic-mapped levels walked to the stairs by a random class (see Title & victory screens) |
 | `item.c/.h` | B | the inventory, the object catalogue and its names, equipment (wield/wear/put-on), the floor and its stashes, pick up/drop |
-| `item_use.c` | B | the verbs that activate or consume an item: quaff (and fountains), eat (and corpses), read, throw, zap |
+| `item_use.c` | B | the verbs that activate or consume an item: quaff (and fountains), eat (and corpses), read, throw, zap, and `E` (engraving with a wand) |
+| `secret.c` | B | secret doors and corridors (1.8): hidden by side hash after `gen_level`, never cutting `<` off `>`; found by `s` |
+| `feature.c` | B | the furniture (1.8): where sinks, thrones and graves stand; drinking from, kicking and dropping rings down a sink; graves' epitaphs and digging one up |
+| `throne.c` | B | `#` (1.8): sitting, and NetHack's thirteen throne effects (no wish) |
 | `item_int.h` | — | item.c's internals shared with `item_use.c` only: `obj_t`, `inv`, the `O_*` ids, and the `__banked` value API between the two |
 | `sfx.c/.h` | B | beeper sound effects |
 | `titlegfx0/1/2.c`, `victorygfx0/1/2.c` | B | the Layer 2 title / victory images (generated): 3×16 KB framebuffer thirds const-banked into banks 16/17/18 and 19/20/21 (see Title & victory screens) |
@@ -479,9 +482,9 @@ tilemap.
   list of cells (`dug_pool`, see Items), re-opened last. **Do not change the order/number of
   `rn2()` calls inside generation casually** — it changes every level and can desync
   the persistence bit indices.
-- `build_level()` (in `nexthack_lvl.c`) orchestrates: `gen_level()` → spawn
-  monsters → altar and fountain → apply gold/monster/item persistence → the dug
-  cells → the floor stash. Gold/items are placed before monsters so spawning sees
+- `build_level()` (in `nexthack_lvl.c`) orchestrates: `gen_level()` → the
+  secrets (1.8) → spawn monsters → altar, fountain and furniture → apply
+  gold/monster/item persistence → the dug cells → the floor stash. Gold/items are placed before monsters so spawning sees
   the same map each visit, and anything that decides by looking at the map must
   run before the persistence: until 2026-10-10 the altar and fountain came after
   it, so a pile taken from the room's centre made one appear on the next visit.
@@ -498,6 +501,32 @@ tilemap.
   `MAXMON`), and `item.c` resolves its loot at a deeper effective depth (`dlvl +
   VAULT_DEPTH_BONUS`) for richer gear. `level_vault_room()` / `in_vault_room()`
   expose it to the spawner and to `item.c`.
+- **Secret doors and corridors** (1.8, `secret.c`): one door in eight
+  (`door_hash` `(h & 7) == 2`, nexthack.c) and about one straight corridor
+  square in 64 are hidden as wall or rock, on ordinary levels from Dlvl 2. A
+  cell is hidden only if a four-way flood from `<` still reaches `>` (the
+  Amulet's cell on 50) and the mine entrance on Dlvl 2 -- the user chose that
+  over NetHack's rule, which can wall you in; the fuzzer's walk check and the
+  attract demo rely on it. A door is locked where `(h & 3) == 0`, so none is
+  both and the locked doors' map-order index never shifts when one is found.
+  The flood borrows `dist[]`/`bfsq[]`, which no reader trusts without
+  reflooding. `s` finds one in five tries (luck 3 or 9); found ones ride the
+  dug pool (below).
+- **Furniture** (1.8, `feature.c`/`throne.c`): a sink (`~`, one level in 7), a
+  throne (`\`, one in 10 from Dlvl 5) and a grave (`` ` ``, likelier deeper),
+  each on a fixed interior cell of a hashed room if it is plain floor outside a
+  shop -- placed beside the altar and fountain, before the persistence, and not
+  on special levels or in the mines. Those chars exist only in `lvl[][]`: every
+  renderer draws `tile_for`'s tile. `floor_drop` accepts them, so an item can
+  rest on one as on an altar. What changes for good rides the dug pool:
+  a vanished throne or sink and a dug-up grave are `DUG_FLOOR`, and a sink that
+  gave up its ring a `DUG_MARK`. Two-part news uses `msg_more` (`platform.c`),
+  NetHack's --More--; the 128K borrows the right end of row 1 for the prompt
+  and repaints it from `VIEW_SHADOW`.
+- **Shops are specialised** (1.8, `levelgen.c` `kind_of_shop`): NetHack's ten
+  kinds by its odds, a side hash of world and depth (Minetown keeps a general
+  store). A general store stocks exactly what it did; a specialist buys only
+  its own classes (`shop_buys`), and walking in names it.
 - **Templates** (Phase 24): hand-drawn 21×80 ASCII maps in `tools/templates/*.txt`
   (with a `;rooms:` metadata line) are packed by `tools/txt2template.py` into the
   generated `src/leveltmpl_data.h` — `const` grids + room rects, const-banked with
@@ -655,6 +684,11 @@ tilemap.
   scroll's `ench` is its "picked up before" mark (dust on the next pickup).
   Stealth is `stealthy()` (`game.h`): the ring's `RF_STEALTH` OR the Rogue's
   birth `INTR_STEALTH` -- test the macro, never the ring bit alone.
+  Elbereth (1.8): `E` writes with a finger or a wand (`do_engrave`), a wand's
+  mark naming it; fire burns it for the visit (`EL_BURNED`, which `upkeep`
+  never ticks), so a melee blow struck from any engraving rubs it out
+  (`try_move`), as in NetHack 3.6 -- any new way to attack from the
+  engraved square should do the same.
 - **Class signatures** (1.6, `PC_*` in `game.h` name the `classes[]` rows): the
   Wizard regains Pw every 8 turns (`upkeep`) and force bolt is d(2,12); the
   Rogue is born stealthy and backstabs a sleeper for `rn2(xlvl)+1+xlvl/4` more
@@ -699,7 +733,11 @@ tilemap.
   not of the cell index, so an older binary loading the save skips the record
   instead of writing 32 KB past `lvl[]`; the format and `SAVE_VER` are
   unchanged. Anything else the hero changes for good on a regenerated level
-  belongs in this pool too.
+  belongs in this pool too -- and 1.8 put two more kinds there the same way,
+  in bit 6 of the level byte (levels end at 54): `DUG_DOOR`, a found secret
+  door reopened as `+`, and `DUG_MARK` (bits 6+7), which writes nothing and is
+  found by `dug_marked`. A 1.7 binary masks only bit 7, so it reads both as a
+  level above 54 and skips them.
 - **A new floor class char must be taught to six places**, and nothing checks
   the list: `tile_for` (`level.c`), `do_pickup`'s accepted classes and
   `resolve_floor`'s BUC rule (`item.c`), `describe`, `lookable` and the
@@ -794,8 +832,9 @@ tilemap.
 The game **broke the 64 KB ceiling by code-banking**. Layout:
 - **Resident** (`0x8000-0xBFF0`, one 16 KB bank): hot code + **all** data/BSS + the
   512 B stack (`REGISTER_SP=0xBFF0`). This is the tight half.
-- **Banked** (`0xC000-0xFFFF`, `CLIB_BANKING_SEGMENT=3`): cold code in five pages on
-  the Next — `PAGE_20/22/26/28/30_CODE` (banks 10/11/13/14/15) — and six on the 128K
+- **Banked** (`0xC000-0xFFFF`, `CLIB_BANKING_SEGMENT=3`): cold code in six pages on
+  the Next — `PAGE_20/22/26/28/30/44_CODE` (banks 10/11/13/14/15/22; 22 opened in
+  1.8, the first past the Layer 2 images) — and six on the 128K
   (`BANK_0/1/3/4/6/7`), mapped in on demand by the z88dk `__banked` trampoline. They
   are **not** interchangeable free space: `banks.json` says which module goes where,
   and some are full while others are half empty. **Ask `bankmap.py`, never guess.**

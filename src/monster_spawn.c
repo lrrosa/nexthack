@@ -201,10 +201,10 @@ void monster_load(uint8_t h) __banked
  * the monster slots allow -- NetHack sends four to six. A genocided type
  * sends none. Dead slots are reused the way the wanderer reuses them.
  * Returns how many came. */
-uint8_t summon_near(char type) __banked
+uint8_t summon_near(char type, uint8_t want) __banked
 {
     const MonType *mt = mon_find(type);
-    uint8_t n = 0, want = (uint8_t)(4 + rn2(3)), slot, i;
+    uint8_t n = 0, slot, i;
     int dx, dy;
     if (mon_gone(type)) return 0;
     for (dy = -1; dy <= 1; dy++)

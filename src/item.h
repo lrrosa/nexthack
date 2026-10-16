@@ -47,6 +47,7 @@ void do_engrave(void) __banked;         /* 'E': Elbereth, by finger or wand   */
 void dwarf_pick(uint8_t x, uint8_t y) __banked;  /* a slain dwarf's pick-axe  */
 void drop_held(uint8_t mi) __banked;  /* a slain thief drops its stolen loot    */
 void death_drop(uint8_t x, uint8_t y) __banked; /* a kill may leave random loot */
+void item_spawn(uint8_t x, uint8_t y, char cls, uint8_t cursed) __banked;  /* a new one */
 void altar_sense(void) __banked;      /* an altar reveals carried items' BUC    */
 void ring_noticed(uint8_t rf) __banked; /* a worn ring gave itself away (RF_*)  */
 uint8_t pray_uncurse(uint8_t all) __banked; /* a prayer lifts curses (worn/all) */

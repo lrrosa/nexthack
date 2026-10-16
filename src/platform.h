@@ -76,8 +76,11 @@
 #define T_MINEWALL    174  /* mines walls: hewn brown rock (vs built brick)   */
 #define T_NYMPH       175  /* the nymph: steals an item and blinks away       */
 #define T_TOOL        176  /* a tool ('(', 1.6): a pick-axe for the class     */
+#define T_SINK        177  /* a kitchen sink (1.8): 'q' sips, 'K' kicks       */
+#define T_THRONE      178  /* a throne (1.8): '#' sits                        */
+#define T_GRAVE       179  /* a grave (1.8): a headstone; a pick-axe digs it   */
 
-#define NTILES   49      /* T_ROCK..T_TOOL: the graphic tiles.
+#define NTILES   52      /* T_ROCK..T_GRAVE: the graphic tiles.
                           * 128K: udg_bitmap (0x6680, 8 B/tile) may run to
                           * 0x6888 -- ids up to 192 -- where the mirrored annex
                           * (193..195) begins; inv[] moved out of 0x6800 in 1.6
@@ -150,6 +153,7 @@ void    tm_cls(void);
 void msg(const char *s);
 void msg2(const char *a, const char *b, const char *c);
 void msg_num(const char *a, uint16_t n, const char *c);
+void msg_more(const char *s);   /* s (0: the line as it is) + --More--, a key */
 void lz_expand(const uint8_t *in, char *out, uint16_t size);  /* tools/lztmpl.py's format */
 
 /* keyboard: returns the key currently held (does not wait for release) */

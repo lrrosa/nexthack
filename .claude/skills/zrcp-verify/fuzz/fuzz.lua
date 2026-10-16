@@ -196,6 +196,9 @@ local function tile_for(c, mines)
   if c == 118 then return TL.T_MINEHOLE end        -- v
   if c == 42 then return TL.T_LUCKSTONE end        -- *
   if c == 40 then return TL.T_TOOL end             -- (
+  if c == 126 then return TL.T_SINK end            -- ~ (1.8 furniture: level.h CH_*)
+  if c == 92 then return TL.T_THRONE end           -- backslash
+  if c == 96 then return TL.T_GRAVE end            -- backquote
   return TL.T_ROCK
 end
 

@@ -21,9 +21,9 @@
   ],
 
   "next": {
-    "_doc": "Next: banks 10/11/13/14 as PAGE_20/22/26/28_CODE (ORG'd in mmap.inc); BANK_16..21 are z88dk-predefined sections holding the Layer 2 images.",
-    "_pool": ["PAGE_20_CODE", "PAGE_22_CODE", "PAGE_26_CODE", "PAGE_28_CODE", "PAGE_30_CODE"],
-    "_pool_doc": "The banks tools/bankpack.py may pack into. NOT PAGE_24_CODE (bank 12) -- that is PAGE_22's const spill, and a section ORG'd there collides. A module assigned to a bank outside this pool is PINNED: BANK_16..21 are read in place by the Layer 2 hardware. To add a bank: a SECTION + ORG in mmap.inc, then list it here (bank 15 is now nexthack_lvl's; 22+ are still free).",
+    "_doc": "Next: banks 10/11/13/14/15/22 as PAGE_20/22/26/28/30/44_CODE (ORG'd in mmap.inc); BANK_16..21 are z88dk-predefined sections holding the Layer 2 images.",
+    "_pool": ["PAGE_20_CODE", "PAGE_22_CODE", "PAGE_26_CODE", "PAGE_28_CODE", "PAGE_30_CODE", "PAGE_44_CODE"],
+    "_pool_doc": "The banks tools/bankpack.py may pack into. NOT PAGE_24_CODE (bank 12) -- that is PAGE_22's const spill, and a section ORG'd there collides. A module assigned to a bank outside this pool is PINNED: BANK_16..21 are read in place by the Layer 2 hardware. To add a bank: a SECTION + ORG in mmap.inc, then list it here (bank 15 is now nexthack_lvl's, 22 the furniture's as PAGE_44; 23+ are still free).",
 
     "mainentry":     { "why": "resident: main() -- the CRT jumps straight to it, so it cannot be banked" },
     "platform":      { "why": "resident: the per-cell draw primitives + keyboard, called from every bank" },
@@ -42,7 +42,7 @@
     "victorypal":    { "const": "PAGE_22_CODE", "why": "GENERATED. Same rule as titlepal" },
     "sfx":           { "code": "PAGE_22_CODE", "why": "beeper effects; its literals stay resident (there are none worth banking)" },
 
-    "platform_init": { "code": "PAGE_20_CODE", "const": "PAGE_20_CODE", "why": "one-time init runs from any bank; const holds the ~3 KB gfx[] tile table next to load_gfx_tiles(), its only reader. Moved off PAGE_22 when the mines tiles + conduct code overflowed it" },
+    "platform_init": { "code": "PAGE_44_CODE", "const": "PAGE_44_CODE", "why": "one-time init runs from any bank; const holds the ~3 KB gfx[] tile table next to load_gfx_tiles(), its only reader. Moved off PAGE_22 when the mines tiles + conduct code overflowed it, and off PAGE_20 (1.8) when that bank was down to 119 B with three furniture tiles to add" },
     "levelgen":      { "code": "PAGE_20_CODE", "why": "generation + gold/item persistence" },
     "monster_spawn": { "code": "PAGE_20_CODE", "const": "PAGE_20_CODE", "why": "split out of monster_ai.c when the AI banks filled up" },
     "music":         { "code": "PAGE_20_CODE", "const": "PAGE_20_CODE", "why": "the AY title theme + its score tables" },
@@ -51,6 +51,8 @@
     "attract":       { "code": "PAGE_26_CODE", "const": "PAGE_26_CODE", "why": "the title's attract demo: cold (it runs only at the title), and every call out of it is __banked or resident -- its one literal goes only to the resident msg() -- so it may live anywhere with room. Bank 13 had the most" },
     "leveltmpl":     { "code": "PAGE_26_CODE", "const": "PAGE_26_CODE", "why": "const holds the generated leveltmpl_data.h grids; load_template() reads them in place, so both must share a bank. Back in PAGE_26 since 2026-10-11, when item_use's growth left PAGE_30 at 738 B: `bankpack --free PAGE_30_CODE` chose it over nexthack_lvl because it left the tighter of the two banks roomier (2369 B against 2043). The Next has no contended RAM, so sharing the AI's bank costs the AI nothing but bytes" },
     "levelfov":      { "code": "PAGE_26_CODE", "why": "moved off PAGE_20 when bank 10 filled up as item.c grew" },
+    "feature":       { "code": "PAGE_44_CODE", "const": "PAGE_44_CODE", "why": "the furniture (1.8): where sinks, thrones and graves stand, and what sinks and graves do. Cold; its literals go only to the resident msg/msg2/msg_more, and it reads item.c's catalogue only by value (item_int.h), so any bank with room will do -- bank 22, opened for it" },
+    "throne":        { "code": "PAGE_44_CODE", "const": "PAGE_44_CODE", "why": "'#' and the throne's thirteen effects (1.8), split from feature.c for the 128K's sake. Cold, pointer-coupled to nothing" },
     "secret":        { "code": "PAGE_26_CODE", "const": "PAGE_26_CODE", "why": "the secret doors and passages (1.8): hidden once per level entry, sought by 's'. Cold, and pointer-coupled to nothing -- its flood uses the BFS scratch in Bank 5 by address and its literals stay in-bank -- so it went where there was room" },
 
     "item_use":      { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "the verbs that activate or consume an item (quaff/eat/read/throw/zap), split out of item.c when PAGE_28 fell to 163 B. None needs a pointer into item.c's catalogue -- see item_int.h -- so it can live anywhere; PAGE_30 had the room" },
@@ -99,7 +101,9 @@
     "levelfov":      { "hot": true, "code": "BANK_6", "why": "joins monster_ai (2026-08-31), which is also where the Next keeps it. BANK_6 is UNCONTENDED and fov_update runs every turn, so this is the right half of the machine for it; leaving BANK_4 to the scr+SCR group alone took that bank from 627 to 2508 B free. It had been in BANK_1, then BANK_4 when item.c's growth filled BANK_1" },
 
     "monster_ai":    { "hot": true, "code": "BANK_6", "const": "BANK_6", "why": "the spare bank -- the pet AI outgrew BANK_1" },
-    "secret":        { "code": "BANK_4", "const": "BANK_4", "why": "the secret doors and passages (1.8). Cold (level entry and 's'), pointer-coupled to nothing, so it took the uncontended bank the SCR screens leave half empty" },
+    "feature":       { "code": "BANK_4", "const": "BANK_4", "why": "the furniture (1.8). Cold, values-only coupling (see the Next entry). The 128K had no bank with 3 KB to give until the title and victory SCRs beside it were LZ-packed (1.8, tools/png2scr.py), which freed 6.7 KB here" },
+    "throne":        { "code": "BANK_4", "const": "BANK_4", "why": "'#' and the throne (1.8): its own module so the two halves can be placed apart if a bank fills. Cold, pointer-coupled to nothing; it joined feature.c in the room the packed SCRs left" },
+    "secret":        { "code": "BANK_4", "const": "BANK_4", "why": "the secret doors and passages (1.8). Cold (level entry and 's'), pointer-coupled to nothing, so it took the room beside the SCR screens" },
     "leveltmpl":     { "code": "BANK_7", "const": "BANK_7", "why": "const holds the generated template grids, read in place by load_template(). Moved off BANK_6 (2026-08-31) to leave that uncontended bank to monster_ai alone: this module is read ONCE on entering a template level, so BANK_7's contended RAM costs it nothing, while the per-turn AI would feel it. Earlier it shared BANK_3 with nexthack.c; as that code grew the combined section silently overflowed 16 KB and the truncated template data crashed every template level -- mktap128.py now refuses an oversized bank" },
 
     "platform_init": { "code": "BANK_7", "const": "BANK_7", "why": "moved here when BANK_3 overflowed. It runs ONCE at boot, so bank 7's contended RAM costs nothing, and its only const (udg_src) is read solely by build_udgs in the same file. NOTE udg_ink, which the renderers read everywhere, lives in the resident platform.c" },

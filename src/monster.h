@@ -103,7 +103,7 @@ void monsters_turn(void)            __banked;  /* every monster chases + attacks
 void maybe_spawn_wanderer(void)     __banked;  /* small per-turn spawn chance */
 void place_shopkeeper(uint8_t x, uint8_t y) __banked;  /* add the shop's keeper */
 void place_pet(void)                __banked;  /* (re)place the pet beside the hero */
-uint8_t summon_near(char type)      __banked;  /* reverse genocide: a pack beside you */
+uint8_t summon_near(char type, uint8_t want) __banked;  /* up to want of type beside you */
 
 /* ---- the title's attract demo (attract.c) -- never while a game runs ---- */
 void    dist_map_from(uint8_t x, uint8_t y) __banked; /* flood the chase field from x,y */
