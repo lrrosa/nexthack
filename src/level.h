@@ -82,8 +82,19 @@ void level_load(uint8_t h) __banked;
 /* ---- dug cells (1.6, levelfov.c): the pick-axe's tunnels, per level ---- */
 #define DUG_FLOOR 0x80   /* dug_add(x, y | DUG_FLOOR): the cell is '.' now (a
                           * dried fountain), not '#' */
+#define DUG_DOOR  0x40   /* ...y | DUG_DOOR: a found secret door, '+' (1.8)  */
+#define DUG_MARK  0xC0   /* ...y | DUG_MARK: no terrain, just remembered --
+                          * a sink that has given up its ring (1.8)          */
 void dug_add(uint8_t x, uint8_t y) __banked;   /* remember (x,y) as dug here   */
 void dug_restore(void) __banked;               /* re-open them (build_level)   */
+uint8_t dug_marked(uint8_t x, uint8_t y) __banked;  /* a DUG_MARK on (x,y) here? */
+
+/* ---- secret doors and corridors (1.8, secret.c) ---- */
+void    secrets_hide(void) __banked;          /* build_level, after gen_level  */
+uint8_t secrets_search(void) __banked;        /* 's': 1 door, 2 passage found  */
+void    secrets_reveal_doors(void) __banked;  /* a blessed magic mapping       */
+void    secrets_underfoot(void) __banked;     /* restore: open the hero's cell */
+uint8_t level_is_special(void) __banked;      /* Big Room or a template? (levelgen.c) */
 
 /* ---- field of view (fog of war) -- banked (levelfov.c) ----
  * None of these is per-cell hot: fov_update runs once per turn; draw_map calls

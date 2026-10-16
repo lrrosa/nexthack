@@ -380,6 +380,7 @@ void do_read(void) __banked
     item_inv_remove((uint8_t)s);
     sfx_magic();
     if (ot == O_MAPPING) {
+        if (buc == BUC_BLESS) secrets_reveal_doors();   /* NetHack's blessed map */
         fov_reveal();
         map_flush = 1;   /* +zx: seen-bits changed but vis didn't -- show the map */
         msg("The level map fills your mind!");

@@ -205,6 +205,9 @@ void build_level(void) __banked
      * and put it back once the deterministic part is over. */
     play = rng_get();
     gen_level();
+    secrets_hide();      /* hide some doors and passages (secret.c): side
+                          * hashes, so no rn2 moves and the spawns below see
+                          * only room floors, which it never touches */
     spawn_level_monsters();
     rng_set(play);
     { uint8_t kx, ky; if (shop_keeper_xy(&kx, &ky)) place_shopkeeper(kx, ky); }

@@ -442,6 +442,9 @@ static uint8_t special_kind(uint16_t d)
     return SP_NONE;
 }
 
+/* The furniture and the secrets keep off the special levels (secret.c). */
+uint8_t level_is_special(void) __banked { return special_kind(dlvl) != SP_NONE; }
+
 /* Big Room: one giant lit chamber filling the whole playable area. rcount=1
  * with the room in r_*[0], so FOV lights the entire room the moment you arrive
  * (you step in on a stair placed inside it). The two stairs go on random

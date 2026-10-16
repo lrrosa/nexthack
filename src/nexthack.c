@@ -1071,9 +1071,24 @@ static void add_sprung(uint8_t x, uint8_t y)
  * corked behind the first one the hero kicks past -- the same left-behind bug
  * that took three fixes to kill. The door costs the hero turns, it does not
  * fortify him. */
+/* The door's side hash, shared since 1.8 with the secret doors (secret.c):
+ * a door is locked where (h & 3) == 0 and secret where (h & 7) == 2, so none
+ * is ever both -- a found secret door is never locked, and the locked doors'
+ * map-order index below never shifts when one turns up. */
+static uint16_t dhash(uint8_t x, uint8_t y)
+{
+    uint16_t h = (uint16_t)(world_seed * 47u + (uint16_t)dlvl * 3571u
+                            + (uint16_t)x * 89u + (uint16_t)y * 149u);
+    h ^= (uint16_t)(h << 7);
+    h ^= (uint16_t)(h >> 9);
+    h ^= (uint16_t)(h << 8);
+    return h;
+}
+
+uint16_t door_hash(uint8_t x, uint8_t y) __banked { return dhash(x, y); }
+
 static uint8_t door_hash_locked(uint8_t x, uint8_t y)
 {
-    uint16_t h;
     /* eff_depth, so the mines are judged by how they PLAY (3..6) and not by
      * their internal dlvl 51..54 -- same result today, but it is the rule */
     if (eff_depth() < 3 || lvl[y][x] != '+') return 0;
@@ -1082,12 +1097,7 @@ static uint8_t door_hash_locked(uint8_t x, uint8_t y)
      * and the same reason -- a pure rect test, no RNG, so generation stays
      * in sync. */
     if (shop_in_room(x, y)) return 0;
-    h = (uint16_t)(world_seed * 47u + (uint16_t)dlvl * 3571u
-                   + (uint16_t)x * 89u + (uint16_t)y * 149u);
-    h ^= (uint16_t)(h << 7);
-    h ^= (uint16_t)(h >> 9);
-    h ^= (uint16_t)(h << 8);
-    return (uint8_t)((h & 3u) == 0);       /* about one door in four */
+    return (uint8_t)((dhash(x, y) & 3u) == 0);   /* about one door in four */
 }
 
 /* position of this door among the level's locked ones, or -1. Scan order is
@@ -1219,7 +1229,7 @@ static void spring_trap(int t, uint8_t x, uint8_t y)
 void do_search(void) __banked
 {
     int dx, dy;
-    uint8_t found = 0;
+    uint8_t found = 0, sec = secrets_search();   /* hidden doors and passages */
     for (dy = -1; dy <= 1; dy++)
         for (dx = -1; dx <= 1; dx++) {
             int x = hero_x + dx, y = hero_y + dy;
@@ -1230,7 +1240,9 @@ void do_search(void) __banked
             }
         }
     if (found) map_flush = 1;   /* +zx: the revealed '^' isn't the hero's cell */
-    msg(found ? "You find a trap!" : "You search around.");
+    msg((sec & 1) ? "You find a hidden door!" :
+        sec       ? "You find a hidden passage!" :
+        found     ? "You find a trap!" : "You search around.");
     turns++; acted = 1;
 }
 

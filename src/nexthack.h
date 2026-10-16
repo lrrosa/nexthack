@@ -38,6 +38,8 @@ uint8_t dig_start(uint8_t x, uint8_t y) __banked;   /* 'a' a pick-axe: rest_step
 uint8_t rest_step(void)   __banked;   /* 'R': 1 = spend another resting turn */
 uint8_t door_locked(uint8_t x, uint8_t y) __banked;  /* a '+' that won't open */
 uint8_t door_unlock(uint8_t x, uint8_t y) __banked;  /* 1 = it was locked, now open */
+uint16_t door_hash(uint8_t x, uint8_t y) __banked;   /* a door's side hash: (h & 3) == 0
+                                        * locked, (h & 7) == 2 secret -- never both */
 void do_kick(void)        __banked;   /* 'K': boot the locked door open   */
 void do_farlook(void)     __banked;   /* ';': inspect any visible/remembered cell */
 void hero_teleport(void)  __banked;   /* every teleport of the hero comes here  */

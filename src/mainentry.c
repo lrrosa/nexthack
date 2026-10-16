@@ -31,6 +31,8 @@ start_game:
     title_screen();
     if (load_game()) {              /* a saved game was found: resume it */
         build_level();              /* regenerate the saved depth        */
+        secrets_underfoot();        /* a pre-1.8 save may stand in a doorway
+                                     * that is a secret door now: open it */
         place_pet();                /* and bring the dog back to your side */
         fov_update(hero_x, hero_y);
         tm_cls();

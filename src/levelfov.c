@@ -79,7 +79,14 @@ static uint8_t  last_dlvl;                        /* dlvl cur_slot was resolved 
  * cell as '.', and the mark lives in bit 7 of the LEVEL byte (levels end at
  * 54): a 1.6.1 binary loading this save finds no level of that number and
  * skips the record, where a bit in the cell index would have sent its write
- * 32 KB past lvl[]. So the format, and SAVE_VER, are unchanged. */
+ * 32 KB past lvl[]. So the format, and SAVE_VER, are unchanged.
+ *
+ * 1.8 adds two kinds the same way, in bit 6 (levels need only bits 0-5):
+ * DUG_DOOR, a found secret door, reopened as '+'; and DUG_MARK (bits 6 and
+ * 7), which puts nothing back -- dug_marked finds it: a sink that has given
+ * up its ring. A 1.7 binary masks only bit 7, so both read as a level above
+ * 54 there and are skipped, like the floor kind in 1.6.1. */
+#define DUG_LV(t) ((uint8_t)((t) & 0x3Fu))      /* a record's level */
 #define DUG_MAX  128
 #define dug_pool ((uint8_t *)0x7C90u)    /* 1 + DUG_MAX*3 B: ends 0x7E11 */
 
@@ -89,11 +96,11 @@ void dug_add(uint8_t x, uint8_t y) __banked
 {
     uint8_t  i, n = dug_pool[0];
     uint8_t *p = dug_pool + 1;
-    uint8_t  tag = (uint8_t)((uint8_t)dlvl | (y & DUG_FLOOR));
-    uint16_t c = (uint16_t)(y & (uint8_t)~DUG_FLOOR) * MAPW + x;
+    uint8_t  tag = (uint8_t)((uint8_t)dlvl | (y & DUG_MARK));
+    uint16_t c = (uint16_t)(y & 0x3Fu) * MAPW + x;
 
     if (n == DUG_MAX) {
-        for (i = 0; i < n && (p[0] & (uint8_t)~DUG_FLOOR) == (uint8_t)dlvl; i++) p += 3;
+        for (i = 0; i < n && DUG_LV(p[0]) == (uint8_t)dlvl; i++) p += 3;
         if (i == n) return;             /* every record is this floor's: the
                                          * new hole goes unremembered instead */
         for (n--; i < n; i++, p += 3) { /* drop record i; the rest move down */
@@ -111,12 +118,24 @@ void dug_add(uint8_t x, uint8_t y) __banked
  * place_fountain and before the floor stash) */
 void dug_restore(void) __banked
 {
-    uint8_t  i, n = dug_pool[0];
+    uint8_t  i, n = dug_pool[0], k;
     const uint8_t *p = dug_pool + 1;
     for (i = 0; i < n; i++, p += 3)
-        if ((p[0] & (uint8_t)~DUG_FLOOR) == (uint8_t)dlvl)
+        if (DUG_LV(p[0]) == (uint8_t)dlvl && (k = (uint8_t)(p[0] & DUG_MARK)) != DUG_MARK)
             ((char *)lvl)[p[1] | ((uint16_t)p[2] << 8)] =
-                (p[0] & DUG_FLOOR) ? '.' : '#';
+                k == DUG_FLOOR ? '.' : k == DUG_DOOR ? '+' : '#';
+}
+
+/* is there a DUG_MARK record for (x,y) on this level? */
+uint8_t dug_marked(uint8_t x, uint8_t y) __banked
+{
+    uint8_t  i, n = dug_pool[0];
+    const uint8_t *p = dug_pool + 1;
+    uint16_t c = (uint16_t)y * MAPW + x;
+    for (i = 0; i < n; i++, p += 3)
+        if (p[0] == (uint8_t)((uint8_t)dlvl | DUG_MARK) &&
+            p[1] == (uint8_t)c && p[2] == (uint8_t)(c >> 8)) return 1;
+    return 0;
 }
 
 static int     hero_room = -1;
