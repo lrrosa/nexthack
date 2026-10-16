@@ -307,10 +307,68 @@ static void pick_keeper_cell(uint8_t r)
             }
 }
 
-static void stock_shop(uint8_t r)
+/* ---- what the shop sells (1.8) ----
+ * NetHack's shops are specialised -- an armourer, a deli, a jeweler -- and
+ * this picks which, by NetHack's own odds (shknam.c's shtypes: general 42%,
+ * used armour 14, scrolls 10, liquor 10, weapons 5, food 5, rings 3, wands 3,
+ * tools 3, rare books 3), the general store also taking the 2% of NetHack's
+ * lighting store, which has no candles to sell here. A side hash of the world
+ * and the depth, never rn2, so it costs generation nothing and is the same on
+ * every visit. Minetown keeps its general store. Only the KIND is new: which
+ * cells hold stock is decided exactly as before, and a general store stocks
+ * exactly what it did. SHOP_ODDS is cumulative, one entry per kind after the
+ * general store. */
+static const uint8_t SHOP_ODDS[SK_COUNT - 1] = { 44, 58, 68, 78, 83, 88, 91, 94, 97 };
+
+static uint8_t kind_of_shop(void)
+{
+    uint16_t h;
+    uint8_t k, r;
+    if (dlvl == (uint16_t)(MINES_BASE + 1)) return SK_GENERAL;
+    h = (uint16_t)(world_seed * 3301u + (uint16_t)dlvl * 7121u + 29u);
+    h ^= (uint16_t)(h << 7);
+    h ^= (uint16_t)(h >> 9);
+    r = (uint8_t)(h % 100u);
+    for (k = 0; k < SK_COUNT - 1 && r >= SHOP_ODDS[k]; k++) ;
+    return k;
+}
+
+/* The class one shelf of a shop of `kind` holds. NetHack's specialists carry
+ * a tenth of something next door (an armourer some weapons, a bookstore some
+ * spellbooks); `h` picks, and a general store is the old SHOPCLS draw. The
+ * same table answers shop_buys: a keeper buys what he sells. */
+static char shop_class(uint8_t kind, uint16_t h)
 {
     static const char SHOPCLS[9] = { ')', '[', '!', '?', '=', '%', '/', '&', '(' };
-    uint8_t xx, yy;
+    uint8_t ten = (uint8_t)((h >> 4) % 10u);
+    switch (kind) {
+    case SK_ARMOR:  return ten ? '[' : ')';
+    case SK_SCROLL: return ten ? '?' : '&';
+    case SK_POTION: return '!';
+    case SK_WEAPON: return ten ? ')' : '[';
+    case SK_FOOD:   return '%';
+    case SK_RING:   return '=';
+    case SK_WAND:   return ten ? '/' : '[';
+    case SK_TOOL:   return '(';
+    case SK_BOOK:   return ten ? '&' : '?';
+    default:        return SHOPCLS[h % 9u];
+    }
+}
+
+uint8_t shop_kind(void) __banked { return kind_of_shop(); }
+
+/* A specialist buys only what he sells, as NetHack's do; a general store buys
+ * anything. shop_class(k, 0) is the tenth, (k, 16) the nine tenths. */
+uint8_t shop_buys(char cls) __banked
+{
+    uint8_t k = kind_of_shop();
+    return (uint8_t)(k == SK_GENERAL || cls == shop_class(k, 0) ||
+                     cls == shop_class(k, 16));
+}
+
+static void stock_shop(uint8_t r)
+{
+    uint8_t xx, yy, kind = kind_of_shop();
     for (yy = (uint8_t)(r_y[r] + 1); yy + 1 < r_y[r] + r_h[r] && icount < 8; yy++)
         for (xx = (uint8_t)(r_x[r] + 1); xx + 1 < r_x[r] + r_w[r] && icount < 8; xx++) {
             uint16_t h;
@@ -319,7 +377,7 @@ static void stock_shop(uint8_t r)
             h = (uint16_t)(world_seed + (uint16_t)dlvl * 2657u
                            + (uint16_t)xx * 131u + (uint16_t)yy * 1009u);
             if (h & 1) continue;                       /* leave ~half as aisle */
-            lvl[yy][xx] = SHOPCLS[h % 9u];
+            lvl[yy][xx] = shop_class(kind, h);
             i_x[icount] = xx; i_y[icount] = yy; icount++;
         }
 }

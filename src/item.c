@@ -1410,6 +1410,11 @@ void do_drop(void) __banked
 
     if (in_shop) {
         uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u);
+        /* a specialist buys only his own line (1.8); no turn, as a sale */
+        if (!shop_buys(objtypes[inv[s].otyp].cls)) {
+            msg("The shopkeeper is uninterested.");
+            return;
+        }
         if (gold > (uint16_t)(60000u - sp)) gold = 60000u;   /* clamp, 16-bit */
         else                                gold = (uint16_t)(gold + sp);
         inv_remove((uint8_t)s);
@@ -1473,6 +1478,11 @@ void do_drop(void) __banked
 
     if (in_shop) {
         uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u);
+        /* a specialist buys only his own line (1.8); no turn, as a sale */
+        if (!shop_buys(objtypes[inv[s].otyp].cls)) {
+            msg("The shopkeeper is uninterested.");
+            return;
+        }
         if (gold > (uint16_t)(60000u - sp)) gold = 60000u;   /* clamp, 16-bit */
         else                                gold = (uint16_t)(gold + sp);
         inv_remove((uint8_t)s);

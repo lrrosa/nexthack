@@ -54,6 +54,14 @@ int  level_take_item(uint8_t x, uint8_t y) __banked;
 void level_reset_persistence(void) __banked;
 
 /* ---- shops (Phase 21) ---- */
+/* What a shop sells (1.8), NetHack's kinds by NetHack's odds: a side hash of
+ * the world and the depth (levelgen.c shop_kind), so it is the same on every
+ * visit and costs the generation nothing. Index order is shop_names[] in
+ * nexthack.c. */
+enum { SK_GENERAL, SK_ARMOR, SK_SCROLL, SK_POTION, SK_WEAPON, SK_FOOD,
+       SK_RING, SK_WAND, SK_TOOL, SK_BOOK, SK_COUNT };
+uint8_t shop_kind(void) __banked;                    /* this level's shop, SK_*     */
+uint8_t shop_buys(char cls) __banked;                /* will the keeper buy a cls?  */
 int  shop_in_room(int x, int y) __banked;            /* is (x,y) in the shop room? */
 int  shop_keeper_xy(uint8_t *kx, uint8_t *ky) __banked;  /* keeper cell, 0 if no shop */
 int  shop_rect(uint8_t *sx, uint8_t *sy, uint8_t *sw, uint8_t *sh) __banked; /* shop bounds */

@@ -1409,7 +1409,15 @@ void try_move(int dx, int dy) __banked
     } else if (dest == '_') {
         altar_sense();              /* an altar reveals your items' BUC */
     } else if (!was_shop && shop_in_room(nx, ny)) {
-        msg("Shop: , to buy, d to sell.");
+        /* NetHack's shop names (1.8), cut to fit the 128K's 32 columns with
+         * the keys: "Liquor emporium: , buy, d sell." is 31. "Quality
+         * apparel" is NetHack's own joke -- its wand shop is called that. */
+        static const char *const shop_names[SK_COUNT] = {
+            "General store", "Armor dealer", "Bookstore", "Liquor emporium",
+            "Weapons outlet", "Delicatessen", "Jeweler", "Quality apparel",
+            "Hardware store", "Rare books"
+        };
+        msg2(shop_names[shop_kind()], ": , buy, d sell.", "");
     } else {
         describe(dest, 1);
     }
