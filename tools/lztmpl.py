@@ -7,7 +7,8 @@
 # Why not ZX0, which packs better: the decompressor has to be written and proved
 # here too, and this format is small enough to verify exhaustively -- compress()
 # and expand() below round-trip every template, and expand() is a line-for-line
-# model of lz_expand() in src/leveltmpl.c. A format we can prove beats a format
+# model of lz_expand() in src/platform.c (resident since 1.8, when the 128K's
+# SCR screens -- tools/png2scr.py -- took up the format too). A format we can prove beats a format
 # that packs 20% better and might be subtly wrong on one template.
 #
 # Why not RLE, which is simpler still: the maze template is 76% of its size under
@@ -107,7 +108,7 @@ def compress(data):
 
 
 def expand(blob, size):
-    """Reference decoder -- src/leveltmpl.c's lz_expand() must match it."""
+    """Reference decoder -- src/platform.c's lz_expand() must match it."""
     out = bytearray()
     p = 0
     while len(out) < size:

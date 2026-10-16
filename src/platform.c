@@ -273,6 +273,42 @@ void msg_num(const char *a, uint16_t n, const char *c)
     pad_eol(x, 0);
 }
 
+/* Unpack one stream (tools/lztmpl.py wrote it) straight into its destination
+ * -- lvl[][] for a template (leveltmpl.c), the ULA screen for the 128K's title
+ * and victory SCRs (scr.c). RESIDENT since 1.8 so that it reads the stream
+ * from whichever bank the caller runs in: the data stays beside its reader.
+ *
+ * There is no window buffer and none is needed: a match points back into the
+ * OUTPUT, and the 1680 bytes load_template was always going to write ARE the
+ * window. That is the whole reason compressing this paid -- the destination
+ * already existed, so 8400 B of grids became 864 B of bank and cost no RAM.
+ *
+ * Copying a byte at a time is deliberate, not lazy: a match may overlap the
+ * write head (offset 1 means "repeat the last byte"), which is what makes the
+ * long runs of rock and floor nearly free. A memcpy would read past what has
+ * been written. */
+void lz_expand(const uint8_t *in, char *out, uint16_t size)
+{
+    uint16_t done = 0;
+    uint8_t ctrl = 0, bit = 0;
+
+    while (done < size) {
+        if (bit == 0) { ctrl = *in++; bit = 8; }
+        if (ctrl & 1) {
+            out[done++] = (char)*in++;
+        } else {
+            uint8_t b0 = *in++;
+            uint8_t b1 = *in++;
+            /* offset is stored biased by one, so all 11 bits are usable */
+            uint16_t off = ((uint16_t)b0 | ((uint16_t)(b1 >> 5) << 8)) + 1u;
+            uint8_t n = (uint8_t)((b1 & 0x1Fu) + 3u);
+            do { out[done] = out[done - off]; done++; } while (--n);
+        }
+        ctrl >>= 1;
+        bit--;
+    }
+}
+
 /* ---- input ---- */
 
 int getkey(void)

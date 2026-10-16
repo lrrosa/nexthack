@@ -318,8 +318,8 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `sfx.c/.h` | B | beeper sound effects |
 | `titlegfx0/1/2.c`, `victorygfx0/1/2.c` | B | the Layer 2 title / victory images (generated): 3×16 KB framebuffer thirds const-banked into banks 16/17/18 and 19/20/21 (see Title & victory screens) |
 | `titlepal.c`, `victorypal.c` | B | each image's 9-bit palette, const-banked in `PAGE_22_CODE` next to the code that streams it |
-| `scr.c` | B | **128K only** — blitter for the title/victory SCR screens; must sit in the same bank as their consts |
-| `title_scr.c`, `victory_scr.c` | B | **128K only** — the generated 6912 B SCR images (`tools/png2scr.py`), banked consts |
+| `scr.c` | B | **128K only** — unpacks the title/victory SCR screens onto the ULA (resident `lz_expand`); must sit in the same bank as their consts |
+| `title_scr.c`, `victory_scr.c` | B | **128K only** — the generated SCR images (`tools/png2scr.py`), 6912 B each LZ-packed to ~4 and ~3 KB (1.8), banked consts |
 | `puttile_asm.asm` | R | **128K only** — the ULA cell blits in hand-written Z80 |
 | `esxdetect.asm` | R | **128K only** — probes for a DivMMC/esxDOS before a save is attempted |
 | `banked_call.asm` | R | **128K only** — the vendored banking trampoline (the Next uses the SDK's) |
@@ -514,7 +514,11 @@ tilemap.
   unpacks into already exists and the data is read once** (`python
   tools/bankpack.py compress` ranks the candidates, with the same caveat).
   The generator refuses to emit a stream that does not round-trip, and a 6th
-  template now costs ~170 B rather than a bank.
+  template now costs ~170 B rather than a bank. **`lz_expand` is resident**
+  (`platform.c`, 1.8) so it reads its stream from whichever bank the caller runs
+  in: the 128K's title and victory SCRs took up the same format then (unpacked
+  straight onto the screen, which is their window), and that freed the 6.7 KB
+  of BANK_4 the furniture needed. `tools/lztmpl.py`'s `expand()` is its model.
   **Any early-returning special level must rely on `gen_level` resetting
   `shop_room`/`vault_room` at the top** — `special_gen` skips the loot block, so
   without that reset a special level inherits the previous level's shop/vault.

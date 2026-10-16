@@ -150,6 +150,7 @@ void    tm_cls(void);
 void msg(const char *s);
 void msg2(const char *a, const char *b, const char *c);
 void msg_num(const char *a, uint16_t n, const char *c);
+void lz_expand(const uint8_t *in, char *out, uint16_t size);  /* tools/lztmpl.py's format */
 
 /* keyboard: returns the key currently held (does not wait for release) */
 int getkey(void);

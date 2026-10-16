@@ -8,8 +8,8 @@
 
 #define NTMPL 6
 
-/* One LZ stream per template; lz_expand() in leveltmpl.c
- * unpacks it directly into lvl[][]. */
+/* One LZ stream per template; lz_expand() (platform.c, called
+ * by leveltmpl.c) unpacks it directly into lvl[][]. */
 static const uint8_t tmpl_lz[] = {
   /* cavern: 159 B */
   49,32,0,31,0,31,0,20,46,46,26,24,28,4,130,35,

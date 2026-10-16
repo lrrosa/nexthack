@@ -7,9 +7,15 @@
  * into the 0xC000 window when blit() reads it -- a banked const cannot be
  * reached from code running in another bank. The
  * copy target is the resident ULA screen at 0x4000 (6144 bitmap + 768 attrs).
- * Reached via the trampoline from title_screen / victory_screen. */
+ * Reached via the trampoline from title_screen / victory_screen.
+ *
+ * Since 1.8 the screens are LZ-packed (tools/png2scr.py, tools/lztmpl.py's
+ * format) and unpacked straight onto the screen by the resident lz_expand,
+ * which reads its back-references from the screen it is writing: 13.8 KB of
+ * SCR became ~7 KB, the room the 1.8 furniture needed in the 128K's banks. */
 
 #include "scr.h"
+#include "platform.h"     /* lz_expand */
 #include <stdint.h>
 
 extern const uint8_t title_scr[];
@@ -17,10 +23,7 @@ extern const uint8_t victory_scr[];
 
 static void blit(const uint8_t *s)
 {
-    uint8_t *d = (uint8_t *)0x4000u;
-    uint16_t i;
-    for (i = 0; i < 6912; i++)
-        d[i] = s[i];
+    lz_expand(s, (char *)0x4000u, 6912);
 }
 
 void show_title_scr(void)   __banked { blit(title_scr);   }

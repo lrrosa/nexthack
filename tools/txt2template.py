@@ -80,8 +80,8 @@ def main():
             offs.append(sum(len(b) for b in blobs))
             blobs.append(blob)
 
-        f.write("/* One LZ stream per template; lz_expand() in leveltmpl.c\n"
-                " * unpacks it directly into lvl[][]. */\n")
+        f.write("/* One LZ stream per template; lz_expand() (platform.c, called\n"
+                " * by leveltmpl.c) unpacks it directly into lvl[][]. */\n")
         f.write("static const uint8_t tmpl_lz[] = {\n")
         for (name, _, _), blob in zip(tmpls, blobs):
             f.write("  /* %s: %d B */\n" % (name, len(blob)))
