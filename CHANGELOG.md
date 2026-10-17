@@ -8,6 +8,96 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.8.0] — 2026-10-17
+
+**The dungeon's furniture and its secrets.** Thrones to sit on, sinks to
+drink from and drop rings down, graves to read and dig up; doors and
+corridors hidden in the walls for `s` to find; shops that specialise, as
+NetHack's do; and wands that give themselves away when you engrave with
+them. All NetHack, all on both machines, every piece proven in ZEsarUX and
+under the MAME fuzzer. It was paid for by memory the game never used: the
+C runtime's text terminal, 3.8 KB of the resident half on each machine.
+Saves from 1.7 load, and 1.7 loads saves from 1.8.
+
+### Added
+- **Thrones** (`\`), one level in ten from Dlvl 5. **Sit** with `#`: two
+  times in three nothing happens; otherwise one of NetHack's thirteen
+  effects — a cursed throne's drain, an attribute gained, a massive shock,
+  full healing, your gold gone, your luck changing, a court summoned around
+  you, a genocide, a curse (or blindness, if your luck holds), the level's
+  map, a teleport (or every sleeper woken, if your luck is bad), an insight
+  into your pack, or a mind turned into a pretzel. After every sitting, a
+  third of the time the throne vanishes. No wish: luck takes its place.
+  Sitting anywhere else says where you sat.
+- **Sinks** (`~`), one level in seven. `q` on one drinks: cold, warm or
+  scalding water, a sewer rat, the sink's one ring, sewage, noises from the
+  pipes. `K` beside one mostly rattles — once, it gives up its ring, or
+  something muddy climbs out. **Drop a ring down it** (`d`) and the sink
+  does something that names the ring — glows silver, looks as good as new,
+  flies buzz, it vanishes — at the price of the ring. Slow digestion comes
+  back up, hunger shows nothing, and one time in twenty the sink backs up.
+- **Graves** (`` ` ``), likelier the deeper you go, each with an epitaph,
+  shown when you step on one or look at it. Dig one up — a pick-axe down,
+  or a zapped wand of digging, which then makes no hole — and find a
+  corpse, an angry owner (a zombie, or a wraith from Dlvl 8) or nothing,
+  sometimes with a cursed keepsake and a little gold. A lawful hero who does
+  it has desecrated a grave, and the gods notice.
+- **Secret doors and secret corridors.** One door in eight hides behind a
+  stretch of wall, and the odd square of a straight corridor behind rock,
+  as in NetHack, from Dlvl 2 — but, unlike NetHack, never on the way from
+  the up stairs to the down stairs (or to the Mines): side rooms, vaults
+  and branches can hide; the way through cannot. `s` turns one up a try in
+  five (better with good luck), and the level remembers what you found. A
+  blessed scroll of magic mapping shows the secret doors for what they are.
+- **Specialised shops**: NetHack's ten kinds by NetHack's odds — the
+  general store still most often, then the used-armour dealer, the
+  bookstore, the liquor emporium, the weapons outlet, the delicatessen, the
+  jeweler, "quality apparel" (NetHack's wand shop), the hardware store and
+  rare books. Walking in names the shop, and a specialist buys only its own
+  line ("The shopkeeper is uninterested."). Minetown's stays a general
+  store.
+- **Engraving with a wand.** `E` asks whether to write with a wand, and a
+  wand that writes leaves its mark and spends a charge: gravel flies
+  (digging), flames (fire), ice cubes (cold), bugs stop moving (sleep),
+  bullet holes (magic missile), the wand fights your writing (striking), an
+  old engraving vanishes (teleportation). Each mark names its wand. Fire
+  burns Elbereth in for the rest of the visit, and digging carves it to last
+  longer than the dust.
+
+### Changed
+- **A blow struck from Elbereth rubs it out**, burned or not, as in NetHack
+  3.6. A burned Elbereth that lasts the whole visit would otherwise be a
+  fortress to fight from forever; this goes for the dust too, which until
+  now could be fought from for its whole life.
+- **Entering a level takes about a tenth of a second longer on the 128K**
+  (0.34-0.44 s instead of 0.24-0.29, timed in MAME): the flood that keeps a
+  secret from cutting the stairs off. The Next pays an eighth of that.
+- The help screen and the README list `#` (sit), what `s` and `K` find now,
+  and the new tiles.
+- `SAVE_VER` stays 36: **1.7 saves load**, and a 1.8 save loads in 1.7 —
+  both proven on both machines against the 1.7.0 binary, rebuilt byte for
+  byte. What 1.8 remembers that 1.7 does not — found secret doors, a sink's
+  taken ring — rides the dug-cell pool in records 1.7 skips.
+
+### Under the hood
+- **3.8 KB of resident memory back** on both machines: the link used z88dk's
+  startup 1, which is its C runtime plus a 32-column stdin/stdout terminal
+  the game never called (it draws its own screen and reads keys through
+  `in_inkey`). `-startup=31` is the same runtime without it, and the stdio
+  and malloc heaps went too. The Next had 189 bytes left before its stack;
+  it has 3.7 KB now.
+- **The 128K's title and victory screens are LZ-packed** (the templates'
+  format), unpacked straight onto the screen: 6.7 KB of bank freed, which
+  is where the furniture lives. `lz_expand` moved into the resident half to
+  serve both. The title on screen was checked byte for byte against the
+  unpacked original.
+- The Next opened a sixth code bank (bank 22, `PAGE_44_CODE`) for the
+  furniture and the one-time setup code.
+- `build-zx128.ps1` compiles in parallel, as `build.ps1` does: a clean 128K
+  build takes about 4 minutes instead of 28.
+- NetHack's `--More--` for two-part news (`msg_more`): on the 128K it
+  borrows the right end of the map's top row and repaints it afterwards.
+
 ## [1.7.0] — 2026-10-12
 
 **A new look for the dungeon, and the two-handed sword.** The game speaks in

@@ -79,7 +79,8 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   **special attack** — poison, blindness, sleep, theft, life-drain — and
   never melee a floating eye with your eyes open. Hidden **traps** (trap doors,
   darts, sleeping gas) lurk in the deeper floors. Scratch **Elbereth** (`E`) in
-  the dust to keep monsters at bay; experience levels raise your HP.
+  the dust to keep monsters at bay — or burn it in with a wand of fire, though
+  a blow struck from it rubs out any engraving; experience levels raise your HP.
 - **A dungeon with NetHack's manners** — half the monsters spawn **asleep**
   (sneak-attack them: a sleeper can't dodge), an awake enemy at your heel
   **follows you up and down the stairs**, kills may leave **death drops**
@@ -135,11 +136,24 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   Stormbringer, each deadly to what it hunts — and mind your hidden
   **luck**: pleased gods steady your sword arm, spurned ones stop hearing
   your prayers.
+- **Secrets and furniture** — some doors are hidden in the walls and some
+  corridors behind rock, waiting for a **search** (`s`) — though never the
+  way from stairs to stairs. **Engrave with a wand** (`E`) and its mark gives
+  it away: gravel flies, flames lick, bugs stop moving. **Sinks** (`~`) offer a
+  sip of something, rattle when kicked, and swallow a ring — saying, by what
+  they do, which ring it was. **Sit on a throne** (`#`): mostly nothing
+  happens, but it may heal you, drain you, shock you, summon a court, grant a
+  genocide or an insight into your pack — and a third of the time it
+  vanishes. **Graves** carry an epitaph, and a pick-axe digs them up: a
+  corpse, an angry owner or nothing — and a lawful hero has done wrong.
 - **Spells and fountains** — read a **spellbook** (`&`) to learn its spell, then
   **cast** (`Z`) from your **spell power** (Pw): force bolt, healing, sleep, or
   teleport. **Fountains** (`{`) reward a thirsty adventurer with clear water,
   foul water or coins — and a worthy Valkyrie may draw **Excalibur** from one.
-- **Shops** with priced goods and a shopkeeper to buy from and sell to, plus
+- **Shops** with priced goods and a shopkeeper to buy from and sell to — a
+  general store, or one of NetHack's specialists by NetHack's odds (an armour
+  dealer, a liquor emporium, a jeweler, a rare-books shop...), who buys only
+  the shop's own line — plus
   **special levels** — the cavernous Big Room, guarded **treasure vaults** (gold
   and superior gear behind tough monsters), and **hand-drawn maps** like a
   pillared temple, dropped in among the procedural floors.
@@ -168,6 +182,10 @@ RAM-expansion interface, which is how many people actually have 128 KB.
 ![The Gnomish Mines: cobblestone chambers and winding tunnels revealed, Minetown's warm-brick shop stocked with wares, and in a lit chamber the hero with the dog, just whistled to heel, meeting a gnome and a dwarf, with the status bar reading Mine:2.](docs/mines.png)
 
 *Minetown (Mine:2): cobblestone caves hewn from the rock with their wooden doors, the shop glowing warm brick, and the hero meeting the townsfolk — a gnome and a dwarf, faces and all — as a magic whistle brings the dog back to heel. Dwarves carry pick-axes; the luckstone waits at the bottom of the branch.*
+
+![NextHack on the Next: a magically mapped level of grey-brick rooms with wooden doors. In a lit room the hero stands on a grave, its epitaph on the message line, with the dog beside; a gold throne with a red cushion and a white wall basin stand along the top wall, an up staircase between them. A second sink stands in a room up the corridor, and a warm-brick shop holds pick-axes, weapons, a helmet and a potion.](docs/furniture.png)
+
+*1.8 furnishes the dungeon: the hero, on Dlvl 7 after a blessed scroll of magic mapping, has just stepped onto a grave and read its headstone, beside a throne waiting for someone to sit on it (`#`) and a sink to drink from, kick, or drop a ring down. The level holds another sink up the corridor, and some of its doors may be secret ones, waiting for `s`.*
 
 ## Project structure
 
@@ -200,7 +218,11 @@ same minus the Layer 2 images.
 | `leveltmpl.c` | B | loader for the hand-drawn special-level templates |
 | `monster.c` / `.h` | R | monster arrays, per-monster lookups and the bestiary |
 | `monster_ai.c` | B | chase pathing (BFS), combat, spawning, kill persistence, the pet |
-| `item.c` / `.h` | B | inventory and items (pick up, wield/wear/quaff/eat/read/put-on, throw) |
+| `item.c` / `.h` | B | inventory and items (pick up, wield/wear/put-on, the floor and its stashes, drop and sell) |
+| `item_use.c` | B | the verbs that use an item up: quaff, eat, read, throw, zap, apply, engrave |
+| `secret.c` | B | secret doors and corridors, and searching for them |
+| `feature.c` | B | the furniture: where sinks, thrones and graves stand; sinks and graves |
+| `throne.c` | B | sitting down, and the throne's effects |
 | `classes.c` / `.h` | B | the class picker and starting kits |
 | `spells.c` / `.h` | B | spellbooks and spellcasting |
 | `sfx.c` / `.h` | B | beeper sound effects |
@@ -262,7 +284,7 @@ The plain 128K build uses the classic `+zx` target with manual 16 KB bank paging
 ```
 
 It compiles the same modules (taking their `#else` 128K code paths) plus the ULA
-SCR screens (`scr.c`, `title_scr.c`, `victory_scr.c`), the vendored `0x7FFD`
+SCR screens (`scr.c`, `title_scr.c`, `victory_scr.c` — LZ-packed), the vendored `0x7FFD`
 banking trampoline (`banked_call.asm`), the esxDOS-detection probe
 (`esxdetect.asm`) and the hand-written ULA blits (`puttile_asm.asm`); the 96 KB
 of Next Layer 2 image modules are dropped. Banking comes from `zpragma-zx128.inc` (the `CRT_ORG_BANK_N`
@@ -320,9 +342,10 @@ used to emit one and no longer does.
 | `y` `u` `b` `n`           | move diagonally |
 | `>` `<` or `Enter`        | stairs down / up |
 | `.` or Space              | wait a turn |
-| `s`                       | search the ground for nearby hidden traps |
+| `s`                       | search beside you for hidden traps, doors and passages |
 | `R`                       | rest until healed, disturbed, or hungry |
-| `K`                       | kick a locked door in |
+| `K`                       | kick a locked door in (or a sink) |
+| `#`                       | sit down (on a throne, see what happens) |
 | `;`                       | look around the map (a cursor describes whatever it rests on) |
 | `,`                       | pick up the item under you |
 | `i`                       | show inventory |
@@ -330,13 +353,13 @@ used to emit one and no longer does.
 | `d`                       | drop an item (sells it in a shop; offers a corpse on an altar) |
 | `w` / `W`                 | wield weapon / wear armor (a two-handed weapon and a shield exclude each other) |
 | `P`                       | put on a ring or an amulet (asks which) |
-| `q` / `e` / `r`           | quaff potion / eat food / read scroll |
+| `q` / `e` / `r`           | quaff a potion (or from a fountain or sink) / eat food / read scroll |
 | `t`                       | throw a weapon in a direction |
 | `z`                       | zap a wand (strike, freeze, burn, sleep, teleport, unlock, or dig down) |
 | `a`                       | apply a tool (unlock a door, dig through rock and walls or `>` down, call your dog, put on a blindfold, cure with a unicorn horn, flash a camera) |
 | `Z`                       | cast a known spell (spends Pw) |
 | `p`                       | pray to your god |
-| `E`                       | engrave Elbereth in the dust (wards off monsters) |
+| `E`                       | engrave Elbereth (wards off monsters) — with a finger, or with a wand, whose mark may name it |
 | `S`                       | save game and quit to the title |
 | `?`                       | show the full command list |
 
@@ -356,7 +379,7 @@ from the roguelike tradition):
 
 - **Terrain:** floor (`.`), corridor (`#`), wall (`-` `|`), door (`+`),
   stairs up/down (`<` `>`), a mine entrance (`v`), altar (`_`), fountain (`{`),
-  a sprung trap (`^`)
+  sink (`~`), throne (`\`), grave (`` ` ``), a sprung trap (`^`)
 - **Items:** gold (`$`), weapon (`)`), armor (`[`), potion (`!`), food (`%`),
   scroll (`?`), ring (`=`), wand (`/`), spellbook (`&`), tool (`(`), the
   luckstone (`*`), the Amulet of Yendor (`"`)
@@ -382,11 +405,15 @@ from the roguelike tradition):
   must be audited for overflow.
 - **Memory / code banking**: the engine outgrew the 64 KB the Z80 sees at once, so
   it is **code-banked** — a resident half (hot code + all data + stack in
-  `0x8000-0xBFF0`) plus cold code in four 16 KB pages swapped into the `0xC000`
-  window by z88dk's `__banked` trampoline. The BFS scratch arrays live in Bank 5's
+  `0x8000-0xBFF0`) plus cold code in 16 KB pages (six on each machine) swapped
+  into the `0xC000` window by z88dk's `__banked` trampoline. The BFS scratch arrays live in Bank 5's
   free tail. The resident half — where every module's *data* and string literals
   land by default — is the tightest budget; read-once tables and message strings
-  are const-banked next to the code that reads them to stay under it.
+  are const-banked next to the code that reads them to stay under it, and the
+  C runtime is z88dk's without its text terminal (`-startup=31`), which the
+  game never used. Data read once into somewhere that already exists is
+  LZ-packed: the level templates (into the map) and the 128K's title and
+  victory screens (onto the screen).
 
 ## References
 
