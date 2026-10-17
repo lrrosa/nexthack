@@ -431,10 +431,10 @@ static const uint8_t udg_src[NTILES][8] = {
                                                   * arms out for your pack)  */
     { 0x3C,0x5A,0x99,0x18,0x18,0x18,0x18,0x18 }, /* TOOL (a pick-axe: curved
                                                   * head, upright handle)    */
-    { 0x1C,0x14,0x10,0xFF,0x81,0x7E,0x18,0x18 }, /* SINK (a goose-neck tap over
-                                                  * a basin, a black stroke of
-                                                  * water across it, on a
-                                                  * pipe)                     */
+    { 0x1C,0x14,0x10,0xFF,0xC3,0x7E,0x18,0x18 }, /* SINK (a goose-neck tap over
+                                                  * a basin, a short black
+                                                  * stroke of water in it, on
+                                                  * a pipe)                   */
     { 0x5A,0x7E,0x42,0x42,0x42,0xFF,0x81,0x81 }, /* THRONE (a framed seat: the
                                                   * red paper is the cushion) */
     { 0x3C,0x66,0x42,0x66,0x66,0x7E,0xFF,0x7E }  /* GRAVE (headstone, a cross
