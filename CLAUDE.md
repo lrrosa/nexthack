@@ -508,12 +508,21 @@ tilemap.
   50) and to the mine entrance on Dlvl 2, and nothing on that way hides -- so
   the stairs stay joined by construction. The user chose that over NetHack's
   rule, which can wall you in; the fuzzer's walk check and the attract demo
-  rely on it. It costs the 128K ~100 ms a level entry (0.24-0.29 s became
-  0.34-0.44 s, MAME); a flood per candidate had cost up to 0.75 s, and a C
-  loop over all 1482 cells 70 ms, which `memchr` (CPIR) replaced. A door is locked where `(h & 3) == 0`, so none is
-  both and the locked doors' map-order index never shifts when one is found.
-  The flood borrows `dist[]`/`bfsq[]`, which no reader trusts without
-  reflooding. `s` finds one in five tries (luck 3 or 9); found ones ride the
+  rely on it. It costs the 128K ~80 ms a level entry (0.24-0.29 s became
+  0.32-0.39 s, MAME, one seed); a flood per candidate had cost up to 0.75 s,
+  and a C loop over all 1482 cells 70 ms, which `memchr` (CPIR) replaced. The
+  flood itself cost 50 ms in C and 23 in the 128K's Z80 (`lw_run`, inline in
+  `secret.c` so it stays in that module's bank; 5.6 ms of it is clearing the
+  field). The Z80 is the Next's C `label_way` step for step and leaves the
+  same labels byte for byte -- proved on 3000 generated maps under
+  z88dk-ticks and on 60 real levels in MAME -- so **a change to the flood's
+  rules must be made in both**. For its length the targets carry a 0 in
+  `lvl[]` (a char no map holds), put back before `label_way` returns. A door
+  is locked where `(h & 3) == 0`, so none is both and the locked doors'
+  map-order index never shifts when one is found. The flood borrows
+  `dist[]`/`bfsq[]`, which no reader trusts without reflooding; the 128K
+  lays that scratch out its own way (the ring as byte planes at 0x7400 and
+  0x7500, the labels at 0x7600). `s` finds one in five tries (luck 3 or 9); found ones ride the
   dug pool (below).
 - **Furniture** (1.8, `feature.c`/`throne.c`): a sink (`~`, one level in 7), a
   throne (`\`, one in 10 from Dlvl 5) and a grave (`` ` ``, likelier deeper),

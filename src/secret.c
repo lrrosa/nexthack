@@ -41,10 +41,18 @@
 static uint8_t sec_n, sec_x[SEC_MAX], sec_y[SEC_MAX];
 
 /* The flood borrows the monster BFS's scratch in Bank 5 (monster_ai.c's dist
- * and bfsq): a level is being built, so no field there is current -- every
- * reader floods afresh before it reads (compute_dist_map, dist_map_from). */
+ * and bfsq, 0x7400-0x7C8F): a level is being built, so no field there is
+ * current -- every reader floods afresh before it reads (compute_dist_map,
+ * dist_map_from). The Next lays it out as monster_ai does, the labels at
+ * 0x7400 and a ring of uint16 behind them; the 128K's Z80 flood (lw_run)
+ * keeps its ring as two page-aligned byte planes at 0x7400 and 0x7500 and
+ * the labels at 0x7600, which end at 0x7C90 exactly. */
+#ifdef __ZXNEXT
 #define seen ((uint8_t *)0x7400u)
 #define ring ((uint16_t *)0x7A90u)
+#else
+#define seen ((uint8_t *)0x7600u)
+#endif
 #define ON_WAY 255            /* seen[] mark of a cell on the kept way through */
 
 /* walkable(), inline: this is the cost of entering a level */
@@ -54,10 +62,16 @@ static uint8_t sec_n, sec_x[SEC_MAX], sec_y[SEC_MAX];
  * hero can): seen[k] = the step count + 1, 0 = not reached. It stops once the
  * targets -- '>' (the Amulet's cell on Dlvl 50) and the mine entrance on
  * Dlvl 2 -- are labelled. 0 if one is not reached, or lies too far for a
- * byte, or the ring fills: then nothing hides, which is always safe. The
- * base pointers sit a row above the cell so every offset is non-negative
+ * byte, or the ring fills: then nothing hides, which is always safe. */
+#ifdef __ZXNEXT
+/* The base pointers sit a row above the cell so every offset is non-negative
  * (CLAUDE.md: a pointer plus a negative constant can assemble wrong). */
-#define TRY(off)                                                                 if (!sb[off] && OPEN(lb[off])) {                                                sb[off] = nd;                                                               if ((uint8_t)(tail + 1) == head) return 0;                                  ring[tail++] = (uint16_t)(k - MAPW + (off));                            }
+#define TRY(off)                                                        \
+    if (!sb[off] && OPEN(lb[off])) {                                    \
+        sb[off] = nd;                                                   \
+        if ((uint8_t)(tail + 1) == head) return 0;                      \
+        ring[tail++] = (uint16_t)(k - MAPW + (off));                    \
+    }
 static uint8_t label_way(uint16_t dn, uint16_t mn)
 {
     uint16_t k;
@@ -65,7 +79,7 @@ static uint8_t label_way(uint16_t dn, uint16_t mn)
     uint8_t *sb;
     const char *lb;
 
-    memset(seen, 0, (uint16_t)(MAPH * MAPW));   /* LDIR: a C loop cost the 128K ~30 ms */
+    memset(seen, 0, (uint16_t)(MAPH * MAPW));
     k = (uint16_t)up_y * MAPW + up_x;
     seen[k] = 1;
     ring[tail++] = k;
@@ -83,6 +97,167 @@ static uint8_t label_way(uint16_t dn, uint16_t mn)
     return 0;
 }
 #undef TRY
+#else
+/* +zx: the same flood in hand-written Z80, as monster_ai.c keeps its
+ * flood_run. In C (the Next's, above) it cost the 128K 50 ms a level,
+ * measured in MAME over nine descents; this costs 23, 5.6 of them clearing
+ * the field. It lives here, inline, so that it is always in this module's
+ * bank, whichever banks.json gives it.
+ *
+ * It is the C step for step, and leaves seen[] byte for byte as the C does:
+ * the same neighbour order (up, left, right, down), the same tests, the same
+ * two give-ups (a label past 253; a 256th cell for the ring, which holds 255)
+ * and the same early exit -- when the last target is TAKEN from the ring, not
+ * when it is labelled, so the cells labelled in between are labelled here too.
+ * The ring changed shape, not order: slot i's low byte at 0x7400+i, its high
+ * byte at 0x7500+i, so head and tail are bytes that wrap by themselves.
+ *
+ * Targets: label_way (below) puts a 0 on each target's lvl[] cell for the
+ * flood, and puts the map back. lvl[] holds printable characters only, and a
+ * 0 passes the walkable test as the stairs under it did. So "is this a
+ * target" is one byte of the cell being expanded, where comparing the cell
+ * with two targets cost half as much again.
+ *
+ * In: lw_s = &seen[up], lw_left = the targets to find. Out: L = 1 or 0.
+ * Every queue entry is a seen[] address; IX -> lvl[] of the cell expanded,
+ * HL walks seen[] round it, DE -> the tail slot (D = the low plane), BC = 79
+ * (one neighbour to the next), the other A = the label for its new neighbours. */
+static uint16_t lw_s;
+static uint8_t  lw_left, lw_head;
+
+static uint8_t lw_run(void) __naked
+{
+    __asm
+LW_SEEN     equ 0x7600              ; seen[], as #defined above
+LW_RING     equ 0x74                ; the ring: low bytes at 0x7400 + slot,
+                                    ; high bytes at 0x7500 + slot
+
+; One neighbour, at seen (HL) and lvl (IX+OFF): the C TRY.
+LW_TRY MACRO OFF, SKIP
+    ld   a, (hl)
+    or   a
+    jr   nz, SKIP                   ; labelled already
+    ld   a, (ix+OFF)                ; its map char: walkable?
+    cp   0x20                       ; rock
+    jr   z, SKIP
+    cp   0x2d                       ; -
+    jr   z, SKIP
+    cp   0x7c                       ; |
+    jr   z, SKIP
+    ex   af, af
+    ld   (hl), a                    ; label it
+    ex   af, af
+    ld   a, l                       ; queue it
+    ld   (de), a
+    inc  d
+    ld   a, h
+    ld   (de), a
+    dec  d
+    inc  e
+    ld   a, (_lw_head)
+    cp   e
+    jp   z, lw_ret0                 ; that was a 256th: the ring is full
+SKIP:
+    ENDM
+
+    push ix
+    ld   hl, LW_SEEN                ; seen[] = 0, 1680 = 105 x 16 bytes: from
+    xor  a                          ; a page boundary, so inc l never wraps
+    ld   b, 105                     ; inside a run of 16
+lw_clr:
+    REPT 15
+    ld   (hl), a
+    inc  l
+    ENDR
+    ld   (hl), a
+    inc  hl
+    djnz lw_clr
+
+    ld   hl, (_lw_s)                ; seen[up] = 1, and up is queued
+    ld   (hl), 1
+    ld   de, LW_RING * 256          ; DE -> slot 0
+    ld   a, l
+    ld   (de), a
+    inc  d
+    ld   a, h
+    ld   (de), a
+    dec  d
+    inc  e                          ; tail = 1
+    xor  a
+    ld   (_lw_head), a              ; head = 0
+    ld   bc, 79
+    jr   lw_next
+lw_hit:                             ; (here so that the loop reaches it by jr)
+    ld   a, (_lw_left)
+    dec  a
+    ld   (_lw_left), a
+    jr   nz, lw_exp                 ; not the last: expand it like any cell
+    ld   l, 1
+    jr   lw_ret
+lw_ret0:
+    ld   l, 0
+lw_ret:
+    pop  ix
+    ret
+lw_next:
+    ld   a, (_lw_head)
+    cp   e
+    jr   z, lw_ret0                 ; the ring ran dry
+    ld   l, a
+    inc  a
+    ld   (_lw_head), a
+    ld   h, LW_RING
+    ld   a, (hl)
+    inc  h
+    ld   h, (hl)
+    ld   l, a                       ; HL -> seen[k]
+    ld   ix, _lvl - LW_SEEN
+    ex   de, hl
+    add  ix, de                     ; IX -> lvl[k]
+    ex   de, hl
+    ld   a, (ix+0)
+    or   a
+    jr   z, lw_hit                  ; a target
+lw_exp:
+    ld   a, (hl)
+    inc  a
+    cp   254
+    jr   nc, lw_ret0                ; past a byte reach: give up
+    ex   af, af                     ; the other A = the label of the next step
+    or   a
+    sbc  hl, bc
+    dec  hl                         ; HL -> seen[k - 80]
+    LW_TRY -80, lw_s1
+    add  hl, bc
+    LW_TRY -1, lw_s2
+    inc  hl
+    inc  hl
+    LW_TRY 1, lw_s3
+    add  hl, bc
+    LW_TRY 80, lw_s4
+    jp   lw_next
+    __endasm;
+}
+
+static uint8_t label_way(uint16_t dn, uint16_t mn)
+{
+    char    *td = &lvl[0][0] + dn, *tm = &lvl[0][0] + mn;
+    char     cd = *td, cm = *tm;
+    uint16_t k = (uint16_t)up_y * MAPW + up_x;
+    uint8_t  r;
+
+    lw_left = (uint8_t)(mn == dn ? 1 : 2);
+    lw_s = (uint16_t)seen + k;
+    /* mark each target the C flood would take from the ring: one it can
+     * label, or up itself, which is queued without a test */
+    if (OPEN(cd) || dn == k) *td = 0;
+    if (OPEN(cm) || mn == k) *tm = 0;
+    r = lw_run();
+    *td = cd;
+    *tm = cm;
+    return r;
+}
+#endif
 
 /* Walk back from target t to '<', each step to a neighbour one closer, and
  * mark the way ON_WAY. A walk that meets a way already marked stops there. */
