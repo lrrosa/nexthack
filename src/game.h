@@ -120,6 +120,11 @@ extern uint8_t  xlvl;         /* experience level                         */
  * speed, Ch = shop prices (In/Wi wait for spellcasting). Defined in
  * nexthack.c; set by the class at new_game; saved. */
 extern uint8_t  at_str, at_dex, at_con, at_int, at_wis, at_cha;
+/* Each attribute's peak, in that order (NetHack's AMAX, 1.8): the class's
+ * start, raised by every gain past it. The cursed throne lowers an attribute
+ * and not its peak, which is what a potion of restore ability puts back
+ * (item_use.c). Set by class_apply; saved. */
+extern uint8_t  at_peak[6];
 extern uint8_t  pclass;       /* class index (nexthack.c class table)     */
 extern uint8_t  intrinsics;   /* INTR_* bit flags, learned from corpses   */
 extern uint8_t  pw, pmaxpw;   /* spell power (spent by 'Z', regen in upkeep) */

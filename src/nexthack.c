@@ -67,6 +67,7 @@ int16_t  nutrition = 900;
  * fixed status line; the class picker overwrites these at new_game. */
 uint8_t  at_str = 14, at_dex = 11, at_con = 14;
 uint8_t  at_int = 10, at_wis = 8,  at_cha = 10;
+uint8_t  at_peak[6];         /* each one's peak (see game.h) */
 uint8_t  pclass = 0;
 uint8_t  intrinsics = 0;
 uint8_t  pw = 2, pmaxpw = 2;

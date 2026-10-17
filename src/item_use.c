@@ -87,14 +87,24 @@ static void quaff_fountain(void)
     }
 }
 
+/* the six attributes, in at_peak[]'s order (game.h) */
+static uint8_t *const at[6] = { &at_str, &at_dex, &at_con,
+                                &at_int, &at_wis, &at_cha };
+
+/* +1 to attribute k. Past its peak it carries the peak up with it; below,
+ * it only climbs back towards it, as NetHack's adjattrib does. */
+static void at_gain(uint8_t k)
+{
+    uint8_t *a = at[k], *p = &at_peak[k];
+    if (++*a > *p) *p = *a;
+}
+
 /* A potion of gain ability: +1 to one attribute at random -- blessed, all
  * six -- capped at 18, with NetHack's lines. Cursed does nothing; a floor
  * potion is never cursed, but an altar can make one so, and bless one too
  * (drop_at_feet), which is how the blessed kind is had. */
 static void gain_ability(uint8_t buc)
 {
-    static uint8_t *const at[6] = { &at_str, &at_dex, &at_con,
-                                    &at_int, &at_wis, &at_cha };
     static const char *const feel[6] = {
         "You feel strong!", "You feel agile!", "You feel tough!",
         "You feel smart!",  "You feel wise!",  "You feel charismatic!"
@@ -103,15 +113,37 @@ static void gain_ability(uint8_t buc)
     if (buc != BUC_CURSE) {
         if (buc == BUC_BLESS) {
             for (i = 0; i < 6; i++)
-                if (*at[i] < 18) { (*at[i])++; n++; }
+                if (*at[i] < 18) { at_gain(i); n++; }
             if (n) { msg("You feel better in every way!"); return; }
         } else {
             k = (uint8_t)rn2(6);            /* a random one that has room */
             for (i = 0; i < 6; i++, k = (uint8_t)(k == 5 ? 0 : k + 1))
-                if (*at[k] < 18) { (*at[k])++; msg(feel[k]); return; }
+                if (*at[k] < 18) { at_gain(k); msg(feel[k]); return; }
         }
     }
     msg("You feel no different.");
+}
+
+/* A potion of restore ability (1.8), NetHack's: from a random start, the
+ * first attribute below its peak goes all the way back -- blessed, every
+ * one. Cursed does nothing (NetHack's line, cut to the 128K's 32 columns).
+ * The only thing that lowers one is the cursed throne (throne.c lose_attr),
+ * which leaves the peak where it was. */
+static void restore_ability(uint8_t buc)
+{
+    uint8_t i, k, *a, p;
+    if (buc == BUC_CURSE) { msg("Ulch!  You feel mediocre!"); return; }
+    k = (uint8_t)rn2(6);
+    for (i = 6; i; i--) {
+        a = at[k]; p = at_peak[k];
+        if (*a < p) {
+            *a = p;
+            if (buc != BUC_BLESS) break;
+        }
+        if (++k == 6) k = 0;
+    }
+    msg(buc == BUC_BLESS ? "Wow!  This makes you feel great!"
+                         : "Wow!  This makes you feel good!");
 }
 
 void use_gain_ability(void) __banked { gain_ability(BUC_UNC); }
@@ -163,6 +195,8 @@ void do_quaff(void) __banked
         level_up();     /* monster_ai owns the XP curve ("Welcome to...") */
     } else if (ot == O_PGAINABIL) {
         gain_ability(buc);
+    } else if (ot == O_PRESTABIL) {
+        restore_ability(buc);
     } else if (ot == O_PGAINENRG) {
         /* NetHack's +d5-ish to the pool, and the pool refilled; 60 is the
          * cap the altar's boon already keeps */
