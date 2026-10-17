@@ -204,11 +204,15 @@ const uint8_t gfx[NTILES][64] = {
      * over a brown handle, upright so it never reads as the diagonal dagger) */
     0,0,3,3,3,3,0,0, 0,3,0,6,6,0,3,0, 3,0,0,6,6,0,0,3, 0,0,0,6,6,0,0,0,
     0,0,0,6,6,0,0,0, 0,0,0,6,6,0,0,0, 0,0,0,6,6,0,0,0, 0,0,0,5,5,0,0,0 },
-  { /* T_SINK (1.8: a kitchen sink -- a grey tap dripping cyan over a white
-     * counter with a dark basin, on a wooden cabinet; the fountain is the
-     * grey basin on a stem) */
-    0,0,0,0,0,0,3,0, 0,0,0,3,3,3,3,0, 0,0,0,12,0,0,3,0, 4,4,4,4,4,4,4,4,
-    4,1,1,1,1,1,1,4, 5,4,4,4,4,4,4,5, 5,6,6,5,5,6,6,5, 5,6,7,5,5,7,6,5 },
+  { /* T_SINK (1.8: a wall basin -- a grey goose-neck tap over a wide white
+     * rim and a shallow bowl with a stroke of blue water, on a waste pipe.
+     * Kept apart from the fountain, a grey cup of cyan water on a stem:
+     * white, the tap on top, the rim across the whole cell. The first draft,
+     * a kitchen cabinet with a dripping tap, did not read as a sink on the
+     * Next; the water stroke and the wider pipe are the user's, from
+     * sketches) */
+    0,0,0,3,3,3,0,0, 0,0,0,3,0,3,0,0, 0,0,0,3,0,0,0,0, 4,4,4,4,4,4,4,4,
+    3,4,11,11,11,11,4,3, 0,3,3,3,3,3,3,0, 0,0,0,3,2,0,0,0, 0,0,0,3,2,0,0,0 },
   { /* T_THRONE (1.8: a gold frame with finials round a red cushion) */
     0,13,0,13,13,0,13,0, 0,13,13,13,13,13,13,0, 0,13,8,8,8,8,13,0, 0,13,8,8,8,8,13,0,
     0,13,8,8,8,8,13,0, 13,13,13,13,13,13,13,13, 13,8,8,8,8,8,8,13, 13,0,0,0,0,0,0,13 },
@@ -427,7 +431,10 @@ static const uint8_t udg_src[NTILES][8] = {
                                                   * arms out for your pack)  */
     { 0x3C,0x5A,0x99,0x18,0x18,0x18,0x18,0x18 }, /* TOOL (a pick-axe: curved
                                                   * head, upright handle)    */
-    { 0x0E,0x08,0xFF,0x81,0x42,0x3C,0x18,0x3C }, /* SINK (a tap over a bowl)  */
+    { 0x1C,0x14,0x10,0xFF,0x81,0x7E,0x18,0x18 }, /* SINK (a goose-neck tap over
+                                                  * a basin, a black stroke of
+                                                  * water across it, on a
+                                                  * pipe)                     */
     { 0x5A,0x7E,0x42,0x42,0x42,0xFF,0x81,0x81 }, /* THRONE (a framed seat: the
                                                   * red paper is the cushion) */
     { 0x3C,0x66,0x42,0x66,0x66,0x7E,0xFF,0x7E }  /* GRAVE (headstone, a cross
