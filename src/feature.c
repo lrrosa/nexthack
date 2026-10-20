@@ -135,7 +135,10 @@ void kick_sink(uint8_t x, uint8_t y) __banked
  * learn a ring for the price of the ring. Each kind does something you can
  * see, which names it -- all but hunger, which only eats what lies on the
  * sink, and nothing does. Slow digestion comes back up, and one time in
- * twenty the sink backs up and returns any of them. */
+ * twenty the sink backs up and returns any of them. A ring that comes back
+ * is still the hero's: on a floor too full to take it (MAXFLOOR things and
+ * no corpse to give way) it goes back in the pack -- which has the room it
+ * just left -- rather than vanish under a message saying it came back. */
 void sink_ring(uint8_t s) __banked
 {
     obj_t o = inv[s];
@@ -168,8 +171,12 @@ void sink_ring(uint8_t s) __banked
         m = "The sink backs up, leaving it.";
         back = 1;
     }
+    if (back && !item_floor_place(x, y, &o)) {
+        msg_more(m);
+        m = "You fish it back out.";
+        item_inv_add(&o);
+    }
     msg(m);
-    if (back) item_floor_place(x, y, &o);
 }
 
 /* ---- graves --------------------------------------------------------------- */

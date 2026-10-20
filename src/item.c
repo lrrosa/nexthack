@@ -1899,6 +1899,7 @@ int select_item(char cls) __banked
  * in this bank, item_use.c is not. */
 void    item_recompute_gear(void) __banked                { recompute_gear(); }
 void    item_inv_remove(uint8_t s) __banked               { inv_remove(s); }
+int     item_inv_add(const obj_t *o) __banked             { return inv_add(o); }
 int     item_floor_place(uint8_t x, uint8_t y, const obj_t *o) __banked
                                                           { return floor_place(x, y, o); }
 int     item_pick_worn(char cls) __banked                 { return pick_worn(cls); }
