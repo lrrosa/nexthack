@@ -96,10 +96,19 @@ if ($todo) {
 $crt  = @('-startup=31', '-pragma-define:CLIB_STDIO_HEAP_SIZE=0', '-pragma-define:CLIB_MALLOC_HEAP_SIZE=0',
           '-pragma-define:CLIB_FOPEN_MAX=0', '-pragma-define:CLIB_OPEN_MAX=0')
 $objs = $srcs | ForEach-Object { "src/$_.o" }
+# A native command's failure does not throw under $ErrorActionPreference, and
+# the checks below used to ask only whether nexthack.nex EXISTED: a failed
+# link left the last build's .nex, .map and page .bins in place and printed OK
+# over them. So the old outputs go first -- a stale page .bin also fed the
+# overflow guard and bankmap.py long after its page was gone (PAGE_24 sat
+# there from June) -- and zcc's own exit code is asked as well.
+Remove-Item nexthack.nex, nexthack.map, nexthack_*.bin -ErrorAction SilentlyContinue
 & zcc +zxn -subtype=nex -vn -clib=sdcc_iy @crt -pragma-include:zpragma.inc -m $objs -o nexthack -create-app
+$link = $LASTEXITCODE
 $sw.Stop()
+if ($link -ne 0) { throw "LINK FAILED (zcc exited $link)." }
 
-if (Test-Path nexthack.nex) {
+if ((Test-Path nexthack.nex) -and (Test-Path nexthack.map)) {
     # A banked page section can silently overflow its 16 KB window: the linker
     # emits it anyway and the tail is lost when the bank is loaded (the 128K
     # shipped a template-level crash exactly this way). Refuse oversized pages.
@@ -129,5 +138,5 @@ if (Test-Path nexthack.nex) {
     $bss  = (Select-String -Path nexthack.map -Pattern '__BSS_END_tail\s+=\s+\$([0-9A-Fa-f]+)').Matches[0].Groups[1].Value
     "OK: nexthack.nex built in {0:N1}s.  resident __CODE_END=`${1}  __BSS_END=`${2}" -f $sw.Elapsed.TotalSeconds, $code, $bss
 } else {
-    throw "LINK FAILED."
+    throw "LINK FAILED: no nexthack.nex/.map was written."
 }

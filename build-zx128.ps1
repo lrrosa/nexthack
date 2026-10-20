@@ -111,15 +111,24 @@ if ($CompileOnly) { "`nAll modules compiled OK in {0:N1}s." -f $sw.Elapsed.Total
 $crt  = @('-startup=31', '-pragma-define:CLIB_STDIO_HEAP_SIZE=0', '-pragma-define:CLIB_MALLOC_HEAP_SIZE=0',
           '-pragma-define:CLIB_FOPEN_MAX=0', '-pragma-define:CLIB_OPEN_MAX=0')
 $objs = ($csrcs + $asrcs) | ForEach-Object { "obj-zx128/$_.o" }
+# Native commands do not throw under $ErrorActionPreference, and the .tap test
+# below used to be the only check: a failed link left the last build's bank
+# .bins, which mktap128.py then packed into a "new" tape, and a failed
+# mktap128.py left the last .tap -- both ended in OK. So the old outputs go
+# first, and every step's exit code is asked before the next one runs.
+Remove-Item nexthack128.tap, nexthack128.map, nexthack128_*.bin -ErrorAction SilentlyContinue
 "`nlinking nexthack128.tap ..."
 & zcc +zx -vn -clib=sdcc_iy @crt -pragma-include:zpragma-zx128.inc -m $objs -o nexthack128 -create-app
-# z88dk's newlib +zx tape loader only loads the resident CODE, not the extra
-# banks -> rebuild the .tap with a 128K loader that pages + loads each bank.
+if ($LASTEXITCODE -ne 0) { throw "LINK FAILED (zcc exited $LASTEXITCODE)." }
+# appmake's tape holds only the resident CODE, not the extra banks; it is
+# rebuilt with a 128K loader that pages + loads each bank, so it goes too.
+Remove-Item nexthack128.tap -ErrorAction SilentlyContinue
 "rebuilding nexthack128.tap with the bank-paging 128K loader ..."
 & python tools/mktap128.py
+if ($LASTEXITCODE -ne 0) { throw "TAPE FAILED (mktap128.py exited $LASTEXITCODE)." }
 $sw.Stop()
 
-if (Test-Path nexthack128.tap) {
+if ((Test-Path nexthack128.tap) -and (Test-Path nexthack128.map)) {
     # mktap128.py already refuses a bank binary that outgrew its 16 KB window.
     # bankmap.py adds what nothing else checks: two Bank-5 tenants overlapping
     # (the grown fov_pool swallowed PREV_VIS for two releases). Silent when
@@ -133,5 +142,5 @@ if (Test-Path nexthack128.tap) {
     $bss  = (Select-String -Path nexthack128.map -Pattern '__BSS_END_tail\s+=\s+\$([0-9A-Fa-f]+)').Matches[0].Groups[1].Value
     "OK: nexthack128.tap built in {0:N1}s.  resident __CODE_END=`${1}  __BSS_END=`${2}" -f $sw.Elapsed.TotalSeconds, $code, $bss
 } else {
-    throw "LINK FAILED."
+    throw "LINK FAILED: no nexthack128.tap/.map was written."
 }

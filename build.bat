@@ -36,7 +36,14 @@ GOTO end
 :single
 SET FLAGS=+zxn -subtype=nex -vn -SO3 -clib=sdcc_iy --max-allocs-per-node200000 -startup=1 -pragma-include:zpragma.inc -m
 ECHO Building %~1 -^> %~n1.nex ...
+IF EXIST %~n1.nex DEL %~n1.nex
 zcc %FLAGS% %~1 -o %~n1 -create-app
-IF EXIST %~n1.nex (ECHO. & ECHO OK: %~n1.nex built.) ELSE (ECHO. & ECHO BUILD FAILED.)
+IF ERRORLEVEL 1 GOTO singlefail
+IF NOT EXIST %~n1.nex GOTO singlefail
+ECHO. & ECHO OK: %~n1.nex built.
+GOTO end
+:singlefail
+ECHO. & ECHO BUILD FAILED.
+EXIT /B 1
 
 :end
