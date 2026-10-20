@@ -143,19 +143,6 @@ static int     fov_hx, fov_hy;
 
 static uint8_t vis_now[FOV_BYTES];   /* cells visible right now (this turn) */
 
-/* A rolling hash of vis_now, so draw_map can tell when the visible set is
- * UNCHANGED from last turn (you moved within a lit room): then it repaints only
- * the hero and moved monsters instead of all 672 viewport cells. */
-uint16_t fov_vis_sum;
-static void fov_recalc_sum(void)
-{
-    const uint8_t *p = vis_now;
-    uint16_t s = 0;
-    uint8_t  n = FOV_BYTES;
-    do { s = (uint16_t)((s << 8) + s + *p++); } while (--n);
-    fov_vis_sum = s;
-}
-
 /* Make the current dlvl own cur_slot, evicting the least-recently-used level
  * when the pool is full. The last_dlvl fast-path keeps this ~free per turn. */
 static void fov_touch(void)
@@ -262,7 +249,7 @@ void fov_update(int hx, int hy) __banked
     /* blind: you sense only the cell you stand on -- no rooms, no rays, and no
      * new exploration. draw_map then shows the rest from memory (dimmed) and
      * monsters vanish (they are only drawn where currently visible). */
-    if (st_blind) { light(hx, hy); fov_recalc_sum(); return; }
+    if (st_blind) { light(hx, hy); return; }
 
     /* radius 1 (the cells immediately around the hero) */
     for (dy = -1; dy <= 1; dy++)
@@ -316,7 +303,6 @@ void fov_update(int hx, int hy) __banked
             if (c == '|' || c == '-' || c == ' ' || c == '+') break;
         }
     }
-    fov_recalc_sum();
 }
 
 int fov_seen(int x, int y) __banked

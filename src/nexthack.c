@@ -184,7 +184,6 @@ static uint8_t dm_shop, dm_sx, dm_sy, dm_sx1, dm_sy1;
  * monsters it drew and repaint only the cells that moved. 255 = "nothing here". */
 static uint8_t  prev_hx = 255, prev_hy = 255;
 static uint8_t  prev_mx[MAXMON], prev_my[MAXMON];
-static uint16_t prev_vis_sum = 0xFFFF;
 /* The full path's two tables, in Bank 5's free tail above dug_pool (see the
  * bank-budget skill's map). MON_MAP marks the cells draw_map has just painted
  * a monster or the hero on, laid out bit for bit like the vis and explored
@@ -207,8 +206,7 @@ extern void dm_row(void);
  * of war) -- and below inv[] (0x7360) and the BFS scratch at 0x7400
  * (0x7280+210=0x7352). Synced
  * only when a path repaints by vis (mid/full), so it always mirrors the
- * screen -- a vis-hash collision that leaves stale cells self-repairs on the
- * next mid pass. */
+ * screen. */
 #define PREV_VIS ((uint8_t *)0x7280u)
 
 /* write one viewport cell ONLY if it differs from the shadow (write-once diff). */
@@ -301,16 +299,22 @@ void draw_map(void) __banked
          * painted with (PREV_VIS, Bank 5). A corridor step flips ~10-30 cells,
          * so this replaces the old all-672-cell sweep that made corridor walking
          * visibly heavier than room walking. MAPW is 80, so each map row is
-         * exactly 10 bitmap bytes -- no division anywhere. */
-        if (fov_vis_sum != prev_vis_sum) {
+         * exactly 10 bitmap bytes -- no division anywhere.
+         * The XOR runs EVERY turn: it is itself the test of whether sight
+         * changed. Through 1.8.0 a 16-bit hash of vis_now decided whether to
+         * run it, and a collision (world 104, Dlvl 41: one corridor step, nine
+         * cells lit, the same hash) skipped the repaint and left the corridor
+         * dark on screen. XORing 210 bytes costs about what hashing them
+         * did, and the hash is gone from fov_update on both machines. */
+        {
             uint8_t *pv = PREV_VIS;
             uint8_t yy, bb, d, bit;
             uint16_t bidx = 0;
-            pv_sync = 1;
             for (yy = 0; yy < MAPH; yy++)
                 for (bb = 0; bb < MAPW / 8; bb++, bidx++) {
                     d = (uint8_t)(dm_vis[bidx] ^ pv[bidx]);
                     if (!d) continue;
+                    pv_sync = 1;
                     for (bit = 0; bit < 8; bit++)
                         if (d & (uint8_t)(1u << bit))
                             dm_terrain((uint8_t)((bb << 3) + bit), yy, vx);
@@ -450,7 +454,6 @@ void draw_map(void) __banked
         if (dr) { prev_mx[i] = m_x[i]; prev_my[i] = m_y[i]; }
         else      prev_mx[i] = 255;
     }
-    prev_vis_sum = fov_vis_sum;
     map_flush = 0;                    /* the distant change (if any) is on screen */
     if (pv_sync)                      /* PREV_VIS mirrors what is on screen now */
         memcpy(PREV_VIS, dm_vis, MAPH * (MAPW / 8));
