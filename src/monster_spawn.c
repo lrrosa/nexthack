@@ -33,14 +33,19 @@ static uint8_t spawns_asleep(uint8_t x, uint8_t y)
     return (uint8_t)(h & 1);
 }
 
-/* pick_mon, minus the genocided. The filter lives HERE, banked, rather than
- * in the resident pick_mon: three expansions of the mask test there cost the
- * Next 150 B of a resident half that had 285. Every random spawn -- the
- * level's, the vault guards', the wanderers' -- is drawn in this file, so this
- * one wrapper covers them all. A genocided draw is re-rolled (the extra rolls
- * happen only after a genocide, so the spawn stream is otherwise the old one);
- * 0 means eight draws all came back genocided, and the caller spawns nothing
- * rather than resurrect the type. */
+/* pick_mon, minus the genocided -- for the TRANSIENT spawns only (wanderers;
+ * summon_near refuses a genocided type itself). The filter lives HERE, banked,
+ * rather than in the resident pick_mon: three expansions of the mask test
+ * there cost the Next 150 B of a resident half that had 285. A genocided draw
+ * is re-rolled; 0 means eight draws all came back genocided, and the caller
+ * spawns nothing rather than resurrect the type.
+ *
+ * The level's OWN spawns must not use it. They are its identity: mon_dead
+ * names them by slot, and a re-roll shifts the stream, so after a genocide a
+ * revisited level grew other monsters in other places and an old kill bit
+ * struck a different one off (a killed bat came back and took a rat with it).
+ * spawn_level_monsters draws as if nothing were genocided and lets
+ * strike_genocided empty the slots afterwards -- see there. */
 static char pick_living(void)
 {
     uint8_t t;
@@ -87,12 +92,13 @@ static void spawn_monster(char type)
  * stands on top), so no '.'-only check. */
 static void spawn_guard(uint8_t room)
 {
-    char a = pick_living(), b = pick_living();
+    char a = pick_mon(), b = pick_mon();   /* always two draws: see pick_living */
     const MonType *mt;
     uint8_t x, y;
-    if (!a) a = b;                      /* one genocided draw: take the other */
-    if (!b) b = a;
-    if (!a || mcount >= MAXMON) return;
+    if (mon_gone(a)) a = b;             /* one genocided draw: take the other --  */
+    if (mon_gone(b)) b = a;             /* no roll, so the stream is unchanged;    */
+                                        /* both gone: strike_genocided empties it */
+    if (mcount >= MAXMON) return;
     mt = mon_find(mon_find(a)->hp >= mon_find(b)->hp ? a : b);
     rand_floor(room, &x, &y);
     if (x == up_x && y == up_y) return;
@@ -120,6 +126,20 @@ static void spawn_guardian(void)
     mcount++;
 }
 
+/* After the level's spawns: a genocided monster's slot stays taken, dead.
+ * Everything up to here ran exactly as it does with no genocide -- the same
+ * draws, the same cells, the same occupancy tests (a genocided monster still
+ * stood where it would have, so no later spawn lands differently) -- and so
+ * every slot names the same monster on every visit, and mon_dead keeps
+ * naming the right ones. NetHack's way too: a genocided species is simply not
+ * there any more, the level holds fewer. */
+static void strike_genocided(void)
+{
+    uint8_t i;
+    for (i = 0; i < mcount; i++)
+        if (mon_gone(m_type[i])) m_alive[i] = 0;
+}
+
 void spawn_level_monsters(void) __banked
 {
     uint8_t count = (uint8_t)(2 + eff_depth());   /* more monsters when deep */
@@ -144,8 +164,9 @@ void spawn_level_monsters(void) __banked
     }
     for (i = 0; i < count; i++) {
         if (i < guards) spawn_guard((uint8_t)vr);   /* low slots -> persistence-tracked */
-        else            spawn_monster(pick_living());
+        else            spawn_monster(pick_mon());
     }
+    strike_genocided();
     /* every slot filled so far is the level's own (mcount <= 8 here) */
     m_track = (uint8_t)((1u << mcount) - 1u);
 }

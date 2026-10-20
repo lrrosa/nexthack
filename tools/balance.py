@@ -336,7 +336,7 @@ class Tables(object):
 # ---------------------------------------------------------------------------
 
 FORMULAS = [
-    ("monster spawn HP", "src/monster_spawn.c:66",
+    ("monster spawn HP", "src/monster_spawn.c:71",
      "m_hp = mt->hp + eff_depth() / 2",
      "mon_spawn_hp(mt, depth)"),
     ("monster bite", "src/monster_ai.c:208",
@@ -360,13 +360,13 @@ FORMULAS = [
     ("regeneration", "src/nexthack.c:526",
      "1 HP every 14/17/20 turns (Co>=16 / Co>=13 / else), halved by ring",
      "regen_period(con, ring)"),
-    ("wandering monster", "src/monster_spawn.c:264",
-     "upkeep() rolls rn2(has_amulet ? 25 : 70) == 0 each turn; spawns awake (:298)",
+    ("wandering monster", "src/monster_spawn.c:285",
+     "upkeep() rolls rn2(has_amulet ? 25 : 70) == 0 each turn; spawns awake (:319)",
      "WANDER_P / WANDER_P_AMULET"),
     ("rest ('R')", "src/nexthack.c:1319",
      "rest_step: pass turns until full HP, Weak, a key, or an awake hostile in view",
      "rest_breakeven(con, ring, amulet) = wander_period / regen_period"),
-    ("monsters per level", "src/monster_spawn.c:125",
+    ("monsters per level", "src/monster_spawn.c:145",
      "count = 2 + eff_depth(), capped at 8",
      "spawn_count(depth)"),
     ("gear power", "src/item.c gear_eff",
@@ -856,7 +856,7 @@ def run_batch(t, cls, opts, trials, seed=1):
 # 8. Rest economics.
 # ---------------------------------------------------------------------------
 
-WANDER_P = 70       # src/monster_spawn.c:264 -- rn2(70), or rn2(25) with the Amulet
+WANDER_P = 70       # src/monster_spawn.c:285 -- rn2(70), or rn2(25) with the Amulet
 WANDER_P_AMULET = 25
 
 
@@ -867,7 +867,7 @@ def rest_breakeven(con, ring=False, amulet=False):
     upkeep() (src/mainentry.c:145) as a wait ('.', src/mainentry.c:129) or a
     search ('s', src/nexthack.c:1268), so whichever key spends the time,
     recovery is 1 HP every regen_period turns (src/nexthack.c:526).
-    Meanwhile every turn rolls a wandering monster (src/monster_spawn.c:264).
+    Meanwhile every turn rolls a wandering monster (src/monster_spawn.c:285).
     Resting is profitable only while
 
         1 / regen_period  >  hp_cost_per_fight / wander_period
@@ -947,7 +947,7 @@ what the dungeon typically hands out, not a best case.
                mean([(m.dmg + 1) / 2.0 + d // 4 for m in pool]),
                max(m.dmg + d // 4 for m in pool)))
     print("""
-  mobs     = spawns per level (src/monster_spawn.c:125), capped at 8
+  mobs     = spawns per level (src/monster_spawn.c:145), capped at 8
   raw bite = mean damage rolled BEFORE armour (src/monster_ai.c:208)
   max bite = the biggest single blow the pool can roll""")
 
@@ -1119,11 +1119,11 @@ def cmd_rest(t, a):
 (src/mainentry.c:60) through the same upkeep() as a wait or a search, so it
 saves keypresses, not HP.  Regeneration is 1 HP every 14-20 turns
 (src/nexthack.c:526), and every turn also rolls a wandering monster at
-1/%d -- 1/%d once you carry the Amulet (src/monster_spawn.c:264).
+1/%d -- 1/%d once you carry the Amulet (src/monster_spawn.c:285).
 
 The rest ends before the turn is charged when an awake hostile comes into
 view (src/nexthack.c:1355), so a wanderer costs one ordinary fight, not free
-hits -- and wanderers spawn awake (src/monster_spawn.c:298), so the fights
+hits -- and wanderers spawn awake (src/monster_spawn.c:319), so the fights
 below get no sneak attack.  Resting therefore pays only while an average
 fight costs less than wander_period / regen_period HP:
 """.strip() % (WANDER_P, WANDER_P_AMULET))
@@ -1165,7 +1165,7 @@ fight costs less than wander_period / regen_period HP:
 
   Left out, and pulling opposite ways: 1/%d is the roll, not the arrival
   rate -- a spawn in view, in a shop or onto a full monster list is dropped
-  (src/monster_spawn.c:266-284), so resting is a little cheaper than shown;
+  (src/monster_spawn.c:287-284), so resting is a little cheaper than shown;
   but each HP also costs 14-20 turns of food, and 'R' stops at Weak
   (src/nexthack.c:1347), which this table does not price.""" % WANDER_P)
 
@@ -1272,7 +1272,7 @@ def cmd_gauntlet(t, a):
     h1("The Amulet gauntlet: is the climb back out actually harder?")
     print("""
 Carrying the Amulet widens the spawn pool by 15 floors (src/monster.c:124)
-and triples the wandering-monster rate (src/monster_spawn.c:264).  But the
+and triples the wandering-monster rate (src/monster_spawn.c:285).  But the
 bite bonus keys off the REAL depth, not the pool depth -- so near the
 surface the dungeon sends its deep servants with shallow teeth.
 """.strip())

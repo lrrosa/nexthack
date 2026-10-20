@@ -792,11 +792,15 @@ tilemap.
   `corrode_worn()` (in `item.c`) to rust the hero's armour when it bites and the
   wielded weapon when struck; erosion raises `obj_t.ero`, capped at 3.
 - **Genocide** is a resident 8-byte mask by monster char (`mon_geno`, saved with
-  the kill masks). Its filter is `pick_living()` in `monster_spawn.c`, which
-  re-rolls a genocided `pick_mon()` draw — NOT inside the resident `pick_mon`,
-  where three expansions of the mask test cost the Next 150 B of a resident half
-  that had 285. Every random spawn is drawn in `monster_spawn.c`; a new spawn
-  site must go through `pick_living()` too.
+  the kill masks), and it has two filters in `monster_spawn.c` -- NOT inside the
+  resident `pick_mon`, where three expansions of the mask test cost the Next
+  150 B of a resident half that had 285. A **transient** spawn (wanderer) goes
+  through `pick_living()`, which re-rolls a genocided draw. The **level's own**
+  spawns must not: they draw exactly as with no genocide, and
+  `strike_genocided()` then empties the genocided slots. A re-roll shifts the
+  stream, so through 1.8.0 a revisited level grew other monsters in other places
+  and an old `mon_dead` bit struck the wrong one off (#15). A new spawn site
+  takes the filter that matches what it is.
 - Pathfinding is a **per-turn BFS "Dijkstra map"** from the hero (`compute_dist_map`)
   over walkable cells; each monster steps to the lowest-distance neighbour. One search
   serves all monsters. The frontier queue `bfsq` is a **ring** of 256 (`BFSQ_SIZE`,
