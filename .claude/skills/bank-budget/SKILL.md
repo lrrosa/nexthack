@@ -39,9 +39,9 @@ pressure, and vice versa.
 
 0. **Ask the packer, don't pick by hand.**
    `python tools/bankpack.py plan <target> --grow <module>=<bytes>` measures every
-   module from its `.o` and prints the **fewest moves** that make it fit — or says
-   plainly that nothing fits, which is a budget wall rather than a placement
-   accident. Picking a bank by eye, one full bank at a time, is what left the 128K
+   module from its `.o` and prints the **fewest moves** that make it fit — swaps
+   and chains included — or says plainly that nothing fits, which it says only
+   once it has proven it: a budget wall rather than a placement accident. Picking a bank by eye, one full bank at a time, is what left the 128K
    with 21 KB stranded in two banks while two others sat at 26 and 42 free bytes.
    To give a bank headroom BEFORE it overflows -- `plan` stays silent while a
    bank still fits at 627 free bytes -- ask `plan <target> --free BANK_4`: the

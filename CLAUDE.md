@@ -118,7 +118,11 @@ python tools/bankpack.py plan zx128 --grow monster_ai=2000
   just moves the shortage. Its first version took the first bank with room and,
   asked to free the 128K's BANK_7, would have left BANK_1 at 123 B. Hot code still
   goes uncontended first. `--consolidate` packs into the fewest banks and prints
-  the churn it costs.
+  the churn it costs. After 1.8.0 the search is exact: a move may come out of a
+  bank that fits, to make room (its first version only emptied the full banks,
+  and called a two-move swap a wall, #17); "NO PLACEMENT FITS" now means proven,
+  and a search that runs out of nodes says so instead. `bankpack.py selftest`
+  (CI) checks it against brute force.
 - `compress` ranks every module by how well its banked bytes pack, using the
   game's own LZ. A **hint, not a plan**: only data read once into a destination
   that already exists can spend it — code never can, so a well-packing

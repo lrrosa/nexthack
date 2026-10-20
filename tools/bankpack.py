@@ -13,6 +13,7 @@
 #   python tools/bankpack.py plan zx128 --free BANK_4    give a bank headroom
 #   python tools/bankpack.py compress zx128   what packs well (a HINT, read it)
 #   python tools/bankpack.py apply zx128 --grow monster_ai=2000   write it
+#   python tools/bankpack.py selftest         the search vs known answers (CI)
 #
 # Why this exists: banks.json (see the bank-manifest commit) made moving a module
 # between banks one edit, but WHICH bank is still chosen by hand, one full bank
@@ -305,43 +306,144 @@ def cmd_report(target):
             print("    %-38s %6d" % (n, s))
 
 
+# How many search nodes repair() may spend before it says "not found" instead
+# of answering. The real targets settle in a few thousand; the cap is there so
+# an unlucky input ends in an honest "gave up" rather than an hour of CPU.
+SEARCH_NODES = 2000000
+
+
+class _OutOfNodes(Exception):
+    pass
+
+
+def _place(items, pool, contended, max_moves, budget, feasibility):
+    """Depth-first: put every item [(name, size, home, hot)] -- biggest first
+    -- in a bank, with at most `max_moves` of them away from home. Returns
+    {name: bank} or None; raises _OutOfNodes when the budget runs dry.
+
+    Every bank starts EMPTY and only grows, so a bank over 16 KB at any depth
+    is a dead end -- which is what makes swaps cheap to find: a unit leaving a
+    full bank and another arriving in its place are just two items whose
+    banks are not their homes. The old search only moved units OUT of the
+    banks that were over, into whatever had room, so it could not see that
+    room had to be made first (issue #17).
+
+    `feasibility` drops the move bound and the home preference, and treats
+    banks with the same load as interchangeable -- for "does ANY packing
+    exist", which is then a plain bin-packing proof."""
+    load = dict.fromkeys(pool, 0)
+    where = {}
+    rest = [0] * (len(items) + 1)            # bytes still to place from i on
+    for i in range(len(items) - 1, -1, -1):
+        rest[i] = rest[i + 1] + items[i][1]
+
+    def moves_needed(i):
+        """A lower bound on the moves the items from i on still need: a bank
+        that would overflow if all of its own stayed home must lose at least
+        as many of them as it takes, biggest first, to cover the excess."""
+        own = {}
+        for _, sz, home, _ in items[i:]:
+            own.setdefault(home, []).append(sz)     # already biggest first
+        need = 0
+        for home, sizes in own.items():
+            over = load[home] + sum(sizes) - BANK_SIZE
+            for sz in sizes:
+                if over <= 0:
+                    break
+                over -= sz
+                need += 1
+        return need
+
+    def dfs(i, used):
+        budget[0] -= 1
+        if budget[0] < 0:
+            raise _OutOfNodes()
+        if i == len(items):
+            return True
+        if rest[i] > sum(BANK_SIZE - v for v in load.values()):
+            return False
+        if not feasibility and used + moves_needed(i) > max_moves:
+            return False
+        name, sz, home, hot = items[i]
+        if feasibility:
+            order, tried = sorted(pool, key=lambda b: (b != home, load[b])), set()
+        else:
+            away = [b for b in pool if b != home]
+            if hot:      # per-turn code: the uncontended banks first (see below)
+                away = ([b for b in away if b not in contended] +
+                        [b for b in away if b in contended])
+            order = [home] + (away if used < max_moves else [])
+        for b in order:
+            if load[b] + sz > BANK_SIZE:
+                continue
+            if feasibility:
+                if load[b] in tried:         # same load, same future: one is enough
+                    continue
+                tried.add(load[b])
+            load[b] += sz
+            where[name] = b
+            if dfs(i + 1, used + (b != home)):
+                return True
+            load[b] -= sz
+            del where[name]
+        return False
+
+    return where if dfs(0, 0) else None
+
+
 def repair(pool, us, load, grown, contended=()):
     """Fewest unit moves that bring every bank back under 16 KB.
 
     Minimising MOVES, not banks used: each move costs a recompile and a fresh
     round of emulator verification, and a plan that shuffles everything to win
-    2 KB is a bad trade. Returns (moves, ok) with moves = [(unit, from, to)].
+    2 KB is a bad trade. A move may also be the one that MAKES room -- a unit
+    out of a bank that fits, so that a unit from an overfull bank can land
+    there; the first version never tried those and declared a wall where a
+    swap fitted (#17).
+
+    Returns (moves, status): moves = [(unit, from, to)], and status is
+      "ok"          the fewest moves, proven (every smaller count was tried);
+      "ok-unproven" a plan that fits, but the node budget ran out before every
+                    smaller one could be ruled out;
+      "impossible"  proven: no placement of the units fits the banks at all;
+      "unknown"     the budget ran out before either a plan or a proof.
+    A hot unit (per-turn code) tries the uncontended banks first: on the 128K
+    the ULA steals cycles from banks 1/3/5/7, so the chase AI landing there is
+    a real slowdown. Preference, not a rule -- if only a contended bank has
+    room, it still goes.
     """
-    over = [b for b in pool if load[b] > BANK_SIZE]
-    if not over:
-        return [], True
-    movable = [(n, b, grown[n], h) for n, _, _, b, p, h in us if not p and b in over]
-    for k in range(1, len(movable) + 1):
-        for combo in itertools.combinations(movable, k):
-            left = dict(load)
-            for n, b, sz, _hot in combo:
-                left[b] -= sz
-            if any(left[b] > BANK_SIZE for b in pool):
-                continue
-            moves, ok = [], True
-            for n, b, sz, hot in sorted(combo, key=lambda c: -c[2]):
-                # A hot unit (per-turn code) tries the uncontended banks first:
-                # on the 128K the ULA steals cycles from banks 1/3/5/7, so the
-                # chase AI landing there is a real slowdown. Preference, not a
-                # rule -- if only a contended bank has room, it still goes.
-                order = pool if not hot else ([b2 for b2 in pool if b2 not in contended] +
-                                              [b2 for b2 in pool if b2 in contended])
-                for dst in order:
-                    if dst != b and BANK_SIZE - left[dst] >= sz:
-                        left[dst] += sz
-                        moves.append((n, b, dst))
-                        break
-                else:
-                    ok = False
-                    break
-            if ok:
-                return moves, True
-    return [], False
+    if not any(load[b] > BANK_SIZE for b in pool):
+        return [], "ok"
+    items = sorted(((n, grown[n], b, h) for n, _, _, b, p, h in us if not p),
+                   key=lambda it: (-it[1], it[0]))
+    if (sum(it[1] for it in items) > BANK_SIZE * len(pool) or
+            any(it[1] > BANK_SIZE for it in items)):
+        return [], "impossible"
+
+    def as_moves(where):
+        return [(n, home, where[n]) for n, _, home, _ in items if where[n] != home]
+
+    budget = [SEARCH_NODES]
+    try:
+        some = _place(items, pool, contended, len(items), budget, True)
+    except _OutOfNodes:
+        return [], "unknown"
+    if some is None:
+        return [], "impossible"
+    best = as_moves(some)
+    try:
+        for k in range(1, len(best)):
+            where = _place(items, pool, contended, k, budget, False)
+            if where is not None:
+                return as_moves(where), "ok"
+    except _OutOfNodes:
+        return best, "ok-unproven"
+    # nothing smaller fits; redo it at this count for the preferred banks
+    try:
+        where = _place(items, pool, contended, len(best), budget, False)
+    except _OutOfNodes:
+        where = None
+    return (as_moves(where) if where is not None else best), "ok"
 
 
 def compute(target, consolidate=False, grow=None, free_bank=None):
@@ -365,6 +467,7 @@ def compute(target, consolidate=False, grow=None, free_bank=None):
             die("'%s' is not a banked module of %s." % (mod, target))
     load = {b: sum(grown[n] for n, _ in cur.get(b, [])) for b in pool}
 
+    status = "ok"
     if free_bank:
         if free_bank not in pool:
             die("'%s' is not a bank of %s (pool: %s)."
@@ -372,18 +475,18 @@ def compute(target, consolidate=False, grow=None, free_bank=None):
         new, unplaced = None, []
         moves, _freed = relieve(pool, us, load, grown,
                                 tm.get("_contended", []), free_bank)
-        ok = True
     elif consolidate:
         new, unplaced = ffd(pool, us)
         where = {n: b for b, items in new.items() for n, _ in items}
         moves = [(n, b, where[n]) for n, _, _, b, p, _h in us
                  if not p and where.get(n) and where[n] != b]
-        ok = not unplaced
+        status = "ok" if not unplaced else "unknown"    # FFD is a heuristic
     else:
         new, unplaced = None, []
-        moves, ok = repair(pool, us, load, grown, tm.get("_contended", []))
+        moves, status = repair(pool, us, load, grown, tm.get("_contended", []))
     return dict(man=man, us=us, pool=pool, cur=cur, grown=grown, load=load,
-                moves=moves, ok=ok, new=new, unplaced=unplaced)
+                moves=moves, ok=status.startswith("ok"), status=status,
+                new=new, unplaced=unplaced)
 
 
 def relieve(pool, us, load, grown, contended, bank):
@@ -457,7 +560,8 @@ def cmd_plan(target, consolidate=False, grow=None, free_bank=None):
         print()
         show(c["new"], pool, "CONSOLIDATED (fewest banks -- maximises ONE free block)")
         if c["unplaced"]:
-            print("\n  DOES NOT FIT:")
+            print("\n  DOES NOT FIT (first-fit-decreasing is a heuristic; 'plan'"
+                  "\n  without --consolidate searches exactly):")
             for n, s in c["unplaced"]:
                 print("    %-38s %6d" % (n, s))
     elif free_bank:
@@ -466,18 +570,26 @@ def cmd_plan(target, consolidate=False, grow=None, free_bank=None):
                   "unplaceable units." % free_bank)
             return
     else:
-        ok = c["ok"]
-        if not moves and ok:
+        status = c["status"]
+        if not moves and status == "ok":
             free = sorted((BANK_SIZE - load[b], b) for b in pool)
             print("\n  Everything fits. No move needed.")
             print("  Slack: %s" % ", ".join("%s %d B" % (b, f) for f, b in
                                             reversed(free)))
             return
-        if not ok:
-            print("\n  NO PLACEMENT FITS. This is a real budget wall: the modules\n"
-                  "  total more than the %d banks hold, or an indivisible unit has\n"
-                  "  nowhere to go. Shrink, split, or claim another bank." % len(pool))
+        if status == "impossible":
+            print("\n  NO PLACEMENT FITS -- proven: no way of putting these units in\n"
+                  "  the %d banks keeps every bank under 16 KB. This is a real budget\n"
+                  "  wall. Shrink, split, or claim another bank." % len(pool))
             return
+        if status == "unknown":
+            print("\n  NO PLACEMENT FOUND -- the search spent its %d nodes without\n"
+                  "  finding one or proving there is none. That is NOT yet a budget\n"
+                  "  wall; raise SEARCH_NODES to settle it." % SEARCH_NODES)
+            return
+        if status == "ok-unproven":
+            print("\n  (this plan fits, but the search ran out of nodes before it\n"
+                  "   could rule out every plan with fewer moves)")
 
     print("\n  moves: %d unit(s)" % len(moves))
     for n, a, b in sorted(moves):
@@ -540,7 +652,8 @@ def rewrite_manifest(target, changes):
 def cmd_apply(target, consolidate=False, grow=None, free_bank=None):
     c = compute(target, consolidate, grow, free_bank)
     if not c["ok"]:
-        die("no placement fits -- nothing to apply. Run 'plan' for the detail.")
+        die("no placement %s -- nothing to apply. Run 'plan' for the detail."
+            % ("fits" if c["status"] == "impossible" else "was found"))
     if not c["moves"]:
         print("bankpack: %s already fits; nothing to move." % target)
         return
@@ -561,16 +674,116 @@ def cmd_apply(target, consolidate=False, grow=None, free_bank=None):
           "  a latent bank-discipline bug surfaces here and nowhere else.")
 
 
+def cmd_selftest():
+    """The placement search against cases with known answers -- no build
+    needed, so CI runs it. A plan is checked the way the linker would judge
+    it (every bank under 16 KB, each unit whole, moved from where it was, a
+    pinned one never), and small random cases against brute force, which
+    knows the true fewest moves and whether any placement exists."""
+    import random
+    fails = []
+
+    def mk(spec, pinned=(), hot=()):
+        us = [Unit(n, [n], sz, b, n in pinned, n in hot) for n, sz, b in spec]
+        grown = {u.name: u.size for u in us if not u.pinned}
+        return us, grown
+
+    def run(pool, us, grown, contended=()):
+        load = {b: sum(u.size for u in us if u.bank == b and not u.pinned)
+                for b in pool}
+        moves, status = repair(pool, us, load, grown, contended)
+        if status.startswith("ok"):
+            after, home = dict(load), {u.name: u.bank for u in us}
+            pinned = {u.name for u in us if u.pinned}
+            names = [n for n, _, _ in moves]
+            if len(set(names)) != len(names):
+                return moves, status, "a unit moved twice"
+            for n, a, b in moves:
+                if n in pinned:
+                    return moves, status, "moved pinned %s" % n
+                if home[n] != a or a == b or b not in pool:
+                    return moves, status, "bad move %s %s->%s" % (n, a, b)
+                after[a] -= grown[n]
+                after[b] += grown[n]
+            if any(v > BANK_SIZE for v in after.values()):
+                return moves, status, "plan overflows: %s" % after
+        return moves, status, None
+
+    def check(label, pool, us, grown, want_status, want_moves=None,
+              contended=(), want=None):
+        moves, status, err = run(pool, us, grown, contended)
+        if err or status != want_status or \
+           (want_moves is not None and len(moves) != want_moves) or \
+           (want is not None and sorted(moves) != sorted(want)):
+            fails.append("%s: got %s %s%s" % (label, status, moves,
+                                              " (" + err + ")" if err else ""))
+
+    # issue #17: nothing leaving A fits anywhere as things stand -- B and C
+    # must give a unit back. A swap (2 moves) is the answer, not "a wall".
+    us, g = mk([("a1", 9000, "A"), ("a2", 8000, "A"), ("b1", 7000, "B"),
+                ("b2", 7000, "B"), ("c1", 7000, "C"), ("c2", 7000, "C")])
+    check("swap (#17)", ["A", "B", "C"], us, g, "ok", 2)
+    # truly impossible: more bytes than banks...
+    us, g = mk([("u%d" % i, 9000, "A" if i < 2 else "B") for i in range(4)])
+    check("over capacity", ["A", "B"], us, g, "impossible")
+    # ...and room in total but no packing: any two of these overflow a bank
+    us, g = mk([("x", 10000, "A"), ("y", 10000, "A"), ("z", 10000, "B")])
+    check("no packing", ["A", "B"], us, g, "impossible")
+    # already fits: nothing moves
+    us, g = mk([("a", 9000, "A"), ("b", 9000, "B")])
+    check("fits", ["A", "B"], us, g, "ok", 0)
+    # a pinned unit (outside the pool) is never a candidate
+    us, g = mk([("p", 15000, "X"), ("a1", 9000, "A"), ("a2", 8000, "A"),
+                ("b1", 1000, "B")], pinned=("p",))
+    check("pinned", ["A", "B"], us, g, "ok", 1, want=[("a2", "A", "B")])
+    # a hot unit takes the uncontended bank when both have room
+    us, g = mk([("a1", 9000, "A"), ("h", 8000, "A")], hot=("h",))
+    check("hot", ["A", "B", "C"], us, g, "ok", 1, contended=("B",),
+          want=[("h", "A", "C")])
+
+    # brute force on small random cases: the fewest moves, or "impossible"
+    rnd = random.Random(17)
+    for case in range(300):
+        pool = ["B%d" % i for i in range(rnd.randint(2, 4))]
+        spec = [("m%d" % i, rnd.randint(1000, 12000), rnd.choice(pool))
+                for i in range(rnd.randint(2, 7))]
+        us, g = mk(spec)
+        best = None
+        for assign in itertools.product(pool, repeat=len(spec)):
+            fill = dict.fromkeys(pool, 0)
+            for (n, sz, _), b in zip(spec, assign):
+                fill[b] += sz
+            if all(v <= BANK_SIZE for v in fill.values()):
+                k = sum(1 for (_, _, h), b in zip(spec, assign) if b != h)
+                best = k if best is None else min(best, k)
+        moves, status, err = run(pool, us, g)
+        want = "impossible" if best is None else "ok"
+        if err or status != want or (best is not None and len(moves) != best):
+            fails.append("random #%d %s: got %s %d move(s)%s, brute force %s"
+                         % (case, spec, status, len(moves),
+                            " (" + err + ")" if err else "", best))
+
+    if fails:
+        print("bankpack selftest: %d FAILED" % len(fails))
+        for f in fails[:20]:
+            print("  " + f)
+        sys.exit(1)
+    print("bankpack selftest: ok (6 fixed cases, 300 against brute force)")
+
+
 USAGE = ("usage: bankpack.py [measure|report|plan|apply|compress] [next|zx128]\n"
          "                  plan --consolidate      pack into the fewest banks\n"
          "                  plan --grow mod=BYTES   what if this module grew?\n"
          "                  plan --free BANK_4      empty a named bank\n"
-         "                  apply ...               write the plan to banks.json")
+         "                  apply ...               write the plan to banks.json\n"
+         "       bankpack.py selftest              check the search (no build)")
 
 
 def main():
     args = sys.argv[1:]
     cmd = args[0] if args and not args[0].startswith("-") else "report"
+    if cmd == "selftest":
+        return cmd_selftest()
     if cmd not in ("measure", "report", "plan", "apply", "compress"):
         die(USAGE)
     consolidate = "--consolidate" in args

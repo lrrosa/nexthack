@@ -2,8 +2,9 @@
 #
 # What this DOES catch: a generated file whose source moved on without it, a
 # module added to a build but not declared in banks.json, a colocate group split
-# across banks, a C table that stopped parsing under tools/balance.py, and an LZ
-# stream that does not round-trip.
+# across banks, a C table that stopped parsing under tools/balance.py, an LZ
+# stream that does not round-trip, and a bank-placement search (bankpack.py)
+# that misses a plan or claims a wall it has not proven.
 #
 # What it does NOT catch, and no CI here will: "the bank loaded garbage". That
 # is the failure this architecture actually produces, and proving the absence of
@@ -41,6 +42,9 @@ jobs:
 
       - name: LZ round-trip
         run: python tools/lztmpl.py
+
+      - name: bank placement search
+        run: python tools/bankpack.py selftest
 
       - name: bank manifest matches the builds
         shell: pwsh
