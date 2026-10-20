@@ -489,9 +489,17 @@ static uint8_t hunger_color(void)
 
 /* once-per-turn upkeep: hunger ticks down, HP slowly regenerates (or you
  * starve when out of food) */
+static uint16_t upkeep_lvl;      /* the level the last upkeep ran on */
+
 void upkeep(void) __banked
 {
     uint8_t hs;
+
+    /* A move that changed level -- the stairs, a trap door, a dug hole --
+     * left vis_now holding the OLD map's sight until the redraw after this
+     * turn, and the wanderer rolled below must not appear in plain view of
+     * the new one. So the new sight first, once per level change. */
+    if (dlvl != upkeep_lvl) { upkeep_lvl = dlvl; fov_update(hero_x, hero_y); }
 
     /* slow digestion eats a sixteenth as fast, a ring of hunger half again
      * as fast -- NetHack's one-in-twenty and every-other-turn, rounded to

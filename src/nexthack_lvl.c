@@ -232,12 +232,18 @@ void build_level(void) __banked
      * reset here - only on a new game (see new_game / main). */
 }
 
+/* Taking the stairs is a move like any other: it sets `acted` with `turns`,
+ * so the turn loop runs upkeep and the monsters -- the new level's -- after
+ * it, as a trap door's fall always did. Without it the stairs counted the
+ * turn and skipped both: no hunger, no regeneration, no timer, no reply.
+ * A refused climb costs nothing, and the winning climb stays turnless: the
+ * game is over, no monster gets a last blow. */
 void go_down(void) __banked
 {
     if (terrain(hero_x, hero_y) == 'v') {   /* into the Gnomish Mines */
         grab_follower();
         dlvl = MINES_BASE;
-        turns++;
+        turns++; acted = 1;
         build_level();
         hero_x = up_x; hero_y = up_y;
         place_pet();
@@ -249,7 +255,7 @@ void go_down(void) __banked
     if (terrain(hero_x, hero_y) == '>') {
         grab_follower();
         dlvl++;
-        turns++;
+        turns++; acted = 1;
         build_level();
         hero_x = up_x; hero_y = up_y;     /* arrive on the new up-stairs */
         place_pet();                      /* the dog follows you down */
@@ -270,7 +276,7 @@ void go_up(void) __banked
         if (dlvl == MINES_BASE) {           /* out of the mines */
             grab_follower();
             dlvl = MINES_ENTR_DLVL;
-            turns++;
+            turns++; acted = 1;
             build_level();
             hero_x = mn_x; hero_y = mn_y;   /* you emerge from the hole */
             place_pet();
@@ -280,7 +286,7 @@ void go_up(void) __banked
         } else if (dlvl > 1) {
             grab_follower();
             dlvl--;
-            turns++;
+            turns++; acted = 1;
             build_level();
             hero_x = dn_x; hero_y = dn_y; /* arrive on the new down-stairs */
             place_pet();                  /* the dog follows you up */
