@@ -132,12 +132,24 @@ void place_pet(void) __banked
  * An awake, hostile monster standing next to you when you take the stairs
  * comes along, as in NetHack: grabbed before the level switch, re-placed at
  * your side after it. Transient by design (never saved) -- it simply IS the
- * monster at your heel this instant. The shopkeeper keeps his shop, a posing
- * mimic holds its pose, the floating eye floats where it is, sleepers sleep
- * on and the peaceful stay home. Appended above the level's own spawns, a
- * follower is never in m_track, so its death marks no one dead there. */
+ * monster at your heel this instant. The shopkeeper keeps his shop, the
+ * Amulet's high priest his post (a temple's priest stays in it, as in
+ * NetHack), a posing mimic holds its pose, the floating eye floats where it
+ * is, sleepers sleep on and the peaceful stay home. Appended above the
+ * level's own spawns, a follower is never in m_track, so its death marks no
+ * one dead there.
+ *
+ * But the level it LEFT regenerates it, so a follower that was one of that
+ * level's own spawns must be struck off there once it has arrived: until
+ * then it came back home alive however it died abroad, and its XP could be
+ * reaped again on every trip. follow_lvl/follow_bit name that spawn; the bit
+ * is written only once the follower is down beside you -- with no room for
+ * it, it never left. A transient (a wanderer, an earlier follower) has no
+ * bit and strikes no one off. */
 static char    follow_type;
 static uint8_t follow_hp;
+static uint8_t follow_bit;       /* its m_track bit at home, 0 if a transient */
+static uint8_t follow_lvl;       /* ...and that home's dlvl                    */
 
 static int iabs8(int v) { return v < 0 ? -v : v; }
 
@@ -147,13 +159,15 @@ static void grab_follower(void)
     follow_type = 0;
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i] || i == pet_idx) continue;
-        if (m_type[i] == MON_KEEPER || m_type[i] == 'x' ||
+        if (m_type[i] == MON_KEEPER || m_type[i] == 'M' || m_type[i] == 'x' ||
             m_type[i] == 'e') continue;
         if (m_sleep[i] || m_peace[i]) continue;
         if (iabs8((int)m_x[i] - hero_x) <= 1 &&
             iabs8((int)m_y[i] - hero_y) <= 1) {
             follow_type = m_type[i];
             follow_hp   = m_hp[i];      /* it arrives as wounded as it left */
+            follow_bit  = (uint8_t)(m_track & (1u << i));
+            follow_lvl  = (uint8_t)dlvl;
             return;
         }
     }
@@ -181,9 +195,16 @@ static void place_follower(void)
             m_hp[mcount]    = follow_hp;
             m_type[mcount]  = t;
             m_alive[mcount] = 1;
-            m_sleep[mcount] = 0;
+            m_sleep[mcount] = 1;    /* it acts from your NEXT move, as summons
+                                     * do: the stairs' turn runs the monsters
+                                     * now, and its bite at once would cover
+                                     * the one line saying it came along. (The
+                                     * dog may still go for it -- a bite wakes
+                                     * it -- and then the fight is on.) */
             m_peace[mcount] = 0;
             mcount++;
+            if (follow_lvl <= MAXLVL)   /* gone from home: never spawned there again */
+                mon_dead[follow_lvl] |= follow_bit;
             msg2("The ", mon_name(t), " follows you!");
             return;
         }

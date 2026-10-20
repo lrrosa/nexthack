@@ -818,6 +818,11 @@ tilemap.
   slot i holds the monster the level spawned there) gates every `mon_dead` write:
   keeper, pet and followers are appended above the spawns, and a wanderer or summon
   that moves into a dead slot clears its bit. A new spawn or kill site must keep it.
+  A stair follower that was one of its level's own spawns is struck off there
+  (`mon_dead`) once it is placed beside you (`place_follower`, after 1.8.0):
+  its home regenerates it, so a follower killed abroad used to be back on the
+  next visit, its XP to be had again (#13). The Amulet's high priest never
+  follows.
 
 ### Turn loop & input (`nexthack.c main`)
 - Loop: read key (`getkey_rpt`) → act → if the action took a turn, `upkeep()`
