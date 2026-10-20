@@ -8,6 +8,64 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.8.1] — 2026-10-19
+
+**Seven reported bugs, fixed.** A review of 1.8.0 reported them on GitHub
+(#12–#18); each one was reproduced on the 1.8.0 code first — in ZEsarUX
+on both machines for the game's five, by simulating the failure for the
+build scripts' — then fixed and proven on both. The fuzzer played both
+binaries again and found nothing, and the 128K enters a level a little
+faster. Saves from 1.8.0 load, and 1.8.0 loads saves from 1.8.1.
+
+### Fixed
+- **Taking the stairs takes a turn** (#12). The turn counter moved, but
+  nothing else did: no hunger, no healing, no timers, and no answer from
+  the monsters — up, down, into the Mines and out. Now the stairs are a
+  move like any other, as a trap door's fall always was; a refused climb
+  still costs nothing.
+- **A monster that follows you down the stairs and dies there stays dead**
+  (#13). Its old level spawned it again on your next visit, and its
+  experience could be had again on every trip.
+- **A ring the sink gives back can no longer vanish** (#14). On a floor
+  already holding as much as it can (and no corpse to make way), the ring
+  that "came back up" was gone. Now you fish it back out.
+- **Genocide no longer reshuffles the levels you have visited** (#15). A
+  level already seen grew other monsters in other places after a genocide,
+  and a monster you had killed there could come back while a different one
+  went missing. Every level now keeps its own monsters, minus the
+  genocided kind.
+- **128K: a corridor step no longer leaves the corridor dark** (#18). The
+  screen decided whether your sight had changed from a 16-bit checksum,
+  and two different views can share one: the newly lit corridor was then
+  not drawn until something else repainted it. The test is now exact, and
+  costs about what the checksum did.
+
+### Changed
+- **The Amulet's high priest no longer follows you up the stairs** — a
+  temple's priest keeps his temple, as in NetHack. Lured away and left on
+  another level, he would now have been gone for good.
+- A monster that followed you and was **left behind on another level** is
+  gone when you leave that level, instead of walking back home. A follower
+  still acts from your next move, unless your dog goes for it first.
+- **The 128K enters a level faster** — 0.32-0.39 s instead of 0.34-0.44
+  (MAME, same world): the flood that keeps secret doors off the way between
+  the stairs is hand-written Z80 now, square for square the C the Next
+  keeps.
+- `SAVE_VER` stays 36: **1.8.0 saves load**, and 1.8.0 loads saves from
+  1.8.1.
+
+### Under the hood
+- **The builds fail when the link or the tape fails** (#16). A failed link
+  used to end in "OK" over the previous build's `.nex` or `.tap`, and the
+  128K's tape was then rebuilt from the previous build's banks. The old
+  outputs are deleted first now, and every step's exit code is checked.
+- **`tools/bankpack.py` searches exactly** (#17): it can move a module out
+  of a bank that fits to make room, so a swap is no longer reported as "a
+  real budget wall"; it says a placement is impossible only once it has
+  proved it. `bankpack.py selftest` checks it against brute force, in CI.
+- The Next no longer works out, every turn, the checksum of #18 that only
+  the 128K ever read.
+
 ## [1.8.0] — 2026-10-17
 
 **The dungeon's furniture and its secrets.** Thrones to sit on, sinks to
