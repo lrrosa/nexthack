@@ -60,6 +60,10 @@ that way; one-liners do not scale.
   Space restored a save before the test's own key, which then landed in the
   game as a phantom turn ('You wait.', turns +1). Several "flaky" failures
   before 1.7.0 were the same. Use `-Visible` only to watch, never in a batch.
+  Nor a console: `zesarux.exe` is a console program, and `Start-Process` gave
+  each headless run a terminal window with its licence banner. `Start-Emu`
+  launches it with `CreateNoWindow` now (2026-10-24); only `-Visible` uses
+  `Start-Process`.
 
 - **`set-machine` KILLS ZEsarUX v13** — the process dies, not just the
   connection. To switch targets, relaunch (`Start-Emu` does). Always check the

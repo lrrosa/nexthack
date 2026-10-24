@@ -115,9 +115,24 @@ function Start-Emu {
                   '--diviface-ram-size', '128',
                   '--tape', "`"$(Join-Path $script:PortDir 'nexthack128.tap')`"") + $common
     }
-    Start-Process -FilePath $script:EmuExe `
-                  -WorkingDirectory (Split-Path -Parent $script:EmuExe) `
-                  -ArgumentList $args
+    if ($script:ZrcpVisible) {
+        Start-Process -FilePath $script:EmuExe `
+                      -WorkingDirectory (Split-Path -Parent $script:EmuExe) `
+                      -ArgumentList $args
+    } else {
+        # No console either. zesarux.exe is a console program, so Start-Process
+        # gave every headless run a terminal window with its licence banner,
+        # popping up over whatever the user was doing (2026-10-24). With
+        # CreateNoWindow the process gets no console at all; it prints nothing
+        # the harness reads (everything goes through ZRCP).
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = $script:EmuExe
+        $psi.WorkingDirectory = Split-Path -Parent $script:EmuExe
+        $psi.Arguments = $args -join ' '
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
+        [System.Diagnostics.Process]::Start($psi) | Out-Null
+    }
     Start-Sleep -Seconds 10
     Connect-Zrcp | Out-Null
     if ($Target -eq 'zx128') {
