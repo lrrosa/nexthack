@@ -5,8 +5,9 @@
  *   ')' weapon   '[' armor   '!' potion   '%' food
  *
  * The verbs that activate or consume an item (quaff/eat/read/throw/zap) are
- * defined in item_use.c, split off when item.c's bank filled; they are declared
- * here all the same, since that is where their callers look.
+ * defined in item_use.c, split off when item.c's bank filled, and the ones that
+ * put gear on (wield/wear/put on) in item_wear.c; they are declared here all
+ * the same, since that is where their callers look.
  *
  * item.c is a BANKED (cold) module with a bank of its own (banks.json), mapped
  * into the 0xC000 window on demand, so every entry point is __banked (called via
@@ -31,8 +32,8 @@ void do_wield(void) __banked;       /* wield the first weapon                   
 void do_wear(void) __banked;        /* wear the first armor                     */
 void do_quaff(void) __banked;       /* drink the first potion                   */
 void do_eat(void) __banked;         /* eat the first food                       */
-void do_puton(void) __banked;
-uint8_t life_saved(void) __banked;   /* the amulet spends itself to save you */       /* put on the first ring                    */
+void do_puton(void) __banked;       /* put on a ring or an amulet (asks which)  */
+uint8_t life_saved(void) __banked;  /* the amulet spends itself to save you     */
 void do_read(void) __banked;        /* read the first scroll                    */
 void do_throw(void) __banked;       /* throw a weapon in a chosen direction     */
 void do_zap(void) __banked;         /* zap a wand (magic, ranged)               */

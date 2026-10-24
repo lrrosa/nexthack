@@ -175,6 +175,17 @@ helpers `item.c` calls a lot got thin `__banked` wrappers instead of becoming
 banked themselves -- a `__banked` call is the long trampoline form even inside
 one bank, and `recompute_gear` alone has 14 internal callers.
 
+**And again (2026-10-23)**: back at 157 / 37 B with a take-off command, a
+second ring hand and stacks still to come, it gave the equipment verbs (`w`
+`W` `P` and the amulet of life saving) to `item_wear.c` -- 2130 / 2046 B free.
+Same rule, four more accessors (`item_obj_slot`, `item_gear_eff`,
+`item_worn_with`, `item_obj_desc`; the last hands back obj_desc's buffer,
+which is resident BSS). It cost 109 B of trampoline on the 128K, and the
+destination there, BANK_4, was left at 277 B: bankpack's only ways to give
+it room moved a module into the bank the split had just emptied, so that
+waits for the take-off command's real size. `balance.py` reads the `SL_*`
+slots out of `item_int.h` now, and refuses to run without them.
+
 There are no automated *behaviour* tests, and CI does not add any. Verification is
 manual: build, then run in ZEsarUX and observe. The build agent **can** drive
 ZEsarUX itself over ZRCP (read memory, inject keys) to verify most behaviour; the
@@ -316,12 +327,13 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `spells.c` | B | spellbooks and casting (`r` learns a book, `Z` casts) |
 | `music.c` | B | the AY title theme — a 3-voice sequencer, not a tracker replayer; the title plays it twice through before the demo |
 | `attract.c/.h` | B | the title's attract demo: ~15 s of magic-mapped levels walked to the stairs by a random class (see Title & victory screens) |
-| `item.c/.h` | B | the inventory, the object catalogue and its names, equipment (wield/wear/put-on), the floor and its stashes, pick up/drop |
+| `item.c/.h` | B | the inventory, the object catalogue and its names, the worn set's effects (`recompute_gear`), the floor and its stashes, pick up/drop |
 | `item_use.c` | B | the verbs that activate or consume an item: quaff (and fountains), eat (and corpses), read, throw, zap, and `E` (engraving with a wand) |
+| `item_wear.c` | B | the verbs that put gear on: `w` wield, `W` wear, `P` put on, and the amulet of life saving |
 | `secret.c` | B | secret doors and corridors (1.8): hidden by side hash after `gen_level`, never cutting `<` off `>`; found by `s` |
 | `feature.c` | B | the furniture (1.8): where sinks, thrones and graves stand; drinking from, kicking and dropping rings down a sink; graves' epitaphs and digging one up |
 | `throne.c` | B | `#` (1.8): sitting, and NetHack's thirteen throne effects (no wish) |
-| `item_int.h` | — | item.c's internals shared with `item_use.c` only: `obj_t`, `inv`, the `O_*` ids, and the `__banked` value API between the two |
+| `item_int.h` | — | item.c's internals, shared only with the modules split off it (`item_use.c`, `item_wear.c`) and the furniture's: `obj_t`, `inv`, the `O_*` ids and `SL_*` slots, and the `__banked` value API |
 | `sfx.c/.h` | B | beeper sound effects |
 | `titlegfx0/1/2.c`, `victorygfx0/1/2.c` | B | the Layer 2 title / victory images (generated): 3×16 KB framebuffer thirds const-banked into banks 16/17/18 and 19/20/21 (see Title & victory screens) |
 | `titlepal.c`, `victorypal.c` | B | each image's 9-bit palette, const-banked in `PAGE_22_CODE` next to the code that streams it |

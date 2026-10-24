@@ -4,14 +4,15 @@
  *
  * item.c was split in two when its bank filled -- PAGE_28 had 163 B left on
  * the Next, BANK_0 240 B on the 128K -- and item_use.c took the verbs that
- * activate or consume an item. What those need from item.c lives here rather
- * than in item.h, so `inv`, obj_t and the O_* ids stay private to the two
+ * activate or consume an item; when it filled again (157 B and 37 B),
+ * item_wear.c took the ones that put gear on. What those need from item.c
+ * lives here rather than in item.h, so `inv`, obj_t and the O_* ids stay private to the two
  * files: a `#define inv` in a header half the game includes would silently
  * rewrite any local of that name.
  *
  * THE RULE THE SPLIT RESTS ON. item.c's catalogue -- objtypes[], its names and
- * appearance pools -- is const-banked in item.c's OWN bank. item_use.c runs in
- * a different one, so it must never hold a pointer into that catalogue: the
+ * appearance pools -- is const-banked in item.c's OWN bank. item_use.c and
+ * item_wear.c run in other ones, so it must never hold a pointer into that catalogue: the
  * bytes would be read with the wrong bank paged in. So everything below
  * crosses by VALUE -- a slot, an otyp, a class char, a prop byte. The one
  * pointer that does cross, `const obj_t *`, points at DATA (inv[] in Bank 5,
@@ -78,6 +79,23 @@ enum {
                     * types: id_known stays 11 bytes up to 88 */
     NUMOBJ
 };
+/* Armour slots. Only '[' uses these; everything else is SL_NONE and the
+ * field is ignored. NetHack layers a suit, and recompute_gear was already
+ * summing every worn '[' piece -- one unworn_class('[') in do_wear was all
+ * that kept the hero in a single suit. A type's slot is objtypes[].slot,
+ * which item_wear.c reads by value (item_obj_slot). */
+#define SL_NONE   0
+#define SL_SUIT   1
+#define SL_SHIELD 2
+#define SL_HELM   3
+#define SL_BOOTS  4
+#define SL_CLOAK  5
+/* A weapon's `slot` (1.6): SL_TWOHAND takes both hands, so it and a shield
+ * exclude each other -- 'w' passes it over while a shield is worn and 'W'
+ * passes the shield over while it is wielded. NetHack's rule; with no remove
+ * command, dropping the shield is how you choose the two-hander. */
+#define SL_TWOHAND 1
+
 /* Excalibur and the five gifts: unique, wielded first by 'w', never eroded */
 #define is_artifact(t) ((t) == O_EXCALIBUR || ((t) >= O_STING && (t) <= O_STORMB))
 
@@ -112,8 +130,8 @@ typedef struct {
 #define INV_BYTES (sizeof(obj_t) * MAXINV)
 extern uint8_t inv_count;
 
-/* item.c's API for item_use.c. __banked because the caller now runs in
- * another bank. The helpers are thin wrappers: item.c keeps calling its own
+/* item.c's API for item_use.c and item_wear.c. __banked because the caller
+ * runs in another bank. The helpers are thin wrappers: item.c keeps calling its own
  * static versions directly, so its ~14 internal recompute_gear calls do not
  * all grow into trampoline calls. */
 int     select_item(char cls) __banked;   /* the prompt follows from the class */
@@ -127,6 +145,10 @@ uint8_t item_obj_prop(uint8_t otyp) __banked;  /* objtypes[otyp].prop, by value 
 void    item_destroy_armor(void) __banked;     /* the outermost worn piece goes  */
 void    item_forget_ids(void) __banked;        /* amnesia: a third of the looks  */
 char    item_obj_cls(uint8_t otyp) __banked;   /* objtypes[otyp].cls, by value  */
+uint8_t item_obj_slot(uint8_t otyp) __banked;  /* objtypes[otyp].slot, by value */
+int     item_gear_eff(const obj_t *o) __banked;  /* prop + ench - ero, BUC-adjusted */
+int     item_worn_with(char cls, uint8_t slot) __banked;  /* the worn piece there, or -1 */
+const char *item_obj_desc(const obj_t *o) __banked;  /* its name, in a RESIDENT buffer */
 
 /* item_use.c's, for the throne (throne.c, which includes this header too, for
  * inv[] and the O_* ids -- under the same values-only rule) */

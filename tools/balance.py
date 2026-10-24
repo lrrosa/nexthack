@@ -77,7 +77,7 @@ def fresh_rng(meta):
 
 
 def item_hash(world_seed, dlvl, x, y):
-    """src/item.c:1037 -- pure; never touches the RNG stream."""
+    """src/item.c:967 -- pure; never touches the RNG stream."""
     h = (world_seed + dlvl * 2657 + x * 131 + y * 1009) & M16
     h ^= (h << 7) & M16
     h ^= h >> 9
@@ -219,6 +219,7 @@ class Tables(object):
         mon_c = _strip_comments(_read(src, "monster.c"))
         mon_h = _strip_comments(_read(src, "monster.h"))
         item_c = _strip_comments(_read(src, "item.c"))
+        item_int_h = _strip_comments(_read(src, "item_int.h"))
         cls_c = _strip_comments(_read(src, "classes.c"))
         game_h = _strip_comments(_read(src, "game.h"))
 
@@ -238,7 +239,8 @@ class Tables(object):
                 mindep=int(f[4]), corr=int(f[6]), atk=f[7].strip(),
                 name=f[8].strip().strip('"')))
 
-        item_consts = _defines(item_c)
+        item_consts = _defines(item_int_h)   # the SL_* slots (item_wear.c reads them too)
+        item_consts.update(_defines(item_c))
         self.objs = []
         for i, row in enumerate(_rows(_body(item_c, "objtypes[NUMOBJ]"))):
             f = _fields(row)
@@ -250,9 +252,13 @@ class Tables(object):
                 slot=_num(f[5], item_consts),
                 name=f[6].strip().strip('"')))
         self.ARMOR_CAP = int(item_consts.get("ARMOR_CAP", "255"))
-        # src/item.c SL_*: a shield and a two-hander exclude each other (1.6)
-        self.SL_SHIELD = int(item_consts.get("SL_SHIELD", "2"))
-        self.SL_TWOHAND = int(item_consts.get("SL_TWOHAND", "-1"))
+        # src/item_int.h SL_*: a shield and a two-hander exclude each other (1.6).
+        # No fallback: a default here would quietly switch the rule off.
+        for name in ("SL_SHIELD", "SL_TWOHAND"):
+            if name not in item_consts:
+                raise ParseError("%s is not #defined in item_int.h or item.c" % name)
+        self.SL_SHIELD = int(item_consts["SL_SHIELD"])
+        self.SL_TWOHAND = int(item_consts["SL_TWOHAND"])
 
         kc = _defines(cls_c)
         gd = _defines(game_h)
@@ -375,10 +381,10 @@ FORMULAS = [
     ("worn set", "src/item.c recompute_gear",
      "every worn '[' piece adds; armor_def saturates at ARMOR_CAP",
      "Hero.recompute() -- one piece per SL_* slot since 1.3"),
-    ("floor enchantment", "src/item.c:1137",
+    ("floor enchantment", "src/item.c:1067",
      "roll = (h >> 5) % 100; +1 if roll < depth, +2 if roll < depth/3",
      "floor_ench(h, depth)"),
-    ("floor BUC", "src/item.c:1144",
+    ("floor BUC", "src/item.c:1074",
      "r = (h >> 11) & 7 -- 5/8 uncursed, 2/8 cursed, 1/8 blessed",
      "floor_buc(h)"),
     ("force bolt", "src/spells.c:95",
@@ -472,7 +478,7 @@ def spawn_count(depth):
 
 
 def armor_redux(eff):
-    """src/item.c:487 -- an armour piece shields eff-1 (at least 1)"""
+    """src/item.c:473 -- an armour piece shields eff-1 (at least 1)"""
     return 0 if eff <= 0 else (eff - 1 if eff > 1 else 1)
 
 
@@ -553,12 +559,12 @@ class Hero(object):
                 self.offer(o.cls, o.prop, o.slot)
         self.recompute()
 
-    # -- src/item.c:1688 find_best_gain + :452 recompute_gear -------------------------
+    # -- src/item_wear.c:97 find_best_gain + src/item.c:447 recompute_gear ----------
     def offer(self, cls, eff, slot=0, silver=False):
         """consider a piece of gear.  Armour is per SLOT since 1.3 (do_wear
         takes off only the piece that slot already holds), so a shield and a
         suit are both worn rather than one replacing the other.  Since 1.6 a
-        two-handed weapon and a shield exclude each other (src/item.c
+        two-handed weapon and a shield exclude each other (src/item_wear.c
         find_best / find_best_gain): 'w' passes a two-hander over while a
         shield is worn, 'W' a shield while a two-hander is wielded -- so this
         hero, like the game's own choosing, keeps whichever came first."""

@@ -42,21 +42,7 @@
 
 /* the O_* ids live in item_int.h: item_use.c needs them too */
 
-/* Armour slots. Only '[' uses these; everything else is SL_NONE and the
- * field is ignored. NetHack layers a suit, and recompute_gear was already
- * summing every worn '[' piece -- one unworn_class('[') in do_wear was all
- * that kept the hero in a single suit. */
-#define SL_NONE   0
-#define SL_SUIT   1
-#define SL_SHIELD 2
-#define SL_HELM   3
-#define SL_BOOTS  4
-#define SL_CLOAK  5
-/* A weapon's `slot` (1.6): SL_TWOHAND takes both hands, so it and a shield
- * exclude each other -- 'w' passes it over while a shield is worn and 'W'
- * passes the shield over while it is wielded. NetHack's rule; with no remove
- * command, dropping the shield is how you choose the two-hander. */
-#define SL_TWOHAND 1
+/* the SL_* slot values live in item_int.h: item_wear.c reads them too */
 
 typedef struct {
     char        cls;     /* class char in the terrain buffer                  */
@@ -440,8 +426,8 @@ void corpse_drop(uint8_t x, uint8_t y, char mch) __banked
 /* recompute the combat globals (weapon_dmg, armor_def, ac) from worn gear.
  * Erosion subtracts from an item's bonus; enchantment adds to it. */
 /* what a piece is actually worth once enchantment, erosion and blessing are
- * counted -- shared by recompute_gear and do_wear so the two cannot disagree
- * about which armour is better */
+ * counted -- shared by recompute_gear and do_wear (item_wear.c, through
+ * item_gear_eff) so the two cannot disagree about which armour is better */
 static int gear_eff(const obj_t *o)
 {
     int eff = (int)objtypes[o->otyp].prop + o->ench - o->ero;
@@ -746,21 +732,6 @@ int8_t eff_luck(void) __banked
 
 /* ---- inventory helpers ---- */
 
-static int find_class(char cls)
-{
-    uint8_t i;
-    for (i = 0; i < inv_count; i++)
-        if (objtypes[inv[i].otyp].cls == cls) return i;
-    return -1;
-}
-
-/* index of the strongest item of a class (highest prop + ench - erosion), so
- * 'w'/'W'/'P' equip the best you carry regardless of inventory order.
- *
- * An artifact outranks every ordinary weapon. 'w' chooses for the player, and
- * a number cannot see what an artifact is for: a +2 long sword (7) would tie
- * Sunsword and could beat Sting, so the god's gift might never be wielded.
- * Among artifacts the number decides again. */
 /* The worn piece of class cls in this slot, or -1: a body slot of '[', or
  * SL_TWOHAND of ')'. */
 static int worn_with(char cls, uint8_t slot)
@@ -772,47 +743,6 @@ static int worn_with(char cls, uint8_t slot)
     return -1;
 }
 #define find_worn_slot(sl) worn_with('[', (sl))
-
-/* Set by find_best and find_best_gain: the choice passed over a better piece
- * because a two-hander and a shield exclude each other -- so the refusal can
- * say why instead of claiming you already have your best. */
-static uint8_t blocked;
-
-static int find_best(char cls)
-{
-    int best = -1, bestval = -999, skipped = -999;
-    uint8_t i;
-    uint8_t shield = (uint8_t)(cls == ')' && find_worn_slot(SL_SHIELD) >= 0);
-    for (i = 0; i < inv_count; i++) {
-        int v;
-        if (objtypes[inv[i].otyp].cls != cls) continue;
-        v = (int)objtypes[inv[i].otyp].prop + inv[i].ench - inv[i].ero;
-        if (is_artifact(inv[i].otyp)) v += 100;
-        if (shield && objtypes[inv[i].otyp].slot == SL_TWOHAND) {
-            if (v > skipped) skipped = v;     /* it needs the shield's hand */
-            continue;
-        }
-        if (v > bestval) { bestval = v; best = i; }
-    }
-    blocked = (uint8_t)(skipped > bestval);
-    return best;
-}
-
-static void unworn_class(char cls)   /* take off whatever of this class is worn */
-{
-    uint8_t i;
-    for (i = 0; i < inv_count; i++)
-        if (objtypes[inv[i].otyp].cls == cls) inv[i].worn = 0;
-}
-
-/* index of the currently-worn item of class cls, or -1 */
-static int find_worn(char cls)
-{
-    uint8_t i;
-    for (i = 0; i < inv_count; i++)
-        if (inv[i].worn && objtypes[inv[i].otyp].cls == cls) return i;
-    return -1;
-}
 
 static int inv_add(const obj_t *o)
 {
@@ -1659,130 +1589,6 @@ void show_discoveries(void) __banked
                                * "(any key)" lingers on the Next's msg line */
 }
 
-/* ---- equip / use ---- */
-
-void do_wield(void) __banked
-{
-    int w = find_worn(')'), s;
-    if (w >= 0 && buc_st(&inv[w]) == BUC_CURSE && buc_seen(&inv[w])) {
-        msg("Your weapon is welded fast!"); return;
-    }
-    s = find_best(')');
-    if (s < 0 || inv[s].worn) {
-        msg(blocked ? "Your shield is in the way." :
-            s < 0   ? "You have no weapon to wield." : "Already wielding your best.");
-        return;
-    }
-    unworn_class(')');
-    inv[s].worn = 1;
-    inv[s].buc |= BUC_KNOWN;             /* equipping reveals the curse/blessing */
-    recompute_gear();
-    if (buc_st(&inv[s]) == BUC_CURSE) msg2("Welded!  ", obj_desc(&inv[s]), ".");
-    else                             msg2("Wield ", obj_desc(&inv[s]), ".");
-}
-
-/* The unworn piece that improves the SET most: the biggest gain over whatever
- * already occupies its slot. One W at a time therefore assembles a suit --
- * shield, then helm, then boots -- instead of swapping the body armour, and
- * it never asks a question the old one-suit version did not ask. */
-static int find_best_gain(void)
-{
-    int best = -1, bestgain = 0;
-    uint8_t i;
-    uint8_t both = (uint8_t)(worn_with(')', SL_TWOHAND) >= 0);
-    blocked = 0;
-    for (i = 0; i < inv_count; i++) {
-        const objtype_t *t = &objtypes[inv[i].otyp];
-        int gain, w;
-        if (t->cls != '[' || inv[i].worn) continue;
-        w = find_worn_slot(t->slot);
-        gain = gear_eff(&inv[i]) - (w >= 0 ? gear_eff(&inv[w]) : 0);
-        if (both && t->slot == SL_SHIELD) {   /* no hand left to hold it */
-            if (gain > 0) blocked = 1;
-            continue;
-        }
-        if (gain > bestgain) { bestgain = gain; best = (int)i; }
-    }
-    return best;
-}
-
-void do_wear(void) __banked
-{
-    int s = find_best_gain(), w;
-    if (s < 0) {
-        msg(blocked                ? "Both hands are on your weapon." :
-            find_best('[') < 0     ? "You have no armor to wear."
-                                   : "You are wearing your best.");
-        return;
-    }
-    w = find_worn_slot(objtypes[inv[s].otyp].slot);
-    if (w >= 0 && buc_st(&inv[w]) == BUC_CURSE && buc_seen(&inv[w])) {
-        msg("Your armor is welded on!"); return;
-    }
-    if (w >= 0) inv[w].worn = 0;        /* only THAT slot comes off */
-    inv[s].worn = 1;
-    inv[s].buc |= BUC_KNOWN;
-    recompute_gear();
-    if (buc_st(&inv[s]) == BUC_CURSE) msg2("Welded!  ", obj_desc(&inv[s]), ".");
-    else                             msg2("You don ", obj_desc(&inv[s]), ".");
-}
-
-/* The amulet of life saving, checked in ONE place: main() asks before it acts
- * on `dead`, so every way of dying -- a bite, a trap, starvation, a dragon's
- * breath -- is covered without touching any of them. The amulet burns out
- * doing it, as in NetHack. Returns 1 if it spent itself. */
-uint8_t life_saved(void) __banked
-{
-    uint8_t i;
-    if (!amu_life) return 0;
-    for (i = 0; i < inv_count; i++)
-        if (inv[i].worn && inv[i].otyp == O_AMU_LIFE) { inv_remove(i); break; }
-    dead = 0;
-    php = pmaxhp;
-    recompute_gear();                 /* clears amu_life with the amulet */
-    /* <= 32 columns on the 128K ULA: the first wording ran to 40 and the
-     * message line clipped it mid-word */
-    msg("But wait...  your amulet glows!");
-    sfx_magic();
-    return 1;
-}
-
-/* 'P' puts on a ring or an amulet -- one key for all the jewellery, as in
- * NetHack. It used to choose "the best ring" by itself, which was harmless
- * while both rings wore their names and would now be an oracle: with the
- * looks unknown, choosing for the player tells him which ruby ring is worth
- * wearing. So it asks, through the same menu as q/r/z (silent when you carry
- * one type). One ring on the hand at a time. It charges its own turn, like
- * q/e/r, so a cancel costs none -- mainentry used to charge one and the
- * amulet path a second. */
-void do_puton(void) __banked
-{
-    int s = select_item('P'), w;
-    char cls;
-    if (s == -1) { msg("You have nothing to put on."); return; }
-    if (s == -2) { msg("Never mind."); return; }
-    if (inv[s].worn) { msg("You are already wearing that."); return; }
-    cls = objtypes[inv[s].otyp].cls;
-    w = find_worn(cls);
-    if (w >= 0 && buc_st(&inv[w]) == BUC_CURSE && buc_seen(&inv[w])) {
-        msg(cls == '=' ? "Your ring is stuck fast!" : "Your amulet is stuck fast!");
-        return;
-    }
-    if (w >= 0) inv[w].worn = 0;        /* only that hand, or that neck */
-    inv[s].worn = 1;
-    inv[s].buc |= BUC_KNOWN;             /* putting it on reveals a curse */
-    recompute_gear();
-    /* A look is learned when the effect shows: an amulet at once (it has no
-     * look to learn), protection because the AC moves. The other rings keep
-     * their secret until they act, or until a scroll of identify. */
-    if (cls == '"' || (inv[s].otyp == O_PROTECT && gear_eff(&inv[s]) > 0))
-        id_set(inv[s].otyp);
-    if (buc_st(&inv[s]) == BUC_CURSE) msg2("Stuck!  ", obj_desc(&inv[s]), ".");
-    else                             msg2("Put on ", obj_desc(&inv[s]), ".");
-    sfx_magic();
-    acted = 1; turns++;
-}
-
 /* does inventory item i match the command's class?  'r' reads both scrolls
  * ('?') and spellbooks ('&'), NetHack-style. */
 static uint8_t cls_match(uint8_t i, char cls)
@@ -1914,6 +1720,12 @@ int     item_pick_worn(char cls) __banked                 { return pick_worn(cls
 void    item_id_set(uint8_t otyp) __banked                { id_set(otyp); }
 uint8_t item_obj_prop(uint8_t otyp) __banked              { return objtypes[otyp].prop; }
 char    item_obj_cls(uint8_t otyp) __banked               { return objtypes[otyp].cls; }
+/* ...and for item_wear.c (2026-10-23). obj_desc's buffer is resident BSS, so
+ * the name it hands back is readable from any bank. */
+uint8_t item_obj_slot(uint8_t otyp) __banked              { return objtypes[otyp].slot; }
+int     item_gear_eff(const obj_t *o) __banked            { return gear_eff(o); }
+int     item_worn_with(char cls, uint8_t slot) __banked   { return worn_with(cls, slot); }
+const char *item_obj_desc(const obj_t *o) __banked        { return obj_desc(o); }
 
 /* The scroll of destroy armor takes the OUTERMOST piece, as in NetHack: the
  * cloak first, then the suit, the helmet, the boots and the shield -- so a
@@ -1949,7 +1761,9 @@ void item_forget_ids(void) __banked
 }
 
 /* The verbs that activate or consume an item -- quaff, eat, read, throw, zap --
- * are in item_use.c, split off when this bank filled (see item_int.h). */
+ * are in item_use.c, split off when this bank filled (see item_int.h); the
+ * ones that put gear on -- wield, wear, put on -- in item_wear.c, split off
+ * when it filled again. */
 
 
 /* ---- save / restore (the inventory objects) ---- */
