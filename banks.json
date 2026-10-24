@@ -81,7 +81,7 @@
     "monster":       { "why": "resident: monster_at/mon_find/mon_tile are per-cell leaves" },
 
     "item_use":      { "code": "BANK_7", "const": "BANK_7", "why": "the verbs that activate or consume an item, split out of item.c when BANK_0 fell to 240 B (see the Next entry). BANK_7 is contended, which suits code that runs once per player action, not per turn" },
-    "item_wear":     { "code": "BANK_4", "const": "BANK_4", "why": "the verbs that put gear on, split out of item.c when BANK_0 fell to 37 B (see the Next entry). Values-only coupling, once per player action. BANK_4 was the one bank it fitted without moving a module into the room the split had just made for item.c; it left BANK_4 at 277 B, to be re-planned with bankpack when the take-off command lands here" },
+    "item_wear":     { "code": "BANK_4", "const": "BANK_4", "why": "the verbs that put gear on, split out of item.c when BANK_0 fell to 37 B (see the Next entry). Values-only coupling, once per player action. BANK_4 was the one bank it fitted without moving a module into the room the split had just made for item.c. With 'T' (1.9) it overflowed BANK_4 by 18 B, and bankpack's fixes all shrank BANK_0 or the AI's BANK_6; instead the two catalogue scans (best weapon, best armour gain) went back to item.c, where they read objtypes[] directly, and BANK_4 kept 596 B" },
     "item":          { "code": "BANK_0", "const": "BANK_0", "why": "item.c's own bank (the v0.9 reclaim) -- the 128K's spare uncontended bank" },
 
     "levelgen":      { "code": "BANK_1", "why": "cold code bank A" },

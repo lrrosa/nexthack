@@ -653,7 +653,7 @@ void show_help(void) __banked
     print_str(2,  7, "R rest  K kick  # sit",  C_CYAN | C_BRIGHT);
     print_str(2,  9, "a apply    , pick up", C_CYAN | C_BRIGHT);  /* not ',' over 'i' */
     print_str(2,  10, "i inventory  D found", C_CYAN | C_BRIGHT);
-    print_str(2, 11, "w wield    W wear",    C_CYAN | C_BRIGHT);
+    print_str(2, 11, "w wield  W wear  T take off", C_CYAN | C_BRIGHT);
     print_str(2, 12, "P put on   t throw",   C_CYAN | C_BRIGHT);
     print_str(2, 13, "q quaff    e eat",     C_CYAN | C_BRIGHT);
     print_str(2, 14, "r read     p pray",    C_CYAN | C_BRIGHT);

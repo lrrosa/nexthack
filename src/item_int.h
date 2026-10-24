@@ -92,8 +92,8 @@ enum {
 #define SL_CLOAK  5
 /* A weapon's `slot` (1.6): SL_TWOHAND takes both hands, so it and a shield
  * exclude each other -- 'w' passes it over while a shield is worn and 'W'
- * passes the shield over while it is wielded. NetHack's rule; with no remove
- * command, dropping the shield is how you choose the two-hander. */
+ * passes the shield over while it is wielded. NetHack's rule; 'T' taking the
+ * shield off (or the two-hander) is how you choose between them. */
 #define SL_TWOHAND 1
 
 /* Excalibur and the five gifts: unique, wielded first by 'w', never eroded */
@@ -149,6 +149,11 @@ uint8_t item_obj_slot(uint8_t otyp) __banked;  /* objtypes[otyp].slot, by value 
 int     item_gear_eff(const obj_t *o) __banked;  /* prop + ench - ero, BUC-adjusted */
 int     item_worn_with(char cls, uint8_t slot) __banked;  /* the worn piece there, or -1 */
 const char *item_obj_desc(const obj_t *o) __banked;  /* its name, in a RESIDENT buffer */
+uint8_t item_cursed_on(uint8_t s) __banked;    /* 1: worn, cursed, stuck (and says so) */
+int     item_find_best(char cls) __banked;     /* the best of a class to wield/wear */
+int     item_find_best_gain(void) __banked;    /* the armour that improves the set most */
+extern uint8_t item_blocked;   /* ...and either passed a better piece over: a
+                                * two-hander and a shield exclude each other */
 
 /* item_use.c's, for the throne (throne.c, which includes this header too, for
  * inv[] and the O_* ids -- under the same values-only rule) */

@@ -180,10 +180,14 @@ second ring hand and stacks still to come, it gave the equipment verbs (`w`
 `W` `P` and the amulet of life saving) to `item_wear.c` -- 2130 / 2046 B free.
 Same rule, four more accessors (`item_obj_slot`, `item_gear_eff`,
 `item_worn_with`, `item_obj_desc`; the last hands back obj_desc's buffer,
-which is resident BSS). It cost 109 B of trampoline on the 128K, and the
-destination there, BANK_4, was left at 277 B: bankpack's only ways to give
-it room moved a module into the bank the split had just emptied, so that
-waits for the take-off command's real size. `balance.py` reads the `SL_*`
+which is resident BSS). It cost 109 B of trampoline on the 128K and left
+BANK_4 there at 277 B, which `T` then overflowed by 18. bankpack's fixes all
+moved a module into BANK_0 (the room just made for item.c) or the AI's
+BANK_6, so the split's line moved instead: the two choices that *scan* the
+catalogue (`item_find_best`, `item_find_best_gain`) went back beside it,
+where each item weighed is an array read rather than three trampolines, and
+BANK_4 kept 596 B against BANK_0's 1409. The verbs act; item.c answers
+questions about the catalogue. `balance.py` reads the `SL_*`
 slots out of `item_int.h` now, and refuses to run without them.
 
 There are no automated *behaviour* tests, and CI does not add any. Verification is
@@ -329,7 +333,7 @@ files declare the interface; the `.c` is resident (R) or banked (B):
 | `attract.c/.h` | B | the title's attract demo: ~15 s of magic-mapped levels walked to the stairs by a random class (see Title & victory screens) |
 | `item.c/.h` | B | the inventory, the object catalogue and its names, the worn set's effects (`recompute_gear`), the floor and its stashes, pick up/drop |
 | `item_use.c` | B | the verbs that activate or consume an item: quaff (and fountains), eat (and corpses), read, throw, zap, and `E` (engraving with a wand) |
-| `item_wear.c` | B | the verbs that put gear on: `w` wield, `W` wear, `P` put on, and the amulet of life saving |
+| `item_wear.c` | B | the verbs that put gear on and take it off: `w` wield, `W` wear, `P` put on (two ring hands), `T` take off, and the amulet of life saving |
 | `secret.c` | B | secret doors and corridors (1.8): hidden by side hash after `gen_level`, never cutting `<` off `>`; found by `s` |
 | `feature.c` | B | the furniture (1.8): where sinks, thrones and graves stand; drinking from, kicking and dropping rings down a sink; graves' epitaphs and digging one up |
 | `throne.c` | B | `#` (1.8): sitting, and NetHack's thirteen throne effects (no wish) |
@@ -674,7 +678,7 @@ tilemap.
   the shield while one is wielded, and `blocked` turns the refusal into a
   reason. Measured: a one-handed 6 from Dlvl 14 alone took the Valkyrie with
   the dog from 53% to ~85%. Trading the shield costs little once `ARMOR_CAP`
-  is reached, so `balance.py runs --twohand` (the player drops the shield) is
+  is reached, so `balance.py runs --twohand` (the player takes the shield off) is
   the number to watch: in the corrected model ~84% against ~59% for the game's
   own choosing. Adding the sword moved neither by more than the noise; a 7
   from Dlvl 24 instead would have put the trader at 88%.
@@ -777,10 +781,10 @@ tilemap.
   farlook switch (`nexthack.c`), plus generation (`levelgen.c`'s loot blocks
   and `SHOPCLS`). Missing the pickup list makes the item visible, describable
   and impossible to take.
-- `q`/`e`/`r`/`P` use `select_item()`: silent when you carry one type, but it
+- `q`/`e`/`r`/`P`/`T` use `select_item()`: silent when you carry one type, but it
   pops a letter menu when two *different* types are present, and derives its
   prompt from the class (pseudo-classes: `'P'` rings + wearable amulets, `'C'`
-  wands for charging). These set `acted`/`turns` themselves, so a cancel or a
+  wands for charging, `'T'` whatever is worn or wielded). These set `acted`/`turns` themselves, so a cancel or a
   no-op costs no turn.
 - **Every teleport of the hero goes through `hero_teleport()`** (`nexthack.c`):
   the scroll, the trap, the spell and teleportitis. It is where teleport control
@@ -794,11 +798,13 @@ tilemap.
   `floor_place` (`item_floor_place` from `item_use.c`), which tries the
   neighbours and evicts the oldest corpse before failing -- and callers keep the
   object until it is down. Corpses and death loot stay on plain `floor_drop`.
-- **A cursed piece the hero has on stays on.** There is no remove command, so
-  every way an item leaves the pack is a way out of a curse: `d` (drop and
-  sell) asks `cursed_on()` in `item.c`, and `t` checks the weld itself in
+- **A cursed piece the hero has on stays on.** Every way an item comes off or
+  leaves the pack is a way out of a curse: `T` (take off, 1.9) and `d` (drop
+  and sell) ask `cursed_on()` in `item.c`, and `t` checks the weld itself in
   `item_use.c`. A new verb that parts with an item must ask too. From BUC's
   arrival until the 1.4 bug hunt, `d` did not, and every curse was a formality.
+  `P` fills a free place only -- two ring hands, one neck -- so a swap is `T`
+  then `P`, and the cursed one cannot be the one that makes way.
 - **Any 128K list goes through `list_row()`.** The ULA has 23 rows under a
   header and the pack holds 26: the inventory and drop lists used to stop at
   the 23rd item, and an item menu with no stop drew below row 23, into the
@@ -863,7 +869,7 @@ tilemap.
   with interrupts off (FRAMES dead), so there the bounded poll loop itself is the
   ~20 ms clock (`RPT_GUARD`) and the beat still follows the turn.
 - Movement: cursor keys **and** vi-keys (`hjkl`+`yubn`). Commands are NetHack-style
-  single letters (`,` `i` `w` `W` `P` `q` `e` `r` `S`, `>`/`<`/Enter for stairs). Uppercase
+  single letters (`,` `i` `w` `W` `P` `T` `q` `e` `r` `S`, `>`/`<`/Enter for stairs). Uppercase
   is **not** folded to lowercase (so `w` wield vs `W` wear are distinct).
 
 ### Sound (`sfx.c`)

@@ -744,6 +744,67 @@ static int worn_with(char cls, uint8_t slot)
 }
 #define find_worn_slot(sl) worn_with('[', (sl))
 
+/* ---- the equipment verbs' choices (item_wear.c asks; the scans stay here,
+ * beside the catalogue they read) ---- */
+
+/* Set by item_find_best and item_find_best_gain: the choice passed over a better piece
+ * because a two-hander and a shield exclude each other -- so the refusal can
+ * say why instead of claiming you already have your best. */
+uint8_t item_blocked;     /* BSS: resident, so item_wear.c reads it */
+
+/* index of the strongest item of a class (highest prop + ench - erosion), so
+ * 'w'/'W' equip the best you carry regardless of inventory order.
+ *
+ * An artifact outranks every ordinary weapon. 'w' chooses for the player, and
+ * a number cannot see what an artifact is for: a +2 long sword (7) would tie
+ * Sunsword and could beat Sting, so the god's gift might never be wielded.
+ * Among artifacts the number decides again. */
+int item_find_best(char cls) __banked
+{
+    int best = -1, bestval = -999, skipped = -999;
+    uint8_t i;
+    uint8_t shield = (uint8_t)(cls == ')' && find_worn_slot(SL_SHIELD) >= 0);
+    for (i = 0; i < inv_count; i++) {
+        int v;
+        if (objtypes[inv[i].otyp].cls != cls) continue;
+        v = (int)objtypes[inv[i].otyp].prop + inv[i].ench - inv[i].ero;
+        if (is_artifact(inv[i].otyp)) v += 100;
+        if (shield && objtypes[inv[i].otyp].slot == SL_TWOHAND) {
+            if (v > skipped) skipped = v;     /* it needs the shield's hand */
+            continue;
+        }
+        if (v > bestval) { bestval = v; best = i; }
+    }
+    item_blocked = (uint8_t)(skipped > bestval);
+    return best;
+}
+
+/* The unworn piece that improves the SET most: the biggest gain over whatever
+ * already occupies its slot. One W at a time therefore assembles a suit --
+ * shield, then helm, then boots -- instead of swapping the body armour, and
+ * it never asks a question the old one-suit version did not ask. */
+int item_find_best_gain(void) __banked
+{
+    int best = -1, bestgain = 0;
+    uint8_t i;
+    uint8_t both = (uint8_t)(worn_with(')', SL_TWOHAND) >= 0);
+    item_blocked = 0;
+    for (i = 0; i < inv_count; i++) {
+        uint8_t slot;
+        int gain, w;
+        if (objtypes[inv[i].otyp].cls != '[' || inv[i].worn) continue;
+        slot = objtypes[inv[i].otyp].slot;
+        w = find_worn_slot(slot);
+        gain = gear_eff(&inv[i]) - (w >= 0 ? gear_eff(&inv[w]) : 0);
+        if (both && slot == SL_SHIELD) {      /* no hand left to hold it */
+            if (gain > 0) item_blocked = 1;
+            continue;
+        }
+        if (gain > bestgain) { bestgain = gain; best = (int)i; }
+    }
+    return best;
+}
+
 static int inv_add(const obj_t *o)
 {
     if (inv_count >= MAXINV) return 0;
@@ -772,10 +833,10 @@ static void inv_remove(uint8_t s)
     inv_count--;
 }
 
-/* A cursed piece you have on stays on. There is no remove command, so `d` is
- * how anything comes off -- and it used to take a stuck ring or a welded suit
- * off as freely as a clean one, which made every curse a formality: P said
- * "stuck fast" and d dropped it. 1 = it is stuck (and the curse is now seen). */
+/* A cursed piece you have on stays on. Before 'T' (1.9) `d` was how anything
+ * came off -- and it used to take a stuck ring or a welded suit off as freely
+ * as a clean one, which made every curse a formality: P said "stuck fast" and
+ * d dropped it. Both ask here now. 1 = it is stuck (and the curse is seen). */
 static uint8_t cursed_on(uint8_t s)
 {
     char cls;
@@ -1598,6 +1659,8 @@ static uint8_t cls_match(uint8_t i, char cls)
         return (uint8_t)(c == '=' || (c == '"' && inv[i].otyp != O_AMULET));
     if (cls == 'C')          /* 'C': what a scroll of charging tops up */
         return (uint8_t)(c == '/' || inv[i].otyp == O_CAMERA);
+    if (cls == 'T')          /* 'T': whatever you have on, the weapon too */
+        return (uint8_t)(inv[i].worn != 0);
     return (uint8_t)(c == cls || (cls == '?' && c == '&'));
 }
 
@@ -1620,6 +1683,7 @@ static const char *pick_prompt(char cls)
     case '(': return "Apply what?";
     case 'P': return "Put on what?";
     case 'C': return "Charge what?";
+    case 'T': return "Take off what?";
     }
     return "Which item?";
 }
@@ -1726,6 +1790,7 @@ uint8_t item_obj_slot(uint8_t otyp) __banked              { return objtypes[otyp
 int     item_gear_eff(const obj_t *o) __banked            { return gear_eff(o); }
 int     item_worn_with(char cls, uint8_t slot) __banked   { return worn_with(cls, slot); }
 const char *item_obj_desc(const obj_t *o) __banked        { return obj_desc(o); }
+uint8_t item_cursed_on(uint8_t s) __banked                { return cursed_on(s); }
 
 /* The scroll of destroy armor takes the OUTERMOST piece, as in NetHack: the
  * cloak first, then the suit, the helmet, the boots and the shield -- so a

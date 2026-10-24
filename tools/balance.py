@@ -77,7 +77,7 @@ def fresh_rng(meta):
 
 
 def item_hash(world_seed, dlvl, x, y):
-    """src/item.c:967 -- pure; never touches the RNG stream."""
+    """src/item.c:1028 -- pure; never touches the RNG stream."""
     h = (world_seed + dlvl * 2657 + x * 131 + y * 1009) & M16
     h ^= (h << 7) & M16
     h ^= h >> 9
@@ -381,10 +381,10 @@ FORMULAS = [
     ("worn set", "src/item.c recompute_gear",
      "every worn '[' piece adds; armor_def saturates at ARMOR_CAP",
      "Hero.recompute() -- one piece per SL_* slot since 1.3"),
-    ("floor enchantment", "src/item.c:1067",
+    ("floor enchantment", "src/item.c:1128",
      "roll = (h >> 5) % 100; +1 if roll < depth, +2 if roll < depth/3",
      "floor_ench(h, depth)"),
-    ("floor BUC", "src/item.c:1074",
+    ("floor BUC", "src/item.c:1135",
      "r = (h >> 11) & 7 -- 5/8 uncursed, 2/8 cursed, 1/8 blessed",
      "floor_buc(h)"),
     ("force bolt", "src/spells.c:95",
@@ -546,7 +546,7 @@ class Hero(object):
         self.wpn_silver = False      # silver: double against V and i
         self.twohand = False         # the --twohand policy (simulate_run sets it)
         self.best_slot = {}          # armour slot -> eff of the piece worn
-        self.best_ring = None
+        self.rings = []              # effs of the rings on: two hands (1.9)
         for otyp, equipped in cls.kit:
             o = tables.objs[otyp]
             if o.cls == "!" and o.prop > 0:
@@ -559,22 +559,23 @@ class Hero(object):
                 self.offer(o.cls, o.prop, o.slot)
         self.recompute()
 
-    # -- src/item_wear.c:97 find_best_gain + src/item.c:447 recompute_gear ----------
+    # -- src/item.c:786 item_find_best_gain + :447 recompute_gear ------------------
     def offer(self, cls, eff, slot=0, silver=False):
         """consider a piece of gear.  Armour is per SLOT since 1.3 (do_wear
         takes off only the piece that slot already holds), so a shield and a
         suit are both worn rather than one replacing the other.  Since 1.6 a
-        two-handed weapon and a shield exclude each other (src/item_wear.c
-        find_best / find_best_gain): 'w' passes a two-hander over while a
-        shield is worn, 'W' a shield while a two-hander is wielded -- so this
-        hero, like the game's own choosing, keeps whichever came first."""
+        two-handed weapon and a shield exclude each other (src/item.c
+        item_find_best / item_find_best_gain): 'w' passes a two-hander over
+        while a shield is worn, 'W' a shield while a two-hander is wielded --
+        so this hero, like the game's own choosing, keeps whichever came first
+        (the player could 'T' one off since 1.9; --twohand models that)."""
         if eff <= 0:
             return False
         if cls == ")":
             if slot == self.t.SL_TWOHAND and self.t.SL_SHIELD in self.best_slot:
                 if not self.twohand or (self.best_wpn is not None and eff <= self.best_wpn):
                     return False
-                del self.best_slot[self.t.SL_SHIELD]   # --twohand: d the shield, w
+                del self.best_slot[self.t.SL_SHIELD]   # --twohand: T the shield off, w
             if self.best_wpn is None or eff > self.best_wpn:
                 self.best_wpn = eff
                 self.wpn_two = slot == self.t.SL_TWOHAND
@@ -587,8 +588,13 @@ class Hero(object):
                 self.best_slot[slot] = eff
                 return True
         elif cls == "=":
-            if self.best_ring is None or eff > self.best_ring:
-                self.best_ring = eff
+            # src/item_wear.c do_puton: two ring hands since 1.9, so the
+            # model keeps the best two -- a swap is T then P in the game
+            if len(self.rings) < 2:
+                self.rings.append(eff)
+                return True
+            if eff > min(self.rings):
+                self.rings[self.rings.index(min(self.rings))] = eff
                 return True
         return False
 
@@ -599,8 +605,7 @@ class Hero(object):
         runs won."""
         self.weapon_dmg = self.best_wpn or 0
         redux = sum(armor_redux(e) for e in self.best_slot.values())
-        if self.best_ring:
-            redux += self.best_ring
+        redux += sum(self.rings)
         cap = getattr(self.t, "ARMOR_CAP", 255)
         self.armor_def = cap if redux > cap else redux
 
@@ -870,7 +875,7 @@ def rest_breakeven(con, ring=False, amulet=False):
     """How much a fight may cost before resting stops paying for itself.
 
     'R' (src/nexthack.c:1320 rest_step) passes turns through the same
-    upkeep() (src/mainentry.c:145) as a wait ('.', src/mainentry.c:129) or a
+    upkeep() (src/mainentry.c:146) as a wait ('.', src/mainentry.c:130) or a
     search ('s', src/nexthack.c:1269), so whichever key spends the time,
     recovery is 1 HP every regen_period turns (src/nexthack.c:527).
     Meanwhile every turn rolls a wandering monster (src/monster_spawn.c:285).
