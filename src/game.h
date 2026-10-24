@@ -153,6 +153,10 @@ extern int8_t   luck;         /* hidden fortune, -5..+5: pleased gods raise it,
 #define PC_WIZARD   1
 #define PC_ROGUE    2
 #define PC_TOURIST  3
+#define PC_SAMURAI  4     /* 1.9: born Fast (classes[].intr)           */
+#define PC_BARBARIAN 5    /* 1.9: born resisting poison                */
+#define PC_PRIEST   6     /* 1.9: sees every item's B/U/C (item.c)     */
+#define PC_HEALER   7     /* 1.9: potions, a wand of sleep, a full purse */
 /* poison resistance, from the flesh or the amulet: every poisoning asks this */
 #define poison_res() ((intrinsics & INTR_POISON_RES) || amu_pois)
 

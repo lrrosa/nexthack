@@ -663,7 +663,8 @@ static const char *obj_desc(const obj_t *o)
         p = put_n(p, o->qty);
         *p++ = ' ';
     }
-    if (buc_seen(o)) {              /* show the BUC state once you've discovered it */
+    if (buc_seen(o) || pclass == PC_PRIEST) {   /* once discovered -- or always, by
+                                     * a Priest (1.9), as NetHack's sees every object's */
         s = (buc_st(o) == BUC_BLESS) ? "blessed " :
             (buc_st(o) == BUC_CURSE) ? "cursed "  : "";
         while (*s) *p++ = *s++;
@@ -864,13 +865,16 @@ static uint8_t stacks_with(const obj_t *a, const obj_t *b)
 static int inv_add(const obj_t *o)
 {
     uint8_t i;
+    obj_t c = *o;
+    if (pclass == PC_PRIEST) c.buc |= BUC_KNOWN;   /* 1.9: a Priest knows it --
+                                     * the welds and the merging read the bit */
     for (i = 0; i < inv_count; i++)
-        if (stacks_with(&inv[i], o)) {
-            inv[i].qty = (uint8_t)(inv[i].qty + o->qty);
+        if (stacks_with(&inv[i], &c)) {
+            inv[i].qty = (uint8_t)(inv[i].qty + c.qty);
             return 1;
         }
     if (inv_count >= MAXINV) return 0;
-    inv[inv_count++] = *o;
+    inv[inv_count++] = c;
     return 1;
 }
 

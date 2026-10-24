@@ -4,7 +4,7 @@
 #ifndef CLASSES_H
 #define CLASSES_H
 
-#define NCLASS 4
+#define NCLASS 8
 
 void pick_class(void) __banked;         /* menu; fills the character sheet   */
 void class_apply(uint8_t k) __banked;   /* the sheet of class k, no menu     */

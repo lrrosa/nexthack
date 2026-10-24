@@ -27,26 +27,49 @@ typedef struct {
 /* otyps from item.c's catalogue enum (kept in sync by hand -- item.c owns it) */
 #define K_DAGGER  0
 #define K_SHORTSW 1
+#define K_MACE    2
 #define K_LONGSW  3
 #define K_LEATHER 4
 #define K_RINGML  5
 #define K_HEAL    8
 #define K_FOOD    17      /* +1: O_IDENTIFY joined the scroll block */
 #define K_WSTRIKE 19
+#define K_WSLEEP  21
 #define K_BFORCE  25      /* spellbook of force bolt (after O_CORPSE 24) */
+#define K_BHEAL   26      /* spellbook of healing                        */
+#define K_SPLINT  36      /* splint mail, the 1.2 ladder's first rung    */
 #define K_CAMERA  80      /* the expensive camera (1.6, the Tourist's)    */
+#define K_TWOHSW  81      /* the two-handed sword (the Barbarian's, 1.9)  */
 #define K_EQ      0x80
 #define K_NONE    0xFF
 
-/* Four ways into the dungeon. The Valkyrie fights, the Wizard zaps, the
+/* Eight ways into the dungeon. The Valkyrie fights, the Wizard zaps, the
  * Rogue dodges, the Tourist haggles (and eats well). HP/Pw and the sheet
- * follow NetHack's flavour scaled to our numbers. */
+ * follow NetHack's flavour scaled to our numbers.
+ *
+ * The 1.9 four, appended so no saved pclass shifts, each with NetHack's own
+ * signature: the Samurai is born Fast (his katana is our long sword, his
+ * splint mail NetHack's), the Barbarian swings a two-handed sword and shrugs
+ * off poison, the Priest sees whether anything is blessed or cursed
+ * (item.c: obj_desc, inv_add), and the Healer carries the healing
+ * spell, a potion, a wand of sleep, a scalpel and a full purse.
+ *
+ * Their sheets are balance.py's, against NetHack's order (the Healer down
+ * with the Tourist): the healing book is what carries a Priest or a Healer,
+ * so Wisdom 14 -- the Pw-regen threshold, upkeep() -- is worth a great deal,
+ * and their bodies pay for it; Dexterity counts in steps of two (to-hit
+ * reads Dx >> 1). Fast is worth to the Samurai what St 17 is to the
+ * Valkyrie. */
 static const class_t classes[NCLASS] = {
     /* name        St Dx Co In Wi Ch   hp pw  kit                                                  $   align intr */
     { "Valkyrie", {17,12,16, 8,10, 8}, 16, 1, {K_LONGSW|K_EQ,  K_RINGML|K_EQ,  K_NONE, K_NONE},     0, 0, 0 },
     { "Wizard",   { 8,11,10,16,14,10}, 10, 6, {K_DAGGER |K_EQ, K_BFORCE,       K_HEAL, K_NONE},     0, 1, 0 },
     { "Rogue",    {11,16,12,10, 8, 8}, 12, 2, {K_DAGGER |K_EQ, K_LEATHER|K_EQ, K_NONE, K_NONE},    60, 2, INTR_STEALTH },
     { "Tourist",  {10,11,12,10, 8,14}, 12, 2, {K_FOOD,         K_FOOD,         K_HEAL, K_CAMERA}, 120, 1, 0 },
+    { "Samurai",  {16,16,15, 8,10, 8}, 14, 1, {K_LONGSW|K_EQ,  K_SPLINT|K_EQ,  K_NONE, K_NONE},     0, 0, INTR_FAST },
+    { "Barbarian",{16,12,16, 7, 8, 7}, 16, 1, {K_TWOHSW|K_EQ,  K_RINGML|K_EQ,  K_NONE, K_NONE},     0, 2, INTR_POISON_RES },
+    { "Priest",   {12, 8,13,10,14,12}, 11, 4, {K_MACE  |K_EQ,  K_LEATHER|K_EQ, K_BHEAL, K_HEAL},    0, 1, 0 },
+    { "Healer",   { 8,11,12,12,13,13}, 10, 4, {K_DAGGER|K_EQ,  K_HEAL,         K_BHEAL, K_WSLEEP}, 200, 1, INTR_POISON_RES },
 };
 
 /* Ask who the player is (a full-screen menu at new-game time) and fill the
@@ -65,7 +88,7 @@ void pick_class(void) __banked
         putcell(5, y, ')', C_YELLOW | C_BRIGHT);
         print_str(7, y, classes[i].name, C_CYAN | C_BRIGHT);
     }
-    print_str(4, 14, "Press a-d", C_WHITE | C_BRIGHT);
+    print_str(4, 21, "Press a-h", C_WHITE | C_BRIGHT);
     in_wait_nokey();
     do { k = getkey(); } while (k < 'a' || k >= 'a' + NCLASS);
     in_wait_nokey();

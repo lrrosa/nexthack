@@ -244,7 +244,15 @@ asleep at the first blow only for a stealthy hero, as `still_asleep` rules;
 it used to grant every class a free sneak attack in half its fights. The class
 targets set 2026-10-05 (NetHack's order, measured with the dog over 5 seeds):
 Valkyrie ~59%, Wizard ~43%, Rogue ~35%, Tourist ~19%. Before the signatures the
-three were at 0-1%; without the dog every class is under 3%.
+three were at 0-1%; without the dog every class is under 3%. The 1.9 four were
+set to NetHack's order around them (2026-10-24, same measure): Samurai ~66%,
+Barbarian ~61%, Priest ~51%, Healer ~17%. Two model corrections came with
+them: a Fast hero's free turn runs on a clock across fights (`hero.clock`, as
+the game's `turns` does -- counted per fight it almost never came round, and
+Fast was worth 0.5 points instead of 16), and a hurt hero with the healing book
+casts it between fights before drinking a potion. Wisdom 14 is a cliff for a
+healer-caster: it is the Pw-regen threshold, and the model's Pw arrives a whole
+point per fight (68% against 16% for the Priest at Wi 14 and 13).
 
 Subcommands: `tables curves duel gear rest gauntlet runs sweep report`
 (`--class`, `--depths`, `--turns`, `--engage`, `--pet`, `--csv`). `sweep` exists
@@ -739,6 +747,12 @@ tilemap.
   cursed throne's drain lowers the attribute but never its peak -- which is
   what a potion of restore ability puts back. A new way to raise an
   attribute goes through `at_gain`; a new drain leaves the peak alone.
+- **The 1.9 classes** (`classes.c`, appended so no saved `pclass` shifts): the
+  Samurai is born Fast (`classes[].intr`), the Barbarian poison-resistant
+  with a two-handed sword, the Healer carries the healing book, a wand of
+  sleep and 200 gold, and the Priest sees every object's B/U/C -- `obj_desc`
+  prints it for him whatever the known bit says, and `inv_add` sets the bit
+  on what he takes, because the welds and the stack merging read it.
 - **Class signatures** (1.6, `PC_*` in `game.h` name the `classes[]` rows): the
   Wizard regains Pw every 8 turns (`upkeep`) and force bolt is d(2,12); the
   Rogue is born stealthy and backstabs a sleeper for `rn2(xlvl)+1+xlvl/4` more

@@ -77,7 +77,7 @@ def fresh_rng(meta):
 
 
 def item_hash(world_seed, dlvl, x, y):
-    """src/item.c:1100 -- pure; never touches the RNG stream."""
+    """src/item.c:1104 -- pure; never touches the RNG stream."""
     h = (world_seed + dlvl * 2657 + x * 131 + y * 1009) & M16
     h ^= (h << 7) & M16
     h ^= h >> 9
@@ -289,6 +289,7 @@ class Tables(object):
                 intr=_num(f[7], gd), idx=len(self.classes)))
         # src/game.h: the bits and indices the class rules key on (1.6)
         self.INTR_STEALTH = _num(gd.get("INTR_STEALTH", "0"), gd)
+        self.INTR_FAST = _num(gd["INTR_FAST"], gd)      # 1.9: the Samurai's
         self.PC_WIZARD = _num(gd.get("PC_WIZARD", "1"), gd)
         self.PC_ROGUE = _num(gd.get("PC_ROGUE", "2"), gd)
 
@@ -298,6 +299,7 @@ class Tables(object):
         self.sp_cost = [int(v) for v in _body(spl_c, "sp_cost[NSPELL]").split(",")]
         sd = _defines(spl_c)
         self.SP_FORCE = int(sd.get("SP_FORCE", "0"))
+        self.SP_HEAL = int(sd["SP_HEAL"])
 
         self.DLVL_AMULET = int(_defines(game_h)["DLVL_AMULET"])
         self.MAXMON = int(_defines(mon_h)["MAXMON"])
@@ -398,10 +400,10 @@ FORMULAS = [
     ("worn set", "src/item.c recompute_gear",
      "every worn '[' piece adds; armor_def saturates at ARMOR_CAP",
      "Hero.recompute() -- one piece per SL_* slot since 1.3"),
-    ("floor enchantment", "src/item.c:1201",
+    ("floor enchantment", "src/item.c:1205",
      "roll = (h >> 5) % 100; +1 if roll < depth, +2 if roll < depth/3",
      "floor_ench(h, depth)"),
-    ("floor BUC", "src/item.c:1208",
+    ("floor BUC", "src/item.c:1212",
      "r = (h >> 11) & 7 -- 5/8 uncursed, 2/8 cursed, 1/8 blessed",
      "floor_buc(h)"),
     ("force bolt", "src/spells.c:95",
@@ -555,7 +557,8 @@ class Hero(object):
         self.spells = set()          # read from the kit's spellbooks at once
         self.stealthy = bool(cls.intr & tables.INTR_STEALTH)
         self.rogue = cls.idx == tables.PC_ROGUE
-        self.fast = False            # INTR_FAST (1.9): no class is born Fast yet
+        self.fast = bool(cls.intr & tables.INTR_FAST)   # INTR_FAST (1.9): the Samurai
+        self.clock = 0               # turns fought, for Fast's 1 in 4 (game: turns)
         self.wizard = cls.idx == tables.PC_WIZARD
         self.charges = 0             # the camera's (src/item.c give_item: 50)
         # best-worn tracking: item.c equips the highest prop+ench-ero
@@ -577,7 +580,7 @@ class Hero(object):
                 self.offer(o.cls, o.prop, o.slot)
         self.recompute()
 
-    # -- src/item.c:821 item_find_best_gain + :454 recompute_gear ------------------
+    # -- src/item.c:822 item_find_best_gain + :459 recompute_gear ------------------
     def offer(self, cls, eff, slot=0, silver=False):
         """consider a piece of gear.  Armour is per SLOT since 1.3 (do_wear
         takes off only the piece that slot already holds), so a shield and a
@@ -714,8 +717,14 @@ def fight(rng, hero, mt, depth, asleep=None, pet_dmg=0):
         asleep = False                  # the swing wakes it either way
         if mhp <= 0:
             return True, start - hero.hp, turns
+        # src/monster_ai.c monsters_turn: a Fast hero's free turn banks nothing
+        # for anyone, the dog included -- on the game's turn counter, which runs
+        # across fights (a per-fight count would rarely reach its 4th round)
+        hero.clock += 1
+        free = hero.fast and hero.clock % 4 == 0
         if pet_dmg:
-            pmv += pet_spd
+            if not free:
+                pmv += pet_spd
             for _ in range(2):
                 if pmv < ns:
                     break
@@ -725,7 +734,7 @@ def fight(rng, hero, mt, depth, asleep=None, pet_dmg=0):
                 return True, start - hero.hp, turns
         if mt.ch == "@":                # the shopkeeper never fights back
             continue
-        if not (hero.fast and turns % 4 == 0):
+        if not free:
             mv += min(mt.spd, 24)
         for _ in range(2):              # two passes at most
             if mv < ns:
@@ -855,6 +864,14 @@ def do_level(rng, t, hero, depth, opts, log=None):
         hero.gain_xp(rng, mt.xp)
         hero.hp = min(hero.maxhp, hero.hp + regen_each)
         hero.pw = min(hero.maxpw, hero.pw + pw_each)
+        # src/spells.c:153 healing (1.9 model): a hurt caster with the book
+        # spends the Pw before a potion -- the Pw comes back, a potion does not
+        sp_heal = t.SP_HEAL
+        while (hero.hp < hero.maxhp * opts.quaff_at and sp_heal in hero.spells
+               and hero.pw >= t.sp_cost[sp_heal]):
+            hero.pw -= t.sp_cost[sp_heal]
+            if cast_ok(rng, hero.i, hero.xlvl):
+                hero.hp = min(hero.maxhp, hero.hp + rng.rn2(8) + 6)
         if hero.hp < hero.maxhp * opts.quaff_at and hero.potions:
             ot = hero.potions.pop()
             hero.hp = min(hero.maxhp, hero.hp + potion_heal(rng, t.objs[ot].prop))
