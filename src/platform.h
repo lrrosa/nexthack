@@ -79,8 +79,19 @@
 #define T_SINK        177  /* a kitchen sink (1.8): 'q' sips, 'K' kicks       */
 #define T_THRONE      178  /* a throne (1.8): '#' sits                        */
 #define T_GRAVE       179  /* a grave (1.8): a headstone; a pick-axe digs it   */
+/* the 1.9 monsters, one tile each */
+#define T_UNICORN     180  /* unicorn: a white horse, golden horn (1.9) */
+#define T_ROTHE       181  /* rothe: a shaggy brown beast with horns (1.9) */
+#define T_QMECH       182  /* quantum mechanic: a cyan lab coat (1.9) */
+#define T_RUSTMON     183  /* rust monster: a rust-orange bug (1.9) */
+#define T_OGRE        184  /* ogre: a bare-chested brute with a club (1.9) */
+#define T_SPIDER      185  /* giant spider: violet, red-eyed; PAL2 (1.9) */
+#define T_UMBERHULK   186  /* umber hulk: dark brown, four yellow eyes (1.9) */
+#define T_PUDDING     187  /* black pudding: a dark blob (1.9) */
+#define T_HILLGIANT   188  /* hill giant: bearded, a cyan tunic (1.9) */
+#define T_LICH        189  /* lich: a crowned skull in a blue robe (1.9) */
 
-#define NTILES   52      /* T_ROCK..T_GRAVE: the graphic tiles.
+#define NTILES   62      /* T_ROCK..T_LICH: the graphic tiles.
                           * 128K: udg_bitmap (0x6680, 8 B/tile) may run to
                           * 0x6888 -- ids up to 192 -- where the mirrored annex
                           * (193..195) begins; inv[] moved out of 0x6800 in 1.6
@@ -94,7 +105,7 @@
  * never drawn dimmed). The 128K's 1-bit tiles take their inks as before. */
 #define PAL2_ATTR 0x30
 #define tile_pal2(t) ((t) == T_SNAKE || (t) == T_VAMPIRE || \
-                      (t) == T_PRIEST || (t) == T_NYMPH)
+                      (t) == T_PRIEST || (t) == T_NYMPH || (t) == T_SPIDER)
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT

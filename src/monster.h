@@ -83,13 +83,17 @@ typedef struct {
     uint8_t     atk;        /* special on-hit attack (ATK_*)        */
     uint8_t     spd;        /* NetHack's speed (1.9): it acts once for every
                              * NORMAL_SPEED points it banks a turn; <= 24 */
+    uint8_t     freq;       /* generation weight in its depth's pool (1.9) */
+    uint8_t     maxdep;     /* deepest it spawns at; 255 = no limit (1.9) */
     const char *name;
 } MonType;
 #define NORMAL_SPEED 12     /* the hero's, and one action a turn's worth */
 
 /* MonType.atk -- the special effect a successful bite may inflict */
 enum { ATK_NONE, ATK_POISON, ATK_BLIND, ATK_SLEEP, ATK_STEAL, ATK_DRAIN,
-       ATK_ITEM };   /* ATK_ITEM: steals an inventory item (the nymph) */
+       ATK_ITEM,     /* ATK_ITEM: steals an inventory item (the nymph) */
+       ATK_TELE,     /* 1.9: teleports you (the quantum mechanic) */
+       ATK_CONF };   /* 1.9: confuses you (the umber hulk's gaze) */
 
 /* ---- RESIDENT lookups (monster.c): hot, called per cell/monster by the
  * renderer and the banked AI; not banked so those calls stay direct ---- */

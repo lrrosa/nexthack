@@ -77,7 +77,7 @@ need = ['_hero_x', '_hero_y', '_hero_face', '_dlvl', '_php', '_pmaxhp', '_nutrit
         '_turns', '_world_seed', '_rng', '_gold', '_resting', '_dead', '_won', '_st_blind',
         '_st_sleep', '_intrinsics', '_amu_esp', '_shop_room', '_r_x', '_r_y', '_r_w', '_r_h',
         '_rcount', '_vis_now', '_cur_slot', '_has_amulet', '_floor_n', '_stash', '_gold_taken',
-        '_item_taken', '_mon_dead', '_door_open', '_el_life', 'tempsp']
+        '_item_taken', '_mon_dead', '_door_open', '_el_life', '_m_track', 'tempsp']
 if target == 'zx128':
     need += ['_vx_origin', '_udg_ink']
 else:
@@ -105,6 +105,14 @@ for m in re.finditer(r"\{\s*('(.)'|MON_KEEPER),\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*(T
     mon[m.group(2) or '@'] = tiles[m.group(3)]      # MON_KEEPER is '@' (monster.h)
 if not mon:
     sys.exit('fuzzcfg: no montypes[] rows parsed out of monster.c')
+# 1.9: the depth window of every type that has one (maxdep < 255), by char
+# code -- pick_mon's rule, restated for the fuzzer's mon-window check
+monwin = {}
+for m in re.finditer(r"\{\s*'(.)',\s*\d+,\s*\d+,\s*\d+,\s*(\d+),\s*T_\w+,\s*\d+,\s*ATK_\w+,"
+                     r"\s*\d+,\s*\d+,\s*(\d+),",
+                     open(os.path.join(src, 'monster.c'), encoding='utf-8').read()):
+    if int(m.group(3)) < 255:
+        monwin[ord(m.group(1))] = [int(m.group(2)), int(m.group(3))]
 
 code_end = syms.get('__CODE_END_head') or consts.get('__CODE_END_head')
 bss_end = syms.get('__BSS_END_head') or consts.get('__BSS_END_head')
@@ -187,6 +195,9 @@ cfg = {
     'maxinv': bankmap.const('MAXINV', ['item_int.h', 'item.c']),
     'objsz': bankmap.obj_size(), 'stack_max': bankmap.const('STACK_MAX', ['item_int.h']),
     'stackable': stackable,
+    'monwin': monwin,
+    'mines_base': bankmap.const('DLVL_AMULET', ['game.h']) + 1,
+    'mines_entr': bankmap.const('MINES_ENTR_DLVL', ['game.h']),
     # getkey_rpt also waits under cursor_pick (farlook, teleport control):
     # a return address in here on the stack tells the two apart
     'cursor': [need_sym('_cursor_pick') & 0xFFFF, func_end('_cursor_pick') & 0xFFFF],

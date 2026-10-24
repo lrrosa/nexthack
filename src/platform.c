@@ -97,7 +97,12 @@ const uint8_t udg_ink[NTILES] = {
     /* TROLL  VAMPIRE  DRAGON  PRIEST  MIMIC  MINEHOLE GNOME DWARF LUCKSTONE MINEWALL NYMPH TOOL */
        6,     7,       2,      3,      3,     6,       1,    7,    7,        6,       3,    6,
     /* SINK  THRONE  GRAVE (1.8) */
-       7,    22,     7
+       7,    22,     7,
+    /* UNICORN ROTHE QMECH RUSTMON OGRE SPIDER UMBERHULK PUDDING HILLGIANT LICH (1.9):
+     * the unicorn and the lich white, the brown ones yellow (NetHack's brown,
+     * as ever), the mechanic and the giant cyan, the rust monster red, the
+     * spider magenta, the pudding blue -- black ink would vanish on black */
+       7, 6, 5, 2, 6, 3, 6, 1, 5, 7
     /* sink and grave white; the throne yellow on red, the Next's gold frame
      * round a red cushion (the shop wall's pair, which no room floor wears) */
     /* zombie white (NetHack's human zombie); keeper magenta; leprechaun green; yellow light

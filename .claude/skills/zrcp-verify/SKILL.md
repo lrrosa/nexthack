@@ -269,12 +269,17 @@ python .claude\skills\zrcp-verify\fuzz\cover.py nexthack128.map "$env:TEMP\nexth
 **What it checks.** At every wait of the MAIN loop's `getkey_rpt`: `dlvl`
 1..54; the hero inside the map and on walkable ground; every monster in
 bounds, not in rock, not stacked, not on the hero; `mcount <= MAXMON`; the
-pack's count and `otyp`s; `php <= pmaxhp`; the pet slot alive and a dog;
-`dug_pool`'s count; and a **renderer oracle** that recomputes every viewport
-cell the way a forced full redraw would, against `VIEW_SHADOW` and the ULA
-screen (128K) or the tilemap (Next). On each level's first check: `>`, `<`,
-the mine entrance (Dlvl 2) and the Amulet's cell (Dlvl 50) reachable on foot,
-one `<`, one `>` except at the two bottoms, the mine hole only on Dlvl 2.
+pack's count, `otyp`s and stack counts (`inv-qty`: never 0, never past
+`STACK_MAX`, above 1 only on a type that stacks); `php <= pmaxhp`; the pet
+slot alive and a dog; `dug_pool`'s count; the level's own spawns inside their
+type's depth window (`mon-window`, 1.9); and a **renderer oracle** that
+recomputes every viewport cell the way a forced full redraw would, against
+`VIEW_SHADOW` and the ULA screen (128K) or the tilemap (Next). On each
+level's first check: `>`, the mine entrance (Dlvl 2) and the Amulet's cell
+(Dlvl 50) reachable on foot **from `<`** -- not from the hero, who may have
+been teleported into a room only a secret door leads to (legal; it used to be
+flagged) -- one `<`, one `>` except at the two bottoms, the mine hole only on
+Dlvl 2.
 Throughout: **write watchpoints** on memory the game must never write --
 resident code, the code banks, Bank 5's gaps between tenants (from
 `bankmap.py`), the free space between `__BSS_END` and the stack reserve -- and

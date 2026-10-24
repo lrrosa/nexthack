@@ -235,7 +235,7 @@ void do_quaff(void) __banked
  * teaches the body something -- or punishes it. The NetHack classics. */
 static void eat_corpse(char mch)
 {
-    if (mch == 'S' || mch == 'k') {              /* poisonous flesh */
+    if (mch == 'S' || mch == 'k' || mch == 's') {  /* poisonous flesh */
         if (poison_res())
             msg("Ecch.  No harm done.");
         else if (rn2(3) == 0) {
@@ -259,7 +259,11 @@ static void eat_corpse(char mch)
         intrinsics |= INTR_TELEPATHY;
         map_dirty = 1;               /* if already blind, sense them at once */
         msg("You feel a strange awareness!");
-    } else if (mch == 'a') {                     /* acid blob: burns going down */
+    } else if (mch == 'Q') {                     /* quantum mechanic (1.9): NetHack's */
+        intrinsics ^= INTR_FAST;                 /* speed toggle */
+        msg((intrinsics & INTR_FAST) ? "You feel yourself speed up."
+                                     : "You feel yourself slow down.");
+    } else if (mch == 'a' || mch == 'P') {       /* acid blob, pudding: burns going down */
         if (php > 2) php = (uint8_t)(php - 2);
         msg("Acrid!  It burns.");
     } else if (mch == 'D') {                     /* dragon flesh hardens the blood */
@@ -688,12 +692,17 @@ void do_apply(void) __banked
     else                       apply_horn((uint8_t)buc_st(&inv[s]));
 }
 
-/* A slain dwarf may leave its pick-axe, as NetHack's dwarves carry one: the
- * Mines are where you find it (monster_ai.c's kill, one dwarf in three). */
-void dwarf_pick(uint8_t x, uint8_t y) __banked
+/* What a slain monster carried (monster_ai.c's kill, every kill): a dwarf
+ * his pick-axe one time in three -- the Mines are where you find it -- and a
+ * unicorn its horn, always (1.9), as in NetHack. The dwarf's rn2 is drawn
+ * only for a dwarf, as before. */
+void kill_tool(uint8_t x, uint8_t y, char mch) __banked
 {
     obj_t o;
-    o.otyp = O_PICKAXE; o.ench = 0; o.ero = 0; o.worn = 0; o.buc = BUC_UNC; o.qty = 1;
+    if (mch == 'h') { if (rn2(3) != 0) return; o.otyp = O_PICKAXE; }
+    else if (mch == 'u') o.otyp = O_UHORN;
+    else return;
+    o.ench = 0; o.ero = 0; o.worn = 0; o.buc = BUC_UNC; o.qty = 1;
     item_floor_place(x, y, &o);
 }
 

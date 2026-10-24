@@ -136,7 +136,7 @@ local GIFTS = { "pick-axe", "wand of digging", "wand of teleportation", "wand of
   "skeleton key", "spellbook of teleportation", "spellbook of force bolt",
   "spellbook of sleep", "battle-axe", "large shield", "Stormbringer", "Sting", "corpse",
   "carrot", "silver saber", "helmet", "cloak", "wand of speed monster" }
-local CORPSES = "ekSaDiWlnZT"
+local CORPSES = "ekSaDiWlnZTQsP"
 local gifts = 0
 local function gift()
   local n = r8(S.inv_count)
@@ -357,10 +357,16 @@ end
 -- ---------------------------------------------------------------- invariants
 local function walkable(c) return not (c == 124 or c == 45 or c == 32) end
 
--- On a level's first check: can the hero WALK to the way on? A flood over every
--- walkable cell (8 ways, as try_move moves; a locked door counts, the boot
--- opens it) from the hero must reach the down stairs, the mine entrance on
--- Dlvl 2 and the Amulet's cell on Dlvl 50. A level that fails is a soft lock.
+-- On a level's first check: are the ways on and off WALKABLY joined? A flood
+-- over every walkable cell (8 ways, as try_move moves; a locked door counts,
+-- the boot opens it) from the UP STAIRS must reach the down stairs, the mine
+-- entrance on Dlvl 2 and the Amulet's cell on Dlvl 50 -- what 1.8's secrets
+-- promise (secret.c never hides a square of that way). A level that fails is
+-- a soft lock. It flooded from the hero until 2026-10-24, which assumed the
+-- first check sees the hero where it arrived; but when the arrival raises a
+-- --More--, the random keys at it can read a scroll of teleportation first,
+-- and a teleport may land in a room only a secret door leads to -- legal, as
+-- in NetHack: you search your way out. Three scans flagged exactly that.
 local reach_seen = {}
 local reach_levels = 0
 local function reach_check(g)
@@ -369,7 +375,7 @@ local function reach_check(g)
   reach_seen[key] = true
   reach_levels = reach_levels + 1
   local seen, q, h = {}, {}, 1
-  local start = g.hy * 80 + g.hx
+  local start = r8(S.up_y) * 80 + r8(S.up_x)
   seen[start] = true; q[1] = start
   while h <= #q do
     local k = q[h]; h = h + 1
@@ -384,8 +390,8 @@ local function reach_check(g)
   end
   local function need(x, y, what)
     if not seen[y * 80 + x] then
-      report("unreachable-" .. what, string.format("hero (%d,%d) cannot walk to %s at (%d,%d) c=%q; %d cells reachable",
-        g.hx, g.hy, what, x, y, string.char(r8(S.lvl + y * 80 + x)), #q))
+      report("unreachable-" .. what, string.format("up stairs (%d,%d) cannot walk to %s at (%d,%d) c=%q; %d cells reachable",
+        r8(S.up_x), r8(S.up_y), what, x, y, string.char(r8(S.lvl + y * 80 + x)), #q))
     end
   end
   local dx, dy = r8(S.dn_x), r8(S.dn_y)
@@ -534,6 +540,21 @@ local function check()
       occ[k] = mo.i
       if mo.x == g.hx and mo.y == g.hy then
         report("mon-on-hero", string.format("slot %d %q at (%d,%d)", mo.i, string.char(mo.t), mo.x, mo.y))
+      end
+    end
+  end
+  -- 1.9: the level's own spawns (m_track) keep to their type's depth window
+  -- -- pick_mon's freq/maxdep rule, at eff_depth (+15 with the Amulet).
+  -- Summons and wanderers are not tracked, so they are not held to it.
+  do
+    local mtk = r8(S.m_track)
+    local d = g.mines and (cfg.mines_entr + 1 + (g.dlvl - cfg.mines_base)) or g.dlvl
+    if r8(S.has_amulet) ~= 0 then d = d + 15 end
+    for _, mo in ipairs(g.mons) do
+      local w = cfg.monwin[mo.t]
+      if w and ((mtk >> mo.i) & 1) == 1 and (d < w[1] or d > w[2]) then
+        report("mon-window", string.format("slot %d %q at depth %d, window %d..%d",
+               mo.i, string.char(mo.t), d, w[1], w[2]))
       end
     end
   end

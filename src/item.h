@@ -46,7 +46,7 @@ void steal_item(uint8_t mi) __banked; /* the nymph lifts an item + blinks away  
 uint8_t item_scare_here(void) __banked; /* a scroll of scare monster underfoot */
 void do_apply(void) __banked;           /* 'a': use a tool (item_use.c)       */
 void do_engrave(void) __banked;         /* 'E': Elbereth, by finger or wand   */
-void dwarf_pick(uint8_t x, uint8_t y) __banked;  /* a slain dwarf's pick-axe  */
+void kill_tool(uint8_t x, uint8_t y, char mch) __banked;  /* a dwarf's pick, a unicorn's horn */
 void drop_held(uint8_t mi) __banked;  /* a slain thief drops its stolen loot    */
 void death_drop(uint8_t x, uint8_t y) __banked; /* a kill may leave random loot */
 void item_spawn(uint8_t x, uint8_t y, char cls, uint8_t cursed) __banked;  /* a new one */

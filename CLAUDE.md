@@ -827,7 +827,7 @@ tilemap.
 
 ### Monster AI (`monster.c`)
 - Monster types are a table (`montypes[]`: char, hp, damage, xp, min depth, tile,
-  `corr`, `atk`, `spd`, name); `spawn_level_monsters()` draws from the depth-appropriate pool.
+  `corr`, `atk`, `spd`, `freq`, `maxdep`, name); `spawn_level_monsters()` draws from the depth-appropriate pool.
   HP/damage scale with depth. A `corr` (corrosive) monster — the acid blob — calls
   `corrode_worn()` (in `item.c`) to rust the hero's armour when it bites and the
   wielded weapon when struck; erosion raises `obj_t.ero`, capped at 3.
@@ -844,6 +844,26 @@ tilemap.
   so the table keeps the flavour at half the spread -- the reasoning and the
   numbers are in the comment above `montypes[]`. `balance.py`'s `fight`
   banks points the same way for the monster and the dog.
+- **Weights and windows** (1.9): `pick_mon` draws a depth's eligible types in
+  proportion to `MonType.freq`, and a type spawns only from `mindepth` to
+  `maxdep` (255 = for ever) -- still one `rn2`, and `balance.py`'s `pool()`
+  repeats each type `freq` times so the model draws exactly what the game
+  does. The old roster weighs 2 with no limit; the ten 1.9 types (unicorn,
+  rothe, quantum mechanic, rust monster, ogre, giant spider, umber hulk,
+  black pudding, hill giant, lich) weigh 1 and spawn for ten levels from
+  their first. **Add a monster that way, and measure it**: every bite grows
+  by `eff_depth()/4`, so a sturdy type that stays eligible for ever
+  lengthens every deeper fight -- added plainly the ten took the Valkyrie to
+  4% and the Tourist to 0, even when each was tuned to cost no more than its
+  strongest peer at its own depth (`balance.py duel`). The fuzzer checks the
+  windows (`mon-window`, the level's own spawns only: summons and wanderers
+  are not tracked). New attacks: `ATK_TELE` (the mechanic: `hero_teleport`,
+  so teleport control asks) and `ATK_CONF` (the hulk). A kill's tool is
+  `kill_tool(x, y, mch)` (`item_use.c`): the dwarf's pick-axe, one in three,
+  and the unicorn's horn. Corpses: the spider poisons, the pudding burns, the
+  mechanic toggles `INTR_FAST`. **Tile space is nearly gone**: the Next's
+  tile defs end 64 B under `inv[]` (two tiles), the 128K's UDGs 24 B under
+  the mirrored annex (three) -- the next monsters need room made first.
 - **Genocide** is a resident 8-byte mask by monster char (`mon_geno`, saved with
   the kill masks), and it has two filters in `monster_spawn.c` -- NOT inside the
   resident `pick_mon`, where three expansions of the mask test cost the Next

@@ -17,6 +17,7 @@
 #include "game.h"         /* hero/php/dead/dlvl, xp/xlvl, weapon_dmg/armor_def */
 #include "sfx.h"          /* sound effects                                    */
 #include "item.h"         /* corrode_worn                                     */
+#include "nexthack.h"     /* hero_teleport (the quantum mechanic's touch)     */
 
 /* Const-banked (banks.json): this file's message literals live in its own
  * bank (consumed by msg/msg2 while it is mapped), not the tight resident
@@ -133,8 +134,8 @@ void hit_monster(uint8_t mi, uint8_t dmg) __banked
                 death_drop(m_x[mi], m_y[mi]);
             else if (rn2(2))                         /* ...or its corpse     */
                 corpse_drop(m_x[mi], m_y[mi], m_type[mi]);
-            if (m_type[mi] == 'h' && rn2(3) == 0)    /* a dwarf's pick-axe   */
-                dwarf_pick(m_x[mi], m_y[mi]);
+            kill_tool(m_x[mi], m_y[mi], m_type[mi]);  /* a dwarf's pick-axe,
+                                                       * a unicorn's horn  */
         }
         {   /* the killing blow gets a little colour (runtime rn2: gen-safe) */
             static const char *const killv[3] =
@@ -268,6 +269,12 @@ static void monster_hits_player(uint8_t i)
             break;
         case ATK_ITEM:
             steal_item(i);   /* the nymph lifts an item and blinks away (item.c) */
+            break;
+        case ATK_TELE:       /* the quantum mechanic: NetHack's AD_TLPT */
+            if (rn2(2)) { msg("Your position seems uncertain!"); hero_teleport(); }
+            break;
+        case ATK_CONF:       /* the umber hulk's gaze */
+            if (rn2(2)) { ADD_SAT8(st_conf, rn2(4) + 3); msg("You are confused!"); }
             break;
         }
     }
