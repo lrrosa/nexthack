@@ -705,6 +705,11 @@ tilemap.
   never ticks), so a melee blow struck from any engraving rubs it out
   (`try_move`), as in NetHack 3.6 -- any new way to attack from the
   engraved square should do the same.
+  Attributes have peaks (1.8, `at_peak[]`, saved, NetHack's AMAX): the class
+  sets them, a gain past one carries it up (`at_gain`, `item_use.c`), and the
+  cursed throne's drain lowers the attribute but never its peak -- which is
+  what a potion of restore ability puts back. A new way to raise an
+  attribute goes through `at_gain`; a new drain leaves the peak alone.
 - **Class signatures** (1.6, `PC_*` in `game.h` name the `classes[]` rows): the
   Wizard regains Pw every 8 turns (`upkeep`) and force bolt is d(2,12); the
   Rogue is born stealthy and backstabs a sleeper for `rn2(xlvl)+1+xlvl/4` more

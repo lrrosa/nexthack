@@ -25,6 +25,7 @@
  * as about another version's: the file is theirs.
  */
 
+#include <string.h>
 #include "game.h"
 #include "platform.h"
 #include "rng.h"
@@ -35,7 +36,12 @@
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   36     /* 36: the two-handed sword, otyp 81. The bytes are
+#define SAVE_VER   37     /* 37: restore ability (1.8) -- the attributes'
+                           * peaks (at_peak, 6 B) joined the player block, so
+                           * a 36 save's bytes no longer line up: it gets the
+                           * prompt. The potion is otyp 82; 83 types still
+                           * fit id_known's 11 bytes.
+                           * 36: the two-handed sword, otyp 81. The bytes are
                            * 35's -- 82 types still fit id_known's 11 -- so a
                            * 35 save loads (SAVE_VER_MIN); but a 1.6.x binary
                            * reading a pack that holds one would index past
@@ -56,7 +62,7 @@
                            * 1.4's (the item batch: 60 types, id_known 8 bytes,
                            * the genocide mask); 28 1.3's; 27 the 1.0 freeze.
                            * An older save gets the 1.3.1 prompt. */
-#define SAVE_VER_MIN 35   /* the oldest whose bytes this binary reads as its own */
+#define SAVE_VER_MIN 37   /* the oldest whose bytes this binary reads as its own */
 
 struct save_hdr {
     uint16_t magic;
@@ -88,6 +94,7 @@ struct save_player {
                            * where the save left them (build_level no longer
                            * rewinds it either -- see nexthack_lvl.c) */
     uint8_t  art_given;   /* which artifacts exist: each is unique */
+    uint8_t  at_peak[6];  /* what restore ability puts back (37) */
 };
 
 /* Write seed + player + each module's state. Returns 1 on success. */
@@ -127,6 +134,7 @@ int save_game(void) __banked
     p.luck = luck;
     p.rng = rng_get();
     p.art_given = art_given;
+    memcpy(p.at_peak, at_peak, sizeof at_peak);
     file_write(h, &p, sizeof p);
 
     file_write(h, door_open, sizeof door_open);
@@ -263,6 +271,7 @@ int load_game(void) __banked
     alignment = p.alignment;
     luck = p.luck;
     art_given = p.art_given;
+    memcpy(at_peak, p.at_peak, sizeof at_peak);
     rng_set(p.rng);             /* main's build_level keeps it (nexthack_lvl.c) */
     dead = 0; won = 0;
 

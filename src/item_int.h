@@ -74,6 +74,8 @@ enum {
     O_SKELKEY, O_PICKAXE, O_UHORN, O_MWHISTLE, O_BLINDFOLD,
     O_CAMERA,      /* '(' the Tourist's expensive camera (1.6); never generated */
     O_TWOHSWORD,   /* ')' the two-handed sword, the ladder's first rung (after 1.6.2) */
+    O_PRESTABIL,   /* '!' restore ability (1.8), for the throne's drain. 83
+                    * types: id_known stays 11 bytes up to 88 */
     NUMOBJ
 };
 /* Excalibur and the five gifts: unique, wielded first by 'w', never eroded */

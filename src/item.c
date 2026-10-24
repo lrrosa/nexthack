@@ -90,9 +90,9 @@ static const objtype_t objtypes[NUMOBJ] = {
     { '[',  5,  200,  10, 1, SL_SUIT, "plate mail" },
     { '!',  7,   20,   1, 9, SL_NONE, "potion of healing" },
     { '!', 14,   60,   4, 9, SL_NONE, "potion of extra healing" },
-    { '!',  0,   30,   2, 6, SL_NONE, "potion of confusion" },
-    { '!',  0,   30,   3, 6, SL_NONE, "potion of sleeping" },
-    { '!',  0,   30,   4, 6, SL_NONE, "potion of blindness" },
+    { '!',  0,   30,   2, 5, SL_NONE, "potion of confusion" },  /* 6 before 1.8 */
+    { '!',  0,   30,   3, 5, SL_NONE, "potion of sleeping" },   /* 6 before 1.8 */
+    { '!',  0,   30,   4, 5, SL_NONE, "potion of blindness" },  /* 6 before 1.8 */
     { '?',  0,   40,   1, 5, SL_NONE, "scroll of magic mapping" },
     { '?',  0,   60,   1, 5, SL_NONE, "scroll of teleportation" },
     { '?',  0,   40,   2, 5, SL_NONE, "scroll of identify" },
@@ -177,8 +177,8 @@ static const objtype_t objtypes[NUMOBJ] = {
      * alone halving the Valkyrie's wins (22% -> 11% with the dog). The room
      * for the newcomers comes out of confusion, sleeping and blindness.
      * NetHack weighs healing above the average potion too. Restore ability
-     * is not here: nothing in this game ever lowers an attribute, so it would
-     * restore nothing. It waits for a drain to answer. */
+     * waited for something to lower an attribute; the 1.8 throne does, and it
+     * is appended at the end of the catalogue. */
     { '!',  0,  300,   4, 6, SL_NONE, "potion of gain ability" },
     { '!',  0,  150,   3, 6, SL_NONE, "potion of gain energy" },
     /* The carrot cures blindness. Rare against the ration (8:1), as in
@@ -253,7 +253,15 @@ static const objtype_t objtypes[NUMOBJ] = {
      * a point or two of before (Valkyrie 58.7, Wizard 42.1, Rogue 35.7,
      * Tourist 18.9 -- one seed alone wanders +-4) and the shield-trader 83.6
      * against 82.9; a 7 from Dlvl 24 would have taken her to 87.7. */
-    { ')',  6,  300,  16, 1, SL_TWOHAND, "two-handed sword" }
+    { ')',  6,  300,  16, 1, SL_TWOHAND, "two-handed sword" },
+    /* Restore ability (1.8), the answer to the cursed throne's drain (throne.c
+     * lose_attr) -- from Dlvl 5, where thrones begin; NetHack's price. Weight
+     * 3, half gain ability's: drains are rare here, where NetHack's is its
+     * commonest potion. The 3 came out of confusion, sleeping and blindness
+     * (6 -> 5 each), so from Dlvl 5 the potions still total 54 (55 with full
+     * healing) and each healing kind is still exactly 1/6 -- the same draws,
+     * since resolve_otyp walks the catalogue from healing on. */
+    { '!',  0,  100,   5, 3, SL_NONE, "potion of restore ability" }
 };
 
 /* Each gift's alignment (as in NetHack: 0 Lawful, 1 Neutral, 2 Chaotic,

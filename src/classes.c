@@ -81,12 +81,12 @@ void class_apply(uint8_t k) __banked
 {
     const class_t *c = &classes[k];
     pclass = k;
-    at_str = c->at[0];
-    at_dex = c->at[1];
-    at_con = c->at[2];
-    at_int = c->at[3];
-    at_wis = c->at[4];
-    at_cha = c->at[5];
+    at_peak[0] = at_str = c->at[0];     /* a new hero is at every peak */
+    at_peak[1] = at_dex = c->at[1];
+    at_peak[2] = at_con = c->at[2];
+    at_peak[3] = at_int = c->at[3];
+    at_peak[4] = at_wis = c->at[4];
+    at_peak[5] = at_cha = c->at[5];
     php = pmaxhp = c->hp;
     pw  = pmaxpw = c->pw;
     alignment = c->align;
