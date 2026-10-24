@@ -77,6 +77,8 @@ enum {
     O_TWOHSWORD,   /* ')' the two-handed sword, the ladder's first rung (after 1.6.2) */
     O_PRESTABIL,   /* '!' restore ability (1.8), for the throne's drain. 83
                     * types: id_known stays 11 bytes up to 88 */
+    O_WSPEED,      /* '/' speed monster (1.9): zapped at yourself it makes you
+                    * Fast (INTR_FAST), at a monster it hastes it (m_haste) */
     NUMOBJ
 };
 /* Armour slots. Only '[' uses these; everything else is SL_NONE and the

@@ -948,20 +948,21 @@ static uint8_t mimic_hidden(uint8_t i)
     return 1;
 }
 
-void monsters_turn(void) __banked
+/* ---- speed (1.9) ----
+ * NetHack's movement: every turn each monster banks its type's speed
+ * (MonType.spd, +6 if a wand hasted it) and acts once for each NORMAL_SPEED
+ * it can pay -- a zombie (6) every other turn, a dog (16) four times in
+ * three, a bat (22) nearly twice. Speed is capped at 24, so a turn is at most
+ * two passes of monsters_phase, each for the slots in `act`; a monster that
+ * cannot pay sits the pass out, asleep or awake. A Fast hero (INTR_FAST) is
+ * worth 4/3 of a turn to them: one turn in four they bank nothing. */
+static uint16_t act;
+#define ACTS(i) (act & (uint16_t)(1u << (i)))
+
+/* One pass of the monsters' turn, for the slots in `act`. */
+static void monsters_phase(void)
 {
     uint8_t i;
-    /* trolls knit their wounds shut as they come for you (cap = spawn HP) --
-     * unless Trollsbane is in your hand */
-    if (!(art_fx & AF_TROLLS))
-        for (i = 0; i < mcount; i++)
-            if (m_alive[i] && m_type[i] == 'T') {
-                uint8_t cap = (uint8_t)(mon_find('T')->hp + eff_depth() / 2);
-                if (m_hp[i] < cap) m_hp[i]++;
-            }
-    sting_glow();
-    ward = (uint8_t)((el_life && hero_x == el_x && hero_y == el_y) ||
-                     item_scare_here());
 #ifndef __ZXNEXT
     /* +zx: skip the whole chase when no ENEMY is near. The pet (always at your
      * heel) and the stationary shopkeeper must NOT count here -- otherwise the
@@ -970,7 +971,7 @@ void monsters_turn(void) __banked
      * dog, greedily, and skip compute_dist_map. */
     uint8_t awake = 0;
     for (i = 0; i < mcount; i++) {
-        if (!m_alive[i] || i == pet_idx || m_type[i] == MON_KEEPER) continue;
+        if (!m_alive[i] || !ACTS(i) || i == pet_idx || m_type[i] == MON_KEEPER) continue;
         if (m_type[i] == 'x') {
             /* A posing mimic wakes no CHASE at a distance -- that is the whole
              * point of the disguise, and flooding for it would cost the speed
@@ -994,7 +995,7 @@ void monsters_turn(void) __banked
     if (!awake) {
         /* the townsfolk still mill about (cheap: no BFS involved) */
         for (i = 0; i < mcount; i++)
-            if (m_alive[i] && (m_peace[i] || m_blind[i])) {
+            if (m_alive[i] && ACTS(i) && (m_peace[i] || m_blind[i])) {
                 if (m_blind[i]) m_blind[i]--;   /* the flash wears off */
                 peace_amble(i);
             }
@@ -1003,7 +1004,7 @@ void monsters_turn(void) __banked
          * flood -- once, routing just the dog. An open room never blocks, so it
          * never pays; a corridor's flood is small. This keeps the dog ~2 cells back
          * everywhere instead of letting the gap grow turn by turn through bends. */
-        if (pet_idx < 0 || !m_alive[(uint8_t)pet_idx]) return;
+        if (pet_idx < 0 || !m_alive[(uint8_t)pet_idx] || !ACTS((uint8_t)pet_idx)) return;
         if (pet_heel_greedy((uint8_t)pet_idx)) return;
         compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y,
                          (uint16_t)(1u << (uint8_t)pet_idx));   /* for the dog alone */
@@ -1017,7 +1018,7 @@ void monsters_turn(void) __banked
     {
         uint16_t blocked = 0;
         for (i = 0; i < mcount; i++) {
-            if (!m_alive[i] || m_type[i] == MON_KEEPER) continue;
+            if (!m_alive[i] || !ACTS(i) || m_type[i] == MON_KEEPER) continue;
             if (m_type[i] == 'e') continue;   /* the floating eye just floats */
             if (mimic_hidden(i)) continue;    /* posing as an item */
             if (m_sleep[i] == 255) continue;  /* still asleep (rolled in the scan) */
@@ -1063,7 +1064,7 @@ void monsters_turn(void) __banked
         for (i = 0; i < mcount; i++) {
             uint8_t s = m_sleep[i];
             char    t = m_type[i];
-            if (!m_alive[i] || m_peace[i] || m_blind[i] || t == MON_KEEPER ||
+            if (!m_alive[i] || !ACTS(i) || m_peace[i] || m_blind[i] || t == MON_KEEPER ||
                 t == 'e' || t == 'x')
                 continue;
             if (s == 255 && !(ring_fx & RF_AGGR) &&
@@ -1075,13 +1076,51 @@ void monsters_turn(void) __banked
         if (who) compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y, who);
     }
     for (i = 0; i < mcount; i++) {
-        if (!m_alive[i]) continue;
+        if (!m_alive[i] || !ACTS(i)) continue;
         if (mimic_hidden(i)) continue;    /* posing as an item */
         if (dragon_breath(i)) {           /* fire outranges Elbereth */
             if (dead) return;
             continue;
         }
         mon_step(i);
+        if (dead) return;
+    }
+}
+
+void monsters_turn(void) __banked
+{
+    uint8_t i, pass;
+    /* trolls knit their wounds shut as they come for you (cap = spawn HP) --
+     * unless Trollsbane is in your hand. Once a turn, at any speed. */
+    if (!(art_fx & AF_TROLLS))
+        for (i = 0; i < mcount; i++)
+            if (m_alive[i] && m_type[i] == 'T') {
+                uint8_t cap = (uint8_t)(mon_find('T')->hp + eff_depth() / 2);
+                if (m_hp[i] < cap) m_hp[i]++;
+            }
+    sting_glow();
+    ward = (uint8_t)((el_life && hero_x == el_x && hero_y == el_y) ||
+                     item_scare_here());
+    /* bank this turn's movement (a Fast hero's free turn banks none). The
+     * points never run away: at most 11 are left after the passes, and a
+     * turn adds at most 24. */
+    if (!((intrinsics & INTR_FAST) && (turns & 3) == 0))
+        for (i = 0; i < mcount; i++)
+            if (m_alive[i]) {
+                uint8_t sp = mon_find(m_type[i])->spd;
+                if (m_haste & (uint16_t)(1u << i)) sp = (uint8_t)(sp + 6);
+                if (sp > 24) sp = 24;
+                m_mv[i] = (uint8_t)(m_mv[i] + sp);
+            }
+    for (pass = 0; pass < 2; pass++) {
+        act = 0;
+        for (i = 0; i < mcount; i++)
+            if (m_alive[i] && m_mv[i] >= NORMAL_SPEED) {
+                m_mv[i] = (uint8_t)(m_mv[i] - NORMAL_SPEED);
+                act |= (uint16_t)(1u << i);
+            }
+        if (!act) return;
+        monsters_phase();
         if (dead) return;
     }
 }

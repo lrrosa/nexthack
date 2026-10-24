@@ -247,7 +247,12 @@ static const objtype_t objtypes[NUMOBJ] = {
      * (6 -> 5 each), so from Dlvl 5 the potions still total 54 (55 with full
      * healing) and each healing kind is still exactly 1/6 -- the same draws,
      * since resolve_otyp walks the catalogue from healing on. */
-    { '!',  0,  100,   5, 3, SL_NONE, "potion of restore ability" }
+    { '!',  0,  100,   5, 3, SL_NONE, "potion of restore ability" },
+    /* Speed monster (1.9), the hero's way to Fast. NetHack weighs it with
+     * sleep and magic missile, so 4 here, from Dlvl 3 as sleep is. Wands are
+     * outside balance.py's model; the new type only reshuffles which wand a
+     * floor '/' turns out to be. */
+    { '/',  0,  150,   3, 4, SL_NONE, "wand of speed monster" }
 };
 
 /* Each gift's alignment (as in NetHack: 0 Lawful, 1 Neutral, 2 Chaotic,

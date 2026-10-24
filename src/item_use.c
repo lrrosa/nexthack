@@ -496,8 +496,11 @@ void do_read(void) __banked
 
 /* read one movement key into a unit direction; 0 if it was not a direction.
  * '>' is none either, but the pick-axe asks for it: it answers 0 with *dy set
- * to DIR_DOWN, which every other caller ignores with the rest of a refusal. */
+ * to DIR_DOWN, which every other caller ignores with the rest of a refusal.
+ * '.' is yourself, the same way (DIR_SELF): only the wand of speed monster
+ * takes it. */
 #define DIR_DOWN 2
+#define DIR_SELF 3
 static int read_dir(int *dx, int *dy)
 {
     int k;
@@ -514,6 +517,7 @@ static int read_dir(int *dx, int *dy)
         case 'u': *dx = +1; *dy = -1; break;
         case 'b': *dx = -1; *dy = +1; break;
         case 'n': *dx = +1; *dy = +1; break;
+        case '.': *dy = DIR_SELF; return 0;
         case '>': *dy = DIR_DOWN;   /* fall through: no direction */
         default: return 0;
     }
@@ -811,6 +815,7 @@ void do_engrave(void) __banked
             break;
         case O_WCOLD:     m = "Ice cubes drop from the wand.";   break;
         case O_WSLEEP:    m = "Bugs on the floor stop moving!";  break;
+        case O_WSPEED:    m = "Bugs on the floor speed up!";     break;
         case O_WMMISSILE: m = "Bullet holes riddle the floor!";  break;
         case O_WSTRIKE:   m = "The wand fights your writing.";   break;
         case O_WTELE:
@@ -867,7 +872,20 @@ void do_zap(void) __banked
     }
 
     msg("In what direction?");
-    if (!read_dir(&dx, &dy)) { msg("Never mind."); return; }
+    if (!read_dir(&dx, &dy)) {
+        /* speed monster at yourself: NetHack's intrinsic Fast, for good */
+        if (ot == O_WSPEED && dy == DIR_SELF) {
+            inv[s].ench--;
+            item_id_set(O_WSPEED);
+            msg((intrinsics & INTR_FAST) ? "Your legs get new energy."
+                                         : "You are suddenly moving faster.");
+            intrinsics |= INTR_FAST;
+            sfx_magic();
+            acted = 1; turns++;
+            return;
+        }
+        msg("Never mind."); return;
+    }
     inv[s].ench--;                       /* a real zap spends a charge */
     sfx_magic();
 
@@ -896,6 +914,8 @@ void do_zap(void) __banked
         if (ot == O_WMMISSILE) { hit_monster((uint8_t)mi, (uint8_t)(rn2(4) + 2)); continue; }
         if (ot == O_WSLEEP)  { m_sleep[mi] = (uint8_t)(rn2(10) + 8);
                                msg2("The ", mon_name(m_type[mi]), " falls asleep."); break; }
+        if (ot == O_WSPEED)  { m_haste |= (uint16_t)(1u << mi);   /* +6 (monster_ai) */
+                               msg2("The ", mon_name(m_type[mi]), " speeds up."); break; }
         /* O_WTELE: whisk the monster to a random spot, off your back. The
          * destination needs exactly the guards the nymph's blink already
          * uses (steal_item): plain floor, nobody standing there, not your

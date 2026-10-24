@@ -39,7 +39,9 @@
 #define SAVE_VER   38     /* 38: stacks (1.9) -- obj_t grew a count, so the
                            * pack, the floor stashes and every byte after them
                            * moved; a 37 save gets the prompt. 37 never left
-                           * the development branch.
+                           * the development branch. The wand of speed monster
+                           * (otyp 83) and INTR_FAST came in the same unreleased
+                           * version: 84 types keep id_known at 11 bytes.
                            * 37: restore ability (1.8) -- the attributes'
                            * peaks (at_peak, 6 B) joined the player block, so
                            * a 36 save's bytes no longer line up: it gets the

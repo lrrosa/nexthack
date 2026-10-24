@@ -34,54 +34,68 @@ uint8_t mon_dead[MAXLVL + 1];   /* bit i: monster i killed. Written by combat
                                  * two live in different banks. */
 uint8_t m_track;                /* which slots are the level's own (monster.h) */
 uint8_t m_blind[MAXMON];        /* the camera's flash (monster.h) */
+uint8_t m_mv[MAXMON];           /* movement points (monster.h) */
+uint16_t m_haste;               /* hasted slots (monster.h) */
 
 /* ---- monster catalogue (resident; mon_find/pick_mon read it) ---- */
 static const MonType montypes[] = {
-    /* ch  hp dmg xp mindep tile          corr atk         name */
-    { 'r',  3, 3, 1, 1, T_RAT,         0, ATK_NONE,   "rat"          },
-    { 'B',  3, 2, 1, 1, T_BAT,         0, ATK_NONE,   "bat"          },
-    { 'a',  5, 2, 3, 2, T_ACIDBLOB,    1, ATK_NONE,   "acid blob"    },
-    { 'k',  4, 2, 2, 1, T_KOBOLD,      0, ATK_NONE,   "kobold"       },
-    { 'd',  6, 3, 2, 2, T_DOG,         0, ATK_NONE,   "dog"          },
-    { 'S',  6, 4, 3, 3, T_SNAKE,       0, ATK_POISON, "snake"        },
-    { 'o',  8, 4, 4, 4, T_ORC,         0, ATK_NONE,   "orc"          },
-    { 'Z', 14, 4, 6, 6, T_ZOMBIE,      0, ATK_NONE,   "zombie"       },
-    { 'l',  5, 2, 3, 3, T_LEPRECHAUN,  0, ATK_STEAL,  "leprechaun"   },
-    { 'y',  6, 3, 4, 5, T_YELLOWLIGHT, 0, ATK_BLIND,  "yellow light" },
-    { 'i',  9, 4, 5, 6, T_HOMUNCULUS,  0, ATK_SLEEP,  "homunculus"   },
-    { 'W', 12, 5, 7, 8, T_WRAITH,      0, ATK_DRAIN,  "wraith"       },
+    /* ch  hp dmg xp mindep tile          corr atk       spd  name
+     * spd (1.9): monster_ai monsters_turn acts once per NORMAL_SPEED banked.
+     * NetHack's own speeds made the game far easier -- balance.py had the
+     * Valkyrie winning 96% and the Tourist 79% against 58 and 19: the pet
+     * 'd' at 16 alone was worth +29 points, and the slow monsters (a dragon
+     * at 9, zombies at 6, blobs and mimics at 3) die before they hurt. So the
+     * 'd' runs like the jackal it is sized as (12, and the pet with it), the
+     * dragon keeps the apex's 12, the vampire is a vampire lord's 14, the
+     * kobold and the orc keep 12, and the slow ones are slow by half as much:
+     * zombie 8, gnome and dwarf 9, blob and mimic 6. The bat (22), snake and
+     * leprechaun (15), yellow light (13) and shopkeeper (18) are NetHack's.
+     * Measured (dog on, 5 seeds x 600): Valkyrie 62.5%, Wizard 44.5%, Rogue
+     * 34.3%, Tourist 23.2% -- 58.2/42.7/35.8/19.3 before speed. */
+    { 'r',  3, 3, 1, 1, T_RAT,         0, ATK_NONE, 12,   "rat"          },
+    { 'B',  3, 2, 1, 1, T_BAT,         0, ATK_NONE, 22,   "bat"          },
+    { 'a',  5, 2, 3, 2, T_ACIDBLOB,    1, ATK_NONE,  6,   "acid blob"    },
+    { 'k',  4, 2, 2, 1, T_KOBOLD,      0, ATK_NONE, 12,   "kobold"       },
+    { 'd',  6, 3, 2, 2, T_DOG,         0, ATK_NONE, 12,   "dog"          },
+    { 'S',  6, 4, 3, 3, T_SNAKE,       0, ATK_POISON, 15, "snake"        },
+    { 'o',  8, 4, 4, 4, T_ORC,         0, ATK_NONE, 12,   "orc"          },
+    { 'Z', 14, 4, 6, 6, T_ZOMBIE,      0, ATK_NONE,  8,   "zombie"       },
+    { 'l',  5, 2, 3, 3, T_LEPRECHAUN,  0, ATK_STEAL, 15,  "leprechaun"   },
+    { 'y',  6, 3, 4, 5, T_YELLOWLIGHT, 0, ATK_BLIND, 13,  "yellow light" },
+    { 'i',  9, 4, 5, 6, T_HOMUNCULUS,  0, ATK_SLEEP, 12,  "homunculus"   },
+    { 'W', 12, 5, 7, 8, T_WRAITH,      0, ATK_DRAIN, 12,  "wraith"       },
     /* the floating eye neither chases nor bites (monster_ai skips its turn)
      * -- but strike it with your eyes open and its gaze freezes you. Its
      * corpse grants telepathy (item.c eat_corpse): the NetHack classic. */
-    { 'e',  8, 1, 4, 5, T_FEYE,        0, ATK_NONE,   "floating eye" },
+    { 'e',  8, 1, 4, 5, T_FEYE,        0, ATK_NONE,  1,   "floating eye" },
     /* the deep roster: real threats for Dlvl 12+, where the shallow types
      * only recycled with inflated HP. The troll knits its wounds shut every
      * turn (monsters_turn); the vampire drains like its lesser kin the
      * wraith; the dragon is the apex -- its numbers ARE its identity. */
-    { 'T', 18, 6, 10, 12, T_TROLL,   0, ATK_NONE,  "troll"   },
-    { 'V', 20, 6, 12, 16, T_VAMPIRE, 0, ATK_DRAIN, "vampire" },
-    { 'D', 28, 8, 20, 22, T_DRAGON,  0, ATK_NONE,  "dragon"  },
+    { 'T', 18, 6, 10, 12, T_TROLL,   0, ATK_NONE, 12,  "troll"   },
+    { 'V', 20, 6, 12, 16, T_VAMPIRE, 0, ATK_DRAIN, 14, "vampire" },
+    { 'D', 28, 8, 20, 22, T_DRAGON,  0, ATK_NONE, 12,  "dragon"  },
     /* the mimic spawns as 'x' -- catalogued with the POTION tile, so every
      * renderer draws the bait for free. Any damage or the hero stepping
      * adjacent flips m_type to 'm' (monster_ai), the revealed form. Same
      * name in both rows, so kill/hit messages never spoil nor lie. */
-    { 'x', 14, 5, 8, 6,   T_POTION, 0, ATK_NONE,  "mimic"   },
-    { 'm', 14, 5, 8, 255, T_MIMIC,  0, ATK_NONE,  "mimic"   },
+    { 'x', 14, 5, 8, 6,   T_POTION, 0, ATK_NONE,  6,  "mimic"   },
+    { 'm', 14, 5, 8, 255, T_MIMIC,  0, ATK_NONE,  6,  "mimic"   },
     /* the Amulet's keeper: posted on the Amulet cell of DLVL_AMULET by
      * spawn_level_monsters (slot 0, kill remembered by mon_dead bit 0).
      * mindepth 255 keeps it out of every random pool. */
-    { 'M', 45, 9, 40, 255, T_PRIEST, 0, ATK_NONE, "high priest" },
+    { 'M', 45, 9, 40, 255, T_PRIEST, 0, ATK_NONE, 12, "high priest" },
     /* the Gnomish Mines natives: never in the depth pool (mindepth 255) --
      * pick_mon injects them directly on mine levels. */
-    { 'G',  4, 2, 2, 255, T_GNOME, 0, ATK_NONE, "gnome" },
-    { 'h',  8, 4, 5, 255, T_DWARF, 0, ATK_NONE, "dwarf" },
+    { 'G',  4, 2, 2, 255, T_GNOME, 0, ATK_NONE,  9, "gnome" },
+    { 'h',  8, 4, 5, 255, T_DWARF, 0, ATK_NONE,  9, "dwarf" },
     /* the nymph: a soft bite, but it lifts an item from your pack and she
      * blinks away across the level with it (item.c steal_item). Kill her
      * and she drops the loot; leave the level and she abandons it. */
-    { 'n',  9, 2, 7, 7, T_NYMPH, 0, ATK_ITEM, "nymph" },
+    { 'n',  9, 2, 7, 7, T_NYMPH, 0, ATK_ITEM, 12, "nymph" },
     /* the shopkeeper: drawn as '@' (reuses T_HERO), placed only in shops, never
      * randomly spawned (pick_mon skips it), and stationary (monster_ai mon_step). */
-    { MON_KEEPER, 30, 0, 0, 1, T_KEEPER, 0, ATK_NONE, "shopkeeper" }
+    { MON_KEEPER, 30, 0, 0, 1, T_KEEPER, 0, ATK_NONE, 18, "shopkeeper" }
 };
 #define NMON ((uint8_t)(sizeof(montypes) / sizeof(montypes[0])))
 

@@ -135,7 +135,7 @@ local GIFTS = { "pick-axe", "wand of digging", "wand of teleportation", "wand of
   "amulet of life", "blindfold", "magic whistle", "unicorn horn", "expensive camera",
   "skeleton key", "spellbook of teleportation", "spellbook of force bolt",
   "spellbook of sleep", "battle-axe", "large shield", "Stormbringer", "Sting", "corpse",
-  "carrot", "silver saber", "helmet", "cloak" }
+  "carrot", "silver saber", "helmet", "cloak", "wand of speed monster" }
 local CORPSES = "ekSaDiWlnZT"
 local gifts = 0
 local function gift()

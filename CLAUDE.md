@@ -827,10 +827,23 @@ tilemap.
 
 ### Monster AI (`monster.c`)
 - Monster types are a table (`montypes[]`: char, hp, damage, xp, min depth, tile,
-  `corr`, name); `spawn_level_monsters()` draws from the depth-appropriate pool.
+  `corr`, `atk`, `spd`, name); `spawn_level_monsters()` draws from the depth-appropriate pool.
   HP/damage scale with depth. A `corr` (corrosive) monster — the acid blob — calls
   `corrode_worn()` (in `item.c`) to rust the hero's armour when it bites and the
   wielded weapon when struck; erosion raises `obj_t.ero`, capped at 3.
+- **Speed** (1.9): `MonType.spd`, banked per slot in `m_mv[]` each turn
+  (`monsters_turn`, `monster_ai.c`): a monster acts once per `NORMAL_SPEED`
+  (12) it can pay, so the old body is now `monsters_phase()`, run at most
+  twice for the slots in `act` -- **every per-monster loop in it must test
+  `ACTS(i)`, on both target paths**, or a monster acts on points it does not
+  have. A Fast hero (`INTR_FAST`, from a wand of speed monster zapped at
+  yourself with `.`) denies them the points one turn in four; the wand at a
+  monster sets its `m_haste` bit (+6), cleared with `m_blind` at every spawn
+  site. NetHack's own speeds made the game far easier (balance.py: Valkyrie
+  96%, Tourist 79%), mostly through the pet `'d'` at 16 and the slow dragon,
+  so the table keeps the flavour at half the spread -- the reasoning and the
+  numbers are in the comment above `montypes[]`. `balance.py`'s `fight`
+  banks points the same way for the monster and the dog.
 - **Genocide** is a resident 8-byte mask by monster char (`mon_geno`, saved with
   the kill masks), and it has two filters in `monster_spawn.c` -- NOT inside the
   resident `pick_mon`, where three expansions of the mask test cost the Next

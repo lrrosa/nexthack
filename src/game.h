@@ -140,6 +140,9 @@ extern int8_t   luck;         /* hidden fortune, -5..+5: pleased gods raise it,
 #define INTR_TPORT      0x08  /* teleportitis, from a leprechaun's or a
                                * nymph's flesh: upkeep blinks you as the ring
                                * does (and the ring of control still steers) */
+#define INTR_FAST       0x20  /* Fast (1.9): monsters bank no movement one turn
+                               * in four -- NetHack's intrinsic speed, from a
+                               * wand of speed monster zapped at yourself */
 #define INTR_STEALTH    0x10  /* the Rogue's by birth (1.6): the ring of stealth's
                                * rule -- footsteps wake no sleeper, and one beside
                                * you stirs only one turn in three */

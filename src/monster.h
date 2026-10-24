@@ -31,6 +31,14 @@ extern uint8_t m_blind[];    /* >0: blinded by the Tourist's camera (1.6) -- it
                               * at a time; cleared on death and on every
                               * spawn into its slot. Not saved: monsters are
                               * rebuilt with their level. */
+extern uint8_t m_mv[];       /* movement points banked toward the next action
+                              * (1.9, monster_ai monsters_turn). Zeroed for a
+                              * new level; a newcomer in a used slot inherits
+                              * at most 11 -- under one action, so no other
+                              * site clears it. Not saved. */
+extern uint16_t m_haste;     /* bit i: slot i was hasted by a wand of speed
+                              * monster -- +6 speed. Cleared with m_blind at
+                              * every spawn into the slot. */
 extern uint8_t m_face[];     /* 1 = last stepped right: directional art (dog/
                               * rat) draws mirrored; set via mon_face_to      */
 extern char    m_type[];
@@ -73,8 +81,11 @@ typedef struct {
     uint8_t     tile;
     uint8_t     corr;       /* corrodes the hero's gear on contact */
     uint8_t     atk;        /* special on-hit attack (ATK_*)        */
+    uint8_t     spd;        /* NetHack's speed (1.9): it acts once for every
+                             * NORMAL_SPEED points it banks a turn; <= 24 */
     const char *name;
 } MonType;
+#define NORMAL_SPEED 12     /* the hero's, and one action a turn's worth */
 
 /* MonType.atk -- the special effect a successful bite may inflict */
 enum { ATK_NONE, ATK_POISON, ATK_BLIND, ATK_SLEEP, ATK_STEAL, ATK_DRAIN,
