@@ -226,7 +226,7 @@ void do_quaff(void) __banked
         if (php > pmaxhp) php = pmaxhp;
     }
     item_id_set(ot);                 /* drinking it identifies the type */
-    item_inv_remove((uint8_t)s);
+    item_use_one((uint8_t)s);
     sfx_quaff();
     acted = 1; turns++;
 }
@@ -289,13 +289,13 @@ void do_eat(void) __banked
     }
     if (inv[s].otyp == O_CORPSE) {
         char mch = (char)inv[s].ench;
-        item_inv_remove((uint8_t)s);
+        item_use_one((uint8_t)s);
         nutrition += 250;                    /* lean fare next to a ration */
         if (nutrition > 1500) nutrition = 1500;
         cnt_corpses++;              /* flesh breaks Vegetarian (conducts) */
         eat_corpse(mch);
     } else if (inv[s].otyp == O_CARROT) {
-        item_inv_remove((uint8_t)s);
+        item_use_one((uint8_t)s);
         nutrition += 50;                     /* a snack, not a meal */
         if (nutrition > 1500) nutrition = 1500;
         if (st_blind) {                      /* NetHack's carrot: the eyes clear */
@@ -308,7 +308,7 @@ void do_eat(void) __banked
     } else {
         nutrition += 800;
         if (nutrition > 1500) nutrition = 1500;
-        item_inv_remove((uint8_t)s);
+        item_use_one((uint8_t)s);
         msg("You eat.  Delicious!");
     }
     sfx_eat();
@@ -424,7 +424,7 @@ void do_read(void) __banked
     cnt_reads++;                /* scrolls break Illiterate (conducts) */
     buc = (uint8_t)buc_st(&inv[s]);  /* before it leaves the pack */
     item_id_set(ot);                 /* reading it identifies the type */
-    item_inv_remove((uint8_t)s);
+    item_use_one((uint8_t)s);
     sfx_magic();
     if (ot == O_MAPPING) {
         if (buc == BUC_BLESS) secrets_reveal_doors();   /* NetHack's blessed map */
@@ -689,7 +689,7 @@ void do_apply(void) __banked
 void dwarf_pick(uint8_t x, uint8_t y) __banked
 {
     obj_t o;
-    o.otyp = O_PICKAXE; o.ench = 0; o.ero = 0; o.worn = 0; o.buc = BUC_UNC;
+    o.otyp = O_PICKAXE; o.ench = 0; o.ero = 0; o.worn = 0; o.buc = BUC_UNC; o.qty = 1;
     item_floor_place(x, y, &o);
 }
 
@@ -705,7 +705,7 @@ void do_throw(void) __banked
 {
     int s = select_item(')');
     int dx, dy, x, y, r;
-    uint8_t dmg, worn;
+    uint8_t dmg, worn, last;
     obj_t thrown;
 
     if (s == -1) { msg("You have no weapon to throw."); return; }
@@ -719,7 +719,8 @@ void do_throw(void) __banked
         msg("It is welded to your hand!");
         return;
     }
-    if (worn) {                          /* don't disarm yourself by accident */
+    last = (uint8_t)(inv[s].qty <= 1);   /* of a stack, one flies (1.9) */
+    if (worn && last) {                  /* don't disarm yourself by accident */
         int k;
         msg("Throw your wielded weapon?  y/n");
         in_wait_nokey();
@@ -732,6 +733,7 @@ void do_throw(void) __banked
 
     thrown = inv[s];                     /* keep a copy: it lands on the floor */
     thrown.worn = 0;                     /* a weapon on the floor is not wielded */
+    thrown.qty = 1;
     dmg = (uint8_t)(item_obj_prop(thrown.otyp)
                     + (thrown.ench > 0 ? thrown.ench : 0) + rn2(3));
 
@@ -752,8 +754,8 @@ void do_throw(void) __banked
      * most killing throws lost it. item_floor_place tries the neighbours
      * too and makes room; if even that fails, you still have it. */
     if (item_floor_place((uint8_t)x, (uint8_t)y, &thrown)) {
-        item_inv_remove((uint8_t)s);
-        if (worn) item_recompute_gear();      /* you just threw what you were wielding */
+        item_use_one((uint8_t)s);
+        if (worn && last) item_recompute_gear();  /* you threw what you wielded */
     }
     sfx_hit();
     acted = 1; turns++;

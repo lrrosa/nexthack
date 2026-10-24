@@ -140,6 +140,12 @@ cat = open(os.path.join(src, 'item.c'), encoding='utf-8').read()
 body = cat[cat.index('objtypes[NUMOBJ] = {'):]
 body = body[:body.index('\n};')]
 objs = {nm: i for i, nm in enumerate(re.findall(r'"([^"]*)"\s*\}', body))}
+# which otyps may be a stack (1.9): item.c stacks_with's classes, restated here
+# as an independent oracle -- qty > 1 on anything else is a violation
+rows = re.findall(r"\{\s*'(.)'\s*,[^}]*?\"([^\"]*)\"\s*\}", body)
+if len(rows) != len(objs):
+    sys.exit('fuzzcfg: %d catalogue rows parsed for classes, %d names' % (len(rows), len(objs)))
+stackable = [i for i, (c, nm) in enumerate(rows) if c in '!?%' or nm == 'dagger']
 
 mapw = bankmap.const('MAPW', ['level.h'])
 maph = bankmap.const('MAPH', ['level.h'])
@@ -179,6 +185,8 @@ cfg = {
     'objs': objs, 'numobj': len(objs),
     'maxmon': bankmap.const('MAXMON', ['monster.h']),
     'maxinv': bankmap.const('MAXINV', ['item_int.h', 'item.c']),
+    'objsz': bankmap.obj_size(), 'stack_max': bankmap.const('STACK_MAX', ['item_int.h']),
+    'stackable': stackable,
     # getkey_rpt also waits under cursor_pick (farlook, teleport control):
     # a return address in here on the stack tells the two apart
     'cursor': [need_sym('_cursor_pick') & 0xFFFF, func_end('_cursor_pick') & 0xFFFF],

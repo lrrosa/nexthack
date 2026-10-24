@@ -77,7 +77,7 @@ def fresh_rng(meta):
 
 
 def item_hash(world_seed, dlvl, x, y):
-    """src/item.c:1028 -- pure; never touches the RNG stream."""
+    """src/item.c:1095 -- pure; never touches the RNG stream."""
     h = (world_seed + dlvl * 2657 + x * 131 + y * 1009) & M16
     h ^= (h << 7) & M16
     h ^= h >> 9
@@ -381,10 +381,10 @@ FORMULAS = [
     ("worn set", "src/item.c recompute_gear",
      "every worn '[' piece adds; armor_def saturates at ARMOR_CAP",
      "Hero.recompute() -- one piece per SL_* slot since 1.3"),
-    ("floor enchantment", "src/item.c:1128",
+    ("floor enchantment", "src/item.c:1196",
      "roll = (h >> 5) % 100; +1 if roll < depth, +2 if roll < depth/3",
      "floor_ench(h, depth)"),
-    ("floor BUC", "src/item.c:1135",
+    ("floor BUC", "src/item.c:1203",
      "r = (h >> 11) & 7 -- 5/8 uncursed, 2/8 cursed, 1/8 blessed",
      "floor_buc(h)"),
     ("force bolt", "src/spells.c:95",
@@ -478,7 +478,7 @@ def spawn_count(depth):
 
 
 def armor_redux(eff):
-    """src/item.c:473 -- an armour piece shields eff-1 (at least 1)"""
+    """src/item.c:480 -- an armour piece shields eff-1 (at least 1)"""
     return 0 if eff <= 0 else (eff - 1 if eff > 1 else 1)
 
 
@@ -559,7 +559,7 @@ class Hero(object):
                 self.offer(o.cls, o.prop, o.slot)
         self.recompute()
 
-    # -- src/item.c:786 item_find_best_gain + :447 recompute_gear ------------------
+    # -- src/item.c:816 item_find_best_gain + :454 recompute_gear ------------------
     def offer(self, cls, eff, slot=0, silver=False):
         """consider a piece of gear.  Armour is per SLOT since 1.3 (do_wear
         takes off only the piece that slot already holds), so a shield and a

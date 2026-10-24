@@ -25,6 +25,8 @@
 -- goes through hx(), "0x"-prefixed.
 
 local cfg    = dofile(os.getenv("FUZZ_CFG"))
+local STACKABLE = {}                    -- otyps that may be a stack (fuzzcfg.py)
+for _, o in ipairs(cfg.stackable) do STACKABLE[o] = true end
 local logf   = io.open(os.getenv("MAME_LOG"), "w")
 local function L(s) logf:write(s, "\n") logf:flush() end
 local m      = manager.machine
@@ -148,8 +150,9 @@ local function gift()
   elseif name == "corpse" then local k = math.random(#CORPSES); ench = CORPSES:byte(k) end
   local r = math.random(10)
   local buc = (r == 1) and 2 or (r == 2) and 1 or 0
-  local a = cfg.inv + n * 5                       -- obj_t: otyp, ench, ero, worn, buc
-  w8(a, ot); w8(a + 1, ench); w8(a + 2, 0); w8(a + 3, 0); w8(a + 4, buc)
+  local qty = STACKABLE[ot] and math.random(3) or 1   -- a stack now and then (1.9)
+  local a = cfg.inv + n * cfg.objsz               -- obj_t: otyp, ench, ero, worn, buc, qty
+  w8(a, ot); w8(a + 1, ench); w8(a + 2, 0); w8(a + 3, 0); w8(a + 4, buc); w8(a + 5, qty)
   w8(S.inv_count, n + 1)
   gifts = gifts + 1
 end
@@ -538,8 +541,12 @@ local function check()
   if ic > cfg.maxinv then report("inv-count", tostring(ic))
   else
     for k = 0, ic - 1 do
-      local ot = r8(cfg.inv + k * 5)
-      if ot >= cfg.numobj then report("inv-otyp", string.format("slot %d otyp %d", k, ot)) end
+      local ot = r8(cfg.inv + k * cfg.objsz)
+      local qty = r8(cfg.inv + k * cfg.objsz + 5)
+      if ot >= cfg.numobj then report("inv-otyp", string.format("slot %d otyp %d", k, ot))
+      elseif qty == 0 or qty > cfg.stack_max or (qty > 1 and not STACKABLE[ot]) then
+        report("inv-qty", string.format("slot %d otyp %d qty %d", k, ot, qty))
+      end
     end
   end
   local php, pmax = r8(S.php), r8(S.pmaxhp)

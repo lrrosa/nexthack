@@ -645,8 +645,21 @@ tilemap.
 
 ### Items (`item.c`)
 - The inventory is an `obj_t[]` (an `otyp` into the `objtypes[]` catalogue, an
-  `ench` enchantment, an `ero` erosion level and a `worn` flag) — up to `MAXINV`
-  (26, one per menu letter a..z), drawn in two columns on the inventory screen.
+  `ench` enchantment, an `ero` erosion level, a `worn` flag, the BUC bits and,
+  since 1.9, a `qty`) — up to `MAXINV` (26, one per menu letter a..z), drawn in
+  two columns on the inventory screen.
+- **Stacks** (1.9, `stacks_with` in `item.c`): potions, scrolls, food (a
+  corpse only with the same monster's) and daggers merge when otyp, ench, ero
+  and the whole BUC byte match -- a blessed potion you know is blessed stays
+  apart from one you have not looked at -- up to `STACK_MAX` (99). `inv_add`
+  merges before it checks for a free letter, so a full pack still takes a
+  potion it holds; `floor_drop` merges too, so daggers thrown one way pile up.
+  Using one (`item_use_one`: quaff, eat, read, throw, offer) shrinks the stack;
+  `d`, a sale (`qty` x half price) and a nymph take the whole entry. **Every
+  `obj_t` built anywhere must set `qty`** -- an uninitialised stack local is a
+  garbage count -- and the floor still resolves one object per cell. `obj_t`
+  is 6 bytes now, and `tools/bankmap.py` counts it out of `item_int.h`: the
+  128K's `inv[]` ends 4 B under `dist[]`, so its next byte moves `inv[]`.
 - The floor only stores an item's **class char** (`)` `[` `!` `%` `?` `=`), so
   generation/persistence stays untouched. The *specific* object (which weapon,
   what enchantment) is resolved when the cell is looked at or picked up,

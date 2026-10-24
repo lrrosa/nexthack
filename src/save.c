@@ -36,7 +36,11 @@
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   37     /* 37: restore ability (1.8) -- the attributes'
+#define SAVE_VER   38     /* 38: stacks (1.9) -- obj_t grew a count, so the
+                           * pack, the floor stashes and every byte after them
+                           * moved; a 37 save gets the prompt. 37 never left
+                           * the development branch.
+                           * 37: restore ability (1.8) -- the attributes'
                            * peaks (at_peak, 6 B) joined the player block, so
                            * a 36 save's bytes no longer line up: it gets the
                            * prompt. The potion is otyp 82; 83 types still
@@ -62,7 +66,7 @@
                            * 1.4's (the item batch: 60 types, id_known 8 bytes,
                            * the genocide mask); 28 1.3's; 27 the 1.0 freeze.
                            * An older save gets the 1.3.1 prompt. */
-#define SAVE_VER_MIN 37   /* the oldest whose bytes this binary reads as its own */
+#define SAVE_VER_MIN 38   /* the oldest whose bytes this binary reads as its own */
 
 struct save_hdr {
     uint16_t magic;

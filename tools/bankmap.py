@@ -80,6 +80,21 @@ def addr(symbol, filename, zx_variant=False):
     return vals[-1] if zx_variant else vals[0]
 
 
+def obj_size():
+    """sizeof(obj_t), counted from its typedef in item_int.h. It was a literal 5
+    until a stack count made it 6 (1.9), and the literal would have drawn the
+    128K's inv[] 26 B short -- right where it ends 4 B under dist[]. Every
+    member must be a byte: anything wider makes this refuse, not guess."""
+    m = re.search(r'typedef struct \{(.*?)\}\s*obj_t;', _read('item_int.h'), re.S)
+    if not m:
+        sys.exit('bankmap: obj_t not found in item_int.h')
+    body = re.sub(r'/\*.*?\*/', '', m.group(1), flags=re.S)
+    fields = re.findall(r'^\s*(\w+)\s+\w+\s*;', body, re.M)
+    if not fields or any(t not in ('uint8_t', 'int8_t', 'char') for t in fields):
+        sys.exit('bankmap: obj_t has a member that is not a byte: %s' % fields)
+    return len(fields)
+
+
 def asm_equ(symbol, filename):
     text = _read(filename)
     m = re.search(r'^%s\s+equ\s+0x([0-9A-Fa-f]+)' % re.escape(symbol),
@@ -99,7 +114,7 @@ def bank5_map(target):
     fov_bytes = (mapw * maph + 7) // 8
     bfsq_size = const('BFSQ_SIZE', ['monster_ai.c'])
     dug_max = const('DUG_MAX', ['levelfov.c'])
-    objsz = 5                      # obj_t: otyp, ench, ero, worn, buc
+    objsz = obj_size()             # obj_t: otyp, ench, ero, worn, buc, qty
 
     dist_a = addr('dist', 'monster_ai.c')
     bfsq_a = addr('bfsq', 'monster_ai.c')

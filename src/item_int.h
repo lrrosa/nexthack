@@ -105,7 +105,11 @@ typedef struct {
     uint8_t ero;     /* erosion level (rust/corrosion); 0 for now         */
     uint8_t worn;    /* 1 if this is the equipped weapon/armour/ring      */
     uint8_t buc;     /* bits 0-1: 0 uncursed/1 blessed/2 cursed; bit 2 known */
+    uint8_t qty;     /* how many (1.9): potions, scrolls, food and daggers
+                      * stack (item.c stacks_with); anything else is 1. Every
+                      * obj_t built anywhere must set it. */
 } obj_t;
+#define STACK_MAX 99   /* two digits in a name, and well inside a uint8_t */
 
 #define BUC_UNC   0
 #define BUC_BLESS 1
@@ -116,7 +120,9 @@ typedef struct {
 
 /* The inventory lives in Bank 5 (always mapped at 0x4000-0x7FFF on both targets),
  * so it costs no resident BSS. The 128K places it in the gap between PREV_VIS
- * (ends 0x7352) and the BFS scratch (0x7400): 0x7360..0x73E2. It sat at 0x6800,
+ * (ends 0x7352) and the BFS scratch (0x7400): 0x7360..0x73FC since a stack
+ * count made obj_t 6 bytes (1.9) -- 4 B to spare, so the next byte of obj_t
+ * moves it. It sat at 0x6800,
  * right after udg_bitmap, until 1.6 needed a 49th tile there -- moving it out
  * gave the bitmap 17 more ids (176..192). The Next, whose Bank 5 holds the
  * tilemap at 0x6000, places it in the free tail of the tile-def area (tiles
@@ -136,7 +142,8 @@ extern uint8_t inv_count;
  * all grow into trampoline calls. */
 int     select_item(char cls) __banked;   /* the prompt follows from the class */
 void    item_recompute_gear(void) __banked;
-void    item_inv_remove(uint8_t s) __banked;
+void    item_inv_remove(uint8_t s) __banked;     /* the whole entry, a stack too */
+void    item_use_one(uint8_t s) __banked;        /* one of a stack is used up */
 int     item_inv_add(const obj_t *o) __banked;   /* 0: the pack is full */
 int     item_floor_place(uint8_t x, uint8_t y, const obj_t *o) __banked;  /* an owned item: finds room */
 int     item_pick_worn(char cls) __banked;

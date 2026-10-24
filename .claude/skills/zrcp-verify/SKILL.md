@@ -68,6 +68,12 @@ that way; one-liners do not scale.
   session (`Start-Emu` does this), never inside a test that may not run.
 - **Addresses shift on every rebuild.** Always `Sym`; a stale address reads
   garbage that looks exactly like a game-state bug.
+- **`Sym` before `Start-Emu` reads the Next's map.** `zrcp.ps1` starts out
+  targeting the Next and `Start-Emu` switches the target and drops the symbol
+  cache, so a `$X = Sym foo` at the top of a script is the Next's address on
+  both runs: it passes on the Next and reads zeros on the 128K. It cost an
+  hour on the 128K's floor list (2026-10-24): the game was right, the script
+  was reading the Next's address. Look symbols up after `Start-Emu`.
 - **`read-memory` takes DECIMAL and prints HEX; `write-memory` takes decimal
   for BOTH the address and the values.** A value read as `46` must be written
   as `70`.
@@ -113,7 +119,9 @@ Staging richer scenes: poke stats, read a **scroll of magic mapping**
 (`Set-Bytes (Sym inv_count) @(1)` with `otyp 13` in `inv[]`, then `r`) to
 reveal the level, and pull monsters into frame before `Save-EmuScreenshot`.
 `inv[]` is Bank-5 resident: `0x5800` (Next) / `0x7360` (128K; it was `0x6800`
-before 1.6 -- an old script poking there now writes the UDG bitmap).
+before 1.6 -- an old script poking there now writes the UDG bitmap). An entry
+is **6 bytes** since 1.9 -- otyp, ench, ero, worn, buc, **qty** -- so a 5-byte
+poke leaves the next entry's otyp in the count: write the qty (1) too.
 
 ## Second emulator: MAME (`mame.ps1`)
 

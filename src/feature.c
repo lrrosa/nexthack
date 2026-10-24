@@ -223,7 +223,7 @@ void grave_dig(void) __banked
     }
     switch (k = rn2(5)) {
     case 0: case 1:
-        o.otyp = O_CORPSE; o.ench = (int8_t)pick_mon(); o.ero = 0; o.worn = 0; o.buc = 0;
+        o.otyp = O_CORPSE; o.ench = (int8_t)pick_mon(); o.ero = 0; o.worn = 0; o.buc = 0; o.qty = 1;
         item_floor_place(x, y, &o);
         msg("You unearth a corpse.");
         break;

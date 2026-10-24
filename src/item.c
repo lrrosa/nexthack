@@ -354,12 +354,19 @@ static int floor_find(uint8_t x, uint8_t y)
 /* drop object o on (x,y) if it is plain floor/corridor and free; returns 1 if it
  * came to rest there, 0 if the spot can't hold it (a wall/door/stairs/occupied
  * cell -- the caller decides whether that means "lost" or "can't drop here"). */
+static uint8_t stacks_with(const obj_t *a, const obj_t *b);
+
 static int floor_drop(uint8_t x, uint8_t y, const obj_t *o)
 {
     char t = lvl[y][x];
+    int fi = floor_find(x, y);
+    if (fi >= 0) {                   /* a pile (1.9): the daggers thrown at */
+        obj_t *f = &floor_obj[fi].o; /* one monster land together */
+        if (stacks_with(f, o)) { f->qty = (uint8_t)(f->qty + o->qty); return 1; }
+    }
     if ((t != '.' && t != '#' && t != '_' &&   /* items may rest on an altar */
          t != CH_SINK && t != CH_THRONE && t != CH_GRAVE)   /* ...and the furniture */
-        || floor_find(x, y) >= 0 || floor_n >= MAXFLOOR)
+        || fi >= 0 || floor_n >= MAXFLOOR)
         return 0;
     floor_obj[floor_n].x = x; floor_obj[floor_n].y = y;
     floor_obj[floor_n].och = (uint8_t)t;
@@ -417,7 +424,7 @@ void corpse_drop(uint8_t x, uint8_t y, char mch) __banked
     obj_t o;
     o.otyp = O_CORPSE;
     o.ench = (int8_t)mch;
-    o.ero = 0; o.worn = 0; o.buc = BUC_UNC;
+    o.ero = 0; o.worn = 0; o.buc = BUC_UNC; o.qty = 1;
     floor_drop(x, y, &o);
 }
 
@@ -626,17 +633,31 @@ static const char *appearance_of(uint8_t otyp)
     return objtypes[otyp].name;
 }
 
+/* a count of 0..99, for a stack and a wand's charges */
+static char *put_n(char *p, uint8_t n)
+{
+    if (n >= 10) *p++ = (char)('0' + n / 10);
+    *p++ = (char)('0' + (n % 10));
+    return p;
+}
+
 /* a printable description with an erosion prefix and +N enchantment, e.g.
- * "+2 long sword" or "rusty chain mail". Returns a shared static buffer. */
+ * "+2 long sword" or "rusty chain mail" -- and a stack's count, "3 potions
+ * of healing" (1.9). Returns a shared static buffer. */
 static const char *obj_desc(const obj_t *o)
 {
-    static char buf[40];   /* must hold the longest combo, e.g. "blessed corroded
-                            * +2 leather armor" (33) + NUL -- the 32-col displays
-                            * clip it, but the buffer must not be overrun */
+    static char buf[44];   /* must hold the longest combo, e.g. "26 blessed
+                            * potions of restore ability" (39) + NUL -- the 32-col
+                            * displays clip it, but the buffer must not be overrun */
     const objtype_t *t = &objtypes[o->otyp];
     char *p = buf;
     const char *s;
+    uint8_t pl = (uint8_t)(o->qty > 1);   /* the plural's s: 1 = at the end */
 
+    if (pl) {                       /* the count first, as NetHack writes it */
+        p = put_n(p, o->qty);
+        *p++ = ' ';
+    }
     if (buc_seen(o)) {              /* show the BUC state once you've discovered it */
         s = (buc_st(o) == BUC_BLESS) ? "blessed " :
             (buc_st(o) == BUC_CURSE) ? "cursed "  : "";
@@ -659,20 +680,29 @@ static const char *obj_desc(const obj_t *o)
         s = " corpse";
     } else if (has_looks(t->cls) && !id_is(o->otyp)) {
         /* unidentified: this game's look plus the class noun */
-        if (t->cls == '?') { s = "scroll labeled "; while (*s) *p++ = *s++; }
+        if (t->cls == '?') {        /* "scrolls labeled X": the s is not last */
+            s = pl ? "scrolls labeled " : "scroll labeled ";
+            while (*s) *p++ = *s++;
+            pl = 0;
+        }
         s = appearance_of(o->otyp);
         while (*s) *p++ = *s++;
         s = (t->cls == '!') ? " potion" : (t->cls == '=') ? " ring" :
             (t->cls == '/') ? " wand"   : "";
     } else {
         s = t->name;
+        /* "potion of X" -> "potions of X": the s goes before the first space
+         * in the only stacking names that have an "of" */
+        if (pl && (t->cls == '!' || t->cls == '?')) pl = 2;
     }
-    while (*s) *p++ = *s++;
+    while (*s) {
+        if (pl == 2 && *s == ' ') { *p++ = 's'; pl = 0; }
+        *p++ = *s++;
+    }
+    if (pl) *p++ = 's';             /* "food rations", "rat corpses", "daggers" */
     if (t->cls == '/' || o->otyp == O_CAMERA) {  /* charges left: " (N)" */
-        uint8_t n = (uint8_t)o->ench;             /* a camera's run to 99 */
-        *p++ = ' '; *p++ = '(';
-        if (n >= 10) *p++ = (char)('0' + n / 10);
-        *p++ = (char)('0' + (n % 10));
+        *p++ = ' '; *p++ = '(';                   /* a camera's run to 99 */
+        p = put_n(p, (uint8_t)o->ench);
         *p++ = ')';
     }
     *p = 0;
@@ -805,8 +835,35 @@ int item_find_best_gain(void) __banked
     return best;
 }
 
+/* Do these two make one stack (1.9)? NetHack's rule, cut down to the classes
+ * that pile up in a pack here -- potions, scrolls, food (a corpse's ench is its
+ * monster, so only the same monster's merge) and the dagger, the one weapon
+ * thrown by the handful. Everything else that tells two objects apart must
+ * match too, the BUC bits whole: a blessed potion you know is blessed does not
+ * merge with one you have not looked at. b is the one arriving, and a worn one
+ * never joins a stack -- the wielded daggers may take in more. */
+static uint8_t stacks_with(const obj_t *a, const obj_t *b)
+{
+    char c;
+    if (b->worn || a->otyp != b->otyp || a->ench != b->ench ||
+        a->ero != b->ero || a->buc != b->buc ||
+        (uint8_t)(a->qty + b->qty) > STACK_MAX)   /* 99 + 99 fits a byte */
+        return 0;
+    c = objtypes[a->otyp].cls;
+    return (uint8_t)(c == '!' || c == '?' || c == '%' || a->otyp == O_DAGGER);
+}
+
+/* Into the pack: onto a stack it belongs to if there is one -- which needs no
+ * free letter, so a full pack still takes a potion it already holds -- else a
+ * new entry. 0 = the pack is full. */
 static int inv_add(const obj_t *o)
 {
+    uint8_t i;
+    for (i = 0; i < inv_count; i++)
+        if (stacks_with(&inv[i], o)) {
+            inv[i].qty = (uint8_t)(inv[i].qty + o->qty);
+            return 1;
+        }
     if (inv_count >= MAXINV) return 0;
     inv[inv_count++] = *o;
     return 1;
@@ -822,6 +879,7 @@ void give_item(uint8_t otyp, uint8_t worn) __banked
     o.ero  = 0;
     o.worn = worn;
     o.buc  = BUC_UNC;
+    o.qty  = 1;              /* two of a kit's rations make one stack of 2 */
     id_set(otyp);            /* you know what you packed, as in NetHack --
                               * the Wizard's potion no longer reads "ruby" */
     if (inv_add(&o) && worn) recompute_gear();
@@ -831,6 +889,15 @@ static void inv_remove(uint8_t s)
 {
     while ((uint8_t)(s + 1) < inv_count) { inv[s] = inv[s + 1]; s++; }
     inv_count--;
+}
+
+/* One of slot s is used up -- drunk, eaten, read, thrown, offered: the stack
+ * shrinks, and the last one takes the entry with it (the letters after it
+ * shift down, as they always did). */
+static void inv_use_one(uint8_t s)
+{
+    if (inv[s].qty > 1) inv[s].qty--;
+    else                inv_remove(s);
 }
 
 /* A cursed piece you have on stays on. Before 'T' (1.9) `d` was how anything
@@ -902,7 +969,7 @@ static uint8_t art_gift(void)
     if (n == 0) return 0;
     k = cand[rn2(n)];
     o.otyp = (uint8_t)(O_STING + k);
-    o.ench = 0; o.ero = 0; o.worn = 0;
+    o.ench = 0; o.ero = 0; o.worn = 0; o.qty = 1;
     o.buc  = BUC_UNC | BUC_KNOWN;           /* uncursed, as NetHack makes it */
     if (inv_add(&o))
         msg2("You receive ", objtypes[o.otyp].name, "!");
@@ -927,7 +994,7 @@ static void sacrifice(uint8_t s)
     uint8_t favour = (aa == alignment) ? 2 : (aa == 1 || alignment == 1) ? 1 : 0;
 
     cnt_prayers++;                  /* an offering is worship (conducts) */
-    inv_remove(s);                  /* the corpse is consumed on the altar */
+    inv_use_one(s);                 /* the corpse is consumed on the altar */
     acted = 1; turns++;
     sfx_magic();
 
@@ -999,8 +1066,8 @@ static void drop_at_feet(uint8_t s)
         msg(st == BUC_BLESS ? "It flashes blue!" :
             st == BUC_CURSE ? "A black flash!" : "No flash.");
         sfx_magic();
-    } else {
-        msg("You drop it.");          /* name-free: it's the item you just chose */
+    } else {                          /* name-free: it's the item you just chose */
+        msg(o.qty > 1 ? "You drop them." : "You drop it.");
         sfx_pick();
     }
     inv_remove(s);
@@ -1104,6 +1171,7 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
     o->ero  = 0;
     o->worn = 0;
     o->buc  = BUC_UNC;
+    o->qty  = 1;                             /* the floor holds one of a thing */
     if (c == '"') {
         /* The Amulet of Yendor sits on the bottom floor and nowhere else
          * (mindep 50 keeps resolve_otyp off it anyway); a '"' anywhere
@@ -1219,7 +1287,7 @@ void item_spawn(uint8_t x, uint8_t y, char cls, uint8_t cursed) __banked
     obj_t o;
     uint16_t h = rng_next();
     o.otyp = resolve_otyp(cls ? cls : pool[h & 7], (uint16_t)(h >> 3), (uint8_t)eff_depth());
-    o.ench = 0; o.ero = 0; o.worn = 0; o.buc = BUC_UNC;
+    o.ench = 0; o.ero = 0; o.worn = 0; o.buc = BUC_UNC; o.qty = 1;
     gen_buc(&o, rng_next());            /* a fresh draw: h already chose the type */
     if (cursed) o.buc = BUC_CURSE;
     floor_drop(x, y, &o);
@@ -1384,7 +1452,7 @@ void do_drop(void) __banked
         x = print_str(5, r2, " - ", C_WHITE);
         x = print_str(x, r2, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
         if (in_shop) {                    /* the shop pays half the catalogue price */
-            uint16_t sp = (uint16_t)(item_price(&inv[i]) / 2u);
+            uint16_t sp = (uint16_t)(item_price(&inv[i]) / 2u * inv[i].qty);
             x = print_str(x, r2, "   [", C_CYAN);
             x = put_uint(x, r2, sp, C_YELLOW | C_BRIGHT);
             x = print_str(x, r2, " gold]", C_CYAN);
@@ -1419,7 +1487,7 @@ void do_drop(void) __banked
     }
 
     if (in_shop) {
-        uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u);
+        uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u * inv[s].qty);   /* the stack */
         /* a specialist buys only his own line (1.8); no turn, as a sale */
         if (!shop_buys(objtypes[inv[s].otyp].cls)) {
             msg("The shopkeeper is uninterested.");
@@ -1461,7 +1529,7 @@ void do_drop(void) __banked
         x = print_str(3, r2, " ", C_WHITE);
         x = print_str(x, r2, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
         if (in_shop) {
-            uint16_t sp = (uint16_t)(item_price(&inv[i]) / 2u);
+            uint16_t sp = (uint16_t)(item_price(&inv[i]) / 2u * inv[i].qty);
             x = print_str(x, r2, " ", C_CYAN);
             x = put_uint(x, r2, sp, C_YELLOW | C_BRIGHT);
             x = print_str(x, r2, "g", C_CYAN);
@@ -1491,7 +1559,7 @@ void do_drop(void) __banked
     }
 
     if (in_shop) {
-        uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u);
+        uint16_t sp = (uint16_t)(item_price(&inv[s]) / 2u * inv[s].qty);   /* the stack */
         /* a specialist buys only his own line (1.8); no turn, as a sale */
         if (!shop_buys(objtypes[inv[s].otyp].cls)) {
             msg("The shopkeeper is uninterested.");
@@ -1777,6 +1845,7 @@ int select_item(char cls) __banked
  * in this bank, item_use.c is not. */
 void    item_recompute_gear(void) __banked                { recompute_gear(); }
 void    item_inv_remove(uint8_t s) __banked               { inv_remove(s); }
+void    item_use_one(uint8_t s) __banked                  { inv_use_one(s); }
 int     item_inv_add(const obj_t *o) __banked             { return inv_add(o); }
 int     item_floor_place(uint8_t x, uint8_t y, const obj_t *o) __banked
                                                           { return floor_place(x, y, o); }
