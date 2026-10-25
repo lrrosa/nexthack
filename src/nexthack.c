@@ -110,9 +110,7 @@ static uint8_t hunger_state = 0;   /* 0 ok  1 hungry  2 weak  3 fainting */
  * Rendering
  * ============================================================ */
 
-/* telepathy: while blind you sense every monster on the level (the floating
- * eye's gift) -- both renderers draw monsters through this despite no vision */
-#define mon_sensed() (st_blind && ((intrinsics & INTR_TELEPATHY) || amu_esp))
+/* mon_sensed() -- telepathy while blind -- is in game.h: the farlook asks it too */
 
 #ifdef __ZXNEXT
 void draw_map(void) __banked
@@ -176,7 +174,9 @@ void draw_map(void) __banked
 #else
 #define VIEW_EDGE   6
 #define VIEW_SHADOW ((uint8_t *)0x6000u)
-static uint8_t vx_origin;
+/* the viewport's first map column. Not static: the farlook cursor (farlook.c,
+ * another bank) keeps inside the viewport, and DATA is resident either way */
+uint8_t vx_origin;
 
 /* draw_map render state, shared with its per-cell helpers (set each call). */
 static const uint8_t *dm_seen, *dm_vis;
@@ -647,7 +647,8 @@ void draw_help(void) __banked
 
 /* Alignment name (0 Lawful / 1 Neutral / 2 Chaotic). Static: every caller
  * (status, help, describe) is in this file's bank and copies it to the screen
- * while that bank is mapped, so the constseg'd literal never crosses a bank. */
+ * while that bank is mapped, so the constseg'd literal never crosses a bank.
+ * The farlook, in another bank, keeps its own copy (farlook.c). */
 static const char *align_name(uint8_t a)
 {
     return a == 0 ? "Lawful" : a == 1 ? "Neutral" : "Chaotic";
@@ -907,142 +908,14 @@ static int lookable(char c)
            c == CH_SINK || c == CH_THRONE || c == CH_GRAVE;
 }
 
-/* ---- farlook (';') ----
- * Move a cursor around the map and be told what lies there, as in NetHack.
- * Costs no turn. */
-
-/* Say what occupies cell (x,y), honouring what the hero can actually know:
- * unexplored cells stay unknown, monsters show only in sight (or by
- * telepathy), remembered terrain reads from the map like the renderer does. */
-static void look_at(uint8_t x, uint8_t y)
-{
-    int mi;
-    char c;
-    if (x == (uint8_t)hero_x && y == (uint8_t)hero_y) {
-        msg("That is you.");
-        return;
-    }
-    if (!fov_seen(x, y)) {
-        msg("You have not seen that spot.");
-        return;
-    }
-    mi = monster_at(x, y);
-    if (mi >= 0 && (fov_visible(x, y) || mon_sensed())) {
-        if (m_type[mi] == 'x') { msg("A potion."); return; }  /* the mimic's bait */
-        if (mi == pet_idx) { msg("Your faithful dog."); return; }
-        if (m_type[mi] == MON_KEEPER) { msg("The shopkeeper."); return; }
-        {
-            const char *nm = mon_name(m_type[mi]);
-            const char *art;
-            if      (m_peace[mi]) art = "A peaceful ";
-            else if (m_sleep[mi]) art = "A sleeping ";
-            else art = (nm[0] == 'a' || nm[0] == 'e' || nm[0] == 'i' ||
-                        nm[0] == 'o' || nm[0] == 'u') ? "An " : "A ";
-            msg2(art, nm, ".");
-        }
-        return;
-    }
-    c = lvl[y][x];
-    switch (c) {
-    case ')': case '[': case '!': case '%': case '?': case '=': case '/':
-    case '&': case '(':
-        msg(floor_item_desc_at(x, y));
-        break;
-    case '.': msg("The floor.");            break;
-    case '#': msg("A corridor.");           break;
-    case '|': case '-': msg("A wall.");     break;
-    case '+': msg("A door.");               break;
-    case CH_DOORWAY: msg("A doorway.");     break;
-    case ' ': msg("Solid stone.");          break;
-    case '<': msg("A staircase up.");       break;
-    case '>': msg("A staircase down.");     break;
-    case '^': msg("A trap.");               break;
-    case '_': msg2("A ", align_name(altar_align(x, y)), " altar."); break;
-    case '{': msg("A fountain.");           break;
-    case CH_SINK:   msg("A sink.");         break;
-    case CH_THRONE: msg("A throne.");       break;
-    case CH_GRAVE:  grave_say(x, y);        break;
-    case 'v': msg("A hole down to the mines."); break;
-    case '$': msg("A pile of gold.");       break;
-    case '*': msg("A luckstone.");          break;
-    case '"': msg(dlvl == DLVL_AMULET ? "The Amulet of Yendor."
-                                     : "An amulet."); break;
-    default:  msg("");                      break;
-    }
-}
-
-/* The farlook cursor, shared with teleport control. It is a yellow 'X' drawn
- * OVER the screen cell, the original cell restored on every step -- no
- * draw_map pass runs while it moves. The Next saves and rewrites the two
- * tilemap bytes in place; the 128K re-blits the cell from VIEW_SHADOW (which
- * always mirrors the screen) and keeps the cursor inside the current viewport
- * (it never scrolls, so a controlled teleport there reaches what is on
- * screen). Enter, '.' or ',' picks the cell and returns 1; any other key
- * gives up with 0. `look` narrates each step -- that is farlook. */
-static uint8_t cursor_pick(uint8_t look, uint8_t *px, uint8_t *py)
-{
-    uint8_t cx = (uint8_t)hero_x, cy = (uint8_t)hero_y;
-    uint8_t x0, x1;
-    int k;
-#ifdef __ZXNEXT
-    uint8_t *cp;
-    uint8_t s0, s1;
-    x0 = 0; x1 = MAPW - 1;
-#else
-    uint8_t *shad = VIEW_SHADOW;
-    uint8_t sc;
-    uint16_t si;
-    x0 = vx_origin; x1 = (uint8_t)(vx_origin + TM_W - 1);
-#endif
-    in_wait_nokey();
-    key_rpt_slow(1);         /* the cursor glides gentler than the walk (Next) */
-    for (;;) {
-#ifdef __ZXNEXT
-        cp = tm_cell_ptr((uint8_t)(OX + cx), (uint8_t)(OY + cy));
-        s0 = cp[0]; s1 = cp[1];
-        putcell((uint8_t)(OX + cx), (uint8_t)(OY + cy), 'X', C_YELLOW | C_BRIGHT);
-        k = getkey_rpt();
-        cp[0] = s0; cp[1] = s1;
-#else
-        sc = (uint8_t)(cx - vx_origin);
-        si = (uint16_t)(((uint16_t)cy * TM_W + sc) << 1);
-        putcell(sc, (uint8_t)(OY + cy), 'X', C_YELLOW | C_BRIGHT);
-        k = getkey_rpt();
-        puttile_attr(sc, (uint8_t)(OY + cy), shad[si], shad[si + 1]);
-#endif
-        switch (k) {
-        case 'h': case  8: if (cx > x0) cx--; break;
-        case 'l': case  9: if (cx < x1) cx++; break;
-        case 'j': case 10: if (cy < MAPH - 1) cy++; break;
-        case 'k': case 11: if (cy > 0) cy--; break;
-        case 'y': if (cx > x0) cx--; if (cy > 0) cy--; break;
-        case 'u': if (cx < x1) cx++; if (cy > 0) cy--; break;
-        case 'b': if (cx > x0) cx--; if (cy < MAPH - 1) cy++; break;
-        case 'n': if (cx < x1) cx++; if (cy < MAPH - 1) cy++; break;
-        default:                       /* any other key ends it */
-            key_rpt_slow(0);
-            in_wait_nokey();
-            *px = cx; *py = cy;
-            return (uint8_t)(k == 13 || k == '.' || k == ',');
-        }
-        if (look) look_at(cx, cy);
-    }
-}
-
-void do_farlook(void) __banked
-{
-    uint8_t x, y;
-    msg("Look where? (moves; Enter ends)");
-    cursor_pick(1, &x, &y);
-    msg("");
-}
-
 /* Every way the hero is teleported -- the scroll, the trap, the spell and a
  * ring of teleportitis -- comes through here, so a ring of teleport control
  * governs all four from one place. The callers print their own line first.
- * With control you pick the spot on the farlook cursor; a spot you cannot
- * stand on (rock, a wall, a door, a monster) gets NetHack's "Sorry..." and
- * the random blink you would have had anyway. */
+ * With control you pick the spot on the farlook cursor (cursor_pick, in
+ * farlook.c's bank -- it writes the spot through pointers to these stack
+ * locals, which are resident); a spot you cannot stand on (rock, a wall, a
+ * door, a monster) gets NetHack's "Sorry..." and the random blink you would
+ * have had anyway. */
 void hero_teleport(void) __banked
 {
     uint8_t tx, ty;

@@ -176,6 +176,10 @@ extern uint8_t  st_conf;      /* confused: each step lurches a random way */
 extern uint8_t  st_blind;     /* blind: you see only your own cell        */
 extern uint8_t  st_sleep;     /* asleep/paralysed: you forfeit turns      */
 extern uint8_t  st_poison;    /* poisoned: HP drains each turn            */
+/* telepathy: while blind you sense every monster on the level (the floating
+ * eye's gift) -- both renderers draw monsters through this despite no vision,
+ * and the farlook (farlook.c) names them */
+#define mon_sensed() (st_blind && ((intrinsics & INTR_TELEPATHY) || amu_esp))
 
 /* Elbereth: a protective word scratched in the dust. 'E' engraves it on the
  * hero's cell (el_x/el_y) with a turn life (el_life); while the hero stands on

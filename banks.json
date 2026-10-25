@@ -35,6 +35,8 @@
 
     "save":          { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "save & restore, split out of nexthack.c (2026-09-27) when its checked I/O and two-pass load had to grow inside the full nexthack+classes+spells group. Cold, and pointer-coupled to nothing: it copies resident globals, reaches each module's block through a __banked *_save/*_load, and its literals go only to the resident print_str/file_* -- so it can live anywhere with room. PAGE_30 holds the other cold halves" },
 
+    "farlook":       { "code": "PAGE_44_CODE", "const": "PAGE_44_CODE", "why": "the map cursor (';' farlook, and teleport control's pick), split out of nexthack.c (2026-10-25) when the 128K's BANK_3 fell to 132 B. Cold, and pointer-coupled to nothing: its literals go only to the resident msg/msg2, mon_name is resident, floor_item_desc_at hands back resident BSS, and it keeps its own copy of align_name -- so it may live anywhere with room. Bank 22 holds the other cold verbs" },
+
     "nexthack":      { "code": "PAGE_22_CODE", "const": "PAGE_22_CODE", "why": "the game core; const banks every message/label literal next to the code that prints it" },
     "classes":       { "code": "PAGE_22_CODE", "const": "PAGE_22_CODE", "why": "shares nexthack.c's bank on purpose -- draw_status/show_help read its tables in place" },
     "spells":        { "code": "PAGE_22_CODE", "const": "PAGE_22_CODE", "why": "shares nexthack.c's bank like classes.c; spell names/messages cost zero resident bytes" },
@@ -92,6 +94,8 @@
     "nexthack_lvl":  { "code": "BANK_6", "const": "BANK_6", "why": "the cold level half split out of nexthack.c (see the Next entry). In BANK_6 since 2026-10-11, when item_use's growth left BANK_7 at 496 B. BANK_6 is the uncontended bank kept for per-turn code and this runs once per level, so it is not the natural tenant -- but it was the one destination that did not leave the receiving bank tight: BANK_1, where the first --free sent it, would have been left at 123 B. The AI keeps 2.8 KB there to grow" },
 
     "save":          { "code": "BANK_1", "const": "BANK_1", "why": "save & restore, split out of nexthack.c (see the Next entry) -- ~1.3 KB that BANK_3 could no longer spare. Cold (it runs on S and at boot), so BANK_1's contended RAM costs it nothing; BANK_1 had the most room" },
+
+    "farlook":       { "code": "BANK_6", "const": "BANK_6", "why": "the map cursor, split out of nexthack.c (see the Next entry): BANK_3 went from 132 to 1748 B free. BANK_6 was the one bank with room for its 1.7 KB, and it is left at 399 B -- the price, paid where the tenants can still move: BANK_3's colocate group cannot, these can. Cold, so the uncontended RAM is wasted on it; move it out first when the AI needs the room" },
 
     "nexthack":      { "hot": true, "code": "BANK_3", "const": "BANK_3", "why": "the game core; const banks every message/label literal next to the code that prints it" },
     "classes":       { "code": "BANK_3", "const": "BANK_3", "why": "shares nexthack.c's bank on purpose -- draw_status/show_help read its tables in place" },

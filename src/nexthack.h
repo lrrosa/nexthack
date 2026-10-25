@@ -4,8 +4,8 @@
  *
  * nexthack.c holds the shared game-state globals (resident DATA) and the game
  * logic: rendering, the turn step and the screens; level orchestration is in
- * nexthack_lvl.c and save/restore in save.c, whose entry points are declared
- * here too. All of that CODE is banked (see banks.json); only main() stays
+ * nexthack_lvl.c, save/restore in save.c and the map cursor in farlook.c,
+ * whose entry points are declared here too. All of that CODE is banked (see banks.json); only main() stays
  * resident (mainentry.c). The functions main() calls are therefore __banked,
  * reached through the trampoline. Their inner loops touch only resident leaves
  * (terrain/tile_for/FOV in level.c, the platform primitives) and resident DATA,
@@ -42,6 +42,9 @@ uint16_t door_hash(uint8_t x, uint8_t y) __banked;   /* a door's side hash: (h &
                                         * locked, (h & 7) == 2 secret -- never both */
 void do_kick(void)        __banked;   /* 'K': boot the locked door open   */
 void do_farlook(void)     __banked;   /* ';': inspect any visible/remembered cell */
+uint8_t cursor_pick(uint8_t look, uint8_t *px, uint8_t *py) __banked;
+                                      /* farlook.c: a cell picked on the map;
+                                       * 1 = chosen, 0 = given up */
 void hero_teleport(void)  __banked;   /* every teleport of the hero comes here  */
 void traps_reset(void)    __banked;   /* clear the per-visit sprung-trap set */
 

@@ -104,10 +104,10 @@ still free; add a
 | 0 | `item.c` + its catalogue -- 4.4 KB free since the use-verbs left (2026-09-21) |
 | 1 | `levelgen`, `monster_spawn`, `sfx` |
 | 2 | **the resident half** (0x8000-0xBFFF, not pageable) |
-| 3 | `nexthack.c`, `classes`, `spells` — 2.2 KB free since the 2026-08-31 split |
+| 3 | `nexthack.c`, `classes`, `spells` — the indivisible group; 1.7 KB free since `farlook.c` left (2026-10-25), the third split after `nexthack_lvl` and `save` |
 | 4 | `scr` + the two SCRs — 2.5 KB free, but the group is 13.9 KB and cannot move |
 | 5 | **the data bank** (0x4000-0x7FFF, always mapped — see the tenant map) |
-| 6 | `monster_ai`, `levelfov`, `nexthack_lvl` — UNCONTENDED, kept for per-turn code; `nexthack_lvl` is cold but went here (2026-10-11) as the one destination that left nobody tight |
+| 6 | `monster_ai`, `levelfov`, `nexthack_lvl`, `farlook` — UNCONTENDED, kept for per-turn code; `nexthack_lvl` is cold but went here (2026-10-11) as the one destination that left nobody tight, and `farlook` (2026-10-25) because no other bank had its 1.7 KB -- it left this one at 399 B, so move it out first when the AI grows |
 | 7 | `platform_init`, `music`, `leveltmpl`, `item_use` — contended, so cold code only; `item_use` is the grower |
 
 (That table goes stale every time a bank fills; `banks.json` is authoritative
