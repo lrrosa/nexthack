@@ -903,8 +903,21 @@ tilemap.
   ~0.25 s after (FRAMES-timed under ZEsarUX); 20 squares off, 0.5 s where the old
   flood never reached it at all. On the 128K the loop itself is hand-written Z80
   (`flood_run`, inline asm in `monster_ai.c` so it stays in that module's bank) and
-  stops at `MAXDIST`; it mirrors `FLOOD_TRY` test for test, so **a change to the
-  flood's rules must be made in both**.
+  stops at `MAXDIST` (`fl_max`; none when the dog alone reads it); it mirrors
+  `FLOOD_TRY` test for test, so **a change to the flood's rules must be made in
+  both**.
+- **The 128K's dog follows its nose, then the field** (`pet_heel_greedy`,
+  `pet_route`). With no enemy near it heels by line of sight and floods only when a
+  wall boxes it, and from then on it keeps to the field until it is back at heel
+  by the path (2026-10-25). Handed back to its nose after every routed step, the
+  two fought and the dog was lost for good: a user's Samurai left a room by one
+  door, and the dog ran along the inside wall, left by the other door and parked
+  against the wall nearest the hero, 54 steps round and past `MAXDIST`. Proven in
+  ZEsarUX on both halves -- a walk out of a room that left the old dog bouncing
+  between two cells 21 steps back, and a dog 39 steps off that never moved -- and
+  timed in z88dk-ticks: a flood to a dog past `MAXDIST` costs 35-47 ms a turn
+  while it catches up, where the old one cost 23 ms every turn, for good. The
+  Next never had the bug: its dog reads the whole field every turn.
 - **Kill persistence names spawn identities, not slot numbers.** `m_track` (bit i:
   slot i holds the monster the level spawned there) gates every `mon_dead` write:
   keeper, pet and followers are appended above the spawns, and a wanderer or summon

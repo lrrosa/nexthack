@@ -333,8 +333,9 @@ static void peace_amble(uint8_t i)
 #ifndef __ZXNEXT
 /* +zx (3.5 MHz) only: cap the BFS this far from the hero, and skip it unless a
  * live ENEMY is within MON_WAKE. The dog heels greedily without the flood, and
- * wakes it for itself only when a wall boxes the greedy step (see monsters_turn).
- * The Next (28 MHz, whole 80-wide map visible) keeps the unbounded chase. */
+ * wakes it for itself only when a wall boxes the greedy step (see monsters_turn)
+ * -- a flood for the dog alone has no cap (compute_dist_map). The Next (28 MHz,
+ * whole 80-wide map visible) keeps the unbounded chase. */
 #define MAXDIST  30
 #define MON_WAKE 22
 #endif
@@ -408,7 +409,7 @@ extern void dist_clear(uint8_t *p);
  * the Next's) keeps its locals in IX-indexed memory, and a boxed-in monster
  * makes it run every turn: measured in MAME, a flood out to MAXDIST cost
  * ~100 ms of a 160 ms turn. This is that loop, step for step -- the same
- * neighbour order and tests (FLOOD_TRY), the MAXDIST horizon and the ring
+ * neighbour order and tests (FLOOD_TRY), the horizon (fl_max) and the ring
  * guard -- so the field it leaves is the C one's, cell for cell. It lives
  * here rather than in a .asm so that it is always in monster_ai's own bank,
  * whichever banks.json gives it, and compute_dist_map reaches it directly.
@@ -417,14 +418,13 @@ extern void dist_clear(uint8_t *p);
  * IX -> dist[] of the cell being expanded, HL -> its lvl[] char, B = its
  * label + 1, C = which neighbours exist (bit 0 left, 1 right, 2 up, 3 down).
  * fl_x/fl_y hold the cell; a queue entry is its (x, y) byte pair, as in C. */
-static uint8_t fl_head, fl_tail, fl_want, fl_x, fl_y;
+static uint8_t fl_head, fl_tail, fl_want, fl_x, fl_y, fl_max;
 
 static void flood_run(void) __naked
 {
     __asm
 FL_DIST     equ 0x7400              ; dist[], as #defined above
 FL_BFSQ     equ 0x7a90              ; bfsq[]
-FL_MAXDIST  equ 30                  ; MAXDIST
 FL_TARGET   equ 254                 ; TARGET
 FL_MAPW     equ 80
 FL_MAPH     equ 21
@@ -559,9 +559,10 @@ fl_done:
 ; queue (fl_x + E, fl_y + D) -- if its label (B) is inside the horizon and
 ; the ring has room (255 entries, as ENQ_OK). Keeps B, C, HL and IX.
 fl_enq:
-    ld   a, b
-    cp   FL_MAXDIST
-    ret  nc
+    ld   a, (_fl_max)               ; the horizon: MAXDIST, or 255 for none
+    dec  a
+    cp   b
+    ret  c                          ; B >= horizon: labelled, never expanded
     push hl
     ld   a, (_fl_head)
     ld   h, a
@@ -633,6 +634,11 @@ static void compute_dist_map(uint8_t sx, uint8_t sy, uint16_t who)
     bfsq[(uint8_t)tail++] = (uint16_t)(((uint16_t)sy << 8) | sx);
 
 #ifndef __ZXNEXT
+    /* The horizon: MAXDIST for the chase, but none when the dog alone reads
+     * the field -- that flood stops at the dog anyway, and a dog left farther
+     * back than MAXDIST would never find a way to you again. */
+    fl_max = (pet_idx >= 0 && who == (uint16_t)(1u << (uint8_t)pet_idx))
+             ? 255 : MAXDIST;
     fl_head = (uint8_t)head; fl_tail = (uint8_t)tail; fl_want = want;
     flood_run();
 #else
@@ -777,8 +783,8 @@ static void pet_step(uint8_t i)
  * skip compute_dist_map entirely (its flood over a big room is the 3.5 MHz
  * movement bottleneck), so the pet can't read the distance gradient -- it steps
  * greedily by line of sight instead. Open rooms (where speed actually matters)
- * route fine; in a corridor tangle the dog may briefly lag, then rejoins once an
- * enemy wakes the real chase, or on the next level (place_pet). */
+ * route fine; once a wall boxes it, pet_route (below) hands the dog to the
+ * field until it is back at heel. */
 static uint8_t pet_heel_greedy(uint8_t i)   /* 1 = heeled/stepped, 0 = boxed in */
 {
     int hx = hero_x, hy = hero_y;
@@ -832,6 +838,25 @@ static uint8_t pet_heel_greedy(uint8_t i)   /* 1 = heeled/stepped, 0 = boxed in 
         return 1;
     }
     return 0;                          /* boxed in: caller floods once and routes */
+}
+
+/* +zx: 1 while the dog follows the field instead of its nose. Once a wall has
+ * boxed the greedy step, the dog keeps to the flood until it is back at heel
+ * BY THE PATH, not merely as the crow flies. Handed back to the greedy after
+ * every routed step, the two fought: the field led the dog a cell along the
+ * way round, and the next turn its nose led it back, a cell nearer as the
+ * crow flies. A Samurai's dog was lost to it on Dlvl 2 (user-caught,
+ * 2026-10-25): leaving a room by its bottom door, the dog turned back inside,
+ * ran along the wall beside the corridor, left by the room's OTHER door and
+ * parked in the next room against the wall nearest the hero -- 54 steps
+ * round, past MAXDIST, where no field reached it again. Not saved: a new
+ * level puts the dog at your side, and one small flood clears it there. */
+static uint8_t pet_route;
+
+static void pet_follow(uint8_t i)
+{
+    pet_step(i);
+    pet_route = (uint8_t)(dist[(uint16_t)m_y[i] * MAPW + m_x[i]] > 2);
 }
 
 /* +zx: an enemy chases the hero greedily by line of sight (no BFS). In the open
@@ -1008,14 +1033,15 @@ static void monsters_phase(void)
             }
         /* no enemy near: heel the dog by sight, no flood. Only when a wall boxes
          * the greedy step (a bend or doorway it can't round straight to you) do we
-         * flood -- once, routing just the dog. An open room never blocks, so it
-         * never pays; a corridor's flood is small. This keeps the dog ~2 cells back
-         * everywhere instead of letting the gap grow turn by turn through bends. */
+         * flood, routing just the dog -- and keep routing it until it is back at
+         * heel (pet_route). An open room never blocks, so it never pays; the flood
+         * stops at the dog, so it is as small as the gap. This keeps the dog ~2
+         * cells back everywhere instead of letting the gap grow through bends. */
         if (pet_idx < 0 || !m_alive[(uint8_t)pet_idx] || !ACTS((uint8_t)pet_idx)) return;
-        if (pet_heel_greedy((uint8_t)pet_idx)) return;
+        if (!pet_route && pet_heel_greedy((uint8_t)pet_idx)) return;
         compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y,
                          (uint16_t)(1u << (uint8_t)pet_idx));   /* for the dog alone */
-        pet_step((uint8_t)pet_idx);
+        pet_follow((uint8_t)pet_idx);
         return;
     }
     /* an enemy IS near: every monster chases GREEDILY by line of sight (no flood).
@@ -1034,7 +1060,7 @@ static void monsters_phase(void)
             if (m_blind[i]) { m_blind[i]--; peace_amble(i); continue; }
             if (i == (uint8_t)pet_idx) {
                 if (pet_bite_adjacent(i)) continue;
-                if (!pet_heel_greedy(i)) blocked |= (uint16_t)(1u << i);
+                if (pet_route || !pet_heel_greedy(i)) blocked |= (uint16_t)(1u << i);
                 continue;
             }
             if (iabs((int)m_x[i] - hero_x) > MON_WAKE ||
@@ -1055,7 +1081,7 @@ static void monsters_phase(void)
             compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y, blocked);
             for (i = 0; i < mcount; i++) {
                 if (!(blocked & (uint16_t)(1u << i)) || !m_alive[i]) continue;
-                if (i == (uint8_t)pet_idx) pet_step(i);
+                if (i == (uint8_t)pet_idx) pet_follow(i);
                 else                       step_to_hero(i);
             }
         }
