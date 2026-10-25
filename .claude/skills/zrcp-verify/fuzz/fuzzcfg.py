@@ -77,7 +77,7 @@ need = ['_hero_x', '_hero_y', '_hero_face', '_dlvl', '_php', '_pmaxhp', '_nutrit
         '_turns', '_world_seed', '_rng', '_gold', '_resting', '_dead', '_won', '_st_blind',
         '_st_sleep', '_intrinsics', '_amu_esp', '_shop_room', '_r_x', '_r_y', '_r_w', '_r_h',
         '_rcount', '_vis_now', '_cur_slot', '_has_amulet', '_floor_n', '_stash', '_gold_taken',
-        '_item_taken', '_mon_dead', '_door_open', '_el_life', '_m_track', 'tempsp']
+        '_item_taken', '_mon_dead', '_door_open', '_door_passed', '_el_life', '_m_track', 'tempsp']
 if target == 'zx128':
     need += ['_vx_origin', '_udg_ink']
 else:
@@ -85,7 +85,7 @@ else:
 S = {n.lstrip('_'): need_sym(n) for n in need}
 # what a scan trip forgets when it switches worlds (fuzz.lua arm_trip)
 sizes = {n.lstrip('_'): size_of(n) for n in
-         ('_stash', '_gold_taken', '_item_taken', '_mon_dead', '_door_open')}
+         ('_stash', '_gold_taken', '_item_taken', '_mon_dead', '_door_open', '_door_passed')}
 
 tiles = {}
 for line in open(os.path.join(src, 'platform.h'), encoding='utf-8'):

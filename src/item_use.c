@@ -567,7 +567,7 @@ static void apply_pick(void)
     if (read_dir(&dx, &dy)) {
         x += (uint8_t)dx; y += (uint8_t)dy;
         c = terrain(x, y);
-        if (c == '+') no = "You cannot dig through a door.";
+        if (IS_DOOR(c)) no = "You cannot dig through a door.";
         else if (c != ' ' && c != '-' && c != '|') no = "You swing at thin air.";
         /* 1..MAPW-2 by one unsigned compare: the outer ring stays rock */
         else if ((uint8_t)(x - 1) >= MAPW - 2 || (uint8_t)(y - 1) >= MAPH - 2 ||
@@ -595,7 +595,7 @@ static void apply_whistle(void)
         for (dx = -1; dx <= 1; dx++) {
             int x = hero_x + dx, y = hero_y + dy;
             char t = terrain(x, y);
-            if ((dx | dy) == 0 || !walkable(t) || t == '+' || monster_at(x, y) >= 0)
+            if ((dx | dy) == 0 || !walkable(t) || IS_DOOR(t) || monster_at(x, y) >= 0)
                 continue;
             m_x[(uint8_t)pet_idx] = (uint8_t)x;
             m_y[(uint8_t)pet_idx] = (uint8_t)y;

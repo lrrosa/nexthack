@@ -80,7 +80,7 @@ static void spell_ray(uint8_t sp, int dx, int dy)
         x += dx; y += dy;
         if (x < 0 || y < 0 || x >= MAPW || y >= MAPH) break;
         c = lvl[y][x];
-        if (c == '|' || c == '-' || c == ' ' || c == '+') break;  /* stops */
+        if (c == '|' || c == '-' || c == ' ' || IS_DOOR(c)) break;  /* stops */
         mi = monster_at(x, y);
         if (mi < 0) continue;
         /* Over the dog and the shopkeeper, as a thrown weapon or a wand's

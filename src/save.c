@@ -14,6 +14,8 @@
  * THE FORMAT (SAVE_VER 30): a header, the player block, door_open, then the
  * item, level and monster blocks, then a 4-byte trailer -- the count and the
  * 16-bit sum of every byte before it, which file_write keeps (platform.c).
+ * Since 39 the passed doors (door_passed) sit between the monster block and
+ * the trailer, where a 38 save simply ends.
  *
  * WHAT A LOAD TRUSTS: nothing, until the whole file has been read through
  * once (save_check) and its length and sum agree with that trailer. The old
@@ -36,7 +38,12 @@
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   38     /* 38: stacks (1.9) -- obj_t grew a count, so the
+#define SAVE_VER   39     /* 39: the passed doors -- door_passed (110 B) after
+                           * the monster block, the last thing before the
+                           * trailer, so a 38 save is 39 without it: it loads,
+                           * every door shut (SAVE_VER_MIN). A 1.9.0 binary
+                           * sees another version and asks.
+                           * 38: stacks (1.9) -- obj_t grew a count, so the
                            * pack, the floor stashes and every byte after them
                            * moved; a 37 save gets the prompt. 37 never left
                            * the development branch. The wand of speed monster
@@ -147,6 +154,7 @@ int save_game(void) __banked
     item_save(h);
     level_save(h);
     monster_save(h);
+    file_write(h, door_passed, (MAXLVL + 1) * DOOR_BYTES);   /* 39 */
     trail[0] = file_len; trail[1] = file_sum;   /* taken before they count themselves */
     file_write(h, trail, sizeof trail);
     file_close(h);
@@ -285,6 +293,8 @@ int load_game(void) __banked
     item_load(h);
     level_load(h);
     monster_load(h);
+    if (hdr.ver >= 39) file_read(h, door_passed, (MAXLVL + 1) * DOOR_BYTES);
+    else               memset(door_passed, 0, (MAXLVL + 1) * DOOR_BYTES);
     file_close(h);
     file_remove(SAVE_NAME);
     return 1;

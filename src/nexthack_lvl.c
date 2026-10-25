@@ -226,6 +226,7 @@ void build_level(void) __banked
      * and put it back once the deterministic part is over. */
     play = rng_get();
     gen_level();
+    door_note();         /* list the doors, every one still a '+' (levelgen.c) */
     secrets_hide();      /* hide some doors and passages (secret.c): side
                           * hashes, so no rn2 moves and the spawns below see
                           * only room floors, which it never touches */
@@ -247,6 +248,7 @@ void build_level(void) __banked
     apply_item_persistence();
     dug_restore();       /* re-open the tunnels the hero dug here (levelfov.c):
                           * last but the stash, which may lie in one */
+    door_restore();      /* the doors already passed, found secret ones too */
     floor_restore();     /* re-lay this level's dropped-item stash (item.c) */
     map_dirty = 1;       /* +zx: next draw_map recenters (no-op on Next) */
     /* note: FOV memory is per depth and persists across visits, so it is NOT

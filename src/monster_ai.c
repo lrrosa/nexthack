@@ -947,7 +947,7 @@ static uint8_t dragon_breath(uint8_t i)
     {   int x = (int)m_x[i] + sx, y = (int)m_y[i] + sy;
         while (x != hero_x || y != hero_y) {
             char c = terrain(x, y);
-            if (!walkable(c) || c == '+') return 0; /* walls and doors block  */
+            if (!walkable(c) || IS_DOOR(c)) return 0; /* walls and doors block */
             if (monster_at(x, y) >= 0) return 0;    /* something shields you  */
             x += sx; y += sy;
         }

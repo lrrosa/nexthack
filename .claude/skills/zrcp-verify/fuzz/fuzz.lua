@@ -183,6 +183,7 @@ local function tile_for(c, mines)
   if c == 35 then return TL.T_CORR end             -- #
   if c == 45 or c == 124 then return mines and TL.T_MINEWALL or TL.T_WALL end
   if c == 43 then return TL.T_DOOR end             -- +
+  if c == 39 then return TL.T_FLOOR end            -- ' a passed door (level.h CH_DOORWAY)
   if c == 60 then return TL.T_SUP end              -- <
   if c == 62 then return TL.T_SDOWN end            -- >
   if c == 36 then return TL.T_GOLD end             -- $
@@ -478,7 +479,7 @@ local function arm_trip(odl, D, keep_seed)
     "do b@" .. hx(S.dlvl) .. " = " .. hx(D), "do b@" .. hx(S.dlvl + 1) .. " = 0",
     "do w@" .. hx(S.world_seed) .. " = " .. hx(seed) }
   if not keep_seed then             -- a new world forgets the last one
-    for _, c in ipairs({ "stash", "gold_taken", "item_taken", "mon_dead", "door_open" }) do
+    for _, c in ipairs({ "stash", "gold_taken", "item_taken", "mon_dead", "door_open", "door_passed" }) do
       cmds[#cmds + 1] = "fill " .. hx(S[c]) .. "," .. hx(cfg.size[c]) .. ",0"
     end
     cmds[#cmds + 1] = "do b@" .. hx(S.floor_n) .. " = 0"

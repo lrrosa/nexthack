@@ -300,7 +300,7 @@ void fov_update(int hx, int hy) __banked
             c = ((const char *)lvl)[idx];
             /* walls, rock and doors are opaque: rays light corridors but do
              * not peek into rooms (a room is revealed when you enter it) */
-            if (c == '|' || c == '-' || c == ' ' || c == '+') break;
+            if (c == '|' || c == '-' || c == ' ' || IS_DOOR(c)) break;
         }
     }
 }

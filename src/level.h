@@ -26,6 +26,14 @@ extern char    lvl[MAPH][MAPW];
 #define CH_SINK   '~'
 #define CH_THRONE '\\'
 #define CH_GRAVE  '`'
+
+/* A door the hero has been through (levelgen.c door_pass): drawn as an empty
+ * doorway, still a door to every rule -- nothing digs through it, lands or
+ * spawns on it, sees, breathes or casts past it. A test for a door is
+ * IS_DOOR, never c == '+' alone; '+' alone is right only where a door can
+ * still be shut (locked, kicked, keyed, the wand of opening). */
+#define CH_DOORWAY '\''
+#define IS_DOOR(c) ((c) == '+' || (c) == CH_DOORWAY)
 void place_features(void) __banked;           /* build_level, beside the altar */
 void quaff_sink(void) __banked;               /* 'q' on a sink                 */
 void kick_sink(uint8_t x, uint8_t y) __banked;/* 'K' beside one               */
@@ -65,8 +73,19 @@ int  level_take_gold(uint8_t x, uint8_t y) __banked;
 void apply_item_persistence(void) __banked;
 int  level_take_item(uint8_t x, uint8_t y) __banked;
 
-/* forget all remembered gold/item pickups (new game) */
+/* forget all remembered gold/item pickups and passed doors (new game) */
 void level_reset_persistence(void) __banked;
+
+/* ---- the doors the hero has been through (levelgen.c) ---- */
+#define DOOR_MAX   16              /* listed per level; past it a door stays shut.
+                                    * An ordinary level has 14 (7 corridors, a
+                                    * door each end), a template 8-10, the Big
+                                    * Room none: measured on 48 levels */
+#define DOOR_BYTES (DOOR_MAX / 8)
+extern uint8_t door_passed[][DOOR_BYTES];    /* [MAXLVL + 1]: bit i, door i  */
+void door_note(void) __banked;               /* build_level, right after gen   */
+void door_restore(void) __banked;            /* build_level, after dug_restore */
+void door_pass(uint8_t x, uint8_t y) __banked;   /* the hero stepped onto it   */
 
 /* ---- shops (Phase 21) ---- */
 /* What a shop sells (1.8), NetHack's kinds by NetHack's odds: a side hash of

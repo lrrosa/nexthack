@@ -511,8 +511,9 @@ tilemap.
   `rn2()` calls inside generation casually** — it changes every level and can desync
   the persistence bit indices.
 - `build_level()` (in `nexthack_lvl.c`) orchestrates: `gen_level()` → the
-  secrets (1.8) → spawn monsters → altar, fountain and furniture → apply
-  gold/monster/item persistence → the dug cells → the floor stash. Gold/items are placed before monsters so spawning sees
+  door list → the secrets (1.8) → spawn monsters → altar, fountain and
+  furniture → apply gold/monster/item persistence → the dug cells → the passed
+  doors → the floor stash. Gold/items are placed before monsters so spawning sees
   the same map each visit, and anything that decides by looking at the map must
   run before the persistence: until 2026-10-10 the altar and fountain came after
   it, so a pile taken from the room's centre made one appear on the next visit.
@@ -552,6 +553,22 @@ tilemap.
   lays that scratch out its own way (the ring as byte planes at 0x7400 and
   0x7500, the labels at 0x7600). `s` finds one in five tries (luck 3 or 9); found ones ride the
   dug pool (below).
+- **Passed doors** (2026-10-25, `levelgen.c`): a door the hero has walked
+  through is drawn as an empty doorway (`CH_DOORWAY`, the floor tile) on every
+  visit after, as NetHack's opened doors stop looking shut. Only the drawing
+  changes: it stays opaque and a door to every rule, so **a door test is
+  `IS_DOOR(c)` (`level.h`), never `c == '+'`** -- `'+'` alone only where a door
+  can still be shut (locked, kicked, keyed, the wand of opening). The locked
+  doors' map-order index counts both (`door_hash_locked`), or a passed door
+  would shift every later locked door onto another's forced bit. Remembered as
+  the gold is: `door_note` lists the doors in map order straight after
+  `gen_level`, before `secrets_hide` walls any up, so a secret door keeps its
+  index found or not; `door_passed[dlvl]` holds a bit per listed door
+  (`DOOR_MAX` 16 -- every ordinary level measured has 14, a template 8-10; past
+  it a door just stays shut); `door_pass` (from `try_move`) sets one, and
+  `door_restore` reopens them after `dug_restore`, so a found secret door is a
+  `+` again first. 143 B resident; saved last before the trailer
+  (`SAVE_VER` 39), so a 38 save loads with every door shut.
 - **Furniture** (1.8, `feature.c`/`throne.c`): a sink (`~`, one level in 7), a
   throne (`\`, one in 10 from Dlvl 5) and a grave (`` ` ``, likelier deeper),
   each on a fixed interior cell of a hashed room if it is plain floor outside a
@@ -632,7 +649,7 @@ tilemap.
   as a revisit does. Saved state = `world_seed`, the player globals, the inventory
   (`item.c`), and the per-depth `gold_taken`/`item_taken`/`mon_dead` masks plus the
   `fov_pool` LRU fog-of-war, the pick-axe's `dug_pool` and the genocide mask
-  (`level.c`/`monster.c`).
+  (`level.c`/`monster.c`), and the passed doors (`door_passed`, 39).
 - **Any save-format change bumps `SAVE_VER`, and an older save gets the
   incompatible-save prompt** (1.3.1): name it, ask, and leave it on `n`. The
   identification bitmap is `(NUMOBJ+7)/8` bytes, so appending catalogue types
@@ -646,7 +663,7 @@ tilemap.
   gives for free: ZEsarUX auto-mounts esxDOS onto the .nex's folder, so `S` saves to
   `nexthack.sav` there and the next boot restores it. (No SD image / `hdfmonkey`.)
 - Memory budget: the cheap per-level masks scale to every level (`MAXLVL` = 54,
-  the 50 floors plus the four mine levels, ~3 bytes/level), but the fog-of-war does **not** — it is a fixed
+  the 50 floors plus the four mine levels, ~5 bytes/level), but the fog-of-war does **not** — it is a fixed
   `FOV_SLOTS`-entry LRU pool, so RAM is independent of dungeon depth. esxDOS itself
   adds ~1.5 KB of BSS (sector buffers), so `FOV_SLOTS` (12) is kept below the RAM
   max (~18) to reserve headroom for future features.

@@ -952,6 +952,7 @@ static void look_at(uint8_t x, uint8_t y)
     case '#': msg("A corridor.");           break;
     case '|': case '-': msg("A wall.");     break;
     case '+': msg("A door.");               break;
+    case CH_DOORWAY: msg("A doorway.");     break;
     case ' ': msg("Solid stone.");          break;
     case '<': msg("A staircase up.");       break;
     case '>': msg("A staircase down.");     break;
@@ -1045,12 +1046,13 @@ void do_farlook(void) __banked
 void hero_teleport(void) __banked
 {
     uint8_t tx, ty;
+    char tc;
     resting = 0;                        /* teleportitis may fire mid-rest */
     if (ring_fx & RF_TCTRL) {
         ring_noticed(RF_TCTRL);         /* being asked gives the ring away */
         msg("Teleport where? (Enter picks)");
-        if (cursor_pick(0, &tx, &ty) && walkable(terrain(tx, ty)) &&
-            lvl[ty][tx] != '+' && monster_at(tx, ty) < 0) {
+        if (cursor_pick(0, &tx, &ty) && (tc = terrain(tx, ty), walkable(tc)) &&
+            !IS_DOOR(tc) && monster_at(tx, ty) < 0) {
             hero_x = tx; hero_y = ty;
             map_dirty = 1;              /* +zx: recentre on the new spot */
             msg("");
@@ -1124,9 +1126,13 @@ uint16_t door_hash(uint8_t x, uint8_t y) __banked { return dhash(x, y); }
 
 static uint8_t door_hash_locked(uint8_t x, uint8_t y)
 {
+    char c = lvl[y][x];
     /* eff_depth, so the mines are judged by how they PLAY (3..6) and not by
      * their internal dlvl 51..54 -- same result today, but it is the rule */
-    if (eff_depth() < 3 || lvl[y][x] != '+') return 0;
+    /* IS_DOOR, not '+': a passed door is still counted, or every locked door
+     * after it in map order would shift down an index and read another's
+     * forced bit -- a still-locked door opening itself */
+    if (eff_depth() < 3 || !IS_DOOR(c)) return 0;
     /* Never a shop's door: the keeper cannot leave to let you in, and a shop
      * you have to kick your way into is not a shop. Same rule trap_type uses,
      * and the same reason -- a pure rect test, no RNG, so generation stays
@@ -1455,6 +1461,7 @@ void try_move(int dx, int dy) __banked
     hero_y = ny;
     turns++;
     acted = 1;
+    if (dest == '+') door_pass((uint8_t)nx, (uint8_t)ny);  /* it stays open */
     /* Stepping onto floor, or onto a known-but-still-armed trap ('^' that you
      * found by searching), can spring a hidden trap. */
     if (maybe_trap(dest, (uint8_t)nx, (uint8_t)ny)) return;

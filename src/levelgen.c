@@ -11,6 +11,7 @@
  * via plain extern. Public entry points are __banked (see level.h); the static
  * helpers are reached only by in-page calls. */
 
+#include <string.h>       /* memchr (door_note) */
 #include "level.h"
 #include "rng.h"          /* rng_set, rn2, world_seed  */
 #include "game.h"         /* dlvl, MAXLVL, DLVL_AMULET, has_amulet */
@@ -198,7 +199,7 @@ void rand_floor(uint8_t i, uint8_t *px, uint8_t *py) __banked
 static uint8_t tele_ok(uint8_t x, uint8_t y)
 {
     char c = lvl[y][x];
-    return walkable(c) && c != '+' && monster_at((int)x, (int)y) < 0 &&
+    return walkable(c) && !IS_DOOR(c) && monster_at((int)x, (int)y) < 0 &&
            !((int)x == hero_x && (int)y == hero_y);
 }
 
@@ -775,4 +776,60 @@ void level_reset_persistence(void) __banked
         gold_taken[i] = 0;
         item_taken[i] = 0;
     }
+    memset(door_passed, 0, (MAXLVL + 1) * DOOR_BYTES);
+}
+
+/* ---- the doors the hero has been through (2026-10-25) ----
+ * A door you have walked through is drawn as an empty doorway from then on,
+ * on every visit -- NetHack's look, where an opened door stops looking shut.
+ * Only the drawing changes: lvl[] holds CH_DOORWAY there, and every rule that
+ * asks for a door asks IS_DOOR (level.h).
+ *
+ * Remembered as the gold is. door_note lists the level's doors in map order
+ * straight after gen_level, before secrets_hide walls any of them up, so a
+ * secret door keeps its place in the list whether it has been found or not;
+ * door_passed[dlvl] has a bit per listed door. door_restore reopens them at
+ * the end of build_level: after everything that decides on the level as born
+ * (the furniture keeps off a door's side), and after dug_restore has put the
+ * found secret doors back. Past DOOR_MAX a door simply stays shut. */
+uint8_t door_passed[MAXLVL + 1][DOOR_BYTES];
+static uint8_t  dcount;
+static uint16_t d_k[DOOR_MAX];          /* y * MAPW + x of listed door i */
+
+void door_note(void) __banked
+{
+    const char *p = (const char *)lvl, *end = p + MAPH * MAPW;
+    dcount = 0;
+    /* memchr is the CPIR scan: a C loop over the whole map costs the 128K
+     * ~70 ms a level entry (secret.c) */
+    while (dcount < DOOR_MAX && (p = memchr(p, '+', (uint16_t)(end - p))) != 0) {
+        d_k[dcount++] = (uint16_t)(p - (const char *)lvl);
+        p++;
+    }
+}
+
+void door_restore(void) __banked
+{
+    uint8_t i;
+    char *l = (char *)lvl;
+    if (dlvl > MAXLVL) return;
+    for (i = 0; i < dcount; i++)
+        if ((door_passed[dlvl][i >> 3] & (uint8_t)(1u << (i & 7))) && l[d_k[i]] == '+')
+            l[d_k[i]] = CH_DOORWAY;
+}
+
+/* The hero has stepped onto the door at (x,y). It turns into a doorway under
+ * them, and draw_map shows it as they step off (it repaints the cell they
+ * left). A door past DOOR_MAX stays a door: it could not stay open. */
+void door_pass(uint8_t x, uint8_t y) __banked
+{
+    uint16_t k = (uint16_t)y * MAPW + x;
+    uint8_t i;
+    if (dlvl > MAXLVL) return;
+    for (i = 0; i < dcount; i++)
+        if (d_k[i] == k) {
+            door_passed[dlvl][i >> 3] |= (uint8_t)(1u << (i & 7));
+            ((char *)lvl)[k] = CH_DOORWAY;
+            return;
+        }
 }
