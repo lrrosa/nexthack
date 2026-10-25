@@ -103,6 +103,10 @@ static void sit_throne(void)
                 if (inv[i].otyp != O_AMULET)
                     inv[i].buc = (uint8_t)((inv[i].buc & BUC_KNOWN) | BUC_CURSE);
             }
+            /* a cursed piece you have on is worth 2 less (gear_eff): the
+             * damage and the AC change now, not at the next thing that
+             * recomputes them (#22) */
+            item_recompute_gear();
             msg("You feel you need some help.");
         }
         break;
