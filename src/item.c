@@ -1732,8 +1732,12 @@ void show_discoveries(void) __banked
 static uint8_t cls_match(uint8_t i, char cls)
 {
     char c = objtypes[inv[i].otyp].cls;
-    if (cls == 'P')          /* 'P': rings, and every amulet but Yendor's */
-        return (uint8_t)(c == '=' || (c == '"' && inv[i].otyp != O_AMULET));
+    if (cls == 'P')          /* 'P': rings, and every amulet but Yendor's --
+                              * the ones not on already (#19: a worn ring that
+                              * counted here was picked again over its free
+                              * twin, and the second hand stayed empty) */
+        return (uint8_t)(!inv[i].worn &&
+                         (c == '=' || (c == '"' && inv[i].otyp != O_AMULET)));
     if (cls == 'C')          /* 'C': what a scroll of charging tops up */
         return (uint8_t)(c == '/' || inv[i].otyp == O_CAMERA);
     if (cls == 'T')          /* 'T': whatever you have on, the weapon too */
@@ -1742,8 +1746,10 @@ static uint8_t cls_match(uint8_t i, char cls)
 }
 
 /* Pick an item of class cls. Returns its index, -1 if you have none, or -2 if
- * you cancelled. With a single type present it picks it silently; only when two
- * *different* types are carried does it pop a letter menu (NetHack-style). */
+ * you cancelled. With a single entry to choose from it picks it silently; two
+ * or more pop a letter menu, even of one type (#19): two wands of striking, one
+ * empty, or two potions of healing, one blessed, are two choices -- picking
+ * the first by type made the second unreachable. */
 /* The prompt is a pure function of the class: every caller -- all of them in
  * item_use.c now -- asked for one class with one fixed question. Deriving it
  * HERE keeps the literal in this bank. A prompt passed in from item_use.c would
@@ -1776,7 +1782,7 @@ int select_item(char cls) __banked
     for (i = 0; i < inv_count; i++) {
         if (!cls_match(i, cls)) continue;
         if (first < 0) first = i;
-        else if (inv[i].otyp != inv[first].otyp) multi = 1;
+        else multi = 1;
     }
     if (first < 0) return -1;
     if (!multi)    return first;
@@ -1815,7 +1821,7 @@ int select_item(char cls) __banked
     for (i = 0; i < inv_count; i++) {
         if (!cls_match(i, cls)) continue;
         if (first < 0) first = i;
-        else if (inv[i].otyp != inv[first].otyp) multi = 1;
+        else multi = 1;
     }
     if (first < 0) return -1;
     if (!multi)    return first;

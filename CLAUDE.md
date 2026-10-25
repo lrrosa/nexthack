@@ -843,9 +843,12 @@ tilemap.
   (`nexthack.c`), the farlook switch (`farlook.c`), plus generation (`levelgen.c`'s loot blocks
   and `SHOPCLS`). Missing the pickup list makes the item visible, describable
   and impossible to take.
-- `q`/`e`/`r`/`P`/`T` use `select_item()`: silent when you carry one type, but it
-  pops a letter menu when two *different* types are present, and derives its
-  prompt from the class (pseudo-classes: `'P'` rings + wearable amulets, `'C'`
+- `q`/`e`/`r`/`P`/`T` use `select_item()`: silent when exactly one entry
+  matches, a letter menu for two or more -- of one type too (#19: two wands of
+  striking, one empty, or a second ring like the first, were unreachable when
+  the menu waited for two *different* types) -- and derives its
+  prompt from the class (pseudo-classes: `'P'` rings + wearable amulets not
+  already on, `'C'`
   wands for charging, `'T'` whatever is worn or wielded). These set `acted`/`turns` themselves, so a cancel or a
   no-op costs no turn.
 - **Every teleport of the hero goes through `hero_teleport()`** (`nexthack.c`):

@@ -110,8 +110,9 @@ static uint8_t rings_on(void)
  * NetHack. It used to choose "the best ring" by itself, which was harmless
  * while both rings wore their names and would now be an oracle: with the
  * looks unknown, choosing for the player tells him which ruby ring is worth
- * wearing. So it asks, through the same menu as q/r/z (silent when you carry
- * one type). It charges its own turn, like q/e/r, so a cancel costs none --
+ * wearing. So it asks, through the same menu as q/r/z (silent when only one
+ * piece is off -- #19: it offers only what you are not wearing, so a second
+ * ring like the first goes on). It charges its own turn, like q/e/r, so a cancel costs none --
  * mainentry used to charge one and the amulet path a second.
  *
  * Two rings since 1.9, one on each hand, and one amulet. Until then P swapped
@@ -123,9 +124,12 @@ void do_puton(void) __banked
 {
     int s = select_item('P');
     char cls;
-    if (s == -1) { msg("You have nothing to put on."); return; }
+    if (s == -1) {
+        msg(rings_on() || find_worn('"') >= 0 ? "You have nothing else to put on."
+                                              : "You have nothing to put on.");
+        return;
+    }
     if (s == -2) { msg("Never mind."); return; }
-    if (inv[s].worn) { msg("You are already wearing that."); return; }
     cls = item_obj_cls(inv[s].otyp);
     if (cls == '=' ? rings_on() >= 2 : find_worn(cls) >= 0) {
         msg(cls == '=' ? "You already wear two rings." : "You already wear an amulet.");
