@@ -299,3 +299,42 @@ int load_game(void) __banked
     file_remove(SAVE_NAME);
     return 1;
 }
+
+/* #24: the level comes back as it was born, every monster where it spawned,
+ * and the hero where they stood when they saved -- which can be a spawn's own
+ * square, one lured away and its place taken. Whoever stands on the hero
+ * steps aside to the nearest free square: a position only, no dice and no
+ * slot moved, so neither the generation nor mon_dead can tell. A hostile
+ * never steps into a shop, which is the keeper's floor. */
+static void off_hero(void)
+{
+    uint8_t i, r, k, side, x, y, hx = (uint8_t)hero_x, hy = (uint8_t)hero_y;
+    for (i = 0; i < mcount; i++) {
+        if (!m_alive[i] || m_x[i] != hx || m_y[i] != hy) continue;
+        for (r = 1; r <= 2; r++) {          /* the 8 around, then the 16 beyond */
+            side = (uint8_t)(2 * r + 1);
+            for (k = 0; k < (uint8_t)(side * side); k++) {
+                x = (uint8_t)(hx + k % side - r);   /* off the map wraps to */
+                y = (uint8_t)(hy + k / side - r);   /* rock: not walkable   */
+                if ((x == hx && y == hy) || !walkable(terrain(x, y)) ||
+                    monster_at(x, y) >= 0 ||
+                    (m_type[i] != MON_KEEPER && shop_in_room(x, y))) continue;
+                m_x[i] = x; m_y[i] = y;
+                goto moved;
+            }
+        }
+    moved: ;
+    }
+}
+
+/* What follows a load: the saved depth regenerated, the hero settled in it,
+ * the dog brought back. mainentry.c's three calls became this one, which
+ * also keeps the resident half from growing for #24. */
+void load_resume(void) __banked
+{
+    build_level();              /* regenerate the saved depth */
+    secrets_underfoot();        /* a pre-1.8 save may stand in a doorway
+                                 * that is a secret door now: open it */
+    off_hero();                 /* #24 */
+    place_pet();                /* and bring the dog back to your side */
+}

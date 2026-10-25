@@ -31,7 +31,7 @@
     "level":         { "why": "resident: terrain/walkable/tile_for are per-cell leaves" },
     "monster":       { "why": "resident: monster_at/mon_find/mon_tile are per-cell leaves" },
 
-    "nexthack_lvl":  { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "the cold level half split out of nexthack.c: build_level, the altar/fountain/pet/follower placement and the stairs. Deliberately NOT in nexthack.c's bank -- the point of the split was to get these bytes out of the classes+spells colocate group. In its own bank 15 rather than PAGE_20, which it would have squeezed to 344 B: the Next has spare banks, so the split buys headroom instead of moving the shortage" },
+    "nexthack_lvl":  { "code": "PAGE_20_CODE", "const": "PAGE_20_CODE", "why": "the cold level half split out of nexthack.c: build_level, the altar/fountain/pet/follower placement and the stairs. Deliberately NOT in nexthack.c's bank -- the point of the split was to get these bytes out of the classes+spells colocate group. It began in bank 15 (PAGE_30), when PAGE_20 would have been squeezed to 344 B; moved to PAGE_20 (2026-10-25, bankpack's one-move plan) when save.c's restore (#24, #25) overflowed PAGE_30 by 44 B -- PAGE_20 had grown to 4.2 KB free since, and both banks keep ~2 KB" },
 
     "save":          { "code": "PAGE_30_CODE", "const": "PAGE_30_CODE", "why": "save & restore, split out of nexthack.c (2026-09-27) when its checked I/O and two-pass load had to grow inside the full nexthack+classes+spells group. Cold, and pointer-coupled to nothing: it copies resident globals, reaches each module's block through a __banked *_save/*_load, and its literals go only to the resident print_str/file_* -- so it can live anywhere with room. PAGE_30 holds the other cold halves" },
 

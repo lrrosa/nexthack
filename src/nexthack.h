@@ -16,6 +16,7 @@
 
 void title_screen(void)   __banked;
 int  load_game(void)      __banked;
+void load_resume(void)    __banked;   /* after load_game: the level, the dog (save.c) */
 int  save_game(void)      __banked;
 void build_level(void)    __banked;
 void new_game(uint8_t reseed) __banked;   /* 0: keep the world the title seeded */

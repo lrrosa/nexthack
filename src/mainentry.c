@@ -30,10 +30,8 @@ void main(void)
 start_game:
     title_screen();
     if (load_game()) {              /* a saved game was found: resume it */
-        build_level();              /* regenerate the saved depth        */
-        secrets_underfoot();        /* a pre-1.8 save may stand in a doorway
-                                     * that is a secret door now: open it */
-        place_pet();                /* and bring the dog back to your side */
+        load_resume();              /* regenerate the saved depth, settle the
+                                     * hero in it, bring the dog (save.c) */
         fov_update(hero_x, hero_y);
         tm_cls();
         draw_help();
