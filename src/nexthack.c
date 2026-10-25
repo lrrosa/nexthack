@@ -488,6 +488,22 @@ static uint8_t hunger_color(void)
     return C_GREEN | C_BRIGHT;
 }
 
+/* NetHack's "low hitpoints": what a prayer mends (do_pray), and what the
+ * status bar shows in red */
+static uint8_t hp_low(void)
+{
+    return (uint8_t)(php < 5 || (uint16_t)php * 7 < pmaxhp);
+}
+
+/* The hit points warn as hunger does: yellow at half or less, red once a
+ * prayer would heal them -- as Weak, the red hunger, is what one would feed. */
+static uint8_t hp_color(void)
+{
+    if (hp_low())                         return C_RED | C_BRIGHT;
+    if ((uint16_t)php * 2 <= pmaxhp)      return C_YELLOW | C_BRIGHT;
+    return C_GREEN | C_BRIGHT;
+}
+
 /* once-per-turn upkeep: hunger ticks down, HP slowly regenerates (or you
  * starve when out of food) */
 static uint16_t upkeep_lvl;      /* the level the last upkeep ran on */
@@ -596,7 +612,7 @@ void do_pray(void) __banked
     }
     if (nutrition < 50) {
         nutrition = 900;                msg("Your hunger is satisfied.");
-    } else if (php < 5 || (uint16_t)php * 7 < pmaxhp) {
+    } else if (hp_low()) {
         php = pmaxhp;                    msg("You feel much better.");
     } else if (st_poison || st_blind || st_conf) {
         st_poison = st_blind = st_conf = 0;
@@ -730,7 +746,7 @@ void draw_status(void) __banked
     x = print_str(x, 23, ":", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, gold, C_GREEN | C_BRIGHT);
     x = print_str(x, 23, "  HP:", C_GREEN | C_BRIGHT);
-    x = put_uint(x, 23, php, C_GREEN | C_BRIGHT);
+    x = put_uint(x, 23, php, hp_color());
     x = print_str(x, 23, "(", C_GREEN | C_BRIGHT);
     x = put_uint(x, 23, pmaxhp, C_GREEN | C_BRIGHT);
     x = print_str(x, 23, ")  Pw:", C_GREEN | C_BRIGHT);
@@ -822,7 +838,7 @@ void draw_status(void) __banked
         x = sd_str(x, 22, ":", C_GREEN | C_BRIGHT);
         x = sd_uint(x, 22, gold, C_GREEN | C_BRIGHT);
         x = sd_str(x, 22, " HP:", C_GREEN | C_BRIGHT);
-        x = sd_uint(x, 22, php, C_GREEN | C_BRIGHT);
+        x = sd_uint(x, 22, php, hp_color());
         x = sd_str(x, 22, "/", C_GREEN | C_BRIGHT);
         x = sd_uint(x, 22, pmaxhp, C_GREEN | C_BRIGHT);
         while (x < TM_W - 6) sd_putc(x++, 22, ' ', C_GREEN);     /* pad up to the hint */
