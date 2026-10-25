@@ -51,8 +51,16 @@ static uint8_t sting_lit;
 
 /* No monster strikes you this turn: you stand on a live Elbereth or on a
  * scroll of scare monster (item.c). Worked out once per monsters_turn --
- * the scroll means a look at the floor under you -- for both chase paths. */
+ * the scroll means a look at the floor under you -- for both chase paths,
+ * and again whenever a monster moves you (#21: the quantum mechanic's touch
+ * could set you down on an Elbereth, and the monsters after it still went by
+ * the square you had left). */
 static uint8_t ward;
+static uint8_t ward_here(void)
+{
+    return (uint8_t)((el_life && hero_x == el_x && hero_y == el_y) ||
+                     item_scare_here());
+}
 static void sting_glow(void)
 {
     uint8_t i, near = 0;
@@ -271,7 +279,11 @@ static void monster_hits_player(uint8_t i)
             steal_item(i);   /* the nymph lifts an item and blinks away (item.c) */
             break;
         case ATK_TELE:       /* the quantum mechanic: NetHack's AD_TLPT */
-            if (rn2(2)) { msg("Your position seems uncertain!"); hero_teleport(); }
+            if (rn2(2)) {
+                msg("Your position seems uncertain!");
+                hero_teleport();
+                ward = ward_here();          /* where you are now (#21) */
+            }
             break;
         case ATK_CONF:       /* the umber hulk's gaze */
             if (rn2(2)) { ADD_SAT8(st_conf, rn2(4) + 3); msg("You are confused!"); }
@@ -1132,8 +1144,7 @@ void monsters_turn(void) __banked
                 if (m_hp[i] < cap) m_hp[i]++;
             }
     sting_glow();
-    ward = (uint8_t)((el_life && hero_x == el_x && hero_y == el_y) ||
-                     item_scare_here());
+    ward = ward_here();
     /* bank this turn's movement (a Fast hero's free turn banks none). The
      * points never run away: at most 11 are left after the passes, and a
      * turn adds at most 24. */
