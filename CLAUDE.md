@@ -667,7 +667,16 @@ tilemap.
   as a revisit does. Saved state = `world_seed`, the player globals, the inventory
   (`item.c`), and the per-depth `gold_taken`/`item_taken`/`mon_dead` masks plus the
   `fov_pool` LRU fog-of-war, the pick-axe's `dug_pool` and the genocide mask
-  (`level.c`/`monster.c`), and the passed doors (`door_passed`, 39).
+  (`level.c`/`monster.c`), the passed doors (`door_passed`, 39) and the
+  engraving (`el_x`/`el_y`/`el_life`, 40).
+- **A restore is a level change that must not act like one.** `load_resume`
+  (`save.c`) runs what follows `load_game`: `build_level`, which wipes the
+  engraving as any level change must, so the saved one is put back after it
+  (#25: a burned Elbereth vanished on save and restore); then any monster the
+  level spawned on the hero's square steps aside, by position only, so neither
+  the generation nor `mon_dead` notices (#24: save on a lured-away monster's
+  spawn square and it came back on top of you); then the dog. Anything else
+  `build_level` resets for a new visit and a save should keep belongs there.
 - **Any save-format change bumps `SAVE_VER`, and an older save gets the
   incompatible-save prompt** (1.3.1): name it, ask, and leave it on `n`. The
   identification bitmap is `(NUMOBJ+7)/8` bytes, so appending catalogue types

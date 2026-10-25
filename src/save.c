@@ -15,7 +15,8 @@
  * item, level and monster blocks, then a 4-byte trailer -- the count and the
  * 16-bit sum of every byte before it, which file_write keeps (platform.c).
  * Since 39 the passed doors (door_passed) sit between the monster block and
- * the trailer, where a 38 save simply ends.
+ * the trailer, where a 38 save simply ends; since 40 the engraving underfoot
+ * (el_x, el_y, el_life) follows them.
  *
  * WHAT A LOAD TRUSTS: nothing, until the whole file has been read through
  * once (save_check) and its length and sum agree with that trailer. The old
@@ -38,7 +39,12 @@
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   39     /* 39: the passed doors -- door_passed (110 B) after
+#define SAVE_VER   40     /* 40: the engraving underfoot -- el_x, el_y, el_life
+                           * after door_passed. build_level wipes it, as a
+                           * level change must, and a restore is one: a save
+                           * on a burned Elbereth came back without it (#25).
+                           * A 39 or 38 save loads with none, as before.
+                           * 39: the passed doors -- door_passed (110 B) after
                            * the monster block, the last thing before the
                            * trailer, so a 38 save is 39 without it: it loads,
                            * every door shut (SAVE_VER_MIN). A 1.9.0 binary
@@ -155,6 +161,9 @@ int save_game(void) __banked
     level_save(h);
     monster_save(h);
     file_write(h, door_passed, (MAXLVL + 1) * DOOR_BYTES);   /* 39 */
+    file_write(h, &el_x, 1);                                 /* 40 */
+    file_write(h, &el_y, 1);
+    file_write(h, &el_life, 1);
     trail[0] = file_len; trail[1] = file_sum;   /* taken before they count themselves */
     file_write(h, trail, sizeof trail);
     file_close(h);
@@ -246,6 +255,10 @@ static void save_refused(uint8_t why)
     map_dirty = 1;              /* the prompt drew over the playfield */
 }
 
+/* The engraving as saved (40): x, y, life. Held until load_resume, because
+ * the build_level between them wipes el_life. */
+static uint8_t sv_el[3];
+
 /* Load a saved game and delete the file (so it cannot be reloaded - the
  * NetHack anti-save-scum rule). Returns 1 if a valid save was restored; on 0
  * nothing of the game in RAM has been touched. */
@@ -295,6 +308,8 @@ int load_game(void) __banked
     monster_load(h);
     if (hdr.ver >= 39) file_read(h, door_passed, (MAXLVL + 1) * DOOR_BYTES);
     else               memset(door_passed, 0, (MAXLVL + 1) * DOOR_BYTES);
+    sv_el[2] = 0;                       /* an older save: no engraving */
+    if (hdr.ver >= 40) file_read(h, sv_el, 3);
     file_close(h);
     file_remove(SAVE_NAME);
     return 1;
@@ -333,6 +348,9 @@ static void off_hero(void)
 void load_resume(void) __banked
 {
     build_level();              /* regenerate the saved depth */
+    el_x = sv_el[0];            /* #25: the engraving build_level wiped, put  */
+    el_y = sv_el[1];            /* back -- its turns left, or EL_BURNED       */
+    el_life = sv_el[2];
     secrets_underfoot();        /* a pre-1.8 save may stand in a doorway
                                  * that is a secret door now: open it */
     off_hero();                 /* #24 */
