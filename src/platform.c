@@ -159,11 +159,13 @@ uint8_t put_uint(uint8_t x, uint8_t y, uint16_t v, uint8_t coff)
     if (!y) msg_clear = 0;
 #endif
     if (v == 0) {
-        putcell(x++, y, '0', coff);
+        if (x < TM_W) putcell(x++, y, '0', coff);
         return x;
     }
     while (v) { t[n++] = (char)('0' + (v % 10)); v /= 10; }
-    while (n) putcell(x++, y, (uint8_t)t[--n], coff);
+    /* stops at the edge as print_str does: past it the 128K's cell address
+     * wraps into the next row (#23) */
+    while (n && x < TM_W) putcell(x++, y, (uint8_t)t[--n], coff);
     return x;
 }
 

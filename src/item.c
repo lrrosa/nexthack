@@ -1353,6 +1353,24 @@ static uint8_t scare_touch(obj_t *o)
     return 1;
 }
 
+/* #23: the 128K has 32 columns, and a long name ("blessed corroded +3 long
+ * sword") left no room for the price after it -- put_uint wrote on past the
+ * edge, into the start of the next row. The name gives way instead: printed
+ * up to xmax, so the price that follows it always fits. */
+static uint8_t print_upto(uint8_t x, uint8_t y, const char *s, uint8_t xmax,
+                          uint8_t coff)
+{
+    while (*s && x < xmax) putcell(x++, y, (uint8_t)*s++, coff);
+    return x;
+}
+
+static uint8_t udigits(uint16_t v)
+{
+    uint8_t n = 1;
+    while (v >= 10) { v /= 10; n++; }
+    return n;
+}
+
 /* Could the pack take o? A free letter or a stack to join (inv_add's rule). */
 static uint8_t inv_room(const obj_t *o)
 {
@@ -1427,7 +1445,8 @@ void do_pickup(void) __banked
         }
         clear_line(0, C_BLACK);                       /* compose the prompt */
         x = print_str(0, 0, "Buy ", C_WHITE | C_BRIGHT);
-        x = print_str(x, 0, obj_desc(&o), C_YELLOW | C_BRIGHT);
+        x = print_upto(x, 0, obj_desc(&o),        /* " " price "g? y/n" after it */
+                       (uint8_t)(TM_W - 7 - udigits(price)), C_YELLOW | C_BRIGHT);
         x = print_str(x, 0, " ", C_WHITE | C_BRIGHT);
         x = put_uint(x, 0, price, C_YELLOW | C_BRIGHT);
         print_str(x, 0, "g? y/n", C_WHITE | C_BRIGHT);
@@ -1564,12 +1583,16 @@ void do_drop(void) __banked
         puttile(0, r2, tile_for(cls));    /* the item's graphic tile */
         putcell(2, r2, (uint8_t)('a' + i), C_WHITE | C_BRIGHT);
         x = print_str(3, r2, " ", C_WHITE);
-        x = print_str(x, r2, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
         if (in_shop) {
             uint16_t sp = (uint16_t)(item_price(&inv[i]) / 2u * inv[i].qty);
+            x = print_upto(x, r2, obj_desc(&inv[i]),   /* " " price "g", then '*' */
+                           (uint8_t)(TM_W - 2 - udigits(sp) - (inv[i].worn ? 1 : 0)),
+                           C_WHITE | C_BRIGHT);
             x = print_str(x, r2, " ", C_CYAN);
             x = put_uint(x, r2, sp, C_YELLOW | C_BRIGHT);
             x = print_str(x, r2, "g", C_CYAN);
+        } else {
+            x = print_str(x, r2, obj_desc(&inv[i]), C_WHITE | C_BRIGHT);
         }
         if (inv[i].worn) print_str(x, r2, "*", C_CYAN | C_BRIGHT);  /* equipped */
     }
