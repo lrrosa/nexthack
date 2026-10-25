@@ -47,8 +47,10 @@ RAM-expansion interface, which is how many people actually have 128 KB.
 
 ## Features
 
-- **Four classes** — every game asks *who are you?* The Valkyrie fights, the
-  Wizard zaps, the Rogue dodges, the Tourist haggles — each with its own
+- **Eight classes** — every game asks *who are you?* The Valkyrie fights, the
+  Wizard zaps, the Rogue dodges, the Tourist haggles, the Samurai strikes
+  first, the Barbarian shrugs off poison, the Priest knows what is cursed and
+  the Healer heals — each with its own
   attributes (which really matter: St hits harder, Dx lands blows, Co mends,
   Ch bargains in shops), starting gear, purse and **alignment** (Lawful,
   Neutral or Chaotic — the god your offerings answer to). Each also plays
@@ -56,8 +58,13 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   2d12; the Rogue is born **stealthy**, so sleepers stay asleep, and
   **backstabs** them for extra damage that grows with experience; the
   Tourist carries an **expensive camera** whose flash blinds a monster for a
-  few turns. The Valkyrie needs no trick — she is still the easiest start,
-  as in NetHack.
+  few turns. The **Samurai** is born **Fast** (a free move in four), the
+  **Barbarian** swings a two-handed sword from the first turn, the **Priest**
+  sees whether anything — in his pack, on the floor, on a shop's shelf — is
+  blessed or cursed, and the **Healer** starts with the healing spell, a wand
+  of sleep and a full purse. The Valkyrie needs no trick — with the Samurai,
+  she is still the easiest start, as in NetHack; the Healer and the Tourist
+  the hardest.
 - A **50-level dungeon**, generated procedurally and **deterministically**: each
   depth regenerates identically from its own seed, while the changes you make
   (gold taken, monsters killed, items picked up, tunnels dug with a
@@ -81,6 +88,15 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   darts, sleeping gas) lurk in the deeper floors. Scratch **Elbereth** (`E`) in
   the dust to keep monsters at bay — or burn it in with a wand of fire, though
   a blow struck from it rubs out any engraving; experience levels raise your HP.
+- **Monsters that move at their own pace** — each banks its
+  speed every turn and acts once for every twelve, NetHack's way: zombies,
+  dwarves and puddings plod, bats, snakes, rust monsters and unicorns are on
+  you before you know it. A **wand of speed monster** zapped at yourself makes
+  you Fast for good. 1.9 brought ten of NetHack's: the **unicorn** (its horn
+  is yours when it falls), the **rothe**, the **quantum mechanic** (its touch
+  throws you across the level), the **rust monster** and the **black pudding**
+  (they eat your gear), the **ogre**, the **giant spider**, the **umber hulk**
+  (its gaze confuses), the **hill giant** and the **lich**.
 - **A dungeon with NetHack's manners** — half the monsters spawn **asleep**
   (sneak-attack them: a sleeper can't dodge), an awake enemy at your heel
   **follows you up and down the stairs**, kills may leave **death drops**
@@ -107,11 +123,14 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   itself instead of you —
   each with its own enchantment, erosion and **blessed/uncursed/cursed** state;
   potions, scrolls, rings and wands start **unidentified**, each game with its
-  own shuffle of looks. Wield/wear the best you carry, quaff/eat/read, watch
-  acid blobs corrode your gear, beware cursed items that won't come off — then
+  own shuffle of looks. Like things **stack** under one letter — *3 potions
+  of healing*, *12 daggers* — and you have **two hands for rings**. Wield/wear
+  the best you carry, take things off (`T`), quaff/eat/read, watch acid
+  blobs corrode your gear, beware cursed items that won't come off — then
   **enchant your gear** with the right scroll, **lift your curses** with
   another, **genocide** a monster you are tired of, **recharge** a wand, map
-  the level's gold, drink a **full healing**, or bottle a whole **experience
+  the level's gold, drink a **full healing**, **restore** what a cursed
+  throne drained, or bottle a whole **experience
   level** — and leave a **scroll of scare monster** on the floor to stand on
   where no monster dares strike. Deep down the weapons go on past the long
   sword the way NetHack's do: the extra damage is in the **two-handers** (a
@@ -120,8 +139,8 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   regeneration, slow digestion, free action, teleport control, stealth, and
   three cursed pieces of junk that make trying on an unknown one a gamble.
   **Wands** (`z`) zap magic in a chosen direction — a striking bolt, a
-  freezing or burning ray, magic missiles, sleep, teleport-away, a bolt that
-  unlocks doors — or dig straight down a level.
+  freezing or burning ray, magic missiles, sleep, teleport-away, speed, a
+  bolt that unlocks doors — or dig straight down a level.
 - **Tools** (`a` applies them) — a **skeleton key** for locked doors, a
   **pick-axe** that digs down through the floor or through rock and walls
   (the level remembers your tunnels), a **magic whistle** that calls your dog
@@ -352,10 +371,11 @@ used to emit one and no longer does.
 | `D`                       | discoveries: which potion/scroll/ring/wand looks you have identified |
 | `d`                       | drop an item (sells it in a shop; offers a corpse on an altar) |
 | `w` / `W`                 | wield weapon / wear armor (a two-handed weapon and a shield exclude each other) |
-| `P`                       | put on a ring or an amulet (asks which) |
+| `P`                       | put on a ring or an amulet (asks which; two rings, one on each hand) |
+| `T`                       | take off armour, a ring, the amulet, the blindfold or your weapon |
 | `q` / `e` / `r`           | quaff a potion (or from a fountain or sink) / eat food / read scroll |
 | `t`                       | throw a weapon in a direction |
-| `z`                       | zap a wand (strike, freeze, burn, sleep, teleport, unlock, or dig down) |
+| `z`                       | zap a wand (strike, freeze, burn, sleep, teleport, speed, unlock, or dig down; `.` aims at yourself) |
 | `a`                       | apply a tool (unlock a door, dig through rock and walls or `>` down, call your dog, put on a blindfold, cure with a unicorn horn, flash a camera) |
 | `Z`                       | cast a known spell (spends Pw) |
 | `p`                       | pray to your god |
@@ -370,6 +390,10 @@ Walk into a monster to attack it; walk over gold to pick it up.
 *The inventory screen (`i`): the weapons past the long sword — the two-handed battle-axe, the silver saber and 1.7's two-handed sword — four of the tools `a` applies, an amulet versus poison and a scroll of scare monster, beside an armour set worn a piece at a time, enchantment, blessed/cursed state and everything in use flagged. A potion you have not learned yet shows only this game's look: that smoky one is a full healing, and nothing yet says so.*
 
 ## Map & item tiles
+
+![The ten monsters 1.9 added, side by side on the two machines. Left, the Next: in a grey-brick room around the hero stand a bearded hill giant in a cyan tunic, a white unicorn with a golden horn, a brown rothe with grey horns, a quantum mechanic in a cyan coat, a lich with a gold crown and a blue robe, an orange rust monster, a bare-chested ogre with a club, a violet giant spider, a dark umber hulk with yellow eyes and a grey black pudding. Right, the same room on the 128K, in one ink per cell: the unicorn and the lich white, the rothe, the ogre and the umber hulk yellow, the mechanic and the giant cyan, the rust monster red, the spider magenta and the pudding blue.](docs/monsters.png)
+
+*The ten monsters of 1.9 on the Next (left) and the 128K (right), each drawn twice: four bits a pixel in the Next's palettes, one ink over black on the 128K.*
 
 The world is drawn as colourful 8×8 pixel-art tiles, not ASCII text — on the 128K,
 one ink over a paper per cell, so the walls are white bricks on blue, a shop's are
@@ -387,7 +411,10 @@ from the roguelike tradition):
   kobold (`k`), dog (`d`), snake (`S`), orc (`o`), zombie (`Z`), leprechaun (`l`),
   yellow light (`y`), homunculus (`i`), wraith (`W`), floating eye (`e`),
   troll (`T`), vampire (`V`), dragon (`D`), mimic (`m` — hidden ones wear an
-  item's tile), nymph (`n`), gnome (`G`), dwarf (`h`), the high priest (`M`)
+  item's tile), nymph (`n`), gnome (`G`), dwarf (`h`), the high priest (`M`),
+  unicorn (`u`), rothe (`q`), quantum mechanic (`Q`), rust monster (`R`),
+  ogre (`O`), giant spider (`s`), umber hulk (`U`), black pudding (`P`),
+  hill giant (`H`), lich (`L`)
 
 ## Technical notes
 

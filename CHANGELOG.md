@@ -8,6 +8,105 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.9.0] — 2026-10-24
+
+**Eight classes, a faster and slower dungeon, and a pack that stacks.**
+Four more of NetHack's classes, ten more of its monsters, and the speed that
+sets them apart — a zombie walks two squares while you take three, a bat
+nearly two for each of yours. Potions, scrolls, food and daggers share a
+letter now, `T` takes things off, and the hero has two hands for rings.
+Every change was measured in `tools/balance.py` before it went in, and the
+difficulty stays where it was: NetHack's order, the Valkyrie and the Samurai
+the easiest starts, the Healer and the Tourist the hardest. All on both
+machines, every piece proven in ZEsarUX and under the MAME fuzzer.
+**Saves from 1.8 cannot be loaded** (the pack's format changed): 1.9 names
+such a file and asks before deleting it, and 1.8 does the same with a 1.9
+save.
+
+### Added
+- **Four classes**: the **Samurai** (long sword and splint mail, Lawful,
+  born *Fast*), the **Barbarian** (a two-handed sword and ring mail,
+  Chaotic, born resisting poison), the **Priest** (a mace, the healing
+  spellbook, and he sees whether *anything* is blessed or cursed — in the
+  pack, on the floor, in a shop) and the **Healer** (a scalpel, the healing
+  spellbook, a potion, a wand of sleep, a full purse, and resistance to
+  poison). The picker lists eight.
+- **Ten monsters**, each drawn twice for the two machines: the **unicorn**
+  (it charges, and leaves its horn when slain), the **rothe**, the
+  **quantum mechanic** (its touch flings you across the level, and eating
+  one toggles your speed), the **rust monster** and the **black pudding**
+  (they corrode your gear, as the acid blob does), the **ogre**, the
+  **giant spider** (poison), the **umber hulk** (its gaze confuses), the
+  **hill giant** and the **lich** (it drains like a wraith), from Dlvl 4 to
+  Dlvl 24.
+- **Speed.** Every monster moves at its own pace, NetHack's way: it banks
+  its speed each turn and acts once for every twelve it holds. Zombies,
+  gnomes, dwarves, blobs, mimics and puddings are slow; bats, snakes,
+  leprechauns, rust monsters and unicorns are quick. A **Fast** hero gets a
+  free turn in four. The new **wand of speed monster** makes you Fast for
+  good if you zap it at yourself (`.` at the direction prompt) — or makes a
+  monster faster, if you aim it at one. Engraving with it names it: the
+  bugs on the floor speed up.
+- **Stacks.** Potions, scrolls, food (corpses of the same monster) and
+  daggers merge when they are alike in every way, blessing included, and
+  are counted in the name: *3 potions of healing*, *2 scrolls labeled
+  XYZZY*, *12 daggers*. A full pack still takes a potion it already holds.
+  Drinking, eating, reading, throwing and offering use one; dropping and
+  selling take the whole stack; daggers thrown the same way land in one
+  pile.
+- **`T` takes things off** — armour, a ring, the amulet, the blindfold, or
+  the weapon in your hand. A cursed piece stays on and says so, at no cost
+  in time.
+- **Two ring hands.** `P` puts a second ring on the other hand; with both
+  full it says so, and you take one off first, as in NetHack — the cursed
+  one cannot be the one that makes way.
+- **Potion of restore ability**, from Dlvl 5: it gives back what a cursed
+  throne drained — one attribute, or every one if the potion is blessed. A
+  gain in an attribute raises its peak; a drain never lowers the peak, and
+  the peak is what the potion restores.
+
+### Changed
+- **`P` no longer swaps** the ring or amulet you wear for the new one: take
+  it off with `T`, then put the other on.
+- **The dungeon's mix**: a depth's monsters are drawn with weights, and the
+  ten new ones only for ten levels from their first — NetHack's own
+  levers. Added plainly, they would have made the deep levels several
+  times deadlier, because every bite grows with depth.
+- **Monster speeds are NetHack's, at half the spread** for the slow ones
+  (a zombie 8 instead of 6), and the dog — the jackal-sized `d`, and your
+  pet with it — keeps the normal 12. NetHack's own table made the game far
+  easier: the dog alone at 16 lifted the Valkyrie's modelled wins by
+  almost thirty points.
+- Modelled wins (`tools/balance.py`, with the dog, five seeds of 600
+  lives): Samurai 66%, Valkyrie 63%, Barbarian 61%, Priest 51%, Wizard
+  44%, Rogue 36%, Tourist 19%, Healer 17% — the first four were 59/43/35/19
+  before, and stay there.
+- `SAVE_VER` 38: the pack's objects grew a count. **1.8 saves get the
+  incompatible-save prompt** (`n` keeps the file for 1.8), and 1.8 asks the
+  same about a 1.9 save — proven both ways on both machines against the
+  1.8.1 binary.
+- The help screen lists `T`; the README lists the new classes, monsters and
+  tiles.
+
+### Under the hood
+- **`item.c` split again**: the verbs that put gear on and take it off
+  went to `item_wear.c`, when its bank was down to 157 B (Next) and 37 B
+  (128K) with the take-off command and stacks still to come.
+- `montypes[]` has three more columns — speed, generation weight and the
+  deepest level a type spawns at — and `tools/balance.py` reads all three
+  out of the C and draws exactly what the game draws.
+- `balance.py` plays the classes the way the game lets them: a Fast hero's
+  free turn runs on a clock across fights, as the game's turn counter does,
+  and a hurt hero who knows healing casts it between fights.
+- `tools/bankmap.py` counts `obj_t` out of `item_int.h` instead of
+  assuming five bytes — the 128K's pack now ends 4 B short of the BFS
+  scratch.
+- The fuzzer checks stack counts and that every level's own monsters keep
+  to their depth window, and its walk check now starts from the up stairs:
+  a teleport into a room only a secret door leads to is legal, and it used
+  to be flagged as a soft lock.
+- The test harness starts ZEsarUX without a console window.
+
 ## [1.8.1] — 2026-10-19
 
 **Seven reported bugs, fixed.** A review of 1.8.0 reported them on GitHub
