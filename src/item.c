@@ -861,20 +861,27 @@ static uint8_t stacks_with(const obj_t *a, const obj_t *b)
 
 /* Into the pack: onto a stack it belongs to if there is one -- which needs no
  * free letter, so a full pack still takes a potion it already holds -- else a
- * new entry. 0 = the pack is full. */
-static int inv_add(const obj_t *o)
+ * new entry. inv_where says which (the stack's index, inv_count for a new
+ * letter) or -1 for a full pack, so a pickup can ask before it changes
+ * anything (#20); inv_add then does it. */
+static int inv_where(const obj_t *o, obj_t *c)
 {
     uint8_t i;
-    obj_t c = *o;
-    if (pclass == PC_PRIEST) c.buc |= BUC_KNOWN;   /* 1.9: a Priest knows it --
+    *c = *o;
+    if (pclass == PC_PRIEST) c->buc |= BUC_KNOWN;  /* 1.9: a Priest knows it --
                                      * the welds and the merging read the bit */
     for (i = 0; i < inv_count; i++)
-        if (stacks_with(&inv[i], &c)) {
-            inv[i].qty = (uint8_t)(inv[i].qty + c.qty);
-            return 1;
-        }
-    if (inv_count >= MAXINV) return 0;
-    inv[inv_count++] = c;
+        if (stacks_with(&inv[i], c)) return i;
+    return inv_count < MAXINV ? inv_count : -1;
+}
+
+static int inv_add(const obj_t *o)
+{
+    obj_t c;
+    int w = inv_where(o, &c);
+    if (w < 0) return 0;
+    if (w < inv_count) inv[w].qty = (uint8_t)(inv[w].qty + c.qty);
+    else               inv[inv_count++] = c;
     return 1;
 }
 
@@ -1330,14 +1337,27 @@ uint8_t item_scare_here(void) __banked
  * monster loses its blessing and an uncursed one remembers it was touched (ench
  * 1 -- a scroll's ench is otherwise unused); one picked up before, or cursed,
  * turns to dust in your hand. So dropping it to stand on is a decision you make
- * about twice. 1 = it crumbled. */
+ * about twice. 1 = it crumbles -- and the caller says so, once it knows the
+ * pack could have taken it.
+ *
+ * #20: the pickup used to touch it only while a letter was free, but since
+ * the stacks a full pack still takes a scroll that joins one -- so a full
+ * pack let a touched or cursed one back in whole, and kept a blessing. Now
+ * do_pickup touches every scroll it could take, a copy first, and asks the
+ * pack (inv_where) about what the touch made of it. */
 static uint8_t scare_touch(obj_t *o)
 {
     if (o->otyp != O_SSCARE) return 0;
     if (buc_st(o) == BUC_BLESS) { o->buc = (uint8_t)(o->buc & ~3u); return 0; }
     if (o->ench == 0 && buc_st(o) != BUC_CURSE) { o->ench = 1; return 0; }
-    msg("The scroll turns to dust!");
     return 1;
+}
+
+/* Could the pack take o? A free letter or a stack to join (inv_add's rule). */
+static uint8_t inv_room(const obj_t *o)
+{
+    obj_t c;
+    return (uint8_t)(inv_where(o, &c) >= 0);
 }
 
 /* description of the item on the hero's cell (for the "You see here" message) */
@@ -1350,6 +1370,7 @@ void do_pickup(void) __banked
 {
     char c = terrain(hero_x, hero_y);
     obj_t o;
+    uint8_t dust;
 
     int fi;
 
@@ -1361,19 +1382,26 @@ void do_pickup(void) __banked
 
     fi = floor_find((uint8_t)hero_x, (uint8_t)hero_y);
     if (fi >= 0) {                          /* a loose item you threw -- reclaim it */
-        if (inv_count < MAXINV && scare_touch(&floor_obj[fi].o)) {
+        o = floor_obj[fi].o;                /* touched as a copy: a pack too full
+                                             * for it leaves the floor's alone */
+        dust = scare_touch(&o);
+        if (!inv_room(&o)) { msg("Your pack is full."); return; }
+        if (dust) {
+            msg("The scroll turns to dust!");
             floor_pick((uint8_t)fi);        /* dust: gone, the floor restored */
             return;
         }
-        if (!inv_add(&floor_obj[fi].o)) { msg("Your pack is full."); return; }
-        msg2("Got ", obj_desc(&floor_obj[fi].o), ".");
+        inv_add(&o);
+        msg2("Got ", obj_desc(&o), ".");
         sfx_pick();
         floor_pick((uint8_t)fi);            /* removes it + restores the terrain */
         return;
     }
 
     resolve_floor((uint8_t)hero_x, (uint8_t)hero_y, &o);
-    if (inv_count < MAXINV && scare_touch(&o)) {   /* a cursed one, fresh */
+    if (scare_touch(&o)) {                  /* a cursed one, fresh */
+        if (!inv_room(&o)) { msg("Your pack is full."); return; }
+        msg("The scroll turns to dust!");
         level_take_item((uint8_t)hero_x, (uint8_t)hero_y);
         return;
     }
