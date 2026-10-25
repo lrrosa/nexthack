@@ -8,6 +8,64 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.9.1] — 2026-10-25
+
+**The dog keeps up, the doors stay open, and seven bugs from the review are
+gone.** On the 128K the dog no longer gets lost behind a wall; a door you
+have walked through is drawn as an open doorway from then on; the hit
+points warn in colour as hunger does. Seven issues reported against 1.9.0
+(#19–#25) are fixed, each reproduced on the 1.9.0 binary and proven fixed in
+ZEsarUX on both machines. **1.9.0 saves load** — with every door still shut.
+
+### Fixed
+- **128K: the dog no longer gets lost.** With no enemy near, the dog heads
+  for you by sight, and when a wall stopped it, it took one step along the
+  way round, then its nose pulled it back. Leaving a room by one door, it
+  could run along the inside wall, leave by the other and stop against the
+  wall nearest you, too far round for its pathfinding to reach — for good.
+  Now once a wall stops it, it follows the path until it is at your heel,
+  however far behind it is. The Next never had the problem.
+- **Two of a kind in the pack** (#19): a second ring like the first can be
+  put on (`P` offers only what you are not wearing), and two wands, potions
+  or scrolls of one type get the letter menu, so the charged wand or the
+  blessed potion can be chosen.
+- **A full pack and a scroll of scare monster** (#20): picking one up with
+  every letter taken (it joins a stack) now turns a touched or cursed one to
+  dust and strips a blessing, as with room in the pack.
+- **The quantum mechanic and Elbereth** (#21): flung onto an Elbereth by its
+  touch, you are protected there for the rest of the turn.
+- **The throne's curse** (#22) costs the cursed weapon or armour its bonus at
+  once, not at the next change of gear.
+- **128K: long names in shops** (#23): the price no longer spills into the
+  next row; the name gives way.
+- **A restore and the monsters** (#24): a monster whose spawn square you
+  saved on steps aside instead of coming back on top of you.
+- **A restore and Elbereth** (#25): the engraving under you — burned or in
+  the dust, with its turns left — survives `S` and a restore. Changing level
+  still wipes it.
+
+### Added
+- **Doors stay open.** A door you walk through becomes an empty doorway, on
+  that visit and every later one, saved with the game. It is still a door to
+  everything else: you cannot see through it, dig it, or land a teleport on
+  it.
+- **Hit points in colour**: yellow at half or less, red once a prayer would
+  heal you — the same warning the hunger line gives.
+
+### Changed
+- `SAVE_VER` 40: the save keeps the open doors and the engraving underfoot.
+  **1.9.0 saves load** (doors shut, no engraving), and 1.9.0 names a 1.9.1
+  save as another version's and asks — proven both ways on both machines
+  against the 1.9.0 release binaries.
+
+### Under the hood
+- The map cursor (farlook and teleport control's pick) moved out of
+  `nexthack.c` into `farlook.c`: the 128K's bank for it was down to 132 B.
+- On the Next, `nexthack_lvl` moved to bank 10 (`PAGE_20`) when the restore
+  code filled bank 15.
+- A door test in the code is `IS_DOOR` now, so an open doorway still counts
+  as a door; the fuzzer draws it as the game does.
+
 ## [1.9.0] — 2026-10-24
 
 **Eight classes, a faster and slower dungeon, and a pack that stacks.**

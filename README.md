@@ -157,7 +157,8 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   your prayers.
 - **Secrets and furniture** — some doors are hidden in the walls and some
   corridors behind rock, waiting for a **search** (`s`) — though never the
-  way from stairs to stairs. **Engrave with a wand** (`E`) and its mark gives
+  way from stairs to stairs. A door you have walked through stays open, an
+  empty doorway on every visit after. **Engrave with a wand** (`E`) and its mark gives
   it away: gravel flies, flames lick, bugs stop moving. **Sinks** (`~`) offer a
   sip of something, rattle when kicked, and swallow a ring — saying, by what
   they do, which ring it was. **Sit on a throne** (`#`): mostly nothing
@@ -176,7 +177,8 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   **special levels** — the cavernous Big Room, guarded **treasure vaults** (gold
   and superior gear behind tough monsters), and **hand-drawn maps** like a
   pillared temple, dropped in among the procedural floors.
-- Hunger and slow HP regeneration, beeper sound effects, an **AY title theme**
+- Hunger and slow HP regeneration — both turn yellow, then red, on the status
+  line as they run low — beeper sound effects, an **AY title theme**
   (sixteen bars in D Mixolydian over a walking bass and a kick-and-snare
   backbeat — a machine with no AY simply shows the title in silence), an
   **attract demo** (left alone, the title alternates with fifteen seconds of
