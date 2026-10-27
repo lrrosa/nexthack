@@ -919,7 +919,13 @@ tilemap.
   strongest peer at its own depth (`balance.py duel`). The fuzzer checks the
   windows (`mon-window`, the level's own spawns only: summons and wanderers
   are not tracked). New attacks: `ATK_TELE` (the mechanic: `hero_teleport`,
-  so teleport control asks) and `ATK_CONF` (the hulk). A kill's tool is
+  so teleport control asks, and `ward` is recomputed for the new square) and
+  `ATK_CONF` (the hulk). The touch moves you in the middle of a pass, so the
+  Next's `monsters_phase` refloods for the monsters still to act when the hero
+  is not where the field was flooded from: they went on stepping toward the
+  empty square (proven in ZEsarUX: a rat stepped away from where you had
+  landed), and the dog could step onto you. Any new way a monster moves the
+  hero is caught by the same test. A kill's tool is
   `kill_tool(x, y, mch)` (`item_use.c`): the dwarf's pick-axe, one in three,
   and the unicorn's horn. Corpses: the spider poisons, the pudding burns, the
   mechanic toggles `INTR_FAST`. **Tile space is nearly gone**: the Next's

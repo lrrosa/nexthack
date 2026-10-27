@@ -1106,6 +1106,7 @@ static void monsters_phase(void)
          * aggravate monster (still_asleep); a wand's doze just counts down;
          * the keeper, the eye, a posing mimic and the peaceful never chase. */
         uint16_t who = 0;
+        uint8_t  hx = (uint8_t)hero_x, hy = (uint8_t)hero_y;
         for (i = 0; i < mcount; i++) {
             uint8_t s = m_sleep[i];
             char    t = m_type[i];
@@ -1118,17 +1119,29 @@ static void monsters_phase(void)
             if (s && s != 255) continue;
             who |= (uint16_t)(1u << i);
         }
-        if (who) compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y, who);
-    }
-    for (i = 0; i < mcount; i++) {
-        if (!m_alive[i] || !ACTS(i)) continue;
-        if (mimic_hidden(i)) continue;    /* posing as an item */
-        if (dragon_breath(i)) {           /* fire outranges Elbereth */
+        if (who) compute_dist_map(hx, hy, who);
+        for (i = 0; i < mcount; i++) {
+            if (!m_alive[i] || !ACTS(i)) continue;
+            if (mimic_hidden(i)) continue;    /* posing as an item */
+            if (dragon_breath(i)) {           /* fire outranges Elbereth */
+                if (dead) return;
+                continue;
+            }
+            mon_step(i);
             if (dead) return;
-            continue;
+            /* The quantum mechanic's touch moved you mid-pass, and the field
+             * still pointed at the square you had left: every monster after
+             * it took a step toward the empty spot, and the dog could take
+             * one onto you (step_to_hero minds monsters, not the hero). The
+             * ones still to act get a field from where you are now (those
+             * that have acted stay in `who`: they only stretch the flood).
+             * The 128K's greedy chase reads hero_x itself, and its flood runs
+             * after the loop. */
+            if ((uint8_t)hero_x != hx || (uint8_t)hero_y != hy) {
+                hx = (uint8_t)hero_x; hy = (uint8_t)hero_y;
+                if (who) compute_dist_map(hx, hy, who);
+            }
         }
-        mon_step(i);
-        if (dead) return;
     }
 }
 
