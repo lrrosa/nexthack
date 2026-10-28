@@ -675,7 +675,9 @@ tilemap.
   (#25: a burned Elbereth vanished on save and restore); then any monster the
   level spawned on the hero's square steps aside, by position only, so neither
   the generation nor `mon_dead` notices (#24: save on a lured-away monster's
-  spawn square and it came back on top of you); then the dog. Anything else
+  spawn square and it came back on top of you) -- to the nearest free square
+  ring by ring, as far as it takes (the first fix looked two squares out and,
+  with all 24 taken, left it on you); then the dog. Anything else
   `build_level` resets for a new visit and a save should keep belongs there.
 - **Any save-format change bumps `SAVE_VER`, and an older save gets the
   incompatible-save prompt** (1.3.1): name it, ask, and leave it on `n`. The

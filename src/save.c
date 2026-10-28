@@ -320,17 +320,26 @@ int load_game(void) __banked
  * square, one lured away and its place taken. Whoever stands on the hero
  * steps aside to the nearest free square: a position only, no dice and no
  * slot moved, so neither the generation nor mon_dead can tell. A hostile
- * never steps into a shop, which is the keeper's floor. */
+ * never steps into a shop, which is the keeper's floor.
+ *
+ * Nearest as the crow flies, ring after ring until a square is free: the
+ * first version looked two squares out and, finding them all taken, left the
+ * monster standing on you. A ring may reach past a wall; a monster set down
+ * on the other side walks back like any other. */
 static void off_hero(void)
 {
-    uint8_t i, r, k, side, x, y, hx = (uint8_t)hero_x, hy = (uint8_t)hero_y;
+    uint8_t i, r, side, dx, dy, x, y, hx = (uint8_t)hero_x, hy = (uint8_t)hero_y;
+    uint16_t k;
     for (i = 0; i < mcount; i++) {
         if (!m_alive[i] || m_x[i] != hx || m_y[i] != hy) continue;
-        for (r = 1; r <= 2; r++) {          /* the 8 around, then the 16 beyond */
+        for (r = 1; r < MAPW; r++) {        /* the 8 around, the 16 beyond, ... */
             side = (uint8_t)(2 * r + 1);
-            for (k = 0; k < (uint8_t)(side * side); k++) {
-                x = (uint8_t)(hx + k % side - r);   /* off the map wraps to */
-                y = (uint8_t)(hy + k / side - r);   /* rock: not walkable   */
+            for (k = 0; k < (uint16_t)side * side; k++) {
+                dx = (uint8_t)(k % side); dy = (uint8_t)(k / side);
+                if (dx && dy && dx < side - 1 && dy < side - 1)
+                    continue;                       /* inside: an inner ring's */
+                x = (uint8_t)(hx + dx - r);         /* off the map wraps to */
+                y = (uint8_t)(hy + dy - r);         /* rock: not walkable   */
                 if ((x == hx && y == hy) || !walkable(terrain(x, y)) ||
                     monster_at(x, y) >= 0 ||
                     (m_type[i] != MON_KEEPER && shop_in_room(x, y))) continue;
