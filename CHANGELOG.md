@@ -8,6 +8,30 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.9.2] — 2026-10-27
+
+**Four fixes from a review of 1.9.1.** Two were bugs you could meet in
+play — one on each machine — and two were ways a restore could go wrong
+that play is unlikely to reach. Each was proven in ZEsarUX on both
+machines. **Saves are unchanged**: 1.9.1 and 1.9.2 load each other's.
+
+### Fixed
+- **The quantum mechanic's touch** (Next): when it flung you across the
+  level, the monsters that moved after it that turn still went toward the
+  square you had left. They now come for where you landed.
+- **128K: the dog far behind.** A dog that had fallen far behind — after a
+  teleport, say — stood still while any awake monster near you was stuck
+  behind a wall, for good if that monster never got loose. It now finds its
+  way to you either way. The Next never had the problem.
+- **A restore on a crowded square**: the monster whose spawn square you
+  saved on (1.9.1's fix for #24) looked only two squares out for room to step
+  aside; with all of those taken it stayed on top of you. It now looks as far
+  as it must.
+- **A save that does not read back whole** is kept: if the load reads less
+  or more than the file it checked — a card that misreads, or bytes in
+  another version's layout — the game no longer starts half restored and
+  deletes the save. It asks, as for any damaged save, and `n` keeps it.
+
 ## [1.9.1] — 2026-10-25
 
 **The dog keeps up, the doors stay open, and seven bugs from the review are
