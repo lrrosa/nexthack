@@ -182,7 +182,10 @@ int save_game(void) __banked
 /* The first pass of a load: read the file through once, keeping nothing.
  * The header must be this version's; then every byte goes into a count and
  * a sum while the last four -- the trailer -- are held back in a window, and
- * the two must agree with it at the end. */
+ * the two must agree with it at the end. sv_len keeps the count for the
+ * second pass, which must read exactly that much. */
+static uint16_t sv_len;
+
 static uint8_t save_check(void)
 {
     uint8_t  buf[32], last[4], h, i;
@@ -206,7 +209,8 @@ static uint8_t save_check(void)
     } while ((got = file_read(h, buf, sizeof buf)) != 0);
     file_close(h);
     if (len < 4) return SV_DAMAGED;
-    return ((uint16_t)(last[0] | (last[1] << 8)) == (uint16_t)(len - 4) &&
+    sv_len = (uint16_t)(len - 4);
+    return ((uint16_t)(last[0] | (last[1] << 8)) == sv_len &&
             (uint16_t)(last[2] | (last[3] << 8)) == sum) ? SV_OK : SV_DAMAGED;
 }
 
@@ -260,12 +264,14 @@ static void save_refused(uint8_t why)
 static uint8_t sv_el[3];
 
 /* Load a saved game and delete the file (so it cannot be reloaded - the
- * NetHack anti-save-scum rule). Returns 1 if a valid save was restored; on 0
- * nothing of the game in RAM has been touched. */
+ * NetHack anti-save-scum rule). Returns 1 if a valid save was restored. On 0
+ * the file is where it was, and so is the world the title seeded; the rest
+ * of the game in RAM may be half loaded, which main's new_game(0) resets. */
 int load_game(void) __banked
 {
     struct save_hdr    hdr;
     struct save_player p;
+    uint16_t ws = world_seed, rs = rng_get();
     uint8_t h, v = save_check();
 
     if (v == SV_NONE) return 0;
@@ -274,6 +280,7 @@ int load_game(void) __banked
     /* The second pass reads what the first has just proved whole. */
     h = file_open(SAVE_NAME);
     if (h == FILE_ERR) return 0;
+    file_len = 0;
     file_read(h, &hdr, sizeof hdr);
     file_read(h, &p, sizeof p);
     world_seed = p.world_seed;
@@ -311,6 +318,15 @@ int load_game(void) __banked
     sv_el[2] = 0;                       /* an older save: no engraving */
     if (hdr.ver >= 40) file_read(h, sv_el, 3);
     file_close(h);
+    /* ...and must have read all of it. Short, the card misread this time
+     * round; long or short, the bytes are not the layout their version
+     * says. Either way the file was consumed on a load that never finished
+     * -- now it is not, and the player is asked as for a damaged one. */
+    if (file_len != sv_len) {
+        world_seed = ws; rng_set(rs);
+        save_refused(SV_DAMAGED);
+        return 0;
+    }
     file_remove(SAVE_NAME);
     return 1;
 }

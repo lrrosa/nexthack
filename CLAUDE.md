@@ -654,7 +654,13 @@ tilemap.
   through once (`save_check`) and compares length and sum with the trailer; only
   then does a second pass read into the live globals. A short or damaged file
   gets the same y/n as another version's (`save_refused`), and on `n` stays on the
-  card. On the save side `file_write` latches a short write and `file_close` a
+  card. The second pass must read exactly the payload the first counted
+  (`file_read` adds to `file_len`): short, the card misread this time; off
+  either way, the bytes are not the layout their version says. Then the file
+  is kept, the player asked as for a damaged one, and the title's
+  `world_seed` and RNG put back -- `main`'s `new_game(0)` resets the rest of
+  a half-loaded game. Until 2026-10-27 that pass ignored its counts and
+  deleted the file. On the save side `file_write` latches a short write and `file_close` a
   failed flush (`file_bad`, `platform.c`); a failed save deletes its stump and
   reports, and the run in RAM plays on. There is no temp-file+rename: the load
   consumes the file, so at `S` time there is no older good save to protect.

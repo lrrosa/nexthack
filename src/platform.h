@@ -186,7 +186,8 @@ void    file_close(uint8_t h);
 void    file_remove(const char *name);
 /* What the writes did, for save.c: file_bad latches a short write or a failed
  * close; file_len and file_sum count and add up every byte written. The
- * caller zeroes all three before it starts. */
+ * caller zeroes all three before it starts. file_len counts every byte read
+ * too, so a load zeroes it and compares. */
 extern uint8_t  file_bad;
 extern uint16_t file_len, file_sum;
 
