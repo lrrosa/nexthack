@@ -1090,11 +1090,23 @@ static void monsters_phase(void)
             if (!enemy_chase_greedy(i)) blocked |= (uint16_t)(1u << i);
         }
         if (blocked) {                          /* route only the wall-boxed ones */
+            uint8_t late = 0;
             compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y, blocked);
             for (i = 0; i < mcount; i++) {
                 if (!(blocked & (uint16_t)(1u << i)) || !m_alive[i]) continue;
-                if (i == (uint8_t)pet_idx) pet_follow(i);
-                else                       step_to_hero(i);
+                if (i != (uint8_t)pet_idx) step_to_hero(i);
+                else if (blocked != (uint16_t)(1u << i) &&
+                         dist[(uint16_t)m_y[i] * MAPW + m_x[i]] >= TARGET) late = 1;
+                else pet_follow(i);
+            }
+            /* A flood shared with an enemy stops at MAXDIST, and a dog left
+             * farther back than that stood still for as long as a wall boxed
+             * the enemy -- for good, if the enemy was past MAXDIST too. It
+             * routes on a flood of its own, which has no horizon. */
+            if (late) {
+                compute_dist_map((uint8_t)hero_x, (uint8_t)hero_y,
+                                 (uint16_t)(1u << (uint8_t)pet_idx));
+                pet_follow((uint8_t)pet_idx);
             }
         }
     }

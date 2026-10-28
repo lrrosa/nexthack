@@ -970,7 +970,13 @@ tilemap.
   between two cells 21 steps back, and a dog 39 steps off that never moved -- and
   timed in z88dk-ticks: a flood to a dog past `MAXDIST` costs 35-47 ms a turn
   while it catches up, where the old one cost 23 ms every turn, for good. The
-  Next never had the bug: its dog reads the whole field every turn.
+  Next never had the bug: its dog reads the whole field every turn. A flood
+  the dog **shares** with a wall-boxed enemy has the chase's horizon, so a dog
+  it leaves unlabelled gets a second flood of its own (2026-10-27): until
+  then a dog more than `MAXDIST` back stood still for as long as any boxed
+  enemy within `MON_WAKE` stayed boxed -- for good if that enemy was past
+  `MAXDIST` too, which a teleport makes easy (ZEsarUX: 119 steps back, six
+  turns without moving).
 - **Kill persistence names spawn identities, not slot numbers.** `m_track` (bit i:
   slot i holds the monster the level spawned there) gates every `mon_dead` write:
   keeper, pet and followers are appended above the spawns, and a wanderer or summon
