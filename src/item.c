@@ -1196,10 +1196,10 @@ static void resolve_floor(uint8_t x, uint8_t y, obj_t *o)
                                         : resolve_otyp('"', h, depth);
         /* Belt and braces: resolve_otyp falls back to the FIRST type of the
          * class when none is eligible at this depth, and the first '"' is
-         * Yendor's own. levelgen now gates on eff_depth so that cannot
-         * happen, but a minted Amulet hands over the game, so refuse it here
-         * too rather than trust one caller to stay careful. */
-        if (o->otyp == O_AMULET) o->otyp = O_AMU_ESP;
+         * Yendor's own -- so off the win level, refuse it whatever a caller
+         * does. From 1.3.0 to 1.9.2 this ran on Dlvl 50 too: the Amulet
+         * itself came up as an amulet of ESP, and no game could be won. */
+        if (o->otyp == O_AMULET && dlvl != DLVL_AMULET) o->otyp = O_AMU_ESP;
         o->buc  = (uint8_t)((((h >> 11) & 7) < 5) ? BUC_UNC : BUC_CURSE);
         return;
     }
