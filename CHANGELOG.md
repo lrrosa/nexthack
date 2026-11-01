@@ -8,6 +8,28 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [1.9.3] — 2026-11-01
+
+**The Amulet of Yendor can be taken again, and with it the game can be
+won.** Since 1.3.0 the Amulet came up as an amulet of ESP the moment you
+picked it up, and the stairs out of Dlvl 1 would not let you leave
+without the real one: no game could be won. This release fixes that and
+nothing else. It was reproduced on the 1.9.2 binaries and proven fixed in
+ZEsarUX on both machines. **Saves are unchanged**: 1.9.2 and 1.9.3 load
+each other's.
+
+### Fixed
+- **The Amulet of Yendor** (every release from 1.3.0 to 1.9.2): taking it
+  from its place on Dlvl 50 said *Got amulet of ESP.*, and you carried an
+  ordinary amulet up fifty floors to a staircase that refused you. A
+  guard added in 1.3.0, to stop the Gnomish Mines from ever making a false
+  Amulet, also ran on the Amulet's own floor and turned the real one into
+  an amulet of ESP. It now keeps to the rest of the dungeon. *Got the
+  Amulet! Climb back up!* is back, and so is the victory.
+- **A game already under way is not lost**: if you saved in 1.9.2 after
+  taking the false one, go back down to Dlvl 50 — the real Amulet is still
+  waiting on its square.
+
 ## [1.9.2] — 2026-10-27
 
 **Four fixes from a review of 1.9.1.** Two were bugs you could meet in
