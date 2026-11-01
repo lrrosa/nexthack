@@ -20,12 +20,13 @@ uint8_t up_x, up_y, dn_x, dn_y;
 uint8_t mn_x, mn_y;   /* the mine entrance cell (meaningful on MINES_ENTR_DLVL) */
 
 /* The difficulty/loot depth of the current level: mine levels carry internal
- * ids 51+ but play like shallow depths just past their entrance. Resident:
- * every spawner and the item resolver leans on it. */
+ * ids 51+ but play like shallow depths just past their entrance, and the
+ * Astral Plane (2.0) plays as the bottom it stands above. Resident: every
+ * spawner and the item resolver leans on it. */
 uint16_t eff_depth(void)
 {
-    return IN_MINES(dlvl) ? (uint16_t)(MINES_ENTR_DLVL + 1 + (dlvl - MINES_BASE))
-                          : dlvl;
+    if (IN_MINES(dlvl)) return (uint16_t)(MINES_ENTR_DLVL + 1 + (dlvl - MINES_BASE));
+    return dlvl > DLVL_AMULET ? DLVL_AMULET : dlvl;
 }
 
 /* An altar's alignment (0 Lawful / 1 Neutral / 2 Chaotic) -- a pure hash of the

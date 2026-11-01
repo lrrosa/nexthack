@@ -410,7 +410,7 @@ local function reach_check(g)
   end
   local bottom = (g.dlvl == 50 or g.dlvl == 54)
   local want = { [60] = 1, [62] = bottom and 0 or 1, [118] = (g.dlvl == 2) and 1 or 0 }
-  if g.dlvl == 50 and r8(S.has_amulet) == 0 and c ~= 34 then
+  if g.dlvl == 50 and r8(S.amu_taken) == 0 and c ~= 34 then
     report("amulet-cell", string.format("Dlvl 50 dn (%d,%d) holds %q", dx, dy, string.char(c)))
   end
   for ch, w in pairs(want) do
@@ -545,12 +545,12 @@ local function check()
     end
   end
   -- 1.9: the level's own spawns (m_track) keep to their type's depth window
-  -- -- pick_mon's freq/maxdep rule, at eff_depth (+15 with the Amulet).
+  -- -- pick_mon's freq/maxdep rule, at eff_depth (+15 once the Amulet is taken).
   -- Summons and wanderers are not tracked, so they are not held to it.
   do
     local mtk = r8(S.m_track)
     local d = g.mines and (cfg.mines_entr + 1 + (g.dlvl - cfg.mines_base)) or g.dlvl
-    if r8(S.has_amulet) ~= 0 then d = d + 15 end
+    if r8(S.amu_taken) ~= 0 then d = d + 15 end
     for _, mo in ipairs(g.mons) do
       local w = cfg.monwin[mo.t]
       if w and ((mtk >> mo.i) & 1) == 1 and (d < w[1] or d > w[2]) then

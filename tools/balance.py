@@ -383,7 +383,7 @@ FORMULAS = [
      "1 HP every 14/17/20 turns (Co>=16 / Co>=13 / else), halved by ring",
      "regen_period(con, ring)"),
     ("wandering monster", "src/monster_spawn.c:287",
-     "upkeep() rolls rn2(has_amulet ? 25 : 70) == 0 each turn; spawns awake (:321)",
+     "upkeep() rolls rn2(amu_taken ? 25 : 70) == 0 each turn; spawns awake (:321)",
      "WANDER_P / WANDER_P_AMULET"),
     ("rest ('R')", "src/nexthack.c:1215",
      "rest_step: pass turns until full HP, Weak, a key, or an awake hostile in view",
@@ -428,7 +428,7 @@ FORMULAS = [
      "each level +2 max Pw (In>=14) or +1, while below 30",
      "Hero.gain_xp"),
     ("amulet gauntlet", "src/monster.c:170",
-     "pool depth = has_amulet ? eff_depth() + 15 : eff_depth()",
+     "pool depth = amu_taken ? eff_depth() + 15 : eff_depth()",
      "pool(depth + 15) -- note the BITE still uses the real depth"),
 ]
 

@@ -14,7 +14,7 @@
 #include <string.h>       /* memchr (door_note) */
 #include "level.h"
 #include "rng.h"          /* rng_set, rn2, world_seed  */
-#include "game.h"         /* dlvl, MAXLVL, DLVL_AMULET, has_amulet */
+#include "game.h"         /* dlvl, MAXLVL, DLVL_AMULET, amu_taken */
 #include "monster.h"      /* monster_at (teleport must not land on anyone) */
 
 /* playable area (leaves a rock margin around the edges) */
@@ -681,7 +681,7 @@ void gen_level(void) __banked
      * This needs no RNG, so it can't shift the deterministic gold/item indices
      * or change this level's monster spawns. */
     if (dlvl == DLVL_AMULET)
-        lvl[dn_y][dn_x] = has_amulet ? '.' : '"';
+        lvl[dn_y][dn_x] = amu_taken ? '.' : '"';
 
     /* The mines bottom has no way further down either: the luckstone rests on
      * the would-be down-stairs cell (same no-RNG trick as the Amulet). */

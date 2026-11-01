@@ -1468,7 +1468,7 @@ void do_pickup(void) __banked
         /* Only the real one. Since 1.3 a '"' on the floor is usually a
          * wearable amulet, and picking one up used to set has_amulet -- an
          * amulet of ESP off Dlvl 6 handed you the victory screen. */
-        has_amulet = 1;
+        has_amulet = amu_taken = 1;
         msg("Got the Amulet!  Climb back up!");
         sfx_levelup();
     } else if (c == '*') {

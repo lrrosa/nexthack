@@ -14,7 +14,7 @@
 #include "level.h"        /* lvl, rand_floor, rcount, up_x/up_y, eff_depth    */
 #include "platform.h"     /* file_read/file_write                             */
 #include "rng.h"          /* rn2                                              */
-#include "game.h"         /* dlvl, has_amulet, hero_x/hero_y                  */
+#include "game.h"         /* dlvl, amu_taken, hero_x/hero_y                   */
 
 static int iabs(int v) { return v < 0 ? -v : v; }
 
@@ -286,7 +286,7 @@ void maybe_spawn_wanderer(void) __banked
     char    type;
     uint8_t slot, i, x, y;
 
-    if (rn2(has_amulet ? 25 : 70) != 0) return;
+    if (rn2(amu_taken ? 25 : 70) != 0) return;
 
     slot = MAXMON;                          /* find a reusable dead slot...   */
     for (i = 0; i < mcount; i++)

@@ -628,14 +628,22 @@ tilemap.
   without that reset a special level inherits the previous level's shop/vault.
 - **Win condition**: the deepest level (`DLVL_AMULET`, currently 50) has no
   down-stairs — the Amulet of Yendor (`"`) sits on that cell instead. Picking it up
-  sets `has_amulet`; climbing `<` on Dlvl 1 while carrying it sets `won` (victory
-  screen, then restart). The amulet is placed **without RNG** (on the would-be
-  down-stairs cell), so it cannot desync the deterministic per-depth generation.
-  **No way down may exist on `AT_BOTTOM` levels** (Dlvl 50 and Mine:4, `game.h`):
-  no `>`, digging is refused, and a trap door hashes into a dart trap there. A
-  trap door on Dlvl 50 used to drop the hero into internal level 51 = Mine:1,
-  one climb from Dlvl 2 with the Amulet. `IN_MINES` has no upper bound, so any
-  new way to change `dlvl` must keep it inside 1..54.
+  sets `has_amulet` *and* `amu_taken`; climbing `<` on Dlvl 1 while carrying it sets
+  `won` (victory screen, then restart). The amulet is placed **without RNG** (on the
+  would-be down-stairs cell), so it cannot desync the deterministic per-depth
+  generation. **Two flags since 2.0**: `has_amulet` is "in the pack now" (the win,
+  the prayer, the score) and `amu_taken` is "gone from Dlvl 50" (that floor stops
+  growing one; the +15 spawn pool and the faster wanderers). Before, one meant the
+  other; a way for the Amulet to leave the pack must clear `has_amulet` only.
+  **No way down may exist on `AT_BOTTOM` levels** (Dlvl 50, Mine:4 and the Astral
+  Plane, `game.h`): no `>`, digging is refused, and a trap door hashes into a dart
+  trap there. A trap door on Dlvl 50 used to drop the hero into internal level 51 =
+  Mine:1, one climb from Dlvl 2 with the Amulet. **Level ids**: 1..50 the main
+  shaft, 51..54 the mines (`IN_MINES`, bounded since 2.0), `DLVL_ASTRAL` 55 the
+  Astral Plane -- past `MAXLVL`, so no per-level mask has a slot for it (every
+  writer refuses `dlvl > MAXLVL`; keep that true of any new one), and it plays
+  as Dlvl 50 (`eff_depth`). Never id 0: it means "free" in the fog, stash and
+  dug pools. Any new way to change `dlvl` must land inside 1..55.
 - **FOV** remembers explored cells in an **LRU pool** (`fov_pool`: the `FOV_SLOTS`
   most recently visited levels' 1-bit-per-cell maps; entering a new level evicts and
   forgets the least-recently-used one) plus a recomputed-each-turn `vis_now` bitmap.
@@ -673,8 +681,8 @@ tilemap.
   as a revisit does. Saved state = `world_seed`, the player globals, the inventory
   (`item.c`), and the per-depth `gold_taken`/`item_taken`/`mon_dead` masks plus the
   `fov_pool` LRU fog-of-war, the pick-axe's `dug_pool` and the genocide mask
-  (`level.c`/`monster.c`), the passed doors (`door_passed`, 39) and the
-  engraving (`el_x`/`el_y`/`el_life`, 40).
+  (`level.c`/`monster.c`), the passed doors (`door_passed`, 39), the
+  engraving (`el_x`/`el_y`/`el_life`, 40) and `amu_taken` (41).
 - **A restore is a level change that must not act like one.** `load_resume`
   (`save.c`) runs what follows `load_game`: `build_level`, which wipes the
   engraving as any level change must, so the saved one is put back after it

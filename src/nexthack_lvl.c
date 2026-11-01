@@ -213,8 +213,8 @@ static void place_follower(void)
 void build_level(void) __banked
 {
     uint16_t play;
-    if (dlvl > max_dlvl && !IN_MINES(dlvl))
-        max_dlvl = dlvl;                    /* deepest point, for the score */
+    if (dlvl > max_dlvl && dlvl <= DLVL_AMULET)   /* not the mines' 51+ ids, */
+        max_dlvl = dlvl;                    /* nor the Astral's: deepest point, for the score */
     el_life = 0;             /* a dust engraving does not survive a level change */
     traps_reset();           /* sprung-trap set is per visit (level regenerates) */
     floor_reset();           /* loose thrown items don't survive a level change  */
@@ -282,7 +282,7 @@ void go_down(void) __banked
         build_level();
         hero_x = up_x; hero_y = up_y;     /* arrive on the new up-stairs */
         place_pet();                      /* the dog follows you down */
-        if (dlvl == DLVL_AMULET && !has_amulet)
+        if (dlvl == DLVL_AMULET && !amu_taken)
             msg("A terrible presence dwells here.");   /* the Amulet's keeper */
         else
             msg("You descend the stairs.");

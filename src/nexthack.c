@@ -40,7 +40,7 @@ uint16_t turns = 0;
 uint8_t  php = 12, pmaxhp = 12;
 uint16_t gold = 0;
 uint8_t  dead = 0;
-uint8_t  has_amulet = 0;
+uint8_t  has_amulet = 0, amu_taken = 0;   /* see game.h */
 uint8_t  luckstone_taken = 0;    /* the mines' prize was claimed (see game.h) */
 uint8_t  won = 0;
 uint8_t  acted = 0;
@@ -1380,7 +1380,7 @@ void new_game(uint8_t reseed) __banked
     dlvl = 1;
     turns = 0;
     dead = 0;
-    has_amulet = 0;
+    has_amulet = amu_taken = 0;
     luckstone_taken = 0;
     cnt_kills = cnt_corpses = cnt_reads = cnt_prayers = 0;
     won = 0;

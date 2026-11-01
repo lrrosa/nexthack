@@ -164,10 +164,10 @@ int monster_at(int x, int y)
 char pick_mon(void)
 {
     uint8_t n = 0, i;
-    /* the ascent is a gauntlet: with the Amulet in your pack the dungeon
+    /* the ascent is a gauntlet: once the Amulet has left its floor the dungeon
      * sends its deep servants after you no matter how near the surface.
      * (eff_depth: mine levels play shallow despite their 51+ ids.) */
-    uint16_t d = has_amulet ? (uint16_t)(eff_depth() + 15) : eff_depth();
+    uint16_t d = amu_taken ? (uint16_t)(eff_depth() + 15) : eff_depth();
     /* the mines belong to the small folk: most spawns are natives */
     if (IN_MINES(dlvl) && rn2(3) != 0)
         return rn2(2) ? 'G' : 'h';

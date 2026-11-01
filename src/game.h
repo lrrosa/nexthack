@@ -24,20 +24,29 @@
  * wand of digging in the whole branch (51..54 are all >= 50). */
 #define MINES_BASE      (DLVL_AMULET + 1)
 #define MINES_DEPTH     4
-#define IN_MINES(d)     ((d) >= MINES_BASE)
-/* The two floors with nothing below them: the Amulet's level and the mines'
- * bottom. No way down may exist there -- the Amulet and the luckstone take
- * the would-be '>' cells, digging is refused, and no trap door is generated
- * (trap_type). A trap door on Dlvl 50 used to drop the hero to internal
- * level 51, i.e. Mine:1, one climb from Dlvl 2 with the Amulet in the pack;
- * one on Mine:4 made a Mine:5 that does not exist. IN_MINES needs no upper
- * bound as long as nothing can move dlvl past MAXLVL -- keep it that way. */
-#define AT_BOTTOM(d)    ((d) == DLVL_AMULET || \
-                         (d) == (uint16_t)(MINES_BASE + MINES_DEPTH - 1))
+/* Bounded since 2.0: DLVL_ASTRAL sits above the branch and is not in it. A
+ * level id fits a byte (1..55), so one 8-bit subtract and compare -- smaller
+ * than the open-ended 16-bit test it replaced; the 16-bit bounded form cost
+ * the 128K 150 B across its banks. */
+#define IN_MINES(d)     ((uint8_t)((uint8_t)(d) - MINES_BASE) < MINES_DEPTH)
 
 /* deepest level id for which per-level mutations (gold/monsters/fog-of-war)
  * are remembered: the main shaft plus the mines branch. */
 #define MAXLVL (MINES_BASE + MINES_DEPTH - 1)
+
+/* The Astral Plane (2.0): where the climb out of Dlvl 1 with the Amulet
+ * leads. Its id is past MAXLVL, so it has no slot in any per-level mask --
+ * every writer of one already refuses a dlvl > MAXLVL -- and it plays as the
+ * bottom (eff_depth). Not 0: 0 means "free" in the fog, stash and dug pools. */
+#define DLVL_ASTRAL     (MAXLVL + 1)
+
+/* The floors with nothing below them: the Amulet's level, the mines' bottom
+ * and the Astral Plane. No way down may exist there -- the Amulet and the
+ * luckstone take the would-be '>' cells, digging is refused, and no trap door
+ * is generated (trap_type). A trap door on Dlvl 50 used to drop the hero to
+ * internal level 51, i.e. Mine:1, one climb from Dlvl 2 with the Amulet in
+ * the pack; one on Mine:4 made a Mine:5 that does not exist. */
+#define AT_BOTTOM(d)    ((d) == DLVL_AMULET || (d) >= (uint16_t)MAXLVL)
 
 /* player and run state (defined in nexthack.c) */
 extern int      hero_x, hero_y;
@@ -47,6 +56,9 @@ extern uint8_t  php, pmaxhp;
 extern uint16_t gold;
 extern uint8_t  dead;
 extern uint8_t  has_amulet; /* carrying the Amulet of Yendor                 */
+extern uint8_t  amu_taken;  /* it has left Dlvl 50 (2.0): from then on the
+                             * floor no longer grows one and the dungeon
+                             * hunts you, in your pack or out of it (saved) */
 extern uint8_t  luckstone_taken; /* the mines-bottom luckstone was claimed
                                   * (never re-placed by gen; saved)          */
 extern uint8_t  won;        /* surfaced with the Amulet (victory)            */

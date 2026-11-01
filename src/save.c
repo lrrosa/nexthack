@@ -16,7 +16,7 @@
  * 16-bit sum of every byte before it, which file_write keeps (platform.c).
  * Since 39 the passed doors (door_passed) sit between the monster block and
  * the trailer, where a 38 save simply ends; since 40 the engraving underfoot
- * (el_x, el_y, el_life) follows them.
+ * (el_x, el_y, el_life) follows them, and since 41 amu_taken.
  *
  * WHAT A LOAD TRUSTS: nothing, until the whole file has been read through
  * once (save_check) and its length and sum agree with that trailer. The old
@@ -39,7 +39,11 @@
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   40     /* 40: the engraving underfoot -- el_x, el_y, el_life
+#define SAVE_VER   41     /* 41: amu_taken (2.0), one byte after the engraving:
+                           * the Amulet having left Dlvl 50 is no longer the
+                           * same as carrying it. A 40 save loads with it set
+                           * from has_amulet, which was all it could mean.
+                           * 40: the engraving underfoot -- el_x, el_y, el_life
                            * after door_passed. build_level wipes it, as a
                            * level change must, and a restore is one: a save
                            * on a burned Elbereth came back without it (#25).
@@ -164,6 +168,7 @@ int save_game(void) __banked
     file_write(h, &el_x, 1);                                 /* 40 */
     file_write(h, &el_y, 1);
     file_write(h, &el_life, 1);
+    file_write(h, &amu_taken, 1);                            /* 41 */
     trail[0] = file_len; trail[1] = file_sum;   /* taken before they count themselves */
     file_write(h, trail, sizeof trail);
     file_close(h);
@@ -317,6 +322,8 @@ int load_game(void) __banked
     else               memset(door_passed, 0, (MAXLVL + 1) * DOOR_BYTES);
     sv_el[2] = 0;                       /* an older save: no engraving */
     if (hdr.ver >= 40) file_read(h, sv_el, 3);
+    amu_taken = has_amulet;             /* before 41 it never left the pack */
+    if (hdr.ver >= 41) file_read(h, &amu_taken, 1);
     file_close(h);
     /* ...and must have read all of it. Short, the card misread this time
      * round; long or short, the bytes are not the layout their version
