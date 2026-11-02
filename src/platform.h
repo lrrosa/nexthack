@@ -90,13 +90,16 @@
 #define T_PUDDING     187  /* black pudding: a dark blob (1.9) */
 #define T_HILLGIANT   188  /* hill giant: bearded, a cyan tunic (1.9) */
 #define T_LICH        189  /* lich: a crowned skull in a blue robe (1.9) */
+#define T_WIZARD      190  /* the Wizard of Yendor: a starred hat, a violet
+                            * robe; PAL2 (2.0) */
 
-#define NTILES   62      /* T_ROCK..T_LICH: the graphic tiles.
+#define NTILES   63      /* T_ROCK..T_WIZARD: the graphic tiles.
                           * 128K: udg_bitmap (0x6680, 8 B/tile) may run to
                           * 0x6888 -- ids up to 192 -- where the mirrored annex
                           * (193..195) begins; inv[] moved out of 0x6800 in 1.6
                           * to make that room. The Next's tile defs end at
-                          * 0x4000 + (128 + NTILES) * 32, below inv[] at 0x5800. */
+                          * 0x4000 + (128 + NTILES) * 32, below inv[] at 0x5800:
+                          * 0x57E0 since 2.0, so one tile more fits there. */
 
 /* The Next's second monster palette: tiles drawn with tilemap attribute
  * PAL2_ATTR (palette offset 3) take their colours from pal2[] in
@@ -105,7 +108,8 @@
  * never drawn dimmed). The 128K's 1-bit tiles take their inks as before. */
 #define PAL2_ATTR 0x30
 #define tile_pal2(t) ((t) == T_SNAKE || (t) == T_VAMPIRE || \
-                      (t) == T_PRIEST || (t) == T_NYMPH || (t) == T_SPIDER)
+                      (t) == T_PRIEST || (t) == T_NYMPH || (t) == T_SPIDER || \
+                      (t) == T_WIZARD)
 
 /* display dimensions (characters) */
 #ifdef __ZXNEXT

@@ -46,6 +46,7 @@ local FRAMES = tonumber(os.getenv("FUZZ_FRAMES") or "60000")
 local CLASS  = os.getenv("FUZZ_CLASS") or "a"
 local STAIRS_EVERY = tonumber(os.getenv("FUZZ_STAIRS") or "70")
 local SCAN = os.getenv("FUZZ_SCAN") == "1"
+local AMULET = os.getenv("FUZZ_AMULET") == "1"   -- 2.0: play the climb (-Amulet)
 local grow = nil          -- the altar/fountain grow test in progress (reach_check sets it)
 local scan_trips, stale_trips, trip_hits = 0, 0, 0
 math.randomseed(SEED)
@@ -155,6 +156,19 @@ local function gift()
   w8(a, ot); w8(a + 1, ench); w8(a + 2, 0); w8(a + 3, 0); w8(a + 4, buc); w8(a + 5, qty)
   w8(S.inv_count, n + 1)
   gifts = gifts + 1
+end
+
+-- -Amulet (2.0): the Amulet in the pack from the first key wait, as if just
+-- taken from Dlvl 50, so the climb's rules and the Wizard of Yendor play
+local amulet_given = false
+local function give_amulet()
+  local n = r8(S.inv_count)
+  local a = cfg.inv + n * cfg.objsz
+  w8(a, cfg.amulet_ot); w8(a + 1, 0); w8(a + 2, 0); w8(a + 3, 0); w8(a + 4, 0); w8(a + 5, 1)
+  w8(S.inv_count, n + 1)
+  w8(S.has_amulet, 1); w8(S.amu_taken, 1)
+  amulet_given = true
+  L("amulet given")
 end
 
 -- ---------------------------------------------------------------- reports
@@ -572,7 +586,7 @@ local function check()
   do
     local mtk = r8(S.m_track)
     local d = g.mines and (cfg.mines_entr + 1 + (g.dlvl - cfg.mines_base)) or math.min(g.dlvl, 50)
-    if r8(S.amu_taken) ~= 0 then d = d + 15 end
+    if r8(S.amu_taken) ~= 0 then d = d + cfg.climb_pool end
     for _, mo in ipairs(g.mons) do
       local w = cfg.monwin[mo.t]
       if w and ((mtk >> mo.i) & 1) == 1 and (d < w[1] or d > w[2]) then
@@ -582,6 +596,19 @@ local function check()
     end
   end
   local ic = r8(S.inv_count)
+  -- 2.0: once the Amulet has left Dlvl 50 there is exactly one, in the pack
+  -- (has_amulet says so) or in the Wizard's hands (wiz.amu) -- until it is
+  -- offered. A floor, a stash or a thief never holds it.
+  if S.wiz and r8(S.amu_taken) ~= 0 and r8(S.won) == 0 and ic <= cfg.maxinv then
+    local inpack = 0
+    for k = 0, ic - 1 do
+      if r8(cfg.inv + k * cfg.objsz) == cfg.amulet_ot then inpack = inpack + 1 end
+    end
+    local has, held = r8(S.has_amulet), r8(S.wiz + 2)
+    if inpack + held ~= 1 or has ~= (inpack > 0 and 1 or 0) then
+      report("amulet", string.format("in pack %d, has_amulet %d, the Wizard holds %d", inpack, has, held))
+    end
+  end
   if ic > cfg.maxinv then report("inv-count", tostring(ic))
   else
     for k = 0, ic - 1 do
@@ -799,6 +826,7 @@ frame_sub = emu.add_machine_frame_notifier(function()
       elseif php < pmax // 2 then w8(S.php, pmax); keepalive = keepalive + 1 end
       if s16(S.nutrition) < 400 then w16(S.nutrition, 900); keepalive = keepalive + 1 end
       if actions - last_gift >= 25 then last_gift = actions; gift() end
+      if AMULET and not amulet_given and S.wiz then give_amulet() end
       -- the grow test (reach_check found a pile on an altar/fountain spot):
       -- poke the hero onto it, ',', then revisit the same level via the stairs
       if grow and m.time:as_double() - last_key_t >= 0.16 then

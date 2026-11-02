@@ -26,6 +26,7 @@
 #include "nexthack.h"    /* build_level (wand of digging descends a level)   */
 #include "rng.h"         /* rn2, world_seed                                  */
 #include "sfx.h"         /* sound effects                                    */
+#include "wizard.h"      /* WIZ_CH: never genocided (2.0)                    */
 
 /* Drink from the fountain the hero stands on. A worthy blade may draw
  * Excalibur from the depths (NetHack's dip, folded into the quaff); else the
@@ -334,7 +335,7 @@ static void genocide(uint8_t cursed)
         in_wait_nokey();
         k = getkey();
         in_wait_nokey();
-        if (k == MON_KEEPER || k == 'M') {
+        if (k == MON_KEEPER || k == 'M' || k == WIZ_CH) {
             msg("That one is beyond your power.");
             return;
         }

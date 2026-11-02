@@ -24,6 +24,7 @@
 #include "rng.h"         /* rn2, world_seed                                  */
 #include "sfx.h"         /* sound effects                                    */
 #include "ascend.h"      /* offer_amulet (2.0)                               */
+#include "wizard.h"      /* WIZ_CH, wiz_died (2.0)                           */
 
 /* item.c is a BANKED (cold) module with a bank of its OWN (it outgrew
  * PAGE_20), mapped into the 0xC000 window on demand. Public entry points are
@@ -1245,7 +1246,11 @@ static void drop_held_1(uint8_t mi)
         held_has[mi] = 0;
 }
 
-void drop_held(uint8_t mi) __banked { drop_held_1(mi); }   /* a kill's return */
+void drop_held(uint8_t mi) __banked     /* a kill's return */
+{
+    if (m_type[mi] == WIZ_CH) wiz_died();     /* and the Amulet he held (2.0) */
+    drop_held_1(mi);
+}
 
 /* every thief abandons its loot where it stands -- called before the
  * outgoing floor is banked (floor_reset) and before a save writes the

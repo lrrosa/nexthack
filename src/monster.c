@@ -123,6 +123,12 @@ static const MonType montypes[] = {
     { 'P',        28, 8, 14,  15, T_PUDDING,     1, ATK_NONE,    3, 1,  25, "black pudding" },
     { 'H',        24, 6, 18,  18, T_HILLGIANT,   0, ATK_NONE,   10, 1,  28, "hill giant" },
     { 'L',        28, 6, 24,  24, T_LICH,        0, ATK_DRAIN,   6, 1,  34, "lich" },
+    /* the Wizard of Yendor (2.0, wizard.c): he comes for the Amulet once it
+     * has left Dlvl 50, follows you from level to level, snatches it with a
+     * blow and comes back after death. mindepth 255: never in a pool; his
+     * HP is this row's at every appearance, without the depth bonus. A thief
+     * more than a killer: the numbers are wizard.c's, measured there. */
+    { 'Y',        45, 3, 50, 255, T_WIZARD,      0, ATK_AMU,    12, 1, 255, "Wizard of Yendor" },
     /* the shopkeeper: drawn as '@' (reuses T_HERO), placed only in shops, never
      * randomly spawned (pick_mon skips it), and stationary (monster_ai mon_step). */
     { MON_KEEPER, 30, 0,  0,   1, T_KEEPER,      0, ATK_NONE,   18, 2, 255, "shopkeeper" }
@@ -167,7 +173,7 @@ char pick_mon(void)
     /* the ascent is a gauntlet: once the Amulet has left its floor the dungeon
      * sends its deep servants after you no matter how near the surface.
      * (eff_depth: mine levels play shallow despite their 51+ ids.) */
-    uint16_t d = amu_taken ? (uint16_t)(eff_depth() + 15) : eff_depth();
+    uint16_t d = amu_taken ? (uint16_t)(eff_depth() + CLIMB_POOL) : eff_depth();
     /* the mines belong to the small folk: most spawns are natives */
     if (IN_MINES(dlvl) && rn2(3) != 0)
         return rn2(2) ? 'G' : 'h';

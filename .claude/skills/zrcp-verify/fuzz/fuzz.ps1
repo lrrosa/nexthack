@@ -21,6 +21,7 @@ param([Parameter(Position = 0)][ValidateSet('zx128', 'next')][string]$Target = '
       [string]$Class = 'a',      # the class picker's letter
       [int]$Stairs = 70,         # take the stairs every this many actions
       [switch]$Scan,             # visit random levels of random worlds instead
+      [switch]$Amulet,           # 2.0: start with the Amulet (the climb, the Wizard)
       [switch]$Dump,
       [string]$PortDir = '',
       [string]$OutDir = '',
@@ -34,7 +35,7 @@ $mame = $script:MameDir
 if (-not (Test-Path (Join-Path $mame 'mame.exe'))) { throw "fuzz: no mame.exe in $mame (set `$env:NEXTHACK_MAME)" }
 $bin = if ($Target -eq 'zx128') { 'nexthack128.tap' } else { 'nexthack.nex' }
 if (-not (Test-Path (Join-Path $PortDir $bin))) { throw "fuzz: $PortDir\$bin missing (build first, or -PortDir)" }
-if (-not $Tag) { $Tag = "fz-$Target-$Seed" + $(if ($Scan) { '-scan' } else { '' }) }
+if (-not $Tag) { $Tag = "fz-$Target-$Seed" + $(if ($Scan) { '-scan' } else { '' }) + $(if ($Amulet) { '-amu' } else { '' }) }
 
 $dir = Join-Path $OutDir $Tag
 if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
@@ -49,6 +50,7 @@ $log = Join-Path $dir 'log.txt'
 $env:FUZZ_CFG = $cfg; $env:MAME_LOG = $log
 $env:FUZZ_SEED = $Seed; $env:FUZZ_FRAMES = $Frames; $env:FUZZ_CLASS = $Class; $env:FUZZ_STAIRS = $Stairs
 $env:FUZZ_SCAN = $(if ($Scan) { '1' } else { '0' })
+$env:FUZZ_AMULET = $(if ($Amulet) { '1' } else { '0' })
 $oldDump = $env:FUZZ_DUMP
 if ($Dump) { $env:FUZZ_DUMP = '1' }
 # emulated-time cap: the play, plus the 128K's ~616 s tape load

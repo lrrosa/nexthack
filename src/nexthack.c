@@ -32,6 +32,7 @@
 #include "scr.h"
 #endif
 #include "nexthack.h"
+#include "wizard.h"       /* wiz, wiz_tick (2.0) */
 
 /* ---- shared game/run state (declared extern in game.h) ---- */
 int      hero_x, hero_y;
@@ -586,6 +587,7 @@ void upkeep(void) __banked
         hero_teleport();
     }
 
+    wiz_tick();                                 /* the Wizard of Yendor (2.0) */
     maybe_spawn_wanderer();                     /* the dungeon refills over time */
 }
 
@@ -1387,6 +1389,7 @@ void new_game(uint8_t reseed) __banked
     turns = 0;
     dead = 0;
     has_amulet = amu_taken = 0;
+    memset(&wiz, 0, sizeof wiz);  /* the Wizard of Yendor sleeps again (2.0) */
     luckstone_taken = 0;
     cnt_kills = cnt_corpses = cnt_reads = cnt_prayers = 0;
     won = 0;

@@ -18,6 +18,7 @@
 #include "sfx.h"          /* sound effects                                    */
 #include "item.h"         /* corrode_worn                                     */
 #include "nexthack.h"     /* hero_teleport (the quantum mechanic's touch)     */
+#include "wizard.h"       /* WIZ_CH, wiz_steal (2.0)                          */
 
 /* Const-banked (banks.json): this file's message literals live in its own
  * bank (consumed by msg/msg2 while it is mapped), not the tight resident
@@ -287,6 +288,9 @@ static void monster_hits_player(uint8_t i)
             break;
         case ATK_CONF:       /* the umber hulk's gaze */
             if (rn2(2)) { ADD_SAT8(st_conf, rn2(4) + 3); msg("You are confused!"); }
+            break;
+        case ATK_AMU:        /* the Wizard of Yendor, for the Amulet (2.0) */
+            wiz_steal(i);
             break;
         }
     }
@@ -931,8 +935,10 @@ static void mon_step(uint8_t i)
     ddy = hero_y - (int)m_y[i];
 
     if (iabs(ddx) <= 1 && iabs(ddy) <= 1) {   /* adjacent -> attack */
-        if (ward) return;                     /* Elbereth or the scroll: it dares
-                                               * not strike */
+        if (ward && m_type[i] != WIZ_CH)
+            return;                           /* Elbereth or the scroll: it dares
+                                               * not strike -- unless it is the
+                                               * Wizard (2.0) */
         monster_hits_player(i);
         return;
     }
@@ -1078,7 +1084,9 @@ static void monsters_phase(void)
             if (iabs((int)m_x[i] - hero_x) > MON_WAKE ||
                 iabs((int)m_y[i] - hero_y) > MON_WAKE) continue;   /* still dormant */
             if (iabs(hero_x - (int)m_x[i]) <= 1 && iabs(hero_y - (int)m_y[i]) <= 1) {
-                if (ward) continue;   /* Elbereth, or scare monster underfoot */
+                if (ward && m_type[i] != WIZ_CH)
+                    continue;         /* Elbereth, or scare monster underfoot;
+                                       * the Wizard laughs at both (2.0) */
                 monster_hits_player(i);
                 if (dead) return;
                 continue;

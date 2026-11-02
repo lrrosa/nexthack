@@ -83,6 +83,9 @@ if target == 'zx128':
 else:
     need += ['_fov_pool_buf']
 S = {n.lstrip('_'): need_sym(n) for n in need}
+for n in ('_wiz', '_has_amulet'):                 # 2.0: absent from an older -PortDir
+    if n in syms:
+        S[n.lstrip('_')] = syms[n]
 # what a scan trip forgets when it switches worlds (fuzz.lua arm_trip)
 sizes = {n.lstrip('_'): size_of(n) for n in
          ('_stash', '_gold_taken', '_item_taken', '_mon_dead', '_door_open', '_door_passed')}
@@ -196,6 +199,10 @@ cfg = {
     'objsz': bankmap.obj_size(), 'stack_max': bankmap.const('STACK_MAX', ['item_int.h']),
     'stackable': stackable,
     'monwin': monwin,
+    # 2.0: the climb's pool depth (monster.h; 15 before it was named) and
+    # the Amulet's otyp, for the one-Amulet check
+    'climb_pool': bankmap.const('CLIMB_POOL', ['monster.h'], 15),
+    'amulet_ot': objs.get('the Amulet of Yendor', -1),
     'mines_base': bankmap.const('DLVL_AMULET', ['game.h']) + 1,
     'mines_entr': bankmap.const('MINES_ENTR_DLVL', ['game.h']),
     # getkey_rpt also waits under cursor_pick (farlook, teleport control):

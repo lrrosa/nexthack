@@ -102,7 +102,9 @@ const uint8_t udg_ink[NTILES] = {
      * the unicorn and the lich white, the brown ones yellow (NetHack's brown,
      * as ever), the mechanic and the giant cyan, the rust monster red, the
      * spider magenta, the pudding blue -- black ink would vanish on black */
-       7, 6, 5, 2, 6, 3, 6, 1, 5, 7
+       7, 6, 5, 2, 6, 3, 6, 1, 5, 7,
+    /* WIZARD (2.0): magenta, as the Next's robe and hat */
+       3
     /* sink and grave white; the throne yellow on red, the Next's gold frame
      * round a red cushion (the shop wall's pair, which no room floor wears) */
     /* zombie white (NetHack's human zombie); keeper magenta; leprechaun green; yellow light

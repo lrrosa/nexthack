@@ -264,7 +264,11 @@ python .claude\skills\zrcp-verify\fuzz\cover.py nexthack128.map "$env:TEMP\nexth
 - `-Class a`, `-Stairs 70` (take the stairs every n actions; a scan visits
   more levels at 40), `-Dump` (also `$env:FUZZ_DUMP=1`: the last 40 keys and
   the map at each kind's first violation), `-OutDir` (default
-  `%TEMP%\nexthack-fuzz`), `-Tag` (default `fz-<target>-<seed>[-scan]`).
+  `%TEMP%\nexthack-fuzz`), `-Tag` (default `fz-<target>-<seed>[-scan][-amu]`).
+- `-Amulet` (2.0) pokes the Amulet into the pack at the first key wait, as
+  if just taken from Dlvl 50 (`has_amulet`, `amu_taken`): the climb's deeper
+  pool and faster wanderers play, and the Wizard of Yendor comes, steals and
+  follows. Without it a run never meets him.
 - `-PortDir` is the tree whose build is fuzzed: the `.map`, `src/` tables and
   `tools/bankmap.py` are read from it (`fuzzcfg.py`, rerun every time). The
   default is this repo -- a worktree has no build, so point it at the
@@ -276,7 +280,9 @@ bounds, not in rock, not stacked, not on the hero; `mcount <= MAXMON`; the
 pack's count, `otyp`s and stack counts (`inv-qty`: never 0, never past
 `STACK_MAX`, above 1 only on a type that stacks); `php <= pmaxhp`; the pet
 slot alive and a dog; `dug_pool`'s count; the level's own spawns inside their
-type's depth window (`mon-window`, 1.9); and a **renderer oracle** that
+type's depth window (`mon-window`, 1.9); once the Amulet is taken, exactly
+one of it, in the pack (and `has_amulet` saying so) or in the Wizard's hands
+(`wiz.amu`) -- never on a floor (`amulet`, 2.0); and a **renderer oracle** that
 recomputes every viewport cell the way a forced full redraw would, against
 `VIEW_SHADOW` and the ULA screen (128K) or the tilemap (Next). On each
 level's first check: `>`, the mine entrance (Dlvl 2) and the Amulet's cell

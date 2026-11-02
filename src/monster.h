@@ -18,6 +18,10 @@
                           * mon_dead can track), then the keeper, the pet, followers,
                           * wanderers and summons -- see m_track for which is which */
 #define MON_KEEPER '@'   /* the shopkeeper (drawn as the hero tile, stationary) */
+#define CLIMB_POOL 15    /* with the Amulet the pool runs this many floors deeper
+                          * (pick_mon). A costume change, not a difficulty:
+                          * the bite keys off the real depth, so balance.py
+                          * finds it worth under 1.5 points of wins (2.0). */
 
 extern uint8_t mcount;
 extern uint8_t m_x[], m_y[], m_alive[], m_hp[];
@@ -93,7 +97,8 @@ typedef struct {
 enum { ATK_NONE, ATK_POISON, ATK_BLIND, ATK_SLEEP, ATK_STEAL, ATK_DRAIN,
        ATK_ITEM,     /* ATK_ITEM: steals an inventory item (the nymph) */
        ATK_TELE,     /* 1.9: teleports you (the quantum mechanic) */
-       ATK_CONF };   /* 1.9: confuses you (the umber hulk's gaze) */
+       ATK_CONF,     /* 1.9: confuses you (the umber hulk's gaze) */
+       ATK_AMU };    /* 2.0: snatches the Amulet (the Wizard, wizard.c) */
 
 /* ---- RESIDENT lookups (monster.c): hot, called per cell/monster by the
  * renderer and the banked AI; not banked so those calls stay direct ---- */

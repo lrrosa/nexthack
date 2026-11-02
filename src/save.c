@@ -16,7 +16,8 @@
  * 16-bit sum of every byte before it, which file_write keeps (platform.c).
  * Since 39 the passed doors (door_passed) sit between the monster block and
  * the trailer, where a 38 save simply ends; since 40 the engraving underfoot
- * (el_x, el_y, el_life) follows them, and since 41 amu_taken.
+ * (el_x, el_y, el_life) follows them, since 41 amu_taken, and since 42 the
+ * Wizard of Yendor's state (wiz, wizard.h).
  *
  * WHAT A LOAD TRUSTS: nothing, until the whole file has been read through
  * once (save_check) and its length and sum agree with that trailer. The old
@@ -36,10 +37,17 @@
 #include "monster.h"
 #include "item.h"
 #include "nexthack.h"
+#include "wizard.h"       /* wiz (42) */
 
 #define SAVE_NAME  "nexthack.sav"
 #define SAVE_MAGIC 0x484Eu          /* 'N','H' */
-#define SAVE_VER   41     /* 41: amu_taken (2.0), one byte after the engraving:
+#define SAVE_VER   42     /* 42: the Wizard of Yendor (2.0), wiz whole after
+                           * amu_taken -- his slot is not saved: the restored
+                           * level puts him back beside you (wiz_tick). An
+                           * older save loads with him not yet woken: if the
+                           * Amulet is out, he comes 50-150 turns on, as if
+                           * it had just been taken.
+                           * 41: amu_taken (2.0), one byte after the engraving:
                            * the Amulet having left Dlvl 50 is no longer the
                            * same as carrying it. A 40 save loads with it set
                            * from has_amulet, which was all it could mean.
@@ -169,6 +177,7 @@ int save_game(void) __banked
     file_write(h, &el_y, 1);
     file_write(h, &el_life, 1);
     file_write(h, &amu_taken, 1);                            /* 41 */
+    file_write(h, &wiz, sizeof wiz);                         /* 42 */
     trail[0] = file_len; trail[1] = file_sum;   /* taken before they count themselves */
     file_write(h, trail, sizeof trail);
     file_close(h);
@@ -324,6 +333,8 @@ int load_game(void) __banked
     if (hdr.ver >= 40) file_read(h, sv_el, 3);
     amu_taken = has_amulet;             /* before 41 it never left the pack */
     if (hdr.ver >= 41) file_read(h, &amu_taken, 1);
+    memset(&wiz, 0, sizeof wiz);        /* before 42 he had not woken */
+    if (hdr.ver >= 42) file_read(h, &wiz, sizeof wiz);
     file_close(h);
     /* ...and must have read all of it. Short, the card misread this time
      * round; long or short, the bytes are not the layout their version

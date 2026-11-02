@@ -249,7 +249,11 @@ const uint8_t gfx[NTILES][64] = {
     15,12,12,12,12,12,12,15, 15,0,12,12,12,12,0,15, 0,0,12,12,0,12,12,0, 0,6,6,0,0,6,6,0 },
   { /* T_LICH -- lich: a crowned skull in a blue robe (1.9) */
     0,13,0,13,13,0,13,0, 0,13,13,13,13,13,13,0, 0,3,3,3,3,3,3,0, 0,3,1,3,3,1,3,0,
-    0,0,3,3,3,3,0,0, 0,11,11,3,3,11,11,0, 11,11,11,11,11,11,11,11, 11,0,11,11,11,11,0,11 }
+    0,0,3,3,3,3,0,0, 0,11,11,3,3,11,11,0, 11,11,11,11,11,11,11,11, 11,0,11,11,11,11,0,11 },
+  { /* T_WIZARD -- the Wizard of Yendor: a magenta hat with a yellow star,
+     * red eyes over a white beard, a violet robe; pal2 (2.0) */
+    0,0,0,0,0,5,0,0, 0,0,0,0,5,5,0,0, 0,0,0,5,12,5,0,0, 0,5,5,5,5,5,5,0,
+    0,0,11,13,13,11,0,0, 0,3,14,14,14,14,3,0, 3,3,3,14,14,3,3,3, 0,2,3,3,3,3,2,0 }
 };
 
 static void pack_tile(uint8_t tilenum, const uint8_t *px)
@@ -479,7 +483,10 @@ static const uint8_t udg_src[NTILES][8] = {
     { 0x7E,0xA5,0xFF,0xBD,0x42,0xFF,0xA5,0xA5 }, /* UMBERHULK */
     { 0x00,0x00,0x18,0x3C,0x6A,0xFF,0xFF,0x7E }, /* PUDDING */
     { 0x7E,0x5A,0x7E,0xFF,0xFF,0xBD,0x36,0x66 }, /* HILLGIANT */
-    { 0x5A,0x7E,0x7E,0x5A,0x3C,0x66,0xFF,0xBD } /* LICH */
+    { 0x5A,0x7E,0x7E,0x5A,0x3C,0x66,0xFF,0xBD }, /* LICH */
+    { 0x04,0x0C,0x1C,0x7E,0x24,0x3C,0x7E,0xFF }  /* WIZARD (2.0: a pointed hat
+                                                  * with a brim, a face, a
+                                                  * robe to the floor)       */
 };
 
 /* Copy the hand-drawn tiles into udg_bitmap[] (Bank 5, see platform.h) that the
