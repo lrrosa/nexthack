@@ -1018,7 +1018,8 @@ tilemap.
   are, with the HP he had -- he mends a point a turn. With no free square
   beside you (`summon_near` refuses doors and shops, and needs a slot) he
   tries again the next turn; on a level whose ten slots are all alive he
-  waits until one dies. His `montypes[]` row
+  waits until one dies. He is announced only once he stands there: his
+  first draft said "appears!" and placed nobody. His `montypes[]` row
   (`'Y'`, `mindepth` 255: never in a pool) gives his HP and bite. He ignores
   Elbereth and the scroll of scare monster (both `ward` tests skip
   `WIZ_CH`), steps out of nowhere to your side when more than four squares

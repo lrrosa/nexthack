@@ -112,11 +112,17 @@ void wiz_tick(void) WIZ_ENTRY
         if (wiz.st == WZ_NONE)           /* the Amulet has just left its floor */
             gone(WIZ_WAKE_MIN, WIZ_WAKE_RND);
         if (--wiz.timer) return;
-        wiz.st = WZ_UP;
         wiz.hp = top;                    /* mended, or risen */
+        if (!place_beside()) {           /* no room beside you: next turn, */
+            wiz.timer = 1;               /* and not a word until he stands */
+            return;                      /* there (ten live slots: a death) */
+        }
+        wiz.st = WZ_UP;
         msg(wiz.deaths && !wiz.mend ? "\"So thou thought me dead, fool?\""
                                     : "The Wizard of Yendor appears!");
         wiz.mend = 0;
+        if (wiz.amu) to_stairs((uint8_t)wiz_slot());
+        return;
     }
 
     s = wiz_slot();
