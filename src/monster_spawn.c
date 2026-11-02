@@ -15,6 +15,7 @@
 #include "platform.h"     /* file_read/file_write                             */
 #include "rng.h"          /* rn2                                              */
 #include "game.h"         /* dlvl, amu_taken, hero_x/hero_y                   */
+#include "ascend.h"       /* astral_populate (2.0)                            */
 
 static int iabs(int v) { return v < 0 ? -v : v; }
 
@@ -159,6 +160,7 @@ void spawn_level_monsters(void) __banked
     mcount = 0;
     { uint8_t k;
       for (k = 0; k < MAXMON; k++) { m_sleep[k] = 0; m_peace[k] = 0; m_face[k] = 0; } }
+    if (dlvl == DLVL_ASTRAL) { astral_populate(); return; }   /* its own (ascend.c) */
     if (dlvl == DLVL_AMULET) {          /* the Amulet's keeper takes slot 0 */
         spawn_guardian();
         if (count > 7) count = 7;       /* randoms stay in tracked slots 1-7 */

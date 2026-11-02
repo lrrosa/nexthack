@@ -571,7 +571,7 @@ static void apply_pick(void)
         else if (c != ' ' && c != '-' && c != '|') no = "You swing at thin air.";
         /* 1..MAPW-2 by one unsigned compare: the outer ring stays rock */
         else if ((uint8_t)(x - 1) >= MAPW - 2 || (uint8_t)(y - 1) >= MAPH - 2 ||
-                 shop_in_room(x, y) || dlvl == DLVL_AMULET)
+                 shop_in_room(x, y) || dlvl == DLVL_AMULET || dlvl == DLVL_ASTRAL)
             no = (c == ' ') ? "This rock is too hard to dig." : "This wall is too hard to dig.";
     } else if (dy != DIR_DOWN) no = "Never mind.";
     else {

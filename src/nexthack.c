@@ -739,9 +739,12 @@ void draw_status(void) __banked
     x = print_str(68, 22, h, hunger_color());      /* hunger state at the tail */
     while (x < 80) putcell(x++, 22, ' ', C_GREEN);
 
-    x = print_str(0, 23, IN_MINES(dlvl) ? "Mine:" : "Dlvl:", C_GREEN | C_BRIGHT);
-    x = put_uint(x, 23, IN_MINES(dlvl) ? (uint16_t)(dlvl - MINES_BASE + 1) : dlvl,
-                 C_GREEN | C_BRIGHT);
+    if (dlvl == DLVL_ASTRAL) x = print_str(0, 23, "Astral", C_GREEN | C_BRIGHT);
+    else {
+        x = print_str(0, 23, IN_MINES(dlvl) ? "Mine:" : "Dlvl:", C_GREEN | C_BRIGHT);
+        x = put_uint(x, 23, IN_MINES(dlvl) ? (uint16_t)(dlvl - MINES_BASE + 1) : dlvl,
+                     C_GREEN | C_BRIGHT);
+    }
     x = print_str(x, 23, "  ", C_GREEN | C_BRIGHT);
     puttile(x, 23, T_DOLLAR); x++;        /* green '$' tile, not the font's */
     x = print_str(x, 23, ":", C_GREEN | C_BRIGHT);
@@ -831,9 +834,12 @@ void draw_status(void) __banked
     if (sd_force || dlvl != sd_dlvl || gold != sd_gold ||
         php != sd_hp || pmaxhp != sd_maxhp) {
         sd_dlvl = dlvl; sd_gold = gold; sd_hp = php; sd_maxhp = pmaxhp;
-        x = sd_str(0, 22, IN_MINES(dlvl) ? "Mine:" : "Dlvl:", C_GREEN | C_BRIGHT);
-        x = sd_uint(x, 22, IN_MINES(dlvl) ? (uint16_t)(dlvl - MINES_BASE + 1) : dlvl,
-                    C_GREEN | C_BRIGHT);
+        if (dlvl == DLVL_ASTRAL) x = sd_str(0, 22, "Astral", C_GREEN | C_BRIGHT);
+        else {
+            x = sd_str(0, 22, IN_MINES(dlvl) ? "Mine:" : "Dlvl:", C_GREEN | C_BRIGHT);
+            x = sd_uint(x, 22, IN_MINES(dlvl) ? (uint16_t)(dlvl - MINES_BASE + 1) : dlvl,
+                        C_GREEN | C_BRIGHT);
+        }
         x = sd_str(x, 22, " ", C_GREEN | C_BRIGHT);
         sd_putc(x, 22, T_DOLLAR, 0); x++;     /* green '$' tile, not the font's */
         x = sd_str(x, 22, ":", C_GREEN | C_BRIGHT);
@@ -1088,7 +1094,7 @@ static int trap_type(uint8_t x, uint8_t y)
 {
     uint16_t h;
     int t;
-    if (eff_depth() < 2) return -1;
+    if (eff_depth() < 2 || dlvl == DLVL_ASTRAL) return -1;   /* the plane: none */
     if (shop_in_room(x, y)) return -1;  /* NetHack rule: no traps inside a shop
                                          * (a trap door mid-shopping is cruel).
                                          * Pure rect test -- no RNG, so the
@@ -1468,7 +1474,7 @@ void score_screen(uint8_t victory) __banked
 
     /* every line kept within 32 columns so the 128K bar doesn't clip it */
     tm_cls();
-    print_str(2, 2, victory ? "You escaped with the Amulet!"
+    print_str(2, 2, victory ? "You ascended to demigodhood!"
                             : "Here lies the adventurer.", C_WHITE | C_BRIGHT);
     x = print_str(2, 5, "A level-", C_CYAN | C_BRIGHT);
     x = put_uint(x, 5, xlvl, C_CYAN | C_BRIGHT);

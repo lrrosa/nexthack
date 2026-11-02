@@ -149,5 +149,6 @@ void fov_forget(void) __banked;             /* amnesia: forget the current level
 uint8_t fov_reveal_char(char c) __banked;  /* remember every cell holding c; how many */
 
 uint8_t altar_align(uint8_t x, uint8_t y);  /* 0 Law / 1 Neu / 2 Cha (resident, pure hash) */
+uint8_t altar_seen(uint8_t x, uint8_t y);   /* farlook's: 3 = an Astral altar seen from afar */
 
 #endif /* LEVEL_H */

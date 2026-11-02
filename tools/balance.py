@@ -430,6 +430,9 @@ FORMULAS = [
     ("amulet gauntlet", "src/monster.c:170",
      "pool depth = amu_taken ? eff_depth() + 15 : eff_depth()",
      "pool(depth + 15) -- note the BITE still uses the real depth"),
+    ("astral plane", "src/ascend.c:78",
+     "3 priests (flat 45 HP) + the field filled to 8 slots from the Amulet's pool",
+     "do_astral(): the field at engage, then rn2(3) wrong priests"),
 ]
 
 
@@ -667,7 +670,7 @@ class Hero(object):
 # 5. One fight, turn by turn, in the game's own order.
 # ---------------------------------------------------------------------------
 
-def fight(rng, hero, mt, depth, asleep=None, pet_dmg=0):
+def fight(rng, hero, mt, depth, asleep=None, pet_dmg=0, mhp=None):
     """Melee a single monster to the death.  Returns (won, hp_lost, turns).
 
     Order mirrors the turn loop (src/mainentry.c): the hero swings, then
@@ -683,7 +686,8 @@ def fight(rng, hero, mt, depth, asleep=None, pet_dmg=0):
     """
     ns, pet_spd = hero.t.NORMAL_SPEED, hero.t.PET_SPD
     mv = pmv = ns // 2
-    mhp = mon_spawn_hp(mt, depth)
+    if mhp is None:                     # the Astral's priests come flat
+        mhp = mon_spawn_hp(mt, depth)
     if asleep is None:
         asleep = rng.rn2(2) == 0        # spawns_asleep is a coin from a hash
         # ...but a sleeper next to you wakes before you can strike unless you
@@ -857,24 +861,32 @@ def do_level(rng, t, hero, depth, opts, log=None):
         if mt.ch == "e":                  # the floating eye never attacks
             continue
         won, lost, turns = fight(rng, hero, mt, depth, pet_dmg=pet_dmg)
-        if hero.hp <= 0:
-            if log is not None:
-                log.append((depth, mt.name, hero.maxhp, hero.armor_def))
+        if not recover(rng, t, hero, mt, depth, opts, regen_each, pw_each, log):
             return False
-        hero.gain_xp(rng, mt.xp)
-        hero.hp = min(hero.maxhp, hero.hp + regen_each)
-        hero.pw = min(hero.maxpw, hero.pw + pw_each)
-        # src/spells.c:153 healing (1.9 model): a hurt caster with the book
-        # spends the Pw before a potion -- the Pw comes back, a potion does not
-        sp_heal = t.SP_HEAL
-        while (hero.hp < hero.maxhp * opts.quaff_at and sp_heal in hero.spells
-               and hero.pw >= t.sp_cost[sp_heal]):
-            hero.pw -= t.sp_cost[sp_heal]
-            if cast_ok(rng, hero.i, hero.xlvl):
-                hero.hp = min(hero.maxhp, hero.hp + rng.rn2(8) + 6)
-        if hero.hp < hero.maxhp * opts.quaff_at and hero.potions:
-            ot = hero.potions.pop()
-            hero.hp = min(hero.maxhp, hero.hp + potion_heal(rng, t.objs[ot].prop))
+    return True
+
+
+def recover(rng, t, hero, mt, depth, opts, regen_each, pw_each, log):
+    """What follows a fight: the death check, the XP, the regeneration the
+    walk to the next one pays, a heal cast or a potion.  False if it killed."""
+    if hero.hp <= 0:
+        if log is not None:
+            log.append((depth, mt.name, hero.maxhp, hero.armor_def))
+        return False
+    hero.gain_xp(rng, mt.xp)
+    hero.hp = min(hero.maxhp, hero.hp + regen_each)
+    hero.pw = min(hero.maxpw, hero.pw + pw_each)
+    # src/spells.c:153 healing (1.9 model): a hurt caster with the book
+    # spends the Pw before a potion -- the Pw comes back, a potion does not
+    sp_heal = t.SP_HEAL
+    while (hero.hp < hero.maxhp * opts.quaff_at and sp_heal in hero.spells
+           and hero.pw >= t.sp_cost[sp_heal]):
+        hero.pw -= t.sp_cost[sp_heal]
+        if cast_ok(rng, hero.i, hero.xlvl):
+            hero.hp = min(hero.maxhp, hero.hp + rng.rn2(8) + 6)
+    if hero.hp < hero.maxhp * opts.quaff_at and hero.potions:
+        ot = hero.potions.pop()
+        hero.hp = min(hero.maxhp, hero.hp + potion_heal(rng, t.objs[ot].prop))
     return True
 
 
@@ -897,19 +909,69 @@ def simulate_run(rng, t, cls, opts, log=None):
     for depth in range(t.DLVL_AMULET, 0, -1):
         if not do_level(rng, t, hero, depth, opts, log):
             return "died", -depth          # negative depth = died on the way up
+    if not do_astral(rng, t, hero, opts, log):
+        return "died", ASTRAL              # on the plane, short of the altar
     return "won", 0
+
+
+# Since 2.0 the climb out of Dlvl 1 leads to the Astral Plane, and the game is
+# won at its altar. A death there is reported as this depth: not a floor, so
+# the histograms leave it out and the runs report counts it on its own.
+ASTRAL = 0
+ASTRAL_FIELD = 5    # src/ascend.c:78 -- the plane fills to 8 slots, 3 are priests
+
+
+def do_astral(rng, t, hero, opts, log=None):
+    """The Astral Plane (src/ascend.c astral_populate). Its own crowd, drawn
+    from the Amulet's pool at eff_depth() 50, half of it asleep: fought at the
+    same engage fraction as any level. Then the high priests of the altars
+    that were not yours: an altar shows its god only from beside it
+    (src/level.c altar_seen), and its priest prays on the row above, so the
+    hero meets the wrong ones in whatever order the world dealt the temples --
+    none, one or both, a third of the time each. A priest sleeps until then
+    and wakes beside you unless you are stealthy (as fight() rules), and has
+    a flat 45 HP (src/ascend.c:69). The wrong offering's bolt is not modelled:
+    the god's name is plain once you stand there."""
+    depth = t.DLVL_AMULET                 # eff_depth() on the plane
+    pool = t.pool(depth + 15) or t.pool(depth)
+    n = int(round(ASTRAL_FIELD * opts.engage))
+    priest = t.mon("M")
+    wrong = rng.rn2(3)
+    fights = n + wrong
+    regen_each = pw_each = 0
+    if fights:
+        regen_each = (opts.turns_per_level // fights) // regen_period(hero.con)
+        pw_each = (opts.turns_per_level // fights) // pw_period(hero.wis, hero.wizard)
+    pet_dmg = 3 if opts.pet else 0
+    for _ in range(n):
+        mt = pool[rng.rn2(len(pool))]
+        if mt.ch == "e":
+            continue
+        fight(rng, hero, mt, depth, pet_dmg=pet_dmg)
+        if not recover(rng, t, hero, mt, depth, opts, regen_each, pw_each, log):
+            return False
+    for _ in range(wrong):
+        asleep = hero.stealthy and rng.rn2(3) != 0
+        fight(rng, hero, priest, depth, asleep=asleep, pet_dmg=pet_dmg,
+              mhp=priest.hp)
+        if not recover(rng, t, hero, priest, depth, opts, regen_each, pw_each, log):
+            return False
+    return True
 
 
 def run_batch(t, cls, opts, trials, seed=1):
     meta = random.Random(seed)
-    outcomes = {"died": 0, "won": 0, "survived": 0}
+    outcomes = {"died": 0, "won": 0, "survived": 0, "astral": 0}
     deaths = {}
     ascent_deaths = 0
     log = []
     for _ in range(trials):
         what, d = simulate_run(fresh_rng(meta), t, cls, opts, log)
         outcomes[what] += 1
-        if what == "died":
+        if what == "died" and d == ASTRAL:
+            outcomes["astral"] += 1         # past every floor: no depth bin
+            ascent_deaths += 1
+        elif what == "died":
             if d < 0:
                 ascent_deaths += 1
                 d = -d
@@ -1251,9 +1313,11 @@ absolute rate -- the assumptions are listed at the end.
         tot = float(a.trials_runs)
         alld = sorted([k for k, v in deaths.items() for _ in range(v)])
         h2(cls.name)
-        print("  won %.1f%%   died %.1f%% (%.1f%% of those on the way back up)"
+        print("  won %.1f%%   died %.1f%% (%.1f%% of those on the way back up,"
+              " %.1f%% on the Astral Plane)"
               % (100 * outcomes["won"] / tot, 100 * outcomes["died"] / tot,
-                 100.0 * ascent / max(1, outcomes["died"])))
+                 100.0 * ascent / max(1, outcomes["died"]),
+                 100.0 * outcomes["astral"] / max(1, outcomes["died"])))
         if alld:
             print("  death depth: p10 %d   median %d   p90 %d   deepest %d" %
                   (pct(alld, 10), pct(alld, 50), pct(alld, 90), max(alld)))

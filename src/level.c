@@ -35,9 +35,30 @@ uint16_t eff_depth(void)
  * (item.c's sacrifice, nexthack.c's describe/status) call it directly. */
 uint8_t altar_align(uint8_t x, uint8_t y)
 {
-    uint16_t h = (uint16_t)(world_seed + (uint16_t)dlvl * 0x61C9u
-                            + (uint16_t)x * 13u + (uint16_t)y * 7u);
+    uint16_t h;
+    /* The Astral Plane's three temples (2.0) are one god each: told apart by
+     * the third of the map they stand in (tools/txt2template.py checks the
+     * map keeps one altar in each), and shuffled per world -- turned (+ seed)
+     * and, one world in two, mirrored -- so all six orders occur. */
+    if (dlvl == DLVL_ASTRAL) {
+        uint8_t k = (uint8_t)(x / 27u);
+        if (world_seed & 0x80u) k = (uint8_t)(2u - k);
+        return (uint8_t)((k + world_seed) % 3u);
+    }
+    h = (uint16_t)(world_seed + (uint16_t)dlvl * 0x61C9u
+                   + (uint16_t)x * 13u + (uint16_t)y * 7u);
     return (uint8_t)(h % 3u);
+}
+
+/* What farlook may tell of an altar: on the Astral Plane (2.0) a god's altar
+ * shows whose only from beside it, and 3 means "not from here" (farlook.c
+ * prints "An altar."). Standing on one, describe and the offering ask
+ * altar_align itself. Resident because farlook's bank is full. */
+uint8_t altar_seen(uint8_t x, uint8_t y)
+{
+    if (dlvl == DLVL_ASTRAL && ((uint8_t)(x - (uint8_t)hero_x + 1u) > 2u ||
+                                (uint8_t)(y - (uint8_t)hero_y + 1u) > 2u)) return 3;
+    return altar_align(x, y);
 }
 
 char terrain(int x, int y)

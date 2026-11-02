@@ -241,7 +241,9 @@ void build_level(void) __banked
      * monster lands differently. */
     place_altar();       /* a deterministic altar on some levels (no RNG) */
     place_fountain();    /* ...and a fountain on some (guards on '.', so it
-                          * never overwrites the altar) */
+                          * never overwrites the altar) -- neither ever on the
+                          * Astral Plane, whose rooms' centres are its altars
+                          * and a pillar (tools/txt2template.py makes sure) */
     place_features();    /* sinks, thrones, graves (feature.c), the same way */
     apply_gold_persistence();
     apply_monster_persistence();
@@ -259,8 +261,8 @@ void build_level(void) __banked
  * so the turn loop runs upkeep and the monsters -- the new level's -- after
  * it, as a trap door's fall always did. Without it the stairs counted the
  * turn and skipped both: no hunger, no regeneration, no timer, no reply.
- * A refused climb costs nothing, and the winning climb stays turnless: the
- * game is over, no monster gets a last blow. */
+ * A refused climb costs nothing. (The winning offering, ascend.c, is
+ * turnless: the game is over, no monster gets a last blow.) */
 void go_down(void) __banked
 {
     if (terrain(hero_x, hero_y) == 'v') {   /* into the Gnomish Mines */
@@ -293,35 +295,37 @@ void go_down(void) __banked
     }
 }
 
+/* Three ways up, one arrival: where you land is read after build_level has
+ * made the level, so each way names the cell by pointer -- the hole you came
+ * down by, the new down-stairs, or the plane's arrival. Out of Dlvl 1 with the
+ * Amulet is the Astral Plane (2.0), where the game is won at an altar
+ * (ascend.c); the climb itself no longer wins. */
 void go_up(void) __banked
 {
-    if (terrain(hero_x, hero_y) == '<') {
-        if (dlvl == MINES_BASE) {           /* out of the mines */
-            grab_follower();
-            dlvl = MINES_ENTR_DLVL;
-            turns++; acted = 1;
-            build_level();
-            hero_x = mn_x; hero_y = mn_y;   /* you emerge from the hole */
-            place_pet();
-            msg("You climb out of the mines.");
-            sfx_stairs();
-            place_follower();
-        } else if (dlvl > 1) {
-            grab_follower();
-            dlvl--;
-            turns++; acted = 1;
-            build_level();
-            hero_x = dn_x; hero_y = dn_y; /* arrive on the new down-stairs */
-            place_pet();                  /* the dog follows you up */
-            msg("You climb up the stairs.");
-            sfx_stairs();
-            place_follower();
-        } else if (has_amulet) {
-            won = 1;                      /* surfaced with the Amulet: victory */
-        } else {
-            msg("You can't go up from here.");
-        }
+    uint16_t to;
+    uint8_t *ax, *ay;
+    const char *m;
+    if (terrain(hero_x, hero_y) != '<') { msg("You can't go up here."); return; }
+    if (dlvl == MINES_BASE) {               /* out of the mines */
+        to = MINES_ENTR_DLVL; ax = &mn_x; ay = &mn_y;
+        m = "You climb out of the mines.";
+    } else if (dlvl > 1) {
+        to = (uint16_t)(dlvl - 1); ax = &dn_x; ay = &dn_y;
+        m = "You climb up the stairs.";
+    } else if (has_amulet) {
+        to = DLVL_ASTRAL; ax = &up_x; ay = &up_y;
+        m = "You rise into the Astral Plane!";
     } else {
-        msg("You can't go up here.");
+        msg("You can't go up from here.");
+        return;
     }
+    grab_follower();
+    dlvl = to;
+    turns++; acted = 1;
+    build_level();
+    hero_x = *ax; hero_y = *ay;
+    place_pet();                            /* the dog follows you up */
+    msg(m);
+    sfx_stairs();
+    place_follower();
 }

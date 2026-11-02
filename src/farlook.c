@@ -37,9 +37,9 @@ extern uint8_t vx_origin;
 
 /* nexthack.c's helper, copied: its literals live in that bank, so a pointer to
  * one would read garbage here once the trampoline had swapped it out */
-static const char *align_name(uint8_t a)
+static const char *align_name(uint8_t a)   /* altar_seen's answers, after "A" */
 {
-    return a == 0 ? "Lawful" : a == 1 ? "Neutral" : "Chaotic";
+    return a == 0 ? " Lawful" : a == 1 ? " Neutral" : a == 2 ? " Chaotic" : "n";
 }
 
 /* ---- farlook (';') ----
@@ -92,7 +92,7 @@ static void look_at(uint8_t x, uint8_t y)
     case '<': msg("A staircase up.");       break;
     case '>': msg("A staircase down.");     break;
     case '^': msg("A trap.");               break;
-    case '_': msg2("A ", align_name(altar_align(x, y)), " altar."); break;
+    case '_': msg2("A", align_name(altar_seen(x, y)), " altar."); break;
     case '{': msg("A fountain.");           break;
     case CH_SINK:   msg("A sink.");         break;
     case CH_THRONE: msg("A throne.");       break;

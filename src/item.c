@@ -23,6 +23,7 @@
 #include "nexthack.h"    /* build_level (wand of digging descends a level)   */
 #include "rng.h"         /* rn2, world_seed                                  */
 #include "sfx.h"         /* sound effects                                    */
+#include "ascend.h"      /* offer_amulet (2.0)                               */
 
 /* item.c is a BANKED (cold) module with a bank of its OWN (it outgrew
  * PAGE_20), mapped into the 0xC000 window on demand. Public entry points are
@@ -1528,8 +1529,8 @@ void do_drop(void) __banked
     menu_tail_clear();                  /* a long list ran past the status bar */
     s = (k >= 'a' && (uint8_t)(k - 'a') < inv_count) ? (k - 'a') : -1;
     if (s < 0) return;                  /* cancelled; the caller redraws */
-    if (inv[s].otyp == O_AMULET) {      /* never lose the win item by drop/sale */
-        msg("You dare not part with it!");
+    if (inv[s].otyp == O_AMULET) {      /* never lose the win item by drop/sale: */
+        offer_amulet();                 /* it is offered on an altar (ascend.c) */
         return;
     }
     if (cursed_on((uint8_t)s)) return;  /* stuck on: not dropped, not sold */
@@ -1604,8 +1605,8 @@ void do_drop(void) __banked
                                          * message to overwrite it) */
     s = (k >= 'a' && (uint8_t)(k - 'a') < inv_count) ? (k - 'a') : -1;
     if (s < 0) return;                  /* cancelled; the caller redraws */
-    if (inv[s].otyp == O_AMULET) {      /* never lose the win item by drop/sale */
-        msg("You dare not part with it!");
+    if (inv[s].otyp == O_AMULET) {      /* never lose the win item by drop/sale: */
+        offer_amulet();                 /* it is offered on an altar (ascend.c) */
         return;
     }
     if (cursed_on((uint8_t)s)) return;  /* stuck on: not dropped, not sold */

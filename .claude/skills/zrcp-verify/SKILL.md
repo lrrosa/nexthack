@@ -271,7 +271,7 @@ python .claude\skills\zrcp-verify\fuzz\cover.py nexthack128.map "$env:TEMP\nexth
   checkout you built.
 
 **What it checks.** At every wait of the MAIN loop's `getkey_rpt`: `dlvl`
-1..54; the hero inside the map and on walkable ground; every monster in
+1..55; the hero inside the map and on walkable ground; every monster in
 bounds, not in rock, not stacked, not on the hero; `mcount <= MAXMON`; the
 pack's count, `otyp`s and stack counts (`inv-qty`: never 0, never past
 `STACK_MAX`, above 1 only on a type that stacks); `php <= pmaxhp`; the pet
@@ -282,8 +282,10 @@ recomputes every viewport cell the way a forced full redraw would, against
 level's first check: `>`, the mine entrance (Dlvl 2) and the Amulet's cell
 (Dlvl 50) reachable on foot **from `<`** -- not from the hero, who may have
 been teleported into a room only a secret door leads to (legal; it used to be
-flagged) -- one `<`, one `>` except at the two bottoms, the mine hole only on
-Dlvl 2.
+flagged) -- one `<`, one `>` except at the bottoms, the mine hole only on
+Dlvl 2. The Astral Plane (55, 2.0) has neither stair: there it checks three
+altars, one per god (`altar_align` mirrored), each reachable from the
+arrival, which `up_x`/`up_y` name as plain floor.
 Throughout: **write watchpoints** on memory the game must never write --
 resident code, the code banks, Bank 5's gaps between tenants (from
 `bankmap.py`), the free space between `__BSS_END` and the stack reserve -- and
@@ -305,7 +307,8 @@ new depth over the old floor. Each trip's action prints a serial to the
 debugger console, which is how `scan trips N taken M` knows a trip happened.
 A monster on the `>` (a sleeper never leaves) makes it climb `<` instead,
 logged as `A ... blocked`; before that, one such sleeper held a 128K scan on
-one level for 11000 of its 12500 frames. On a level whose altar or fountain spot holds a generated pile it runs the
+one level for 11000 of its 12500 frames. One trip in 12 goes to the Astral
+Plane, and leaves it by a `<` poked under the hero (it has none of its own). On a level whose altar or fountain spot holds a generated pile it runs the
 **grow test**: take the pile, revisit the same level, the spot must still be
 `.`. It mirrors `place_altar`/`place_fountain`'s hashes and `eff_depth`'s
 mines rule; `tile_for` and the oracles mirror `level.c` and `draw_map`.

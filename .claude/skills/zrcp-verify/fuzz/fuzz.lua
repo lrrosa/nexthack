@@ -209,7 +209,7 @@ end
 local function gamestate()
   local g = {}
   g.dlvl = r16(S.dlvl); g.hx = s16(S.hero_x); g.hy = s16(S.hero_y)
-  g.mines = g.dlvl >= 51
+  g.mines = g.dlvl >= 51 and g.dlvl <= 54   -- 55 is the Astral Plane (2.0)
   g.mcount = r8(S.mcount)
   g.mons = {}
   for i = 0, math.min(g.mcount, MAXMON) - 1 do
@@ -401,15 +401,31 @@ local function reach_check(g)
   local ux, uy = r8(S.up_x), r8(S.up_y)
   if r8(S.lvl + uy * 80 + ux) == 60 then need(ux, uy, "upstairs") end
   if g.dlvl == 2 then need(r8(S.mn_x), r8(S.mn_y), "mine-entrance") end
-  -- the ways on and off: one '<' everywhere, one '>' except at the two
-  -- bottoms, the mine hole only on Dlvl 2, the Amulet only on Dlvl 50
+  -- the ways on and off: one '<' everywhere but the Astral Plane, one '>'
+  -- except at the three bottoms, the mine hole only on Dlvl 2, the Amulet
+  -- only on Dlvl 50
   local n = { [60] = 0, [62] = 0, [118] = 0 }
+  local altars, gods = 0, {}
   for k = 0, 80 * 21 - 1 do
     local ch = r8(S.lvl + k)
     if n[ch] then n[ch] = n[ch] + 1 end
+    if ch == 95 and g.dlvl == 55 then
+      -- the plane's three altars, one god each -- level.c's altar_align,
+      -- mirrored -- and each one reachable on foot from the arrival
+      local kk, ws = (k % 80) // 27, r16(S.world_seed)
+      if ws & 0x80 ~= 0 then kk = 2 - kk end
+      gods[(kk + ws) % 3] = true
+      altars = altars + 1
+      need(k % 80, k // 80, "altar")
+    end
   end
-  local bottom = (g.dlvl == 50 or g.dlvl == 54)
-  local want = { [60] = 1, [62] = bottom and 0 or 1, [118] = (g.dlvl == 2) and 1 or 0 }
+  if g.dlvl == 55 and (altars ~= 3 or not (gods[0] and gods[1] and gods[2])) then
+    report("astral-altars", string.format("%d altars, gods %s %s %s", altars,
+      tostring(gods[0]), tostring(gods[1]), tostring(gods[2])))
+  end
+  local bottom = (g.dlvl == 50 or g.dlvl >= 54)
+  local want = { [60] = (g.dlvl == 55) and 0 or 1, [62] = bottom and 0 or 1,
+                 [118] = (g.dlvl == 2) and 1 or 0 }
   if g.dlvl == 50 and r8(S.amu_taken) == 0 and c ~= 34 then
     report("amulet-cell", string.format("Dlvl 50 dn (%d,%d) holds %q", dx, dy, string.char(c)))
   end
@@ -426,7 +442,7 @@ local function reach_check(g)
   -- come back, and the spot must still hold no altar/fountain. The spots are
   -- place_altar's and place_fountain's hashes (nexthack_lvl.c) and eff_depth's
   -- mines rule, mirrored: change those and this goes quietly blind.
-  if SCAN and not grow then
+  if SCAN and not grow and g.dlvl ~= 55 then   -- the plane: no place_altar/fountain
     local ws, dl, rc = r16(S.world_seed), g.dlvl, r8(S.rcount)
     local function centre(room)
       return r8(S.r_x + room) + r8(S.r_w + room) // 2, r8(S.r_y + room) + r8(S.r_h + room) // 2
@@ -435,7 +451,7 @@ local function reach_check(g)
     if rc > 0 then
       local h = (ws + dl * 0x9E37) & 0xFFFF
       if h % 5 == 0 then local x, y = centre((h >> 3) % rc); cand[#cand + 1] = { x, y, "altar", 95 } end
-      local ed = (dl >= 51) and (dl - 51 + 3) or dl
+      local ed = (dl >= 51 and dl <= 54) and (dl - 51 + 3) or dl
       h = (ws * 3 + dl * 0x2C9F) & 0xFFFF
       if ed >= 2 and h % 4 == 0 then local x, y = centre((h >> 4) % rc); cand[#cand + 1] = { x, y, "fountain", 123 } end
     end
@@ -451,7 +467,13 @@ local function reach_check(g)
       end
     end
   end
-  if r8(S.lvl + uy * 80 + ux) ~= 60 then
+  -- the plane has no stairs: up_x/up_y name the arrival, which is floor --
+  -- and may hold an item, as any floor may (one dropped there last visit;
+  -- or, in a scan, a nymph's loot: held_dump banks it after the trip has
+  -- wiped the old world's stashes, so a 55 -> 55 trip carries it over)
+  local uc = r8(S.lvl + uy * 80 + ux)
+  if (g.dlvl == 55 and (uc == 32 or uc == 45 or uc == 124 or uc == 60 or uc == 62))
+     or (g.dlvl ~= 55 and uc ~= 60) then
     report("up-cell", string.format("up (%d,%d) holds %q", ux, uy, string.char(r8(S.lvl + uy * 80 + ux))))
   end
 end
@@ -518,7 +540,7 @@ local function check()
   checks = checks + 1
   end_trip()
   local g = gamestate()
-  if g.dlvl < 1 or g.dlvl > 54 then report("dlvl-range", tostring(g.dlvl)) return end
+  if g.dlvl < 1 or g.dlvl > 55 then report("dlvl-range", tostring(g.dlvl)) return end
   if g.hx < 1 or g.hx > 78 or g.hy < 1 or g.hy > 19 then
     report("hero-bounds", string.format("(%d,%d)", g.hx, g.hy)) return
   end
@@ -549,7 +571,7 @@ local function check()
   -- Summons and wanderers are not tracked, so they are not held to it.
   do
     local mtk = r8(S.m_track)
-    local d = g.mines and (cfg.mines_entr + 1 + (g.dlvl - cfg.mines_base)) or g.dlvl
+    local d = g.mines and (cfg.mines_entr + 1 + (g.dlvl - cfg.mines_base)) or math.min(g.dlvl, 50)
     if r8(S.amu_taken) ~= 0 then d = d + 15 end
     for _, mo in ipairs(g.mons) do
       local w = cfg.monwin[mo.t]
@@ -847,11 +869,19 @@ frame_sub = emu.add_machine_frame_notifier(function()
             tx, ty, key = r8(S.up_x), r8(S.up_y), "<"
           end
           pdl = math.random(1, 54)
+          if math.random() < 0.08 then pdl = 55 end     -- the Astral Plane (2.0)
+          -- the plane has no stairs: lay a '<' under the hero and climb it
+          -- (go_up takes 55 to 54, and the trip picks the level inside
+          -- build_level as always). Under the hero it is never drawn.
+          if d == 55 then
+            tx, ty, key = s16(S.hero_x), s16(S.hero_y), "<"
+            w8(S.lvl + ty * 80 + tx, 60)
+          end
           -- nothing climbs INTO Dlvl 50: go_up would land on its down cell,
           -- the Amulet's, where the keeper stands
           if key == "<" and pdl == 50 then pdl = 49 end
         elseif d == 50 or d == 54 then tx, ty, key = r8(S.up_x), r8(S.up_y), "<"
-        elseif d >= 51 and math.random() < 0.5 then tx, ty, key = r8(S.up_x), r8(S.up_y), "<"
+        elseif d >= 51 and d <= 54 and math.random() < 0.5 then tx, ty, key = r8(S.up_x), r8(S.up_y), "<"
         elseif d == 2 and math.random() < 0.15 then tx, ty, key = r8(S.mn_x), r8(S.mn_y), ">"
         else tx, ty, key = r8(S.dn_x), r8(S.dn_y), ">" end
         if not occupied(tx, ty) and tx > 0 and ty > 0 then

@@ -16,6 +16,7 @@
 #include "rng.h"          /* rng_set, rn2, world_seed  */
 #include "game.h"         /* dlvl, MAXLVL, DLVL_AMULET, amu_taken */
 #include "monster.h"      /* monster_at (teleport must not land on anyone) */
+#include "ascend.h"       /* astral_stamp (2.0) */
 
 /* playable area (leaves a rock margin around the edges) */
 #define PX0 1
@@ -425,7 +426,7 @@ static void fill_vault(uint8_t r)
  * generator builds terrain + sets rcount/r_*[] (so FOV lights its rooms) +
  * up_x/dn_x, after which gen_level returns early. Big Room is the first kind;
  * the treasure vault and hand-drawn templates (Phases 23-24) plug in here. */
-enum { SP_NONE = 0, SP_BIGROOM, SP_TEMPLATE };
+enum { SP_NONE = 0, SP_BIGROOM, SP_TEMPLATE, SP_ASTRAL };
 
 /* Which special level (if any) lives at depth d. Fixed predicate, no rn2. The
  * win level (DLVL_AMULET) is always left normal. Big Room recurs every 11th
@@ -434,6 +435,7 @@ enum { SP_NONE = 0, SP_BIGROOM, SP_TEMPLATE };
 static uint8_t special_kind(uint16_t d)
 {
     uint16_t th;
+    if (d == DLVL_ASTRAL) return SP_ASTRAL;     /* 2.0: ascend.c draws it */
     if (d == DLVL_AMULET || IN_MINES(d)) return SP_NONE;
     if (d >= 2 && (d % 11u) == 0) return SP_BIGROOM;
     th = (uint16_t)(world_seed * 3331u + (uint16_t)d * 5779u + 23u);
@@ -483,6 +485,10 @@ static int special_gen(void)
 {
     uint8_t k = special_kind(dlvl);
 
+    if (k == SP_ASTRAL) {  /* the plane holds no loot: its prize is the altar */
+        astral_stamp();
+        return 1;
+    }
     if (k == SP_BIGROOM) {
         gen_big_room();
     } else if (k == SP_TEMPLATE) {
