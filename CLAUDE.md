@@ -16,9 +16,11 @@ game logic; only the platform/render layer differs, selected at compile time by
 of the gotchas below are one target behaving differently from the other.
 
 **Project status & roadmap:** see `CHANGELOG.md` (one entry per release) and
-`git log --oneline` — each commit is one phase. **1.0.0 shipped 2026-07-31**, so
-the line is 1.x.y under SemVer now; the 0.x.y tags are the pre-1.0 history. Start
-a session from this folder so this file is auto-loaded.
+`git log --oneline` — each commit is one phase. **1.0.0 shipped 2026-07-31** and
+**2.0.0**, the Ascension (the Astral Plane and the Wizard of Yendor), on
+2026-11-02, so the line is 2.x.y under SemVer now; the 0.x.y tags are the
+pre-1.0 history. Start a session from this folder so this file is
+auto-loaded.
 
 ## Build & run
 

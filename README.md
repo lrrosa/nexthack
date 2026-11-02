@@ -194,7 +194,13 @@ RAM-expansion interface, which is how many people actually have 128 KB.
   **conducts**: Pacifist, Vegetarian, Illiterate, Atheist.
 - The goal: retrieve the **Amulet of Yendor** from the bottom of the dungeon —
   past the **high priest** who guards it — and climb back out alive, through
-  everything **Moloch** sends up after you (and he no longer takes your calls).
+  everything **Moloch** sends up after you (and he no longer takes your calls)
+  and the **Wizard of Yendor**, who wants it back: he follows you from floor
+  to floor, shrugs off Elbereth, snatches the Amulet and runs for the stairs
+  with it, and rises again when killed. Out of the dungeon lies the **Astral
+  Plane**: three temples, three high priests, three altars — and only one of
+  them your god's. Offer the Amulet (`d`) on the right one to ascend; on a
+  wrong one, its god answers with a thunderbolt.
 
 ![NextHack gameplay: a magically mapped dungeon level drawn in colour 8×8 tiles — grey-brick rooms with arched wooden doors and the corridors between them, a shop with warm brick walls stocked with tools and weapons, and in a lit room the armoured hero beside a fresh breach in the wall, with the dog, a vampire in a purple cape, a nymph in a pink gown and an olive snake, and the full status bar below.](docs/gameplay.png)
 
@@ -207,6 +213,10 @@ RAM-expansion interface, which is how many people actually have 128 KB.
 ![NextHack on the Next: a magically mapped level of grey-brick rooms with wooden doors. In a lit room the hero stands on a grave, its epitaph on the message line, with the dog beside; a gold throne with a red cushion and a white wall basin stand along the top wall, an up staircase between them. A second sink stands in a room up the corridor, and a warm-brick shop holds pick-axes, weapons, a helmet and a potion.](docs/furniture.png)
 
 *1.8 furnishes the dungeon: the hero, on Dlvl 7 after a blessed scroll of magic mapping, has just stepped onto a grave and read its headstone, beside a throne waiting for someone to sit on it (`#`) and a sink to drink from, kick, or drop a ring down. The level holds another sink up the corridor, and some of its doors may be secret ones, waiting for `s`.*
+
+![The Astral Plane on the Next: three grey-brick temples along the top, an altar in each, above a wide lit field with pillars. In the gap of the middle temple stands the Wizard of Yendor in a starred hat and a violet robe, the armoured hero just below him with the dog, while a wraith, a homunculus, two floating eyes and a red dragon roam the field. The message line reads: The Wizard of Yendor appears!](docs/astral.png)
+
+*2.0's Astral Plane: the hero has climbed out of the dungeon with the Amulet, and is one step from the middle temple when the Wizard of Yendor appears in its gap. Each temple holds an altar, and only from beside one do you learn whose it is; offer the Amulet on your own god's and you ascend. A wraith, a homunculus, two floating eyes and a red dragon guard the field.*
 
 ## Project structure
 
@@ -371,7 +381,7 @@ used to emit one and no longer does.
 | `,`                       | pick up the item under you |
 | `i`                       | show inventory |
 | `D`                       | discoveries: which potion/scroll/ring/wand looks you have identified |
-| `d`                       | drop an item (sells it in a shop; offers a corpse on an altar) |
+| `d`                       | drop an item (sells it in a shop; offers a corpse on an altar — or the Amulet, on the Astral Plane) |
 | `w` / `W`                 | wield weapon / wear armor (a two-handed weapon and a shield exclude each other) |
 | `P`                       | put on a ring or an amulet (asks which; two rings, one on each hand) |
 | `T`                       | take off armour, a ring, the amulet, the blindfold or your weapon |
@@ -416,7 +426,7 @@ from the roguelike tradition):
   item's tile), nymph (`n`), gnome (`G`), dwarf (`h`), the high priest (`M`),
   unicorn (`u`), rothe (`q`), quantum mechanic (`Q`), rust monster (`R`),
   ogre (`O`), giant spider (`s`), umber hulk (`U`), black pudding (`P`),
-  hill giant (`H`), lich (`L`)
+  hill giant (`H`), lich (`L`), the Wizard of Yendor (`Y`)
 
 ## Technical notes
 

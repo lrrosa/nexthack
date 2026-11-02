@@ -8,6 +8,91 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [2.0.0] — 2026-11-02
+
+**The Ascension.** Climbing out of the dungeon with the Amulet of Yendor
+no longer ends the game. The stairs out of Dlvl 1 lead to the **Astral
+Plane**, and the game is won only by offering the Amulet on your own
+god's altar there. There are three altars, and only from beside one can
+you tell whose it is. From the moment the Amulet leaves Dlvl 50, the
+**Wizard of Yendor** comes for it, all the way up. Both machines have it
+all. Each piece was proven in ZEsarUX and under the MAME fuzzer, and the
+win was played end to end on both. **1.9 saves load**: a game already
+carrying the Amulet goes on to the plane, and the Wizard wakes a little
+after the restore.
+
+### Added
+- **The Astral Plane**, the last level. Three temples stand above an open
+  field, an altar in each, one for each god, in an order every world
+  shuffles. From afar each is just *an altar*: stand beside one to learn
+  whose it is. Above each altar a high priest prays. He sleeps until you
+  come near, and only your own god's priest is peaceful. Up to five of
+  the deepest dungeon's monsters roam the field. There are no stairs, no
+  traps and no digging.
+- **The offering.** On the plane, `d` the Amulet on your own god's altar
+  and the choir sings. The game is won, and the score reads *You ascended
+  to demigodhood!*. On a wrong altar the god thunders *Thou art not my
+  servant!*: a bolt leaves you a quarter of your hit points (never fewer
+  than 1), and you keep the Amulet to try again. Anywhere else you dare
+  not part with it.
+- **The Wizard of Yendor** (`Y`), with his own tile: a starred hat and a
+  violet robe.
+  - **He comes after you.** 50–150 turns after the Amulet leaves its
+    floor he appears beside you, and from then on he follows you up and
+    down. He keeps the wounds you gave him, though he mends a point a
+    turn. Elbereth and the scroll of scare monster mean nothing to him.
+    Far off, he steps out of nowhere to your side; near you, he calls his
+    pets.
+  - **He steals the Amulet.** One blow in six that lands takes it. He
+    carries it to the up stairs, the way you must go, and dozes there
+    until you come beside him.
+  - **He comes back.** Hurt enough, he vanishes to mend for 1000–2000
+    turns. Killed, he gives the Amulet back and rises 1500–2500 turns
+    later: *So thou thought me dead, fool?*.
+  - Genocide cannot touch him.
+
+### Changed
+- **Climbing out of Dlvl 1 with the Amulet** leads to the Astral Plane
+  instead of winning.
+- **The climb is harder.** The plane and the Wizard together cost most
+  classes 1.4–3.5 points of their modelled win rate (`tools/balance.py`,
+  with the dog, over 5 seeds), and the Tourist 5.5:
+
+  | Class | Win rate |
+  |---|---|
+  | Samurai | 64% |
+  | Valkyrie | 61% |
+  | Barbarian | 60% |
+  | Priest | 47% |
+  | Wizard | 40% |
+  | Rogue | 35% |
+  | Healer | 16% |
+  | Tourist | 14% |
+
+  The Wizard is a thief more than a killer: he ends 0.1–1.8% of runs
+  himself.
+- `SAVE_VER` 42: the save keeps whether the Amulet has left Dlvl 50, and
+  the Wizard: his state, his hit points, the Amulet if he holds it, and
+  his timer. **Every 1.9 save loads**: a game carrying the Amulet has it
+  counted as taken, and the Wizard not yet woken. 1.9.3 names a 2.0 save
+  as another version's and asks. This was proven both ways on both
+  machines against the 1.9.3 release binaries.
+
+### Under the hood
+- **The Amulet is tracked by two flags**: `has_amulet` (in the pack) and
+  `amu_taken` (gone from Dlvl 50). Once taken there is exactly one
+  Amulet, in the pack or in the Wizard's hands, never on a floor. The
+  fuzzer checks that, and `-Amulet` starts a run carrying it.
+- **The plane is level id 55**, past every per-level mask, and it plays
+  as Dlvl 50. Its map is `tools/astral.txt`, which `txt2template.py`
+  packs into a header of its own, outside the random template pool. So
+  every existing world generates exactly as before.
+- **Two new modules**: `ascend.c` (the plane and the offering) and
+  `wizard.c` (the Wizard). `wizard.c` is resident on the 128K and banked
+  on the Next.
+- **`tools/balance.py` plays the plane and the Wizard.** Its file:line
+  references were re-pointed.
+
 ## [1.9.3] — 2026-11-01
 
 **The Amulet of Yendor can be taken again, and with it the game can be
