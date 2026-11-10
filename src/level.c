@@ -39,11 +39,16 @@ uint8_t altar_align(uint8_t x, uint8_t y)
     /* The Astral Plane's three temples (2.0) are one god each: told apart by
      * the third of the map they stand in (tools/txt2template.py checks the
      * map keeps one altar in each), and shuffled per world -- turned (+ seed)
-     * and, one world in two, mirrored -- so all six orders occur. */
+     * and, one world in two, mirrored -- so all six orders occur. The seed is
+     * reduced BEFORE the sum: k + world_seed is 16 bits wide here, and in the
+     * worlds 65534 and 65535 it wrapped past zero -- 65536 is 1 mod 3, so two
+     * altars came out the same god's and one god had none: no Neutral altar
+     * in the first, no Chaotic one in the second, and a hero of that god could
+     * not win. Every other world deals exactly as it did. */
     if (dlvl == DLVL_ASTRAL) {
         uint8_t k = (uint8_t)(x / 27u);
         if (world_seed & 0x80u) k = (uint8_t)(2u - k);
-        return (uint8_t)((k + world_seed) % 3u);
+        return (uint8_t)((k + (uint8_t)(world_seed % 3u)) % 3u);
     }
     h = (uint16_t)(world_seed + (uint16_t)dlvl * 0x61C9u
                    + (uint16_t)x * 13u + (uint16_t)y * 7u);
