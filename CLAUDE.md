@@ -1027,7 +1027,13 @@ tilemap.
   `WIZ_CH`), steps out of nowhere to your side when more than four squares
   off, summons now and then, and one landed blow in `WIZ_STEAL` takes the
   Amulet (`ATK_AMU`, `wiz_steal`): he carries it to the up stairs, the way
-  you must go, and dozes there until you come beside him. Under `WIZ_FLEE`
+  you must go, and dozes there until the fight comes to him -- you beside
+  him, or anything that hurts him (a bolt, a dagger, the dog). Then he is
+  up for good: no flight and no summons while he holds it, but he still
+  steps to your side, and fights to the death as `balance.py` has him do.
+  Until 2026-11-10 the doze was put back every turn you stood off, so a
+  wand or the dog killed him at no risk; `roused` (`wizard.c`, unsaved,
+  cleared by `to_stairs`) is what keeps him up now. Under `WIZ_FLEE`
   HP he vanishes for 1000-2000 turns; killed (`drop_held` calls `wiz_died`,
   which gives the Amulet back) he rises 1500-2500 turns later and says so.
   Genocide refuses him as it refuses the shopkeeper. The numbers are

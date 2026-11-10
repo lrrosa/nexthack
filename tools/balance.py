@@ -440,7 +440,7 @@ FORMULAS = [
     ("amulet gauntlet", "src/monster.c:176",
      "pool depth = amu_taken ? eff_depth() + CLIMB_POOL : eff_depth()",
      "pool(depth + t.CLIMB_POOL) -- note the BITE still uses the real depth"),
-    ("the Wizard of Yendor", "src/wizard.c:104",
+    ("the Wizard of Yendor", "src/wizard.c:112",
      "wiz_tick: +1 HP a turn, gone under WIZ_FLEE, steals 1 blow in WIZ_STEAL",
      "wiz_level(): bouts on the climb's time, the stairs fight to the death"),
     ("astral plane", "src/ascend.c:78",

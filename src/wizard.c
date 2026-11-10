@@ -10,8 +10,9 @@
  *     does a restore, so wiz_tick puts him back each time: what he carries
  *     from level to level lives in `wiz`, not in his slot.
  *   - a blow of his may snatch the Amulet (ATK_AMU, wiz_steal). He takes it
- *     to the up stairs -- the way you must go -- and waits there, and holding
- *     it he fights to the death. Kill him and it is yours again.
+ *     to the up stairs -- the way you must go -- and dozes there until the
+ *     fight comes to him: you beside him, or anything that hurts him. Then,
+ *     holding it, he fights to the death. Kill him and it is yours again.
  *   - under WIZ_FLEE HP he vanishes, and comes back mended a long while
  *     later; he mends a point every turn as well, as NetHack's does.
  *   - far from you, he steps out of nowhere at your side; near, he now and
@@ -48,6 +49,12 @@
 
 wiz_t wiz;               /* resident DATA on both targets */
 
+/* 1: the fight has come to the Wizard who holds the Amulet, and he no
+ * longer dozes on the stairs (wiz_tick). to_stairs, which every holder of
+ * it passes, clears it. Not saved: after a restore he dozes again until the
+ * fight comes to him once more. */
+static uint8_t roused;
+
 static int iabs(int v) { return v < 0 ? -v : v; }
 
 /* his slot on this level, or -1: there is only ever one of him */
@@ -75,6 +82,7 @@ static void to_stairs(uint8_t i)
 {
     int o = monster_at(up_x, up_y);
     uint8_t n, x = up_x, y = up_y;
+    roused = 0;                          /* he dozes there until you come */
     if ((o >= 0 && o != i) || (x == (uint8_t)hero_x && y == (uint8_t)hero_y))
         for (n = 0; ; n++) {
             if (n == 4) return;
@@ -104,7 +112,7 @@ static void gone(uint16_t min, uint16_t rnd)
 void wiz_tick(void) WIZ_ENTRY
 {
     int8_t  s;
-    uint8_t i, top;
+    uint8_t i, top, hurt;
 
     if (!amu_taken || dead) return;
     top = mon_find(WIZ_CH)->hp;
@@ -132,14 +140,25 @@ void wiz_tick(void) WIZ_ENTRY
         return;                          /* (no room beside you: next turn) */
     }
     i = (uint8_t)s;
+    hurt = (uint8_t)(m_hp[i] < wiz.hp);  /* struck since the last tick */
     if (m_hp[i] < top) m_hp[i]++;        /* he mends a point a turn */
     wiz.hp = m_hp[i];
 
-    if (wiz.amu) {                       /* on the stairs with it: he dozes */
-        m_sleep[i] = (uint8_t)(wiz_dist(i) > 1 ? 2 : 0);  /* till you come */
-        return;
-    }
-    if (wiz.hp < WIZ_FLEE) {             /* hurt: away to mend */
+    if (wiz.amu) {
+        /* On the stairs with it he dozes until the fight comes to him: you
+         * beside him, or anything that hurts him -- a bolt, a dagger, the
+         * dog. Then he is up for good, and fights to the death as
+         * balance.py's stairs fight has him do: he never flees, nor calls
+         * for help, but he does step to your side. Until 2026-11-10 the doze
+         * was put back every turn you stood off, so the blow that woke him
+         * was undone before he could act, and a wand, a spell or the dog
+         * killed him at no risk at all. */
+        if (!roused) {
+            if (!hurt && wiz_dist(i) > 1) { m_sleep[i] = 2; return; }
+            roused = 1;
+            m_sleep[i] = 0;
+        }
+    } else if (wiz.hp < WIZ_FLEE) {      /* hurt: away to mend */
         m_alive[i] = 0;
         map_flush  = 1;
         wiz.mend   = 1;
@@ -152,7 +171,7 @@ void wiz_tick(void) WIZ_ENTRY
             m_alive[i] = 0;
             if (!place_beside()) m_alive[i] = 1;
         }
-    } else if (rn2(WIZ_SUMMON) == 0 &&
+    } else if (!wiz.amu && rn2(WIZ_SUMMON) == 0 &&
                summon_near(pick_mon(), (uint8_t)(1 + rn2(2)))) {
         msg("\"Destroy the thief, my pets!\"");
     }
