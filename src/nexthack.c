@@ -886,8 +886,12 @@ static void describe(char dest, int moved)
     switch (dest) {
     case '>': msg("There is a staircase down here."); break;
     case '<': msg("There is a staircase up here.");   break;
-    case '"': msg(dlvl == DLVL_AMULET ? "The Amulet of Yendor! (,get)"
-                                     : "An amulet. (,get)"); break;
+    /* The real one lies where the down stairs would be, until it is taken;
+     * any other '"' on Dlvl 50 is an amulet you dropped there. Until
+     * 2026-11-10 every one there was announced as the Amulet. */
+    case '"': msg(dlvl == DLVL_AMULET && !amu_taken &&
+                  hero_x == dn_x && hero_y == dn_y ? "The Amulet of Yendor! (,get)"
+                                                   : "An amulet. (,get)"); break;
     case ')': case '[': case '!': case '%': case '?': case '=': case '/':
     case '&': case '(':
         msg2(floor_item_desc(),

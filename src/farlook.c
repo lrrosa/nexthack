@@ -100,8 +100,9 @@ static void look_at(uint8_t x, uint8_t y)
     case 'v': msg("A hole down to the mines."); break;
     case '$': msg("A pile of gold.");       break;
     case '*': msg("A luckstone.");          break;
-    case '"': msg(dlvl == DLVL_AMULET ? "The Amulet of Yendor."
-                                     : "An amulet."); break;
+    case '"': msg(dlvl == DLVL_AMULET && !amu_taken &&    /* the real one: */
+                  x == dn_x && y == dn_y ? "The Amulet of Yendor."  /* describe */
+                                         : "An amulet."); break;
     default:  msg("");                      break;
     }
 }
