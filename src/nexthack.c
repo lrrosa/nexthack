@@ -619,7 +619,7 @@ void do_pray(void) __banked
     } else if (st_poison || st_blind || st_conf) {
         st_poison = st_blind = st_conf = 0;
                                         msg("You feel purified.");
-    } else if (pray_uncurse(terrain(hero_x, hero_y) == '_')) {
+    } else if (pray_uncurse(item_hero_floor() == '_')) {   /* a corpse on it, too */
                                         msg("A weight lifts from your pack.");
     } else {
         if (php < pmaxhp) php++;         msg("You feel full of awe.");

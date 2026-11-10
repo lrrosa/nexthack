@@ -25,6 +25,7 @@
 #include "rng.h"          /* rn2 */
 #include "sfx.h"
 #include "nexthack.h"     /* draw_map */
+#include "item.h"         /* item_hero_floor */
 
 extern uint8_t r_x[], r_y[], r_w[], r_h[];   /* room rects (levelgen.c) */
 
@@ -95,10 +96,11 @@ void astral_populate(void) __banked
  * takes it and the game is won -- turnless, like the old winning climb: no
  * monster gets a last blow. Another god strikes you down to a quarter of
  * your hit points and gives it back: the bolt alone never kills, but it costs
- * the turn, and its priest may be standing beside you. */
+ * the turn, and its priest may be standing beside you. A corpse or a ring
+ * lying on the altar does not hide it (item_hero_floor). */
 void offer_amulet(void) __banked
 {
-    if (terrain(hero_x, hero_y) != '_') {
+    if (item_hero_floor() != '_') {
         msg("You dare not part with it!");
         return;
     }

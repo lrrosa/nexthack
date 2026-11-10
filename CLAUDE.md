@@ -615,7 +615,14 @@ tilemap.
   shop -- placed beside the altar and fountain, before the persistence, and not
   on special levels or in the mines. Those chars exist only in `lvl[][]`: every
   renderer draws `tile_for`'s tile. `floor_drop` accepts them, so an item can
-  rest on one as on an altar. What changes for good rides the dug pool:
+  rest on one as on an altar -- and then hides it: the item's class is
+  written over the cell, the terrain kept in its `och`. So "am I on an
+  altar / a sink?" is asked of `item_hero_floor()` (`item.c`), never of
+  `terrain()`: until 2026-11-10 a corpse fallen on the Astral altar refused
+  the Amulet's offering. The offering, the sacrifice, the prayer, the drop's
+  flash and a ring down the sink ask it; sitting on a throne, quaffing from
+  a sink, digging a grave and the altar's sense on stepping still read
+  `lvl[][]`. What changes for good rides the dug pool:
   a vanished throne or sink and a dug-up grave are `DUG_FLOOR`, and a sink that
   gave up its ring a `DUG_MARK`. Two-part news uses `msg_more` (`platform.c`),
   NetHack's --More--; the 128K borrows the right end of row 1 for the prompt

@@ -393,6 +393,20 @@ static void floor_pick(uint8_t i)    /* remove entry i, restoring its terrain */
     floor_n--;
 }
 
+/* What the hero stands on, under whatever lies there: floor_drop shows an
+ * item by writing its class over the cell, and keeps the terrain in och.
+ * "Am I on an altar (a sink)?" is asked here. Read from terrain(), a corpse
+ * fallen on the altar -- or a ring dropped there to see it flash -- hid the
+ * altar from the Amulet's offering, the sacrifice and the prayer until you
+ * picked the thing up (until 2026-11-10). */
+static char hero_floor(void)
+{
+    int fi = floor_find((uint8_t)hero_x, (uint8_t)hero_y);
+    return fi >= 0 ? (char)floor_obj[fi].och : terrain(hero_x, hero_y);
+}
+
+char item_hero_floor(void) __banked { return hero_floor(); }
+
 /* Put down something the HERO owned -- a thrown weapon, a nymph's loot -- so
  * that it cannot simply vanish. floor_drop says no to a taken cell, and a
  * killing throw drops its corpse or loot on the very cell the weapon was
@@ -1065,7 +1079,7 @@ static void sacrifice(uint8_t s)
 static void drop_at_feet(uint8_t s)
 {
     obj_t o = inv[s];
-    uint8_t altar = (uint8_t)(terrain(hero_x, hero_y) == '_');
+    uint8_t altar = (uint8_t)(hero_floor() == '_');
     o.worn = 0;
     if (altar) {
         uint8_t aa = altar_align((uint8_t)hero_x, (uint8_t)hero_y);
@@ -1539,11 +1553,11 @@ void do_drop(void) __banked
         return;
     }
     if (cursed_on((uint8_t)s)) return;  /* stuck on: not dropped, not sold */
-    if (inv[s].otyp == O_CORPSE && terrain(hero_x, hero_y) == '_') {
+    if (inv[s].otyp == O_CORPSE && hero_floor() == '_') {
         sacrifice((uint8_t)s);          /* a corpse on an altar is an offering */
         return;
     }
-    if (objtypes[inv[s].otyp].cls == '=' && terrain(hero_x, hero_y) == CH_SINK) {
+    if (objtypes[inv[s].otyp].cls == '=' && hero_floor() == CH_SINK) {
         sink_ring((uint8_t)s);          /* down the drain (feature.c) */
         return;
     }
@@ -1615,11 +1629,11 @@ void do_drop(void) __banked
         return;
     }
     if (cursed_on((uint8_t)s)) return;  /* stuck on: not dropped, not sold */
-    if (inv[s].otyp == O_CORPSE && terrain(hero_x, hero_y) == '_') {
+    if (inv[s].otyp == O_CORPSE && hero_floor() == '_') {
         sacrifice((uint8_t)s);          /* a corpse on an altar is an offering */
         return;
     }
-    if (objtypes[inv[s].otyp].cls == '=' && terrain(hero_x, hero_y) == CH_SINK) {
+    if (objtypes[inv[s].otyp].cls == '=' && hero_floor() == CH_SINK) {
         sink_ring((uint8_t)s);          /* down the drain (feature.c) */
         return;
     }

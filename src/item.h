@@ -53,6 +53,8 @@ void item_spawn(uint8_t x, uint8_t y, char cls, uint8_t cursed) __banked;  /* a 
 void altar_sense(void) __banked;      /* an altar reveals carried items' BUC    */
 void ring_noticed(uint8_t rf) __banked; /* a worn ring gave itself away (RF_*)  */
 uint8_t pray_uncurse(uint8_t all) __banked; /* a prayer lifts curses (worn/all) */
+char item_hero_floor(void) __banked;  /* the terrain under the hero, under any item:
+                                       * ask it "am I on an altar?", not terrain() */
 
 void item_save(uint8_t h) __banked; /* serialise inventory + equipment          */
 void item_load(uint8_t h) __banked; /* restore them from a save file            */
