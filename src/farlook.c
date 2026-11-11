@@ -69,7 +69,14 @@ static void look_at(uint8_t x, uint8_t y)
         {
             const char *nm = mon_name(m_type[mi]);
             const char *art;
-            if      (m_peace[mi]) art = "A peaceful ";
+            /* On the Astral Plane the one peaceful is your god's priest,
+             * and the altar tells its god only from beside it (altar_seen,
+             * 3 = not from here): so from afar his peace goes unsaid, and
+             * all three priests, asleep at prayer, read alike. Until
+             * 2026-11-10 yours read "peaceful" from twelve squares off,
+             * through the temple's gap, and the others "sleeping" --
+             * telepathy said as much from anywhere. */
+            if      (m_peace[mi] && altar_seen(x, y) != 3) art = "A peaceful ";
             else if (m_sleep[mi]) art = "A sleeping ";
             else art = (nm[0] == 'a' || nm[0] == 'e' || nm[0] == 'i' ||
                         nm[0] == 'o' || nm[0] == 'u') ? "An " : "A ";

@@ -692,7 +692,10 @@ tilemap.
   stand along the top, an altar in each: on the plane `altar_align` (`level.c`)
   deals the gods by `x / 27`, in an order `world_seed` shuffles, and
   `altar_seen` tells the god only from a square beside it -- farlook asks that,
-  so from afar every one is "An altar.". `astral_populate` takes over
+  so from afar every one is "An altar.", and it hides a priest's peace the
+  same way (your god's is the plane's one peaceful): from afar all three
+  read "A sleeping high priest." Until 2026-11-10 yours read "peaceful"
+  through the temple's gap, twelve squares off. `astral_populate` takes over
   `spawn_level_monsters` there: a high priest above each altar (flat 45 HP,
   asleep until you come near, yours peaceful) and up to five from the Amulet's
   pool in the field only. No mask has a slot for 55, so `m_track` names
