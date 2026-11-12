@@ -698,7 +698,10 @@ tilemap.
   through the temple's gap, twelve squares off. `astral_populate` takes over
   `spawn_level_monsters` there: a high priest above each altar (flat 45 HP,
   asleep until you come near, yours peaceful) and up to five from the Amulet's
-  pool in the field only. No mask has a slot for 55, so `m_track` names
+  pool in the field only. Asleep, none of the three may move: until
+  2026-11-12 the 128K's no-enemy path (`monsters_phase`) strolled every
+  peaceful, asleep or not, so yours walked off his altar and named your
+  god -- a peaceful's stroll asks `still_asleep` first, on both paths. No mask has a slot for 55, so `m_track` names
   nobody: a kill there, or an angered priest, is back after a save and
   restore. `d` the Amulet (`offer_amulet`): anywhere but an altar it stays in
   the pack; on an ordinary altar the god is far away; on the wrong altar of the

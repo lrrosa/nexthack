@@ -1043,9 +1043,16 @@ static void monsters_phase(void)
             iabs((int)m_y[i] - hero_y) <= MON_WAKE) awake = 1;
     }
     if (!awake) {
-        /* the townsfolk still mill about (cheap: no BFS involved) */
+        /* the townsfolk still mill about (cheap: no BFS involved) -- the
+         * awake ones: the sleepers first, in mon_step's order. Until
+         * 2026-11-12 this strolled a sleeper too, so on the Astral Plane
+         * your own priest, asleep at prayer, walked about his temple (onto
+         * his altar, once) while the other two knelt: he gave your god away
+         * to anyone watching, and the Next's never moved. */
         for (i = 0; i < mcount; i++)
             if (m_alive[i] && ACTS(i) && (m_peace[i] || m_blind[i])) {
+                if (still_asleep(i)) continue;
+                if (m_sleep[i]) { m_sleep[i]--; continue; }  /* a wand's doze */
                 if (m_blind[i]) m_blind[i]--;   /* the flash wears off */
                 peace_amble(i);
             }
