@@ -64,6 +64,15 @@ that way; one-liners do not scale.
   each headless run a terminal window with its licence banner. `Start-Emu`
   launches it with `CreateNoWindow` now (2026-10-24); only `-Visible` uses
   `Start-Process`.
+- **The emulator outlives the script, so it must not hold the script's
+  output.** .NET hands a child every inheritable handle, and the headless
+  ZEsarUX runs on until the next `Start-Emu` or `Stop-Emu` kills it: a test
+  piped into another command (`pwsh -File t.ps1 | ...`, a batch runner) never
+  reached EOF, and a batch sat for three hours behind one finished script
+  (2026-11-11). `Start-Emu` now makes its std handles non-inheritable for that
+  one launch. A batch should still end each script with `Stop-Emu`, and in
+  PowerShell 7.4 set `$PSNativeCommandUseErrorActionPreference = $false`, or
+  one script's non-zero exit stops the rest.
 
 - **`set-machine` KILLS ZEsarUX v13** — the process dies, not just the
   connection. To switch targets, relaunch (`Start-Emu` does). Always check the

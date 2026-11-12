@@ -68,6 +68,15 @@ function Send-Zrcp {
 # NEVER use ZRCP's `set-machine` to switch targets: it kills the v13 pthreads
 # build outright (the process dies, not just the connection). Relaunch instead.
 
+if (-not ('ZrcpNative' -as [type])) {
+    # Start-Emu's launch keeps this process's std handles to itself (see there)
+    Add-Type -Name ZrcpNative -Namespace '' -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern IntPtr GetStdHandle(int n);
+[DllImport("kernel32.dll")] public static extern bool GetHandleInformation(IntPtr h, out uint flags);
+[DllImport("kernel32.dll")] public static extern bool SetHandleInformation(IntPtr h, uint mask, uint flags);
+'@
+}
+
 function Stop-Emu {
     Get-Process | Where-Object { $_.ProcessName -match 'zesarux' } |
         Stop-Process -Force -ErrorAction SilentlyContinue
@@ -131,7 +140,25 @@ function Start-Emu {
         $psi.Arguments = $args -join ' '
         $psi.UseShellExecute = $false
         $psi.CreateNoWindow = $true
-        [System.Diagnostics.Process]::Start($psi) | Out-Null
+        # Nor this process's std handles. .NET's CreateProcess always
+        # inherits the inheritable ones, so the emulator -- which runs on
+        # after the script ends -- held its stdout: a script piped into
+        # another command (`pwsh -File t.ps1 | ...`) never reached EOF, and a
+        # test batch sat for three hours (2026-11-11). They stop being
+        # inheritable for this one launch and are put back after it.
+        $saved = @{}
+        foreach ($n in -10, -11, -12) {      # STD_INPUT, STD_OUTPUT, STD_ERROR
+            $h = [ZrcpNative]::GetStdHandle($n); $f = [uint32]0
+            if ($h -ne [IntPtr]::Zero -and $h -ne [IntPtr]::new(-1) -and
+                -not $saved.ContainsKey($h) -and [ZrcpNative]::GetHandleInformation($h, [ref]$f)) {
+                $saved[$h] = $f
+                $null = [ZrcpNative]::SetHandleInformation($h, 1, 0)   # HANDLE_FLAG_INHERIT
+            }
+        }
+        try { [System.Diagnostics.Process]::Start($psi) | Out-Null }
+        finally {
+            foreach ($h in $saved.Keys) { $null = [ZrcpNative]::SetHandleInformation($h, 1, ($saved[$h] -band 1)) }
+        }
     }
     Start-Sleep -Seconds 10
     Connect-Zrcp | Out-Null
