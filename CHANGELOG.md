@@ -8,6 +8,51 @@ Every release ships two binaries — `nexthack.nex` (ZX Spectrum Next) and
 `nexthack128.tap` (ZX Spectrum 128K) — on the
 [Releases](https://github.com/lrrosa/nexthack/releases) page.
 
+## [2.0.1] — 2026-11-11
+
+**Six fixes to 2.0's ending.** Four came from a review of 2.0.0. One
+let you kill the Wizard of Yendor for nothing, one kept you from offering
+the Amulet, and two gave away more than the game means to tell. A fifth
+left two worlds in 65536 without one god's altar, and testing this
+release found a sixth, on the 128K only, that gave your altar away too.
+Each was proven in ZEsarUX on both machines. **Saves are unchanged**:
+2.0.0 and 2.0.1 load each other's.
+
+### Fixed
+- **The Wizard of Yendor, holding the Amulet**, could be killed for
+  nothing. He dozed on the up stairs until you came beside him, and the
+  doze came back every turn you stood off — even right after a blow had
+  woken him. So a wand, a force bolt, thrown daggers or the dog wore him
+  down while he never lifted a hand. Now the fight comes to him as soon
+  as anything hurts him or you step beside him: he wakes for good, comes
+  at you (out of nowhere, when far) and fights to the death. Holding the
+  Amulet he still neither flees nor calls for help. The modelled win
+  rates do not move: `tools/balance.py` already fought him to the death.
+- **An altar with something lying on it** refused the Amulet: `d` on your
+  own god's altar answered *You dare not part with it!* until you picked
+  the thing up. A monster killed on the Astral altar was enough. The same
+  went for sacrificing a corpse on an altar, praying on one, the flash of
+  a drop, and a ring dropped down a sink with something lying in it.
+- **Worlds 65534 and 65535** dealt the Astral Plane's altars two to one
+  god and none to another: no Neutral altar in the first, no Chaotic one
+  in the second, so a hero of that god could not win there. Every world
+  has all three now, and every other world deals exactly as it did.
+- **The Astral priests gave your altar away.** Farlook named your god's
+  priest *peaceful* from twelve squares off, through the temple's gap,
+  and the others *sleeping*, and telepathy told it from anywhere. From
+  afar all three are now just sleeping high priests; beside him, yours is
+  peaceful as before. An altar still shows its god only from beside it.
+- **On the 128K, your own Astral priest walked about** while asleep at
+  prayer, around his temple and once onto his altar, while the other two
+  knelt: watching them was enough to find your god. With no enemy near,
+  the 128K let every peaceful monster stroll without asking whether it
+  slept. Now a sleeper stays put until it wakes, as on the Next, whose
+  priests never moved; awake, the townsfolk mill about as before.
+- **Any amulet on Dlvl 50** was announced as *The Amulet of Yendor* when
+  you stepped on it or looked at it, an amulet of ESP you had dropped
+  there too. Only the words were wrong: picking it up gave you the right
+  thing.
+
 ## [2.0.0] — 2026-11-02
 
 **The Ascension.** Climbing out of the dungeon with the Amulet of Yendor
